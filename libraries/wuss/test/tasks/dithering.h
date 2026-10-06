@@ -13,8 +13,8 @@
 
 #include "palette.h"
 
-#define DITHERING_MAX_IMAGES   64
 #define DITHERING_MAX_NAME_LEN 64
+#define DITHERING_EMPTYSZ      64 /* window size before the first DataLoad */
 #define DITHERING_NCOUNTS      6 /* rows in the Colours submenu */
 #define DITHERING_NSTRENGTHS   5 /* rows in the Strength submenu */
 
@@ -26,7 +26,6 @@
 /* Main menu rows */
 enum
 {
-  DITHERING_MENU_IMAGE,
   DITHERING_MENU_METHOD,
   DITHERING_MENU_PALETTE,
   DITHERING_MENU_COLOURS,
@@ -36,34 +35,32 @@ enum
   DITHERING_MENU__LIMIT
 };
 
-/* window's task: a PNG from resources/images reduced by dither_bitmap,
- * optionally to an octree palette. A Select click toggles between the
- * dithered result and the original; Menu picks the image and the options,
- * and every change re-dithers at once. Save writes the dithered result as
- * a PNG. */
+/* window's task: a PNG dropped on its icon or window (DataLoad) reduced by
+ * dither_bitmap, optionally to an octree palette. A Select click toggles
+ * between the dithered result and the original; Menu picks the options, and
+ * every change re-dithers at once. Save writes the dithered result as a
+ * PNG. */
 typedef struct dithering_task
 {
   wuss_window_t     *window;
   wuss_t            *wuss;
   wuss_task_t       *delegate;
-  bitmap_t           source;   /* owned base: rgbx8888 or rgba8888 */
+  bitmap_t           source;   /* owned base: rgbx8888 or rgba8888; NULL
+                                * base until the first DataLoad */
   bitmap_t          *dithered; /* owned; NULL if the last dither failed */
   int                show_original;
 
-  int                image;    /* index into images[] */
   dither_method_t    method;
   int                palette;  /* a DITHERING_PALETTE_* row */
   int                count;    /* index into the Colours rows */
   int                strength; /* index into the Strength rows */
   int                serpentine;
 
-  char               images[DITHERING_MAX_IMAGES][DITHERING_MAX_NAME_LEN];
-  int                nimages;
+  char               name[DITHERING_MAX_NAME_LEN]; /* leafname of the shown
+                                * image, less ".png" */
   char               palettes[PALETTE_MAX_FILES][32]; /* *.hex leafnames */
   int                npalettes;
 
-  wuss_menu_item_t   image_items[DITHERING_MAX_IMAGES];
-  wuss_menu_t        image_menu;
   wuss_menu_item_t   method_items[dither__LIMIT];
   wuss_menu_t        method_menu;
   wuss_menu_item_t   palette_items[DITHERING_PALETTE_FIRST_HEX +
@@ -82,10 +79,10 @@ dithering_task_t;
 
 wuss_window_fn_t dithering_handle;
 
-/* scan wuss_get_resources(wuss)/resources/images for PNGs and
- * resources/palettes for *.hex files, dither the first image and create its
- * window against the given wuss instance. if out is non-NULL, the task block
- * is also returned through it */
+/* scan wuss_get_resources(wuss)/resources/palettes for *.hex files and create
+ * an empty window against the given wuss instance; it shows an image once one
+ * is dropped on it. if out is non-NULL, the task block is also returned
+ * through it */
 result_t dithering_create(wuss_t *wuss, dithering_task_t **out);
 
 /* install the icon bar app that opens dithering windows on demand */

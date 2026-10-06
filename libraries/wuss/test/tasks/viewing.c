@@ -203,31 +203,17 @@ static result_t viewing_show(viewing_task_t *ic, const char *path)
   return wuss_window_set_doc(ic->window, sz);
 }
 
-/* A DataLoad on the viewing window: show the file it names. A file that will
- * not load is not acknowledged, so the send bounces to the sender. */
+/* A DataLoad on the viewing window: show the file it names. */
 static result_t viewing_message(viewing_task_t     *ic,
                                 wuss_window_t      *window,
                                 const wuss_event_t *event)
 {
-  const wuss_message_t *msg;
-  char                  path[DPTLIB_MAXPATH];
-  size_t                len;
-
-  msg = event->data.message;
-
-  if (msg->action != wuss_MESSAGE_DATA_LOAD || ic->window == NULL ||
-      window != ic->window)
+  if (ic->window == NULL || window != ic->window)
     return result_OK;
 
-  len = MIN(msg->size, sizeof(path) - 1);
-  memcpy(path, msg->data, len);
-  path[len] = '\0';
-
-  if (viewing_show(ic, path) != result_OK)
-    return result_OK;
-
-  (void) wuss_acknowledge(ic->wuss, ic->delegate, msg);
-  return result_OK;
+  return taskapp_window_data_load(ic->wuss, ic->delegate, ic,
+                                  (taskapp_data_load_fn_t) viewing_show,
+                                  event->data.message);
 }
 
 /* Menu shape built from a descriptor string. The tree must outlive the open

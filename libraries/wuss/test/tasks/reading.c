@@ -1,4 +1,4 @@
-/* wuss/test/tasks/reading.c -- Reading task with font and sample pickers */
+/* wuss/test/tasks/reading.c -- Reading task for Markdown and text files */
 
 #ifdef WUSS_APP
 
@@ -18,7 +18,6 @@
 #include "framebuf/palettes.h"
 #include "geom/box.h"
 #include "geom/point.h"
-#include "io/dirscan.h"
 #include "io/path.h"
 #include "text/bmtext.h"
 #include "wuss/menu.h"
@@ -38,11 +37,6 @@
  * serves either row -- see saturn.c's SATURN_COLOURS_MENU_* for the same
  * pattern. */
 enum { READING_COLOURS_MENU_FOREGROUND = 0, READING_COLOURS_MENU_BACKGROUND };
-
-/* the "Sample" submenu is built from the files in resources/text: ".md"
- * files are parsed as Markdown, ".txt" files laid out as plain text. Rows
- * are sorted by leafname, and the first is the default. */
-#define READING_SAMPLES_DIR "%s/resources/text"
 
 /* one entry per row of the "Spacing" submenu */
 typedef struct reading_spacing_preset
@@ -71,7 +65,7 @@ static const reading_spacing_preset_t reading_spacing_presets[] =
 #define READING_MD_ITALIC_COLOUR colour_rgb(0x20, 0x90, 0x40)
 #define READING_MD_CODE_COLOUR   colour_rgb(0x90, 0x40, 0xc0)
 
-#define READING_MD_MAX_SPANS 128 /* sample text is short; overflow is
+#define READING_MD_MAX_SPANS 128 /* styled runs are few; overflow is
                                * dropped */
 
 /* is c the start of an ATX header line ("#" through "######" then a
@@ -280,7 +274,7 @@ oom:
 #define READING_MENU_FONT 0
 
 /* index into task->top_items[] of the "Auto-size" leaf */
-#define READING_MENU_AUTOSIZE 5
+#define READING_MENU_AUTOSIZE 4
 
 /* "Alignment" submenu rows */
 enum { READING_ALIGN_LEFT = 0, READING_ALIGN_CENTRE, READING_ALIGN_RIGHT };
@@ -348,60 +342,6 @@ static result_t reading_set_font(reading_task_t *task,
 
   wuss_window_invalidate_visible(task->window);
   return result_OK;
-}
-
-/* dirscan_walk callback: add leaf to task->samples if it is a ".md" or
- * ".txt" file. Once full, a leaf evicts the greatest one kept if it sorts
- * before it, so the first READING_MAX_SAMPLES by name are kept whatever order
- * the directory is walked in. */
-static result_t reading__scan_sample(const char *leaf, void *opaque)
-{
-  reading_task_t   *task;
-  reading_sample_t *sample;
-  int               i;
-  char             *c;
-
-  task = opaque;
-  if (strlen(leaf) >= sizeof(sample->leaf))
-    return result_OK;
-
-  if (task->nsamples < READING_MAX_SAMPLES)
-  {
-    sample = &task->samples[task->nsamples];
-  }
-  else
-  {
-    sample = &task->samples[0];
-    for (i = 1; i < task->nsamples; i++)
-      if (strcmp(task->samples[i].leaf, sample->leaf) > 0)
-        sample = &task->samples[i];
-    if (strcmp(leaf, sample->leaf) >= 0)
-      return result_OK;
-  }
-  /* ponytail: on RISC OS leaves carry no extension, so every file matches
-   * ".md" and is parsed as Markdown -- check the filetype if that matters */
-  if (path_leaf_strip_ext(leaf, ".md", sample->name, sizeof(sample->name)))
-    sample->markdown = true;
-  else if (path_leaf_strip_ext(leaf, ".txt",
-                               sample->name, sizeof(sample->name)))
-    sample->markdown = false;
-  else
-    return result_OK;
-
-  strcpy(sample->leaf, leaf);
-  for (c = sample->name; *c != '\0'; c++)
-    if (*c == '_')
-      *c = ' ';
-
-  if (sample == &task->samples[task->nsamples])
-    task->nsamples++;
-  return result_OK;
-}
-
-static int reading__sample_compare(const void *a, const void *b)
-{
-  return strcmp(((const reading_sample_t *) a)->leaf,
-                ((const reading_sample_t *) b)->leaf);
 }
 
 /* read the whole of path into a freshly malloc'd NUL-terminated buffer,
@@ -492,26 +432,8 @@ static result_t reading__load_text(reading_task_t *task,
   return result_OK;
 }
 
-/* load task->samples[idx] as the shown text. idx must already be
- * range-checked */
-static result_t reading__apply_sample(reading_task_t *task, int idx)
-{
-  result_t rc;
-
-  rc = reading__load_text(task,
-                          pathf(READING_SAMPLES_DIR "/%s",
-                                wuss_get_resources(task->wuss),
-                                task->samples[idx].leaf),
-                          task->samples[idx].markdown);
-  if (rc != result_OK)
-    return rc;
-
-  task->sample = idx;
-  return result_OK;
-}
-
 /* show the ".md" or ".txt" file at path (e.g. dropped from the Filer),
- * leaving no "Sample" row ticked. Any other file is refused. */
+ * Any other file is refused. */
 static result_t reading_show(reading_task_t *task, const char *path)
 {
   result_t    rc;
@@ -535,29 +457,6 @@ static result_t reading_show(reading_task_t *task, const char *path)
     logf_warning("reading: cannot load \"%s\" (rc=0x%X)", path, rc);
     return rc;
   }
-
-  task->sample = -1;
-  wuss_menu_tick_exclusive(&task->sample_menu, -1);
-  wuss_menu_tick_exclusive_live(task->menu_handle, &task->sample_menu, -1);
-
-  wuss_window_invalidate_visible(task->window);
-  return result_OK;
-}
-
-/* switch the shown text to task->samples[idx] */
-static result_t reading_set_sample(reading_task_t *task, int idx)
-{
-  result_t rc;
-
-  if (idx < 0 || idx >= task->nsamples || idx == task->sample)
-    return result_OK;
-
-  rc = reading__apply_sample(task, idx);
-  if (rc != result_OK)
-    return rc;
-
-  wuss_menu_tick_exclusive(&task->sample_menu, idx);
-  wuss_menu_tick_exclusive_live(task->menu_handle, &task->sample_menu, idx);
 
   wuss_window_invalidate_visible(task->window);
   return result_OK;
@@ -620,7 +519,7 @@ static result_t reading_open_menu(reading_task_t *task)
 }
 
 /* Every submenu leaf fires wuss_EVENT_PRE_SUBMENU_OPEN, not just the
- * Foreground/Background rows -- "Font"/"Sample"/"Spacing" are each one too
+ * Foreground/Background rows -- "Font"/"Spacing" are each one too
  * (their submenu never changes, so they just open unchanged). Only the
  * Foreground/Background level needs to retarget the shared colourmenu
  * singleton before opening it -- see saturn.c's saturn_pre_submenu_open for
@@ -700,7 +599,6 @@ result_t reading_create(wuss_t *wuss, reading_task_t **out)
   task->colourmenu_target = NULL;
   task->frame_count = 0;
   task->resizing    = false;
-  task->sample      = -1;
 
   /* the shared picker: every ".png" font under resources/bmfonts, sorted,
    * less any SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows
@@ -734,35 +632,6 @@ result_t reading_create(wuss_t *wuss, reading_task_t **out)
     free(task);
     return result_OOM;
   }
-
-  rc = dirscan_walk(pathf(READING_SAMPLES_DIR, wuss_get_resources(wuss)),
-                    reading__scan_sample, task);
-  if (rc == result_OK && task->nsamples == 0)
-    rc = result_FILE_NOT_FOUND;
-  if (rc == result_OK)
-  {
-    qsort(task->samples, (size_t) task->nsamples, sizeof(*task->samples),
-          reading__sample_compare);
-    rc = reading__apply_sample(task, 0);
-  }
-  if (rc != result_OK)
-  {
-    free(task->fonts);
-    free(task);
-    return rc;
-  }
-
-  for (i = 0; i < task->nsamples; i++)
-  {
-    task->sample_items[i].text    = task->samples[i].name;
-    task->sample_items[i].flags   = (i == task->sample) ? wuss_MENU_ITEM_TICKED
-                                                        : wuss_MENU_ITEM_NONE;
-    task->sample_items[i].submenu = NULL;
-    task->sample_items[i].window  = NULL;
-  }
-
-  WUSS_MENU_TITLE(task->sample_menu, "Sample", task->sample_items,
-                 task->nsamples);
 
   task->spacing_items[0].text    = "Normal";
   task->spacing_items[0].flags   = wuss_MENU_ITEM_TICKED;
@@ -809,32 +678,28 @@ result_t reading_create(wuss_t *wuss, reading_task_t **out)
                  NELEMS(task->colours_items));
 
   /* top-level menu: "Font" borrows the fontmenu's own live wuss_menu_t (so
-   * ticks and wuss_fontmenu_selected keep working), "Sample"/"Spacing"/
-   * "Alignment"/"Colours" are the per-instance menus built above */
+   * ticks and wuss_fontmenu_selected keep working), "Spacing"/"Alignment"/
+   * "Colours" are the per-instance menus built above */
   task->top_items[0].text    = "Font";
   task->top_items[0].flags   = wuss_MENU_ITEM_PRE_OPEN;
   task->top_items[0].submenu = menu;
   task->top_items[0].window  = NULL;
-  task->top_items[1].text    = "Sample";
+  task->top_items[1].text    = "Spacing";
   task->top_items[1].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[1].submenu = &task->sample_menu;
+  task->top_items[1].submenu = &task->spacing_menu;
   task->top_items[1].window  = NULL;
-  task->top_items[2].text    = "Spacing";
+  task->top_items[2].text    = "Alignment";
   task->top_items[2].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[2].submenu = &task->spacing_menu;
+  task->top_items[2].submenu = &task->align_menu;
   task->top_items[2].window  = NULL;
-  task->top_items[3].text    = "Alignment";
+  task->top_items[3].text    = "Colours";
   task->top_items[3].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[3].submenu = &task->align_menu;
+  task->top_items[3].submenu = &task->colours_menu;
   task->top_items[3].window  = NULL;
-  task->top_items[4].text    = "Colours";
+  task->top_items[4].text    = "Auto-size";
   task->top_items[4].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[4].submenu = &task->colours_menu;
+  task->top_items[4].submenu = NULL;
   task->top_items[4].window  = NULL;
-  task->top_items[5].text    = "Auto-size";
-  task->top_items[5].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[5].submenu = NULL;
-  task->top_items[5].window  = NULL;
 
   WUSS_MENU_TITLE(task->top_menu, "Reading", task->top_items,
                  NELEMS(task->top_items));
@@ -883,9 +748,10 @@ result_t reading_app_create(wuss_t *wuss)
   static const taskapp_desc_t desc =
   {
     "Reading",
-    "Reading layout sampler",
+    "Read Markdown and text files",
     (taskapp_create_fn_t) reading_create,
-    (taskapp_data_load_fn_t) reading_show
+    (taskapp_data_load_fn_t) reading_show,
+    true
   };
 
   return taskapp_install(wuss, &desc);
@@ -906,7 +772,7 @@ void reading_destroy(reading_task_t *task)
 
 #define READING_INSET 4
 #define LEADING    2
-#define MAX_LINES  64 /* sample text is short; overflow is dropped */
+#define MAX_LINES  64 /* text is short; overflow is dropped */
 
 /* like bmtext_draw, but each line is split against tcx->markdown_spans (byte
  * offsets into tcx->text) so a span's run is drawn in its own colour
@@ -1066,6 +932,8 @@ static result_t reading_redraw(const wuss_event_t *event, void *task_data)
   int             font_height;
 
   tcx = task_data;
+  if (tcx->text == NULL)
+    return result_OK; /* nothing dropped yet; the backdrop shows */
 
   scr    = event->data.redraw.scr;
   bounds = event->data.redraw.bounds;
@@ -1176,31 +1044,17 @@ static result_t reading_idle(void *task_data)
   return rc;
 }
 
-/* A DataLoad on the reading window: show the file it names. A file that will
- * not load is not acknowledged, so the send bounces to the sender. */
+/* A DataLoad on the reading window: show the file it names. */
 static result_t reading_message(reading_task_t     *tcx,
                                 wuss_window_t      *window,
                                 const wuss_event_t *event)
 {
-  const wuss_message_t *msg;
-  char                  path[DPTLIB_MAXPATH];
-  size_t                len;
-
-  msg = event->data.message;
-
-  if (msg->action != wuss_MESSAGE_DATA_LOAD || tcx->window == NULL ||
-      window != tcx->window)
+  if (tcx->window == NULL || window != tcx->window)
     return result_OK;
 
-  len = MIN(msg->size, sizeof(path) - 1);
-  memcpy(path, msg->data, len);
-  path[len] = '\0';
-
-  if (reading_show(tcx, path) != result_OK)
-    return result_OK;
-
-  (void) wuss_acknowledge(tcx->wuss, tcx->delegate, msg);
-  return result_OK;
+  return taskapp_window_data_load(tcx->wuss, tcx->delegate, tcx,
+                                  (taskapp_data_load_fn_t) reading_show,
+                                  event->data.message);
 }
 
 result_t reading_handle(wuss_window_t      *window,
@@ -1249,8 +1103,6 @@ result_t reading_handle(wuss_window_t      *window,
                                       tcx->current);
         return rc;
       }
-      if (event->data.menu_select.menu == &tcx->sample_menu)
-        return reading_set_sample(tcx, event->data.menu_select.index);
       if (event->data.menu_select.menu == &tcx->spacing_menu)
         return reading_set_spacing(tcx, event->data.menu_select.index);
       if (event->data.menu_select.menu == &tcx->align_menu)
