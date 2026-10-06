@@ -45,6 +45,7 @@ typedef struct paint_task
   int                size;      /* brush and outline width in pixels */
   int                fill;      /* rect tool: filled, not an outline */
   int                held;      /* button of the stroke in progress, or 0 */
+  point_t            anchor;    /* where the stroke began */
   point_t            last;      /* where the stroke last reached */
   wuss_icon_t       *tool_icons[paint_TOOL__COUNT];
   wuss_icon_t       *fill_icon;

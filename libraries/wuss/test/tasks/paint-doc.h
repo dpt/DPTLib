@@ -6,6 +6,7 @@
 #include "base/result.h"
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
+#include "framebuf/screen.h"
 #include "geom/box.h"
 #include "geom/point.h"
 #include "geom/size.h"
@@ -35,6 +36,22 @@ const bitmap_t *paintdoc_bitmap(const paintdoc_t *doc);
  * paintdoc_stroke does not do it itself, as a stroke is many calls. fails
  * with result_OOM, leaving the history as it was */
 result_t paintdoc_checkpoint(paintdoc_t *doc);
+
+/* draw a stroke or rect as paintdoc_stroke and paintdoc_rect do, but onto any
+ * screen, for a rubber-band preview over the canvas: the canvas, its undo
+ * history and the dirty box are not touched. */
+void paintdoc_draw_stroke(screen_t *scr,
+                          point_t   a,
+                          point_t   b,
+                          int       width,
+                          colour_t  colour);
+
+void paintdoc_draw_rect(screen_t *scr,
+                        point_t   a,
+                        point_t   b,
+                        int       width,
+                        int       fill,
+                        colour_t  colour);
 
 /* draw a round-ended line of the given width in pixels (1 = a single pixel
  * wide) from a to b; a == b draws a dab. also the brush and eraser stroke
