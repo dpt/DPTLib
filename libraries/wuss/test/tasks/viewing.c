@@ -1,4 +1,4 @@
-/* wuss/test/tasks/image.c -- static bitmap image task */
+/* wuss/test/tasks/viewing.c -- static bitmap viewing task */
 
 #ifdef WUSS_APP
 
@@ -9,36 +9,32 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "base/debug.h"
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
-#include "io/namelist.h"
 #include "io/path.h"
 #include "wuss/menu.h"
 #include "wuss/menu-desc.h"
 
-#include "image.h"
+#include "viewing.h"
 #include "taskapp.h"
 #include "common.h"
 
-#define NINEPATCHSZ    9
-#define IMAGE_BORDERSZ 8 /* solid inset band drawn inside the ninepatch */
-#define IMAGE_MARGINSZ (NINEPATCHSZ + IMAGE_BORDERSZ)
-#define IMAGE_EXT      ".png"
+#define NINEPATCHSZ      9
+#define VIEWING_BORDERSZ 8 /* solid inset band drawn inside the ninepatch */
+#define VIEWING_MARGINSZ (NINEPATCHSZ + VIEWING_BORDERSZ)
+#define VIEWING_DEFAULT  "elvira" /* leafname under resources/images */
 
-result_t image_create(wuss_t *wuss, image_task_t **out)
+result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
 {
   result_t         rc;
-  image_task_t    *task;
+  viewing_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   const char      *resources;
-  const char      *images_dir;
   const char      *path;
   const char      *background_path;
   size2d_t         sz;
-  int              i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -46,8 +42,6 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
 
   task->wuss        = wuss;
   task->delegate    = NULL;
-  task->index       = 0;
-  task->nnames      = 0;
   task->menu        = NULL;
   task->menu_handle = NULL;
   task->dithering   = screen_DITHER_BLUE_NOISE;
@@ -62,27 +56,8 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
   WUSS_MENU_TITLE(task->dither_menu, "Dithering", task->dither_items,
                   NELEMS(task->dither_items));
 
-  resources  = wuss_get_resources(wuss);
-  images_dir = pathf("%s/resources/images", resources);
-  rc = namelist_scan(images_dir, IMAGE_EXT, task->names[0],
-                     sizeof(task->names[0]), IMAGE_MAX_NAMES, 0 /* unsorted */,
-                     &task->nnames);
-  if (rc != result_OK)
-  {
-    free(task); /* nothing registered yet; nobody else owns it */
-    return rc;
-  }
-  if (task->nnames == 0)
-  {
-    free(task); /* nothing registered yet; nobody else owns it */
-    return result_BAD_ARG; /* no PNGs found under resources/images */
-  }
-
-  for (i = 0; i < task->nnames; i++)
-    WUSS_MENU_ITEM(task->load_items, i, task->names[i], wuss_MENU_ITEM_NONE);
-  WUSS_MENU_TITLE(task->load_menu, "Load", task->load_items, task->nnames);
-
-  path = pathf("%s/resources/images/%s.png", resources, task->names[0]);
+  resources = wuss_get_resources(wuss);
+  path      = pathf("%s/resources/images/%s.png", resources, VIEWING_DEFAULT);
   rc = load_png_deep(&task->bitmap, path, pixelfmt_rgbx8888);
   if (rc != result_OK)
   {
@@ -100,9 +75,9 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
   }
 
   /* shows through the image's transparent pixels */
-  delegate_desc.handle    = image_handle;
+  delegate_desc.handle    = viewing_handle;
   delegate_desc.task_data = task;
-  delegate_desc.name      = "image";
+  delegate_desc.name      = "viewing";
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
   {
@@ -115,12 +90,12 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
   /* No autoclose: QUIT is delivered at wuss_destroy instead. Closing the
    * main window early leaks this block until then -- fine for a demo. */
 
-  sz.w = task->bitmap.size.w + IMAGE_MARGINSZ * 2;
-  sz.h = task->bitmap.size.h + IMAGE_MARGINSZ * 2;
+  sz.w = task->bitmap.size.w + VIEWING_MARGINSZ * 2;
+  sz.h = task->bitmap.size.h + VIEWING_MARGINSZ * 2;
 
   rc = wuss_window_create_placed(delegate,
                                  SIZE2D(sz.w, sz.h),
-                                 "Image",
+                                 "Viewing",
                                  wuss_WINDOW_DEFAULT,
                                  wuss_NO_BACKDROP,
                                  sz,
@@ -138,19 +113,19 @@ result_t image_create(wuss_t *wuss, image_task_t **out)
   return result_OK;
 }
 
-result_t image_app_create(wuss_t *wuss)
+result_t viewing_app_create(wuss_t *wuss)
 {
   static const taskapp_desc_t desc =
   {
-    "Image",
+    "Viewing",
     "View PNG images",
-    (taskapp_create_fn_t) image_create
+    (taskapp_create_fn_t) viewing_create
   };
 
   return taskapp_install(wuss, &desc);
 }
 
-void image_destroy(image_task_t *task)
+void viewing_destroy(viewing_task_t *task)
 {
   wuss_menu_destroy(task->menu);
   free(task->bitmap.base);
@@ -158,9 +133,9 @@ void image_destroy(image_task_t *task)
   free(task); /* task_data was calloc'd per instance by the spawner */
 }
 
-static result_t image_redraw(const wuss_event_t *event, void *task_data)
+static result_t viewing_redraw(const wuss_event_t *event, void *task_data)
 {
-  image_task_t   *ic;
+  viewing_task_t *ic;
   screen_t       *scr;
   const box_t    *bounds;
   int             sx, sy;
@@ -176,21 +151,21 @@ static result_t image_redraw(const wuss_event_t *event, void *task_data)
   bounds = event->data.redraw.bounds;
   sx     = event->data.redraw.scroll.x;
   sy     = event->data.redraw.scroll.y;
-  bx     = bounds->x0 - sx + IMAGE_MARGINSZ;
-  by     = bounds->y0 - sy + IMAGE_MARGINSZ;
-  bx0    = bx - IMAGE_BORDERSZ;
-  bx1    = bx + ic->bitmap.size.w + IMAGE_BORDERSZ;
+  bx     = bounds->x0 - sx + VIEWING_MARGINSZ;
+  by     = bounds->y0 - sy + VIEWING_MARGINSZ;
+  bx0    = bx - VIEWING_BORDERSZ;
+  bx1    = bx + ic->bitmap.size.w + VIEWING_BORDERSZ;
   by1    = by + ic->bitmap.size.h;
 
-  behind.x0 = bx - IMAGE_MARGINSZ;
-  behind.y0 = by - IMAGE_MARGINSZ;
-  behind.x1 = behind.x0 + ic->bitmap.size.w + IMAGE_MARGINSZ * 2;
-  behind.y1 = behind.y0 + ic->bitmap.size.h + IMAGE_MARGINSZ * 2;
+  behind.x0 = bx - VIEWING_MARGINSZ;
+  behind.y0 = by - VIEWING_MARGINSZ;
+  behind.x1 = behind.x0 + ic->bitmap.size.w + VIEWING_MARGINSZ * 2;
+  behind.y1 = behind.y0 + ic->bitmap.size.h + VIEWING_MARGINSZ * 2;
   screen_copy_ninepatch(scr, &behind, &ic->ninepatch, screen_NINEPATCH_NO_CENTRE);
 
   /* solid 8px band between the ninepatch frame and the image */
-  band[0] = (box_t) { bx0, by - IMAGE_BORDERSZ, bx1, by };    /* top */
-  band[1] = (box_t) { bx0, by1, bx1, by1 + IMAGE_BORDERSZ };  /* bottom */
+  band[0] = (box_t) { bx0, by - VIEWING_BORDERSZ, bx1, by };    /* top */
+  band[1] = (box_t) { bx0, by1, bx1, by1 + VIEWING_BORDERSZ };  /* bottom */
   band[2] = (box_t) { bx0, by, bx, by1 };                     /* left */
   band[3] = (box_t) { bx + ic->bitmap.size.w, by, bx1, by1 }; /* right */
   palette = wuss_get_palette(ic->wuss, NULL);
@@ -201,47 +176,10 @@ static result_t image_redraw(const wuss_event_t *event, void *task_data)
   return result_OK;
 }
 
-/* Load and show names[index], resizing the window to fit. Shared by the
- * Select/Adjust clicks and the Load submenu. */
-static result_t image_show(image_task_t *ic, int index)
-{
-  result_t    rc;
-  const char *resources;
-  const char *filename;
-  bitmap_t    next;
-  size2d_t    sz;
-
-  if (ic->window == NULL || index < 0 || index >= ic->nnames)
-    return result_OK;
-
-  resources = wuss_get_resources(ic->wuss);
-  filename  = pathf("%s/resources/images/%s.png", resources,
-                    ic->names[index]);
-
-  rc = load_png_deep(&next, filename, pixelfmt_rgbx8888);
-  if (rc != result_OK)
-  {
-    logf_warning("image: skipping \"%s\" (rc=0x%X)", filename, rc);
-    return result_OK; /* keep showing the current image */
-  }
-
-  free(ic->bitmap.base);
-  ic->bitmap = next;
-  ic->index  = index; /* only once loaded, so the Load tick stays true */
-
-  sz.w = ic->bitmap.size.w + IMAGE_MARGINSZ * 2;
-  sz.h = ic->bitmap.size.h + IMAGE_MARGINSZ * 2;
-
-  rc = wuss_window_resize(ic->window, sz);
-  if (rc != result_OK)
-    return rc;
-  return wuss_window_set_doc(ic->window, sz);
-}
-
 /* Menu shape built from a descriptor string. The tree must outlive the open
  * chain, so it is kept on the task and rebuilt (previous one freed) on each
  * open. Freed for good in the QUIT handler. */
-static result_t image_open_menu(image_task_t *ic)
+static result_t viewing_open_menu(viewing_task_t *ic)
 {
 
   result_t     rc;
@@ -249,7 +187,7 @@ static result_t image_open_menu(image_task_t *ic)
   int          i;
 
   rc = wuss_menu_create_from_desc(&m,
-         "Image, Dithering, Background, Load");
+         "Viewing, Dithering, Background");
   if (rc != result_OK)
     return rc;
 
@@ -273,23 +211,20 @@ static result_t image_open_menu(image_task_t *ic)
       break;
     }
 
-  /* And "Dithering" and "Load": per-instance submenus built at create time
-   * and ticked here. Borrowed for the same reason. */
+  /* And "Dithering": a per-instance submenu built at create time and ticked
+   * here. Borrowed for the same reason. */
   wuss_menu_tick_exclusive(&ic->dither_menu, (int) ic->dithering);
-  wuss_menu_tick_exclusive(&ic->load_menu, ic->index);
   for (i = 0; i < m->nitems; i++)
   {
     wuss_menu_item_t *it = (wuss_menu_item_t *) &m->items[i];
 
     if (it->text == NULL)
       continue;
-    if (strcmp(it->text, "Dithering") == 0)
-      it->submenu = &ic->dither_menu;
-    else if (strcmp(it->text, "Load") == 0)
-      it->submenu = &ic->load_menu;
-    else
+    if (strcmp(it->text, "Dithering") != 0)
       continue;
-    it->flags |= wuss_MENU_ITEM_BORROWED_SUBMENU;
+
+    it->submenu = &ic->dither_menu;
+    it->flags  |= wuss_MENU_ITEM_BORROWED_SUBMENU;
   }
 
   wuss_menu_destroy(ic->menu);
@@ -298,11 +233,11 @@ static result_t image_open_menu(image_task_t *ic)
   return wuss_menu_open_at_pointer(ic->delegate, ic->menu, &ic->menu_handle);
 }
 
-result_t image_handle(wuss_window_t      *window,
-                      const wuss_event_t *event,
-                      void               *task_data)
+result_t viewing_handle(wuss_window_t      *window,
+                        const wuss_event_t *event,
+                        void               *task_data)
 {
-  image_task_t      *ic;
+  viewing_task_t    *ic;
   const wuss_menu_t *menu;
   int                index;
 
@@ -311,19 +246,15 @@ result_t image_handle(wuss_window_t      *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return image_redraw(event, task_data);
+    return viewing_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
     if (window != ic->window)
-      return result_OK; /* not the image window (e.g. the proginfo dialogue) */
+      return result_OK; /* not the viewing window (e.g. the proginfo dialogue) */
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return result_OK;
-    if (event->data.mouse.button & wuss_BUTTON_SELECT)
-      return image_show(ic, (ic->index + 1) % ic->nnames);
-    if (event->data.mouse.button & wuss_BUTTON_ADJUST)
-      return image_show(ic, (ic->index + ic->nnames - 1) % ic->nnames);
     if (event->data.mouse.button & wuss_BUTTON_MENU)
-      return image_open_menu(ic);
+      return viewing_open_menu(ic);
     return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
@@ -342,18 +273,6 @@ result_t image_handle(wuss_window_t      *window,
 
     menu  = event->data.menu_select.menu;
     index = event->data.menu_select.index;
-    if (menu == &ic->load_menu)
-    {
-      result_t rc;
-
-      rc = image_show(ic, index);
-      /* the data tick too: a submenu reopened within the chain is rebuilt
-       * from the items */
-      wuss_menu_tick_exclusive(&ic->load_menu, ic->index);
-      wuss_menu_tick_exclusive_live(ic->menu_handle, &ic->load_menu,
-                                    ic->index);
-      return rc;
-    }
     if (menu == &ic->dither_menu)
     {
       ic->dithering = (screen_dither_t) index;
@@ -373,7 +292,7 @@ result_t image_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_QUIT:
-    image_destroy(ic);
+    viewing_destroy(ic);
     return result_OK;
 
   default:
