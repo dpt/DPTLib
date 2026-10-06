@@ -40,6 +40,10 @@ result_t wuss_drag_start(wuss_t        *wuss,
       size.w <= 0 || size.h <= 0)
     return result_BAD_ARG;
 
+  /* the drag owns the pointer from here: a press that was captured by the
+   * window starting the drag must not keep intercepting moves and the release */
+  wuss->capture = NULL;
+
   wuss->drag.window  = window;
   wuss->drag.button  = wuss_BUTTON_NONE; /* set by the icon drag caller */
   wuss->drag.size    = size;

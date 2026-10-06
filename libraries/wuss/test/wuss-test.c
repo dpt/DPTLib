@@ -10739,6 +10739,27 @@ QuitFail:
   if (tc_b.mouse_count != 0)
     goto Failure;
 
+  printf("test: starting a core drag from a captured press hands the pointer "
+         "to the drag, so the ants follow it and the release ends it\n");
+
+  rc = wuss_mouse_click(wuss, POINT(50, 50), wuss_BUTTON_SELECT,
+                        wuss_MOUSE_DOWN, NULL);
+  if (rc != result_OK)
+    goto Failure;
+
+  rc = wuss_drag_start(wuss, win_a, SIZE2D(8, 8), POINT(4, 4));
+  if (rc != result_OK)
+    goto Failure;
+  if (wuss_is_capturing(wuss) || !wuss_is_dragging(wuss))
+    goto Failure;
+
+  rc = wuss_mouse_click(wuss, POINT(60, 60), wuss_BUTTON_SELECT,
+                        wuss_MOUSE_UP, NULL);
+  if (rc != result_OK)
+    goto Failure;
+  if (wuss_is_capturing(wuss) || wuss_is_dragging(wuss))
+    goto Failure;
+
   printf("test: closing the capturing window ends the capture\n");
 
   rc = wuss_mouse_click(wuss, POINT(50, 50), wuss_BUTTON_SELECT,
