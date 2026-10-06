@@ -34,11 +34,12 @@ viewing_task_t;
 
 wuss_window_fn_t viewing_handle;
 
-/* load a fixed PNG from wuss_get_resources(wuss)/resources/images (and the
- * 9-patch PNG at wuss_get_resources(wuss)/resources/wuss/ninepatch.png, drawn
- * tiled behind it), and create its window against the given wuss instance.
- * The image cannot be changed afterwards. if out is non-NULL, the task block
- * is also returned through it */
+/* load the 9-patch PNG at wuss_get_resources(wuss)/resources/wuss/ninepatch.png
+ * (drawn tiled behind the image), and create an empty viewing window against
+ * the given wuss instance. A wuss_MESSAGE_DATA_LOAD sent to the window, whose
+ * payload is the path of a PNG, shows that image; a file that will not load
+ * is not acknowledged. if out is non-NULL, the task block is also returned
+ * through it */
 result_t viewing_create(wuss_t *wuss, viewing_task_t **out);
 
 /* install the icon bar app that opens viewing windows on demand */
