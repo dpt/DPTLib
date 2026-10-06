@@ -1240,6 +1240,17 @@ result_t wuss_drag_start(wuss_t        *wuss,
  */
 int wuss_is_dragging(const wuss_t *wuss);
 
+/**
+ * Whether a window holds the mouse capture. A Select or Adjust press on a
+ * window's plain content (not on an icon or furniture) captures the mouse:
+ * that window then receives every \ref wuss_EVENT_MOUSE, with points that
+ * may lie outside its content box, until the button is released.
+ *
+ * \param[in] wuss Window manager.
+ * \return Non-zero while a window holds the capture.
+ */
+int wuss_is_capturing(const wuss_t *wuss);
+
 #ifdef __cplusplus
 }
 #endif

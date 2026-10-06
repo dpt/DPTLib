@@ -145,6 +145,8 @@ result_t wuss_create(screen_t               *scr,
   w->pointer.x = 0;
   w->pointer.y = 0;
 
+  w->capture = NULL;
+
   w->drag.window = NULL;
   w->drag.button = wuss_BUTTON_NONE;
   w->drag.drawn  = (box_t) BOX_INIT;

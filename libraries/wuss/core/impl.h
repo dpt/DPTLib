@@ -321,6 +321,10 @@ struct wuss
   wuss_window_t              *pointer_window;
   /* Window holding the input focus, NULL if none; see wuss_set_focus. */
   wuss_window_t              *focus;
+  /* Window that took a Select/Adjust DOWN on its plain content (no icon hit);
+   * it receives every mouse event, wherever the pointer goes, until the
+   * matching MOUSE_UP. NULL when none. See capture.c. */
+  wuss_window_t              *capture;
 #ifdef WUSS_ICONS
   /* Button icon held down; released on any MOUSE_UP even if a new window now
    * covers its owner. */
@@ -575,6 +579,14 @@ void wuss__drag_end(wuss_t        *wuss,
                     int            cancelled);
 void wuss__drag_forget_window(wuss_t *wuss, wuss_window_t *window);
 void wuss__drag_draw(wuss_t *wuss);
+
+/* Mouse capture (capture.c): called from mouse-move.c and mouse-click.c while
+ * wuss_t::capture is set, and from window/close.c. */
+result_t wuss__capture_deliver(wuss_t             *wuss,
+                               point_t             p,
+                               wuss_button_t       button,
+                               wuss_mouse_action_t action);
+void wuss__capture_forget_window(wuss_t *wuss, wuss_window_t *window);
 
 /* Walk every window front to back across all three stacks: wuss__z_first is
  * the frontmost window overall (NULL if none), wuss__z_below the next one
