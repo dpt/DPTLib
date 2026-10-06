@@ -831,6 +831,8 @@ if(BUILD_TESTS)
     add_executable(DPTLibTest ${TEST_SOURCES})
 
     set_target_properties(DPTLibTest PROPERTIES
+        XCODE_GENERATE_SCHEME ON
+        XCODE_SCHEME_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         DESCRIPTION "DPTLib test program"
         C_STANDARD 99
         OUTPUT_NAME_DEBUG DPTLibTest-debug
@@ -930,6 +932,8 @@ if(BUILD_APPS)
     add_executable(wuss ${WUSS_APP_SOURCES})
 
     set_target_properties(wuss PROPERTIES
+        XCODE_GENERATE_SCHEME ON
+        XCODE_SCHEME_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         DESCRIPTION "DPTLib Wuss interactive demo"
         C_STANDARD 99
         OUTPUT_NAME_DEBUG wuss-debug
