@@ -207,6 +207,11 @@ result_t paint_create(wuss_t *wuss, paint_task_t **out)
     return rc;
   }
 
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PAINT_MENU_UNDO, "Undo",
+                          wuss_MENU_ITEM_NONE, "^Z");
+  WUSS_MENU_TITLE(task->menu, "Paint", task->menu_items,
+                  NELEMS(task->menu_items));
+
   /* both windows up: from here, closing the last one reaps the task and its
    * wuss_EVENT_QUIT frees task_data */
   wuss_task_set_autoclose(delegate, 1);
@@ -514,6 +519,53 @@ static result_t paint_mouse(paint_task_t *pt, const wuss_event_t *event)
   return result_OK;
 }
 
+static result_t paint_undo(paint_task_t *pt)
+{
+  box_t dirty;
+
+  pt->held = 0; /* abandon any stroke in progress */
+
+  dirty = paintdoc_undo(pt->doc);
+  if (!box_is_empty(&dirty))
+    wuss_window_invalidate(pt->window, &dirty);
+
+  return result_OK;
+}
+
+static void paint_set_tool(paint_task_t *pt, paint_tool_t tool)
+{
+  pt->tool = tool;
+  wuss_icon_set_selected(pt->toolbox, pt->tool_icons[tool], 1);
+}
+
+/* B, E, L, R and F pick the matching tool. Anything else is passed back
+ * unclaimed */
+static result_t paint_key(paint_task_t *pt, int code)
+{
+  switch (code)
+  {
+  case 'b': case 'B': paint_set_tool(pt, paint_TOOL_BRUSH);  break;
+  case 'e': case 'E': paint_set_tool(pt, paint_TOOL_ERASER); break;
+  case 'l': case 'L': paint_set_tool(pt, paint_TOOL_LINE);   break;
+  case 'r': case 'R': paint_set_tool(pt, paint_TOOL_RECT);   break;
+  case 'f': case 'F': paint_set_tool(pt, paint_TOOL_FILL);   break;
+  default:            return result_WUSS_KEY_UNCLAIMED;
+  }
+
+  return result_OK;
+}
+
+/* a MENU click on either window opens the menu, with Undo greyed out when
+ * there is nothing to undo */
+static result_t paint_menu_open(paint_task_t *pt)
+{
+  pt->menu_items[PAINT_MENU_UNDO].flags = paintdoc_can_undo(pt->doc) ?
+                                          wuss_MENU_ITEM_NONE :
+                                          wuss_MENU_ITEM_DISABLED;
+
+  return wuss_menu_open_at_pointer(pt->delegate, &pt->menu, &pt->menu_handle);
+}
+
 result_t paint_handle(wuss_window_t      *window,
                       const wuss_event_t *event,
                       void               *task_data)
@@ -530,12 +582,35 @@ result_t paint_handle(wuss_window_t      *window,
     return paint_redraw(pt, event);
 
   case wuss_EVENT_MOUSE:
+    if (event->data.mouse.action == wuss_MOUSE_DOWN &&
+        (event->data.mouse.button & wuss_BUTTON_MENU))
+      return paint_menu_open(pt);
+
     if (window == pt->toolbox)
       return paint_toolbox_mouse(pt, event);
     return paint_mouse(pt, event);
 
   case wuss_EVENT_ICON:
     return paint_toolbox_icon(pt, event);
+
+  case wuss_EVENT_KEY:
+  {
+    result_t rc;
+
+    if (!task_key_is_plain(pt->delegate, &pt->menu, event, &rc))
+      return rc;
+
+    return paint_key(pt, event->data.key.code);
+  }
+
+  case wuss_EVENT_MENU_SELECT:
+    if (event->data.menu_select.index == PAINT_MENU_UNDO)
+      return paint_undo(pt);
+    return result_OK;
+
+  case wuss_EVENT_MENU_CLOSED:
+    pt->menu_handle = NULL;
+    return result_OK;
 
   case wuss_EVENT_CLOSE:
     if (window == pt->toolbox)
