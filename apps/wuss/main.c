@@ -30,6 +30,7 @@
 #include "framebuf/screen.h"
 #include "geom/box.h"
 #include "io/path.h"
+#include "wuss/icon.h"
 #include "wuss/task.h"
 #include "wuss/wuss.h"
 
@@ -157,7 +158,8 @@ static void pixel_stress(wuss_t *wuss, int scr_width, int scr_height)
  * afresh and redraws it once wuss is done. */
 static struct
 {
-  bitmap_t       image;     /* the arrow; hotspot at its top-left */
+  const bitmap_t *image;    /* the arrow, from the icon pool; hotspot at its
+                             * top-left; NULL if the pool lacks it */
   bool           loaded;
   unsigned char *under;     /* framebuffer bytes beneath the drawn arrow */
   box_t          drawn;     /* where it was drawn, if is_drawn */
@@ -219,8 +221,8 @@ static bool pointer_draw(box_t *box)
 
   arrow.x0  = g_pointer.pos.x;
   arrow.y0  = g_pointer.pos.y;
-  arrow.x1  = g_pointer.pos.x + g_pointer.image.size.w;
-  arrow.y1  = g_pointer.pos.y + g_pointer.image.size.h;
+  arrow.x1  = g_pointer.pos.x + g_pointer.image->size.w;
+  arrow.y1  = g_pointer.pos.y + g_pointer.image->size.h;
   screen.x0 = 0;
   screen.y0 = 0;
   screen.x1 = g_bm.size.w;
@@ -233,7 +235,7 @@ static bool pointer_draw(box_t *box)
   /* a private screen_t: wuss's own may be left clipped to its last redraw */
   screen_for_bitmap(&scr, &g_bm);
   (void) screen_copy_bitmap(&scr, g_pointer.pos.x, g_pointer.pos.y,
-                            &g_pointer.image);
+                            g_pointer.image);
 
   g_pointer.drawn    = *box;
   g_pointer.is_drawn = true;
@@ -493,14 +495,10 @@ static result_t run_wuss(const char *resources,
   void               *pixels;
   int                 rowbytes;
   pixelfmt_t          fmt;
-  bitmap_t            logo; /* desktop backdrop image; left unset (have_logo
-                             * false) if resources/wuss/wuss.png fails to
-                             * load */
-  bool     have_logo;
-  colour_t palette[wuss_SYSTEM_PALETTE_LENGTH]; /* the fixed-size UI palette */
-  colour_t scr_palette[256]; /* palette[] padded out to whatever
-                                        * count the chosen depth's bitmap
-                                        * needs (p8 reads all 256) */
+  colour_t            palette[wuss_SYSTEM_PALETTE_LENGTH]; /* fixed-size UI */
+  colour_t            scr_palette[256]; /* palette[] padded out to whatever
+                                         * count the chosen depth's bitmap
+                                         * needs (p8 reads all 256) */
   wuss_t          *wuss;
   wuss_frontend_t *frontend;
   bool             use_wimp16;
@@ -511,7 +509,6 @@ static result_t run_wuss(const char *resources,
   nfonts    = 0;
   family    = NULL;
   frontend  = NULL;
-  have_logo = false;
   wuss      = NULL;
 
   {
@@ -617,35 +614,6 @@ static result_t run_wuss(const char *resources,
 
   screen_for_bitmap(&g_scr, &g_bm);
 
-  filename = pathf("%s/resources/wuss/wuss.png", resources);
-  logf_info("wuss: loading backdrop image \"%s\"", filename);
-  rc = bitmap_load_png(&logo, filename);
-  have_logo = (rc == result_OK);
-  if (!have_logo)
-    logf_error("wuss: bitmap_load_png(\"%s\") failed, rc=0x%X (%s) -- "
-              "backdrop drawn without it", filename, rc, result_string(rc));
-
-  /* under holds the bytes beneath the arrow at any depth: at most 4 per
-   * pixel, which also covers a sub-byte format's extra partial byte */
-  filename = pathf("%s/resources/wuss/pointer.png", resources);
-  rc = bitmap_load_png(&g_pointer.image, filename);
-  if (rc == result_OK)
-  {
-    g_pointer.under = malloc((size_t) g_pointer.image.size.w * 4 *
-                             g_pointer.image.size.h);
-    g_pointer.loaded = (g_pointer.under != NULL);
-    if (!g_pointer.loaded)
-    {
-      free(g_pointer.image.base);
-      free(g_pointer.image.palette);
-    }
-  }
-  else
-  {
-    logf_error("wuss: bitmap_load_png(\"%s\") failed, rc=0x%X (%s) -- "
-              "software pointer unavailable", filename, rc, result_string(rc));
-  }
-
   {
     wuss_config_t    config;
     wuss_font_desc_t descs[WUSS_MAIN_NFONTS]; /* slot classes/names for the
@@ -653,8 +621,6 @@ static result_t run_wuss(const char *resources,
                                 * never a text font choice */
 
     fill_chrome_config(&config, use_wimp16);
-    if (have_logo)
-      config.backdrop.image = &logo;
 
     for (i = 0; i < nfonts; i++)
     {
@@ -669,6 +635,31 @@ static result_t run_wuss(const char *resources,
     logf_info("wuss: wuss_create -> rc=0x%X (%s)", rc, result_string(rc));
     if (rc != result_OK)
       goto Failure;
+
+    /* the desktop logo and the pointer arrow live in the icon pool, which
+     * wuss_create has just loaded */
+    config.backdrop.image = wuss_iconpool_bitmap(wuss,
+                              wuss_iconpool_lookup(wuss, "wuss"));
+    if (config.backdrop.image == NULL)
+      logf_error("wuss: icon 'wuss' unavailable -- backdrop drawn without it");
+    else
+      (void) wuss_set_backdrop(wuss, &config.backdrop);
+
+    g_pointer.image = wuss_iconpool_bitmap(wuss,
+                        wuss_iconpool_lookup(wuss, "pointer"));
+    if (g_pointer.image == NULL)
+    {
+      logf_error("wuss: icon 'pointer' unavailable -- "
+                 "software pointer unavailable");
+    }
+    else
+    {
+      /* under holds the bytes beneath the arrow at any depth: at most 4 per
+       * pixel, which also covers a sub-byte format's extra partial byte */
+      g_pointer.under = malloc((size_t) g_pointer.image->size.w * 4 *
+                               g_pointer.image->size.h);
+      g_pointer.loaded = (g_pointer.under != NULL);
+    }
   }
 
   g_tasks.wuss           = wuss;
@@ -752,18 +743,7 @@ Failure:
   wuss_destroy(wuss); /* also sweeps g.menu_task and closes any open chain,
                        * including the shared proginfo singleton's window */
 
-  if (have_logo) /* after wuss_destroy: the backdrop points at it */
-  {
-    free(logo.base);
-    free(logo.palette);
-  }
-
-  if (g_pointer.loaded)
-  {
-    free(g_pointer.under);
-    free(g_pointer.image.base);
-    free(g_pointer.image.palette);
-  }
+  free(g_pointer.under);
 
   for (i = 0; i < nfonts; i++)
     bmfont_destroy(fonts[i]);
