@@ -26,8 +26,8 @@
  * Selection follows RISC OS rules: Select on an unselected item selects only
  * it, and on a selected item changes nothing; Adjust toggles the item;
  * Select on empty space clears the selection and Adjust there changes
- * nothing. A double-click (wuss_BUTTON_DOUBLE) on an item calls the activate
- * callback.
+ * nothing. A double-click (wuss_BUTTON_DOUBLE) on an item deselects it, then
+ * calls the activate callback.
  *
  * Built only when WUSS_GADGETS is defined.
  */
@@ -44,6 +44,7 @@ extern "C"
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
 #include "geom/box.h"
+#include "geom/point.h"
 #include "geom/size.h"
 
 #include "wuss/task.h"
@@ -106,6 +107,22 @@ typedef void (wuss_gridview_draw_fn_t)(wuss_gridview_t    *gridview,
                                        const box_t        *screen_box,
                                        void               *opaque);
 
+/**
+ * Drag callback: the user pressed Select or Adjust on item \p index and
+ * moved the pointer past the drag threshold.
+ *
+ * \param[in] gridview The grid view.
+ * \param[in] index    The pressed item's index.
+ * \param[in] opaque   As passed to \ref wuss_gridview_create.
+ * \return Non-zero to start a core drag (see wuss_drag_start) sized to the
+ *         cell, originating from the grid's window and holding the cell
+ *         where it was pressed; the wuss_EVENT_DRAG_END then goes to the
+ *         window's task. Zero to decline, so the item cannot be dragged.
+ */
+typedef int (wuss_gridview_drag_fn_t)(wuss_gridview_t *gridview,
+                                      int              index,
+                                      void            *opaque);
+
 /* ----------------------------------------------------------------------- */
 
 /**
@@ -133,6 +150,65 @@ result_t wuss_gridview_create(wuss_gridview_t            **out,
                               int                          label_chars,
                               wuss_gridview_activate_fn_t *activate,
                               void                        *opaque);
+
+/**
+ * Create a window and a grid view on it, ready for a browser-style task: a
+ * 320x240 titled window with the default furniture less the horizontal
+ * scrollbar (the grid reflows to the width instead), focusable, with no
+ * backdrop. The window is not resized to suit the items; call \ref
+ * wuss_gridview_fit_window once the task can route the window's events to
+ * wuss_gridview_handle_event.
+ *
+ * \param[out] out         Filled with the new handle on success, untouched
+ *                         on failure.
+ * \param[in]  task        Task that owns the window.
+ * \param[in]  title       Titlebar label.
+ * \param[in]  count       As \ref wuss_gridview_create.
+ * \param[in]  item_fn     As \ref wuss_gridview_create.
+ * \param[in]  label_chars As \ref wuss_gridview_create.
+ * \param[in]  activate    As \ref wuss_gridview_create.
+ * \param[in]  opaque      As \ref wuss_gridview_create.
+ * \param[out] window      Filled with the new window on success.
+ * \return \ref result_OK on success, or a result code from
+ *         wuss_window_create_placed or \ref wuss_gridview_create; no window
+ *         is left behind on failure.
+ */
+result_t wuss_gridview_window_create(wuss_gridview_t            **out,
+                                     wuss_task_t                 *task,
+                                     const char                  *title,
+                                     int                          count,
+                                     wuss_gridview_item_fn_t     *item_fn,
+                                     int                          label_chars,
+                                     wuss_gridview_activate_fn_t *activate,
+                                     void                        *opaque,
+                                     wuss_window_t              **window);
+
+/**
+ * Resize the grid view's window to \ref wuss_gridview_natural_size, then, if
+ * the screen cap stopped it part way across a column, to the columns that
+ * fit. Resizing sends the window a wuss_EVENT_OPEN, which the task must
+ * already be able to route to \ref wuss_gridview_handle_event.
+ *
+ * \param[in] gridview Handle.
+ * \param[in] columns  Column count wanted; at least 1.
+ * \param[in] max_rows Row limit; at least 1.
+ */
+void wuss_gridview_fit_window(wuss_gridview_t *gridview,
+                              int              columns,
+                              int              max_rows);
+
+/**
+ * Make items draggable: set the callback offered an item once it is pressed
+ * and the pointer moves past wuss_config_t::mouse.drag_threshold_px. The
+ * task must forward wuss_EVENT_MOUSE and wuss_EVENT_POINTER_EXIT to \ref
+ * wuss_gridview_handle_event. None is set at create, so items start out not
+ * draggable.
+ *
+ * \param[in] gridview Handle.
+ * \param[in] drag     Callback, or NULL for none.
+ */
+void wuss_gridview_set_drag(wuss_gridview_t         *gridview,
+                            wuss_gridview_drag_fn_t *drag);
 
 /**
  * Free a grid view. Safe to pass NULL.
@@ -176,13 +252,13 @@ int wuss_gridview_is_selected(const wuss_gridview_t *gridview, int index);
 void wuss_gridview_clear_selection(wuss_gridview_t *gridview);
 
 /**
- * Deselect item \p index, invalidating its cell. Does nothing if the item is
- * out of range or not selected.
+ * Find the item under a point.
  *
  * \param[in] gridview Handle.
- * \param[in] index    Item index, 0..count-1.
+ * \param[in] point    Point in document coordinates.
+ * \return Item index, or -1 over a gap, the inset or past the last item.
  */
-void wuss_gridview_deselect(wuss_gridview_t *gridview, int index);
+int wuss_gridview_hit_test(const wuss_gridview_t *gridview, point_t point);
 
 /**
  * Recompute item count after the underlying item list changes, keeping the

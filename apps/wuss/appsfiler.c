@@ -96,9 +96,6 @@ static result_t apps_open(apps_task_t *task, int category)
   apps_window_t *aw;
   wuss_window_t *window;
   const char    *title;
-  box_t          content;
-  int            cols;
-  size2d_t       size;
 
   aw = &task->windows[category + 1];
   if (aw->window != NULL)
@@ -109,41 +106,19 @@ static result_t apps_open(apps_task_t *task, int category)
 
   title = category < 0 ? "Apps" : tasks_category_name(category);
 
-  rc = wuss_window_create_placed(task->delegate, SIZE2D(320, 240), title,
-                                 (wuss_WINDOW_DEFAULT & ~wuss_WINDOW_HSCROLL) |
-                                 wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP, SIZE2D(320, 240),
-                                 SIZE2D(0, 0), &window);
-  if (rc != result_OK)
-    return rc;
-
   aw->owner    = task;
   aw->category = category;
 
-  rc = wuss_gridview_create(&aw->gridview, window, apps_count(aw), apps_item,
-                            APPS_LABEL_CHARS, apps_activate, aw);
+  rc = wuss_gridview_window_create(&aw->gridview, task->delegate, title,
+                                   apps_count(aw), apps_item,
+                                   APPS_LABEL_CHARS, apps_activate, aw,
+                                   &window);
   if (rc != result_OK)
-  {
-    wuss_window_close(window);
     return rc;
-  }
 
   aw->window = window;
 
-  (void) wuss_window_resize(window, wuss_gridview_natural_size(
-                              aw->gridview, APPS_COLUMNS, APPS_MAX_ROWS));
-
-  /* The resize is capped to the screen from the window's top-left, so it may
-   * have stopped part way across a column: drop to the columns that fit. */
-  wuss_window_get_content_bounds(window, &content);
-  cols = (content.x1 - content.x0) / wuss_gridview_get_cell_size(aw->gridview).w;
-  if (cols < MIN(APPS_COLUMNS, MAX(apps_count(aw), 1)))
-  {
-    size = wuss_gridview_natural_size(aw->gridview, MAX(cols, 1),
-                                      APPS_MAX_ROWS);
-    (void) wuss_window_resize(window, size);
-  }
-
+  wuss_gridview_fit_window(aw->gridview, APPS_COLUMNS, APPS_MAX_ROWS);
   return result_OK;
 }
 
@@ -151,9 +126,9 @@ static void apps_activate(wuss_gridview_t *gridview, int index, void *opaque)
 {
   apps_window_t *aw;
 
-  aw = opaque;
+  NOT_USED(gridview);
 
-  wuss_gridview_deselect(gridview, index);
+  aw = opaque;
   if (aw->category < 0)
     (void) apps_open(aw->owner, index);
   else

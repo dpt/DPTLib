@@ -83,10 +83,6 @@ struct filer_task
   const bitmap_t        *glyph_directory;
   const bitmap_t        *glyph_png;
 
-  filer_window_t        *press_fw;    /* window of the file pressed, or NULL;
-                                       * the press may become a drag */
-  int                    press_index; /* the pressed file's item index */
-  point_t                press_point; /* its document point */
   char                   drag_path[DPTLIB_MAXPATH]; /* file being dragged,
                                        * or "" */
 

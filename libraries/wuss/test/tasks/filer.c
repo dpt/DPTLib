@@ -28,7 +28,6 @@
 #define FILER_LABEL_CHARS 12
 #define FILER_COLUMNS     4  /* initial window width, in cells */
 #define FILER_MAX_ROWS    4  /* initial window height cap, in cells */
-#define FILER_DRAG_PX     4  /* drag distance if the config leaves it 0 */
 
 static char g_filer_root[DPTLIB_MAXPATH] = "";
 
@@ -150,98 +149,34 @@ static void filer_activate(wuss_gridview_t *gridview,
       (int) sizeof(child))
     return;
 
-  wuss_gridview_deselect(gridview, index);
   (void) filer_open_path(fw->owner, child);
 }
 
 /* ----------------------------------------------------------------------- */
 
-/* Item under the document point, or -1 for a gap. */
-static int filer_hit(const filer_window_t *fw, point_t point)
+/* wuss_gridview_drag_fn_t: a file pressed and moved past the drag threshold
+ * starts a core drag, and its path is remembered for filer_drop. Directories
+ * are not draggable. */
+static int filer_drag(wuss_gridview_t *gridview, int index, void *opaque)
 {
-  box_t cell;
-  int   i;
-
-  for (i = 0; i < dirlist_count(fw->listing); i++)
-  {
-    cell = wuss_gridview_cell_box(fw->gridview, i);
-    if (box_contains_point(&cell, point.x, point.y))
-      return i;
-  }
-
-  return -1;
-}
-
-/* A Select or Adjust press on a file: remember it, so a move past the drag
- * threshold can turn it into a drag. Any other press, or one on a directory
- * or a gap, forgets the previous one. */
-static void filer_press(filer_task_t   *task,
-                        filer_window_t *fw,
-                        point_t         point)
-{
-  const dirlist_entry_t *entry;
-  int                    index;
-
-  task->press_fw = NULL;
-
-  index = filer_hit(fw, point);
-  entry = index < 0 ? NULL : dirlist_get(fw->listing, index);
-  if (entry == NULL || entry->is_dir)
-    return;
-
-  task->press_fw    = fw;
-  task->press_index = index;
-  task->press_point = point;
-}
-
-/* The pointer moved with a file pressed: past the drag threshold, start a
- * core drag sized to the cell and remember the file's path for filer_drop.
- * Hover moves also arrive here, so a press the pointer left the window
- * during (see wuss_EVENT_POINTER_EXIT) must already have been forgotten. */
-static void filer_drag_maybe(filer_task_t *task, point_t point)
-{
-  wuss_config_t          config;
-  const dirlist_entry_t *entry;
   filer_window_t        *fw;
-  box_t                  cell;
-  point_t                hotspot;
-  int                    threshold;
-  int                    dx;
-  int                    dy;
+  const dirlist_entry_t *entry;
 
-  fw = task->press_fw;
-  if (fw == NULL)
-    return;
+  NOT_USED(gridview);
 
-  wuss_get_config(task->wuss, &config);
-  threshold = config.mouse.drag_threshold_px;
-  if (threshold <= 0)
-    threshold = FILER_DRAG_PX;
+  fw    = opaque;
+  entry = dirlist_get(fw->listing, index);
+  if (entry == NULL || entry->is_dir)
+    return 0;
 
-  dx = point.x - task->press_point.x;
-  dy = point.y - task->press_point.y;
-  if (dx * dx + dy * dy < threshold * threshold)
-    return;
-
-  task->press_fw = NULL;
-
-  entry = dirlist_get(fw->listing, task->press_index);
-  if (entry == NULL)
-    return;
-
-  if (snprintf(task->drag_path, sizeof(task->drag_path), "%s/%s", fw->path,
-               entry->leaf) >= (int) sizeof(task->drag_path))
+  if (snprintf(fw->owner->drag_path, sizeof(fw->owner->drag_path), "%s/%s",
+               fw->path, entry->leaf) >= (int) sizeof(fw->owner->drag_path))
   {
-    task->drag_path[0] = '\0';
-    return;
+    fw->owner->drag_path[0] = '\0';
+    return 0;
   }
 
-  cell = wuss_gridview_cell_box(fw->gridview, task->press_index);
-  hotspot = POINT(task->press_point.x - cell.x0, task->press_point.y - cell.y0);
-  if (wuss_drag_start(task->wuss, fw->window,
-                      wuss_gridview_get_cell_size(fw->gridview),
-                      hotspot) != result_OK)
-    task->drag_path[0] = '\0';
+  return 1;
 }
 
 /* The drag ended: offer the file to the window or icon bar icon it was
@@ -280,9 +215,6 @@ static result_t filer_open_path(filer_task_t *task, const char *path)
   int             slot;
   dirlist_t      *listing;
   wuss_window_t  *window;
-  box_t           content;
-  int             cols;
-  size2d_t        size;
 
 #ifndef __riscos
   /* "." or "a/../b" becomes the full path, for the title and so that the
@@ -314,33 +246,23 @@ static result_t filer_open_path(filer_task_t *task, const char *path)
   if (rc != result_OK)
     return rc;
 
-  /* No horizontal scrollbar: the grid reflows to the width instead. */
-  rc = wuss_window_create_placed(task->delegate, SIZE2D(320, 240), path,
-                                 (wuss_WINDOW_DEFAULT & ~wuss_WINDOW_HSCROLL) |
-                                 wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP, SIZE2D(320, 240),
-                                 SIZE2D(0, 0), &window);
-  if (rc != result_OK)
-  {
-    dirlist_destroy(listing);
-    return rc;
-  }
-
-  fw = &task->windows[slot];
+  fw          = &task->windows[slot];
   fw->owner   = task;
   fw->listing = listing; /* wuss_gridview_create measures through filer_item */
   snprintf(fw->path, sizeof(fw->path), "%s", path);
 
-  rc = wuss_gridview_create(&fw->gridview, window, dirlist_count(listing),
-                            filer_item, FILER_LABEL_CHARS, filer_activate,
-                            fw);
+  rc = wuss_gridview_window_create(&fw->gridview, task->delegate, path,
+                                   dirlist_count(listing), filer_item,
+                                   FILER_LABEL_CHARS, filer_activate, fw,
+                                   &window);
   if (rc != result_OK)
   {
-    wuss_window_close(window);
     dirlist_destroy(listing);
     fw->listing = NULL;
     return rc;
   }
+
+  wuss_gridview_set_drag(fw->gridview, filer_drag);
 
   fw->window = window;
   if (slot == task->nwindows)
@@ -350,19 +272,7 @@ static result_t filer_open_path(filer_task_t *task, const char *path)
    * wuss_EVENT_OPEN synchronously, and filer_handle's OPEN case looks the
    * window up to forward the event to wuss_gridview_handle_event, which is
    * what actually reflows the grid to the new width. */
-  (void) wuss_window_resize(window, wuss_gridview_natural_size(
-                              fw->gridview, FILER_COLUMNS, FILER_MAX_ROWS));
-
-  /* The resize is capped to the screen from the window's top-left, so it may
-   * have stopped part way across a column: drop to the columns that fit. */
-  wuss_window_get_content_bounds(window, &content);
-  cols = (content.x1 - content.x0) / wuss_gridview_get_cell_size(fw->gridview).w;
-  if (cols < MIN(FILER_COLUMNS, MAX(dirlist_count(listing), 1)))
-  {
-    size = wuss_gridview_natural_size(fw->gridview, MAX(cols, 1),
-                                      FILER_MAX_ROWS);
-    (void) wuss_window_resize(window, size);
-  }
+  wuss_gridview_fit_window(fw->gridview, FILER_COLUMNS, FILER_MAX_ROWS);
 
   return result_OK;
 }
@@ -623,6 +533,7 @@ result_t filer_handle(wuss_window_t      *window,
   case wuss_EVENT_MOUSE:
   case wuss_EVENT_OPEN:
   case wuss_EVENT_PALETTE:
+  case wuss_EVENT_POINTER_EXIT:
   case wuss_EVENT_RELAYOUT:
   {
     filer_window_t *fw;
@@ -630,17 +541,6 @@ result_t filer_handle(wuss_window_t      *window,
     fw = filer_find_by_window(task, window);
     if (fw != NULL)
       (void) wuss_gridview_handle_event(fw->gridview, event);
-    if (fw != NULL && event->kind == wuss_EVENT_MOUSE)
-    {
-      if (event->data.mouse.action == wuss_MOUSE_DOWN &&
-          (event->data.mouse.button &
-           (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
-        filer_press(task, fw, event->data.mouse.point);
-      else if (event->data.mouse.action == wuss_MOUSE_MOVE)
-        filer_drag_maybe(task, event->data.mouse.point);
-      else if (event->data.mouse.action == wuss_MOUSE_UP)
-        task->press_fw = NULL;
-    }
     if (event->kind == wuss_EVENT_MOUSE &&
         (event->data.mouse.action == wuss_MOUSE_DOWN) &&
         (event->data.mouse.button & wuss_BUTTON_MENU))
@@ -694,13 +594,6 @@ result_t filer_handle(wuss_window_t      *window,
   case wuss_EVENT_MESSAGE:
     return filer_message(task, window, event);
 
-  case wuss_EVENT_POINTER_EXIT:
-    /* no button state reaches a hover move, so a press the pointer leaves the
-     * window during must end here or the next hover would start a drag */
-    if (task->press_fw != NULL && task->press_fw->window == window)
-      task->press_fw = NULL;
-    return result_OK;
-
   case wuss_EVENT_DRAG_END:
     filer_drop(task, event);
     return result_OK;
@@ -718,8 +611,6 @@ result_t filer_handle(wuss_window_t      *window,
 
     /* Free the slot in place: moving another into it would leave that one's
      * gridview opaque pointing at its old address. */
-    if (task->press_fw == fw)
-      task->press_fw = NULL;
     fw->window   = NULL;
     fw->gridview = NULL;
     fw->listing  = NULL;
