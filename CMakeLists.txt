@@ -908,6 +908,10 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/keys.c
         libraries/wuss/test/tasks/lissajous.c
         libraries/wuss/test/tasks/minesweeper.c
+        libraries/wuss/test/tasks/paint-doc.c
+        libraries/wuss/test/tasks/paint-doc.h
+        libraries/wuss/test/tasks/paint.c
+        libraries/wuss/test/tasks/paint.h
         libraries/wuss/test/tasks/palette.c
         libraries/wuss/test/tasks/particles.c
         libraries/wuss/test/tasks/patterns.c

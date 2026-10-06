@@ -40,6 +40,7 @@
 #include "tasks/keys.h"
 #include "tasks/lissajous.h"
 #include "tasks/minesweeper.h"
+#include "tasks/paint.h"
 #include "tasks/palette.h"
 #include "tasks/particles.h"
 #include "tasks/patterns.h"
@@ -153,6 +154,7 @@ g_visuals_tasks[] =
   { "Gradient", gradient_app_create },
   { "Greeble", greeble_app_create },
   { "Lissajous", lissajous_app_create },
+  { "Paint", paint_app_create },
   { "Patterns", patterns_app_create }
 },
 g_toys_tasks[] =
