@@ -192,6 +192,7 @@ static void chars_sync(chars_task_t *task)
 
   task->cols = wuss_gridview_get_columns(task->gv);
   chars_row_range(task->font, task->page, task->cols, &first_row, &nrows);
+  task->rows   = nrows;
   task->offset = first_row * task->cols;
   (void) wuss_gridview_set_count(task->gv, nrows * task->cols);
 }
@@ -574,8 +575,40 @@ void chars_destroy(chars_task_t *task)
   free(task);
 }
 
+/* the lines on the top and left edges of every cell, drawn as one rule per
+ * row and column across the whole grid rather than two per cell. Only those
+ * the redraw clip reaches are drawn. */
+static void chars_draw_grid(const chars_task_t *cc,
+                            const wuss_event_t *event)
+{
+  screen_t *scr;
+  box_t     cell;
+  int       x, y, cell_w, cell_h;
+  int       first, last, i;
+
+  scr    = event->data.redraw.scr;
+  cell   = wuss_gridview_cell_box(cc->gv, 0);
+  cell_w = cell.x1 - cell.x0;
+  cell_h = cell.y1 - cell.y0;
+  x      = cell.x0 + event->data.redraw.bounds->x0 - event->data.redraw.scroll.x;
+  y      = cell.y0 + event->data.redraw.bounds->y0 - event->data.redraw.scroll.y;
+
+  first = MAX((scr->clip.x0 - x) / cell_w, 0);
+  last  = MIN((scr->clip.x1 - x) / cell_w, cc->cols - 1);
+  for (i = first; i <= last; i++)
+    screen_fill_rect(scr, x + i * cell_w, y, SIZE2D(1, cell_h * cc->rows),
+                     cc->mg);
+
+  first = MAX((scr->clip.y0 - y) / cell_h, 0);
+  last  = MIN((scr->clip.y1 - y) / cell_h, cc->rows - 1);
+  for (i = first; i <= last; i++)
+    screen_fill_rect(scr, x, y + i * cell_h, SIZE2D(cell_w * cc->cols, 1),
+                     cc->mg);
+}
+
 /* wuss_gridview_draw_fn_t: one cell, the index above the glyph, with a rule
- * for the baseline and a blue rule for the glyph's advance width */
+ * for the baseline and a blue rule for the glyph's advance width. The cell's
+ * background and edges are left to chars_draw_grid and the gridview. */
 static void chars_draw_cell(wuss_gridview_t    *gv,
                             const wuss_event_t *event,
                             int                 index,
@@ -610,10 +643,8 @@ static void chars_draw_cell(wuss_gridview_t    *gv,
   cell_h = screen_box->y1 - screen_box->y0;
   cp     = cc->page + (unsigned long) (cc->offset + index);
 
-  screen_fill_rect(scr, x, y, SIZE2D(cell_w, cell_h), cc->bg);
-  screen_draw_line(scr, x, y, x + cell_w - 1, y, cc->mg);
-  screen_draw_line(scr, x, y, x, y + cell_h - 1, cc->mg);
-
+  /* the gridview has already filled the background, and chars_draw_grid
+   * draws the cell edges */
   snprintf(label, 4, "%02lX", cp & 0xFF);
   pos.x = x + CHARS_PAD;
   pos.y = y + CHARS_PAD + idxfont_ascent;
@@ -718,7 +749,10 @@ result_t chars_handle(wuss_window_t      *window,
 
   case wuss_EVENT_REDRAW:
     if (window == cc->window)
+    {
       (void) wuss_gridview_handle_event(cc->gv, event);
+      chars_draw_grid(cc, event);
+    }
     return result_OK;
 
   default:
