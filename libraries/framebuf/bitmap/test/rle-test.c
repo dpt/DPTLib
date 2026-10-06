@@ -426,7 +426,7 @@ static int test_p8_png(void)
   int           i;
   int           ok = 1;
 
-  fn = pathf("rle-test-p8.png");
+  fn = pathf("%srle-test-p8.png", DPTLIB_TMPPREFIX);
 
   /* palette: greyscale ramp, plus a few non-opaque entries to exercise tRNS */
   for (i = 0; i < 256; i++)
