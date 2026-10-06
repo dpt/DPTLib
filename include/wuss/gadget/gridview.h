@@ -252,6 +252,19 @@ int wuss_gridview_is_selected(const wuss_gridview_t *gridview, int index);
 void wuss_gridview_clear_selection(wuss_gridview_t *gridview);
 
 /**
+ * Select every item, invalidating the cells that were not already selected.
+ *
+ * \param[in] gridview Handle.
+ */
+void wuss_gridview_select_all(wuss_gridview_t *gridview);
+
+/**
+ * \param[in] gridview Handle.
+ * \return Number of items selected.
+ */
+int wuss_gridview_selected_count(const wuss_gridview_t *gridview);
+
+/**
  * Find the item under a point.
  *
  * \param[in] gridview Handle.
