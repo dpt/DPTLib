@@ -83,6 +83,7 @@ static const test_t tests[] =
   { "pack",       pack_test       },
 
   { "gridview-bench", gridview_bench_test },
+  { "paintdoc",   paintdoc_test   },
   { "wuss",       wuss_test       },
 };
 
