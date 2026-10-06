@@ -25,7 +25,7 @@
 #include "common.h"
 
 #define ICONS_DOC_W    260
-#define ICONS_DOC_H    1570 /* taller than the window, so scrolling is exercised */
+#define ICONS_DOC_H    1670 /* taller than the window, so scrolling is exercised */
 #define ICONS_MARGIN   28  /* left edge of everything except frame captions */
 #define ICONS_ROW      20  /* vertical pitch between stacked simple icons */
 
@@ -48,10 +48,12 @@ enum
   ICONS_N_WRITE   = 7, /* frame + five writables (incl. left/centre/right) + echo label */
   ICONS_N_SSET    = 2, /* frame + echo label; the gadget adds its own icons */
   ICONS_N_CSET    = 2, /* frame + echo label; the gadget adds its own icons */
+  ICONS_N_DRAG    = 3, /* frame + draggable icon + echo label */
   ICONS_NSPECS    = ICONS_N_INTRO + ICONS_N_BUTTONS + ICONS_N_RADIOS +
                     ICONS_N_BITMAPS + ICONS_N_ICONSET + ICONS_N_PATTERN +
                     ICONS_N_BORDERS + ICONS_N_DISPLAY + ICONS_N_SLIDERS +
-                    ICONS_N_MENU + ICONS_N_WRITE + ICONS_N_SSET + ICONS_N_CSET
+                    ICONS_N_MENU + ICONS_N_WRITE + ICONS_N_SSET + ICONS_N_CSET +
+                    ICONS_N_DRAG
 };
 
 /* Running state threaded through the icons_add_* helpers: where to write the
@@ -557,6 +559,41 @@ static void icons_add_gadget(icons_layout_t *lay,
   lay->y = top + 84;
 }
 
+/* A grouping frame captioned "Draggable", holding a DRAGGABLE icon (the pool's
+ * "radon" bitmap) and a label below it reporting where the last drag ended.
+ * Returns the label's index via *echo. */
+static void icons_add_draggable(icons_layout_t *lay,
+                                const wuss_t   *wuss,
+                                int            *echo)
+{
+  wuss_icon_spec_t *s;
+  const bitmap_t   *bm;
+  int               top;
+  int               w;
+  int               h;
+
+  bm = wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "radon"));
+  w  = bm ? bm->size.w : 16;
+  h  = bm ? bm->size.h : 16;
+
+  top = lay->y;
+  wuss_icon_spec_frame(&lay->specs[lay->n++],
+                       (box_t) BOX_POS_SIZE(ICONS_MARGIN, top, 200, h + 48),
+                       "Draggable");
+
+  s                = &lay->specs[lay->n++];
+  s->bbox          = (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 20, w, h);
+  s->type          = wuss_ICON_TYPE_DRAGGABLE;
+  s->u.bitmap.name = "radon";
+
+  *echo = lay->n;
+  wuss_icon_spec_label(&lay->specs[lay->n++],
+                       (box_t) BOX_POS_SIZE(ICONS_MARGIN + 10, top + 24 + h, 180, 14),
+                       "Drag the icon", 0);
+
+  lay->y = top + h + 64;
+}
+
 static result_t icons_sset_changed(wuss_stringset_t *stringset,
                                    int               index,
                                    void             *opaque)
@@ -599,7 +636,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   const char      *sprite_path;
   int              i_button, i_counter, i_opt, i_state, i_hotspot, i_ticked;
   int              i_shoriz, i_svert, i_sstate;
-  int              i_tally, i_echo, i_sset_echo, i_cset_echo;
+  int              i_tally, i_echo, i_sset_echo, i_cset_echo, i_drag_echo;
   box_t            sset_box, cset_box;
   result_t         rc;
 
@@ -631,6 +668,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   task->sset_echo    = NULL;
   task->cset         = NULL;
   task->cset_echo    = NULL;
+  task->drag_echo    = NULL;
 
   resources   = wuss_get_resources(wuss);
   sprite_path = pathf("%s/resources/wuss/ninepatch.png", resources);
@@ -697,6 +735,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   icons_add_writables(&lay, &i_echo);
   icons_add_gadget(&lay, "String set", &i_sset_echo, &sset_box);
   icons_add_gadget(&lay, "Colour set", &i_cset_echo, &cset_box);
+  icons_add_draggable(&lay, wuss, &i_drag_echo);
 
   rc = wuss_icon_create_array(task->window, specs, lay.n, made);
   if (rc != result_OK)
@@ -715,6 +754,7 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
   task->echo         = made[i_echo];
   task->sset_echo    = made[i_sset_echo];
   task->cset_echo    = made[i_cset_echo];
+  task->drag_echo    = made[i_drag_echo];
   wuss_icon_set_selected(task->window, made[i_ticked], 1); /* "Show grid" starts ticked */
 
   {
@@ -957,6 +997,21 @@ result_t icons_handle(wuss_window_t      *window,
     if (tcx->cset != NULL)
       (void) wuss_colourset_handle_event(tcx->cset, event, &rc);
     return result_OK;
+  }
+
+  case wuss_EVENT_DRAG_END:
+  {
+    char buf[48];
+
+    if (event->data.drag_end.cancelled)
+      snprintf(buf, sizeof(buf), "cancelled");
+    else if (event->data.drag_end.drop == NULL)
+      snprintf(buf, sizeof(buf), "dropped on the backdrop");
+    else
+      snprintf(buf, sizeof(buf), "dropped on \"%s\"",
+               wuss_window_get_title(event->data.drag_end.drop));
+
+    return wuss_icon_set_text(tcx->window, tcx->drag_echo, buf);
   }
 
   case wuss_EVENT_QUIT:
