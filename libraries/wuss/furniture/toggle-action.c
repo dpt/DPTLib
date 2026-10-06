@@ -74,6 +74,33 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
    * before scroll is clamped against it */
   wuss__notify_open(window);
 
+  /* A reflow can shrink the doc below the box sized from the old doc (a
+   * gridview gains columns, so needs fewer rows): trim the grown box back to
+   * the new doc, floored like the target above. */
+  if (wuss__window_toggled(window))
+  {
+    box_t    content;
+    size2d_t min;
+    int      excess;
+
+    wuss__content_box(window, &content);
+    wuss__min_content(window, &min);
+
+    if (window->doc.w)
+    {
+      excess = (content.x1 - content.x0) - MAX(window->doc.w, min.w);
+      if (excess > 0)
+        window->visible.x1 -= excess;
+    }
+
+    if (window->doc.h)
+    {
+      excess = (content.y1 - content.y0) - MAX(window->doc.h, min.h);
+      if (excess > 0)
+        window->visible.y1 -= excess;
+    }
+  }
+
   {
     point_t new_scroll;
 
