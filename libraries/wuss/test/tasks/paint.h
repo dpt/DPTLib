@@ -7,6 +7,8 @@
 
 #include "framebuf/colour.h"
 #include "geom/point.h"
+#include "wuss/icon.h"
+#include "wuss/icon-spec.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
 
@@ -15,24 +17,45 @@
 #define PAINT_SIZE_MIN 1
 #define PAINT_SIZE_MAX 32
 
-/* a 640x480 white canvas in a scrollable window. Select paints with the
- * foreground colour, Adjust with the background colour */
+/* the toolbox's radio buttons, in this order */
+typedef enum paint_tool
+{
+  paint_TOOL_BRUSH,
+  paint_TOOL_ERASER,
+  paint_TOOL_LINE,
+  paint_TOOL_RECT,
+  paint_TOOL_FILL,
+  paint_TOOL__COUNT
+}
+paint_tool_t;
+
+/* a 640x480 white canvas in a scrollable window, with a small toolbox window
+ * beside it. Select paints with the foreground colour and Adjust with the
+ * background colour; clicking a toolbox swatch sets either. Closing the
+ * canvas window closes the toolbox too */
 typedef struct paint_task
 {
-  wuss_t        *wuss;
-  wuss_task_t   *delegate;
-  wuss_window_t *window;   /* the canvas window; NULL once closed */
-  paintdoc_t    *doc;
-  colour_t       fg, bg;
-  int            size;     /* brush width in pixels */
-  int            held;     /* button of the stroke in progress, or 0 */
-  point_t        last;     /* where the stroke in progress last reached */
+  wuss_t            *wuss;
+  wuss_task_t       *delegate;
+  wuss_window_t     *window;    /* the canvas window; NULL once closed */
+  wuss_window_t     *toolbox;   /* the toolbox window; NULL once closed */
+  paintdoc_t        *doc;
+  colour_t           fg, bg;
+  paint_tool_t       tool;
+  int                size;      /* brush and outline width in pixels */
+  int                fill;      /* rect tool: filled, not an outline */
+  int                held;      /* button of the stroke in progress, or 0 */
+  point_t            last;      /* where the stroke last reached */
+  wuss_icon_t       *tool_icons[paint_TOOL__COUNT];
+  wuss_icon_t       *fill_icon;
+  wuss_slider_row_t  size_row;
+  char               size_text[WUSS_SLIDER_ROW_BUF];
 }
 paint_task_t;
 
 wuss_window_fn_t paint_handle;
 
-/* create the paint window against the given wuss instance;
+/* create the paint windows against the given wuss instance;
  * if out is non-NULL, the task block is also returned through it */
 result_t paint_create(wuss_t *wuss, paint_task_t **out);
 
