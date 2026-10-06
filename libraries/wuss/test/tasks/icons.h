@@ -44,6 +44,7 @@ typedef struct icons_task
   wuss_icon_t   *sset_echo;    /* label echoing the string set's pick */
   wuss_colourset_t *cset;      /* gadget; its icons belong to the window */
   wuss_icon_t   *cset_echo;    /* label echoing the colour set's pick */
+  wuss_icon_t   *drag_echo;    /* label echoing where the last drag ended */
 }
 icons_task_t;
 
