@@ -912,7 +912,7 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/snapshot.c
         libraries/wuss/test/tasks/sofa.c
         libraries/wuss/test/tasks/spheroid.c
-        libraries/wuss/test/tasks/text.c
+        libraries/wuss/test/tasks/reading.c
         libraries/wuss/test/tasks/tiling.c
         libraries/wuss/test/tasks/taskapp.c
         libraries/wuss/test/tasks/taskapp.h

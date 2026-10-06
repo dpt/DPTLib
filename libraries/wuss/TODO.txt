@@ -92,7 +92,7 @@ LAYER 6 - MULTI-TASK (needs stable windows, templates)
 LAYER 7 - APPS & POLISH (needs most of the above)
 
 - Post-Its app with explanatory text for newbies
-  (Markdown rendering done in the Text task sample; reuse from there)
+  (Markdown rendering done in the Reading task sample; reuse from there)
   Part of Pinboard?
 - Have a Paint app as a target
 - Desktop cohort: Filer, Task Manager, Palette Util

@@ -47,7 +47,7 @@
 #include "tasks/saturn.h"
 #include "tasks/sofa.h"
 #include "tasks/spheroid.h"
-#include "tasks/text.h"
+#include "tasks/reading.h"
 #include "tasks/taskapp.h"
 #include "tasks/tiling.h"
 
@@ -135,8 +135,11 @@ g_tests_tasks[] =
 {
   { "Icons", icons_app_create },
   { "Keys", keys_app_create },
-  { "Porter-Duff", porter_duff_app_create },
-  { "Text", text_app_create }
+  { "Porter-Duff", porter_duff_app_create }
+},
+g_text_tasks[] =
+{
+  { "Reading", reading_app_create }
 },
 g_utilities_tasks[] =
 {
@@ -401,6 +404,7 @@ g_task_categories[] =
   { "Tests",     g_tests_tasks,     NELEMS(g_tests_tasks)     },
   { "Toys",      g_toys_tasks,      NELEMS(g_toys_tasks)      },
   { "System",    g_system_tasks,    NELEMS(g_system_tasks)    },
+  { "Text",      g_text_tasks,      NELEMS(g_text_tasks)      },
   { "Utilities", g_utilities_tasks, NELEMS(g_utilities_tasks) },
   { "Visuals",   g_visuals_tasks,   NELEMS(g_visuals_tasks)   }
 };
