@@ -126,7 +126,8 @@ static result_t app_handle(wuss_window_t      *window,
     if (event->data.iconbar_icon.button & wuss_BUTTON_MENU)
       return app_menu_open(app);
     if (event->data.iconbar_icon.button & wuss_BUTTON_SELECT)
-      return app_spawn_instance(app, NULL);
+      return app->desc->drop_only ? result_OK
+                                  : app_spawn_instance(app, NULL);
     return result_OK; /* ADJUST: nothing yet */
 
   case wuss_EVENT_MESSAGE:

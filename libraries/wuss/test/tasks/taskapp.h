@@ -5,6 +5,8 @@
 
 #ifdef WUSS_APP
 
+#include <stdbool.h>
+
 #include "base/result.h"
 #include "wuss/wuss.h"
 
@@ -28,6 +30,7 @@ typedef struct taskapp_desc
   const char          *purpose; /* proginfo "Purpose" row */
   taskapp_create_fn_t  create;  /* opens an instance of the main window */
   taskapp_data_load_fn_t data_load; /* optional: file dropped on the icon */
+  bool                 drop_only;   /* SELECT on the icon opens nothing */
 }
 taskapp_desc_t;
 
@@ -37,7 +40,8 @@ taskapp_desc_t;
  * instance a child task of the app's, so no window opens until asked for.
  * A wuss_MESSAGE_DATA_LOAD sent to the icon (a file dropped on it) opens an
  * instance the same way and passes it the path through desc->data_load; it
- * is acknowledged only if that returns result_OK.
+ * is acknowledged only if that returns result_OK. With desc->drop_only,
+ * SELECT does nothing, so a drop is the only way to open an instance.
  * Does nothing, returning result_OK, if desc is already installed. Without
  * the icon bar, calls desc->create at once instead. */
 result_t taskapp_install(wuss_t *wuss, const taskapp_desc_t *desc);
