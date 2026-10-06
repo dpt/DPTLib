@@ -22,6 +22,7 @@
 #include "io/path.h"
 #include "text/bmtext.h"
 #include "wuss/menu.h"
+#include "wuss/message.h"
 
 #include "reading.h"
 #include "taskapp.h"
@@ -454,11 +455,12 @@ exit:
   return rc;
 }
 
-/* load task->samples[idx] into task->text, parsing it as Markdown into
- * task->text/markdown_spans if that sample is marked markdown, and freeing
- * the previous sample's buffers; on failure the previous sample stays
- * shown. idx must already be range-checked */
-static result_t reading__apply_sample(reading_task_t *task, int idx)
+/* load the file at path into task->text, parsing it as Markdown into
+ * task->text/markdown_spans if markdown is set, and freeing the previous
+ * buffers; on failure the previous text stays shown */
+static result_t reading__load_text(reading_task_t *task,
+                                   const char     *path,
+                                   bool            markdown)
 {
   result_t        rc;
   char           *raw;
@@ -467,17 +469,14 @@ static result_t reading__apply_sample(reading_task_t *task, int idx)
   reading_span_t *spans;
   int             nspans;
 
-  rc = reading__load_file(pathf(READING_SAMPLES_DIR "/%s",
-                             wuss_get_resources(task->wuss),
-                             task->samples[idx].leaf),
-                       &raw, &rawlen);
+  rc = reading__load_file(path, &raw, &rawlen);
   if (rc != result_OK)
     return rc;
 
   text   = raw;
   spans  = NULL;
   nspans = 0;
-  if (task->samples[idx].markdown)
+  if (markdown)
   {
     rc = reading__markdown_parse(raw, rawlen, &text, &spans, &nspans);
     free(raw);
@@ -490,7 +489,58 @@ static result_t reading__apply_sample(reading_task_t *task, int idx)
   task->text            = text;
   task->markdown_spans  = spans;
   task->markdown_nspans = nspans;
-  task->sample          = idx;
+  return result_OK;
+}
+
+/* load task->samples[idx] as the shown text. idx must already be
+ * range-checked */
+static result_t reading__apply_sample(reading_task_t *task, int idx)
+{
+  result_t rc;
+
+  rc = reading__load_text(task,
+                          pathf(READING_SAMPLES_DIR "/%s",
+                                wuss_get_resources(task->wuss),
+                                task->samples[idx].leaf),
+                          task->samples[idx].markdown);
+  if (rc != result_OK)
+    return rc;
+
+  task->sample = idx;
+  return result_OK;
+}
+
+/* show the ".md" or ".txt" file at path (e.g. dropped from the Filer),
+ * leaving no "Sample" row ticked. Any other file is refused. */
+static result_t reading_show(reading_task_t *task, const char *path)
+{
+  result_t    rc;
+  const char *leaf;
+  char        name[64];
+  bool        markdown;
+
+  leaf = path_leaf(path);
+  /* ponytail: on RISC OS every leaf matches ".md", so any file is parsed as
+   * Markdown -- check the filetype if that matters */
+  if (path_leaf_strip_ext(leaf, ".md", name, sizeof(name)))
+    markdown = true;
+  else if (path_leaf_strip_ext(leaf, ".txt", name, sizeof(name)))
+    markdown = false;
+  else
+    return result_BAD_ARG;
+
+  rc = reading__load_text(task, path, markdown);
+  if (rc != result_OK)
+  {
+    logf_warning("reading: cannot load \"%s\" (rc=0x%X)", path, rc);
+    return rc;
+  }
+
+  task->sample = -1;
+  wuss_menu_tick_exclusive(&task->sample_menu, -1);
+  wuss_menu_tick_exclusive_live(task->menu_handle, &task->sample_menu, -1);
+
+  wuss_window_invalidate_visible(task->window);
   return result_OK;
 }
 
@@ -834,7 +884,8 @@ result_t reading_app_create(wuss_t *wuss)
   {
     "Reading",
     "Reading layout sampler",
-    (taskapp_create_fn_t) reading_create
+    (taskapp_create_fn_t) reading_create,
+    (taskapp_data_load_fn_t) reading_show
   };
 
   return taskapp_install(wuss, &desc);
@@ -1125,6 +1176,33 @@ static result_t reading_idle(void *task_data)
   return rc;
 }
 
+/* A DataLoad on the reading window: show the file it names. A file that will
+ * not load is not acknowledged, so the send bounces to the sender. */
+static result_t reading_message(reading_task_t     *tcx,
+                                wuss_window_t      *window,
+                                const wuss_event_t *event)
+{
+  const wuss_message_t *msg;
+  char                  path[DPTLIB_MAXPATH];
+  size_t                len;
+
+  msg = event->data.message;
+
+  if (msg->action != wuss_MESSAGE_DATA_LOAD || tcx->window == NULL ||
+      window != tcx->window)
+    return result_OK;
+
+  len = MIN(msg->size, sizeof(path) - 1);
+  memcpy(path, msg->data, len);
+  path[len] = '\0';
+
+  if (reading_show(tcx, path) != result_OK)
+    return result_OK;
+
+  (void) wuss_acknowledge(tcx->wuss, tcx->delegate, msg);
+  return result_OK;
+}
+
 result_t reading_handle(wuss_window_t      *window,
                         const wuss_event_t *event,
                         void               *task_data)
@@ -1190,6 +1268,9 @@ result_t reading_handle(wuss_window_t      *window,
       return reading_set_bg(tcx, picked);
     }
     return result_OK;
+
+  case wuss_EVENT_MESSAGE:
+    return reading_message(tcx, window, event);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     return reading_pre_submenu_open(tcx, event);
