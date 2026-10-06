@@ -88,6 +88,12 @@ void wuss__drag_end(wuss_t        *wuss,
 
   window = wuss->drag.window;
 
+  event.data.drag_end.drop_icon = NULL;
+#ifdef WUSS_ICONBAR
+  if (!cancelled && drop != NULL && drop == wuss->iconbar.window)
+    event.data.drag_end.drop_icon = wuss__iconbar_hit_test(wuss, p);
+#endif
+
   invalidate_edges(wuss, &wuss->drag.drawn);
   wuss->drag.window = NULL;
 

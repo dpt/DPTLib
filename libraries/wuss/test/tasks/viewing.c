@@ -107,13 +107,16 @@ result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
   return result_OK;
 }
 
+static result_t viewing_show(viewing_task_t *ic, const char *path);
+
 result_t viewing_app_create(wuss_t *wuss)
 {
   static const taskapp_desc_t desc =
   {
     "Viewing",
     "View PNG images",
-    (taskapp_create_fn_t) viewing_create
+    (taskapp_create_fn_t) viewing_create,
+    (taskapp_data_load_fn_t) viewing_show
   };
 
   return taskapp_install(wuss, &desc);

@@ -15,6 +15,11 @@
  * is spelt. */
 typedef result_t (*taskapp_create_fn_t)(wuss_t *wuss, void **out);
 
+/* Load the file at path into an instance create has just returned. Optional
+ * in a taskapp_desc: with none, a file dropped on the app's icon is not
+ * acknowledged. */
+typedef result_t (*taskapp_data_load_fn_t)(void *instance, const char *path);
+
 /* A task's description of its app. Each task keeps one as a static const and
  * passes it to taskapp_install from its X_app_create. */
 typedef struct taskapp_desc
@@ -22,6 +27,7 @@ typedef struct taskapp_desc
   const char          *name;    /* icon label, menu title, proginfo name */
   const char          *purpose; /* proginfo "Purpose" row */
   taskapp_create_fn_t  create;  /* opens an instance of the main window */
+  taskapp_data_load_fn_t data_load; /* optional: file dropped on the icon */
 }
 taskapp_desc_t;
 
@@ -29,6 +35,9 @@ taskapp_desc_t;
  * drawn with the application glyph) and a menu of Info and Quit. SELECT on
  * the icon calls desc->create for another instance of the main window, each
  * instance a child task of the app's, so no window opens until asked for.
+ * A wuss_MESSAGE_DATA_LOAD sent to the icon (a file dropped on it) opens an
+ * instance the same way and passes it the path through desc->data_load; it
+ * is acknowledged only if that returns result_OK.
  * Does nothing, returning result_OK, if desc is already installed. Without
  * the icon bar, calls desc->create at once instead. */
 result_t taskapp_install(wuss_t *wuss, const taskapp_desc_t *desc);

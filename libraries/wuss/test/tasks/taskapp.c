@@ -4,6 +4,7 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -12,9 +13,11 @@
 #include "base/debug.h"
 #include "base/utils.h"
 #include "framebuf/bitmap.h"
+#include "io/path.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/iconbar.h"
 #include "wuss/menu.h"
+#include "wuss/message.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
 
@@ -55,18 +58,44 @@ struct app
 
 static app_t *g_apps; /* every installed app */
 
-static result_t app_spawn_instance(app_t *app)
+static result_t app_spawn_instance(app_t *app, void **out)
 {
   result_t rc;
 
   wuss_set_task_parent(app->wuss, app->task);
-  rc = app->desc->create(app->wuss, NULL);
+  rc = app->desc->create(app->wuss, out);
   wuss_set_task_parent(app->wuss, NULL);
 
   if (rc != result_OK)
     logf_error("wuss: %s create failed, rc=0x%X (%s)", app->desc->name, rc,
                result_string(rc));
   return rc;
+}
+
+/* A file dropped on the icon: open an instance and load it. An instance that
+ * will not load the file stays open, empty, and the message bounces. */
+static result_t app_data_load(app_t *app, const wuss_message_t *msg)
+{
+  result_t rc;
+  void    *instance;
+  char     path[DPTLIB_MAXPATH];
+  size_t   len;
+
+  if (msg->action != wuss_MESSAGE_DATA_LOAD || app->desc->data_load == NULL)
+    return result_OK;
+
+  len = MIN(msg->size, sizeof(path) - 1);
+  memcpy(path, msg->data, len);
+  path[len] = '\0';
+
+  rc = app_spawn_instance(app, &instance);
+  if (rc != result_OK)
+    return result_OK;
+
+  if (app->desc->data_load(instance, path) == result_OK)
+    (void) wuss_acknowledge(app->wuss, app->task, msg);
+
+  return result_OK;
 }
 
 static result_t app_menu_open(app_t *app)
@@ -97,8 +126,13 @@ static result_t app_handle(wuss_window_t      *window,
     if (event->data.iconbar_icon.button & wuss_BUTTON_MENU)
       return app_menu_open(app);
     if (event->data.iconbar_icon.button & wuss_BUTTON_SELECT)
-      return app_spawn_instance(app);
+      return app_spawn_instance(app, NULL);
     return result_OK; /* ADJUST: nothing yet */
+
+  case wuss_EVENT_MESSAGE:
+    if (window == NULL)
+      return app_data_load(app, event->data.message);
+    return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
     if (event->data.menu_select.menu == &app->menu &&

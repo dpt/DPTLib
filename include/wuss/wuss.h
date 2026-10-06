@@ -1212,6 +1212,9 @@ result_t wuss_key_up(wuss_t              *wuss,
  * Ends with a wuss_EVENT_DRAG_END delivered to "window" -- on a MOUSE_UP,
  * data.drag_end.drop is the window under the pointer (NULL over bare
  * backdrop) and cancelled is 0; on Escape, drop is NULL and cancelled is 1.
+ * Over an icon bar icon, drop is the bar's window and
+ * data.drag_end.drop_icon is the icon (address both with wuss_msg_target_t);
+ * otherwise drop_icon is NULL.
  *
  * \param[in] wuss    Window manager.
  * \param[in] window  Window the drag is considered to originate from; also

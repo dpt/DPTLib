@@ -846,6 +846,9 @@ void wuss__message_purge_task(wuss_t *wuss, wuss_task_t *task);
  * by wuss_window_close while the window is still alive, so no queued message
  * ever outlives its target. */
 void wuss__message_purge_window(wuss_t *wuss, wuss_window_t *window);
+/* As wuss__message_purge_window, for messages addressed to a work-area or
+ * icon bar icon about to be destroyed. */
+void wuss__message_purge_icon(wuss_t *wuss, const void *icon);
 
 /* wuss_window_set_hidden's real body. `handle`/`index` (menu builds only)
  * are threaded through into wuss_EVENT_PRE_SHOW's payload so a flagged menu

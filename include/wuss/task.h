@@ -332,15 +332,18 @@ typedef struct wuss_event
 
     /** wuss_EVENT_DRAG_END: drop is the window under the pointer when the
      * drag ended (NULL over bare backdrop, and always NULL when cancelled),
+     * drop_icon is the icon bar icon under the pointer (NULL if none, if
+     * cancelled, or without the icon bar; drop is then the bar's window),
      * point is the release/cancel position in screen space, cancelled is
      * non-zero if Escape ended the drag rather than a MOUSE_UP, button is
      * the button that started the drag (SELECT or ADJUST). */
     struct
     {
-      wuss_window_t *drop;
-      point_t        point;
-      int            cancelled;
-      wuss_button_t  button;
+      wuss_window_t       *drop;
+      wuss_iconbar_icon_t *drop_icon;
+      point_t              point;
+      int                  cancelled;
+      wuss_button_t        button;
     }
     drag_end;
 

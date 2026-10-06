@@ -39,21 +39,25 @@ static result_t enqueue(wuss_t *wuss, const wuss_message_t *msg)
   return result_OK;
 }
 
-static result_t send_common(wuss_t        *wuss,
-                            wuss_task_t   *sender,
-                            wuss_window_t *window,
-                            int            action,
-                            const void    *data,
-                            size_t         size,
-                            unsigned int   your_ref,
-                            int            recorded,
-                            unsigned int  *my_ref_out)
+static result_t send_common(wuss_t                  *wuss,
+                            wuss_task_t             *sender,
+                            const wuss_msg_target_t *target,
+                            int                      action,
+                            const void              *data,
+                            size_t                   size,
+                            unsigned int             your_ref,
+                            int                      recorded,
+                            unsigned int            *my_ref_out)
 {
   wuss_message_t msg;
   unsigned int   my_ref;
 
   if (size > wuss_MESSAGE_DATA_SIZE)
     return result_WUSS_MESSAGE_TOO_BIG;
+
+  /* an icon needs its window */
+  if (target->icon != NULL && target->window == NULL)
+    return result_BAD_ARG;
 
   my_ref = recorded ? next_ref(wuss) : 0;
 
@@ -63,7 +67,8 @@ static result_t send_common(wuss_t        *wuss,
   msg.size     = size;
   msg.action   = action;
   msg.sender   = sender;
-  msg.window   = window;
+  msg.window   = target->window;
+  msg.icon     = target->icon;
   msg.my_ref   = my_ref;
   msg.your_ref = your_ref;
   msg.recorded = recorded;
@@ -76,6 +81,31 @@ static result_t send_common(wuss_t        *wuss,
   return enqueue(wuss, &msg);
 }
 
+result_t wuss_send_to(wuss_t                  *wuss,
+                      wuss_task_t             *sender,
+                      const wuss_msg_target_t *target,
+                      int                      action,
+                      const void              *data,
+                      size_t                   size,
+                      unsigned int             your_ref)
+{
+  return send_common(wuss, sender, target, action, data, size, your_ref, 0,
+                     NULL);
+}
+
+result_t wuss_send_recorded_to(wuss_t                  *wuss,
+                               wuss_task_t             *sender,
+                               const wuss_msg_target_t *target,
+                               int                      action,
+                               const void              *data,
+                               size_t                   size,
+                               unsigned int             your_ref,
+                               unsigned int            *my_ref)
+{
+  return send_common(wuss, sender, target, action, data, size, your_ref, 1,
+                     my_ref);
+}
+
 result_t wuss_send(wuss_t        *wuss,
                    wuss_task_t   *sender,
                    wuss_window_t *window,
@@ -84,8 +114,10 @@ result_t wuss_send(wuss_t        *wuss,
                    size_t         size,
                    unsigned int   your_ref)
 {
-  return send_common(wuss, sender, window, action, data, size, your_ref, 0,
-                     NULL);
+  wuss_msg_target_t target = { NULL, NULL };
+
+  target.window = window;
+  return wuss_send_to(wuss, sender, &target, action, data, size, your_ref);
 }
 
 result_t wuss_send_recorded(wuss_t        *wuss,
@@ -97,8 +129,11 @@ result_t wuss_send_recorded(wuss_t        *wuss,
                             unsigned int   your_ref,
                             unsigned int  *my_ref)
 {
-  return send_common(wuss, sender, window, action, data, size, your_ref, 1,
-                     my_ref);
+  wuss_msg_target_t target = { NULL, NULL };
+
+  target.window = window;
+  return wuss_send_recorded_to(wuss, sender, &target, action, data, size,
+                               your_ref, my_ref);
 }
 
 result_t wuss_acknowledge(wuss_t               *wuss,
@@ -176,6 +211,20 @@ static int deliver_one(wuss_t               *wuss,
 
 static void deliver(wuss_t *wuss, const wuss_message_t *msg)
 {
+#ifdef WUSS_ICONBAR
+  /* An icon on the icon bar: its owner, not the bar's own task, gets it, and
+   * in the task view. An icon destroyed since the send has had its messages
+   * purged, so it is live here. */
+  if (msg->icon != NULL && msg->window == wuss->iconbar.window)
+  {
+    const wuss_iconbar_icon_t *bar_icon = msg->icon;
+
+    if (!deliver_one(wuss, bar_icon->owner, NULL, msg))
+      bounce(wuss, msg);
+    return;
+  }
+#endif
+
   if (msg->window != NULL)
   {
     if (!window_alive(wuss, msg->window))
@@ -290,6 +339,29 @@ void wuss__message_purge_window(wuss_t *wuss, wuss_window_t *window)
   for (i = 0; i < wuss->msg.count; )
   {
     if (wuss->msg.queue[i].window == window)
+    {
+      wuss_message_t doomed;
+
+      doomed = wuss->msg.queue[i];
+      memmove(&wuss->msg.queue[i], &wuss->msg.queue[i + 1],
+             (size_t) (wuss->msg.count - i - 1) * sizeof(*wuss->msg.queue));
+      wuss->msg.count--;
+
+      bounce(wuss, &doomed);
+      continue;
+    }
+
+    i++;
+  }
+}
+
+void wuss__message_purge_icon(wuss_t *wuss, const void *icon)
+{
+  int i;
+
+  for (i = 0; i < wuss->msg.count; )
+  {
+    if (wuss->msg.queue[i].icon == icon)
     {
       wuss_message_t doomed;
 

@@ -33,6 +33,8 @@ void wuss_icon_delete(wuss_window_t *window, wuss_icon_t *icon)
     window->wuss->caret.window = NULL;
   }
 
+  wuss__message_purge_icon(window->wuss, icon);
+
   wuss__icon_invalidate(window, icon);
 
   for (i = 0; i < window->nicons; i++)

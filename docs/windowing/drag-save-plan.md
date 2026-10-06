@@ -115,7 +115,12 @@ Because of the priority rule, the whole handshake completes within the
 
 - `wuss_drag_start(task, box, ...)` begins a drag.
   `wuss_EVENT_DRAG_END {icon, drop window, point, cancelled}` goes to the
-  originating task.
+  originating task. Over an icon bar icon `drop` is the bar's window and
+  `drop_icon` names the icon; a sender addresses it with
+  `wuss_send_recorded_to` with a `wuss_msg_target_t { drop, drop_icon }`, which
+  delivers to the icon's owning task (window NULL) and bounces if
+  unacknowledged or the icon is destroyed first. The same target struct
+  takes any window plus one of its work-area icons.
 - Drawn as a marching-ants box, painted last in `wuss_redraw_dirty`. Only the
   four 1 px edges are invalidated, and the ants step every N frames.
 - During a drag core takes over input: the ending release is not delivered
