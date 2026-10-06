@@ -23,9 +23,11 @@
  * Hit-testing is arithmetic -- gaps between cells miss -- so no per-cell
  * icon exists to click.
  *
- * Selection follows RISC OS rules: Select selects only the clicked item,
- * Adjust toggles it, a click on empty space clears the selection. A
- * double-click (wuss_BUTTON_DOUBLE) on an item calls the activate callback.
+ * Selection follows RISC OS rules: Select on an unselected item selects only
+ * it, and on a selected item changes nothing; Adjust toggles the item;
+ * Select on empty space clears the selection and Adjust there changes
+ * nothing. A double-click (wuss_BUTTON_DOUBLE) on an item calls the activate
+ * callback.
  *
  * Built only when WUSS_GADGETS is defined.
  */
@@ -172,6 +174,15 @@ int wuss_gridview_is_selected(const wuss_gridview_t *gridview, int index);
  * \param[in] gridview Handle.
  */
 void wuss_gridview_clear_selection(wuss_gridview_t *gridview);
+
+/**
+ * Deselect item \p index, invalidating its cell. Does nothing if the item is
+ * out of range or not selected.
+ *
+ * \param[in] gridview Handle.
+ * \param[in] index    Item index, 0..count-1.
+ */
+void wuss_gridview_deselect(wuss_gridview_t *gridview, int index);
 
 /**
  * Recompute item count after the underlying item list changes, keeping the

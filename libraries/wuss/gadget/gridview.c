@@ -469,7 +469,9 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
 
     if (index < 0)
     {
-      if (!gv->selectable || bitvec_count(gv->selected) == 0)
+      /* Adjust on the background leaves the selection alone */
+      if (!gv->selectable || !(event->data.mouse.button & wuss_BUTTON_SELECT) ||
+          bitvec_count(gv->selected) == 0)
         return 0;
       gridview_clear_selected(gv);
       return 1;
@@ -487,8 +489,11 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
         (void) bitvec_set(gv->selected, (bitvec_index_t) index);
       gridview_invalidate_cell(gv, index);
     }
-    else if (event->data.mouse.button & wuss_BUTTON_SELECT)
+    else if ((event->data.mouse.button & wuss_BUTTON_SELECT) &&
+             !bitvec_get(gv->selected, (bitvec_index_t) index))
     {
+      /* a Select on an item already selected changes nothing, so the whole
+       * selection can still be dragged */
       gridview_clear_selected(gv);
       (void) bitvec_set(gv->selected, (bitvec_index_t) index);
       gridview_invalidate_cell(gv, index);
@@ -518,6 +523,16 @@ void wuss_gridview_clear_selection(wuss_gridview_t *gv)
     return;
 
   gridview_clear_selected(gv);
+}
+
+void wuss_gridview_deselect(wuss_gridview_t *gv, int index)
+{
+  if (index < 0 || index >= gv->count ||
+      !bitvec_get(gv->selected, (bitvec_index_t) index))
+    return;
+
+  bitvec_clear(gv->selected, (bitvec_index_t) index);
+  gridview_invalidate_cell(gv, index);
 }
 
 result_t wuss_gridview_set_count(wuss_gridview_t *gv, int count)
