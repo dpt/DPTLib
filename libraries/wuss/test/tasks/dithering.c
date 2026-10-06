@@ -59,16 +59,12 @@ static const char *const dithering_strength_names[DITHERING_NSTRENGTHS] =
 
 /* ----------------------------------------------------------------------- */
 
-/* Load a PNG as rgbx8888/rgba8888. bitmap_load_png keeps a palette-type PNG
- * paletted (p1 to p8), so expand that one. */
-static result_t dithering_load(dithering_task_t *dt, int index, bitmap_t *bm)
+/* Load the PNG at path as rgbx8888/rgba8888. bitmap_load_png keeps a
+ * palette-type PNG paletted (p1 to p8), so expand that one. */
+static result_t dithering_load(const char *path, bitmap_t *bm)
 {
-  result_t    rc;
-  const char *path;
-  bitmap_t   *deep;
-
-  path = pathf("%s/resources/images/%s.png", wuss_get_resources(dt->wuss),
-               dt->images[index]);
+  result_t  rc;
+  bitmap_t *deep;
 
   rc = bitmap_load_png(bm, path);
   if (rc != result_OK)
@@ -111,6 +107,9 @@ static result_t dithering_apply(dithering_task_t *dt)
   const char      *name;
   dither_options_t opts;
   bitmap_t        *out;
+
+  if (dt->source.base == NULL)
+    return result_OK;
 
   if (dt->palette == DITHERING_PALETTE_OPTIMAL)
   {
@@ -170,29 +169,31 @@ static void dithering_saveas_name(dithering_task_t *dt)
 {
   char leafname[DITHERING_MAX_NAME_LEN + 16];
 
-  snprintf(leafname, sizeof(leafname), "%s-dithered.png",
-           dt->images[dt->image]);
+  snprintf(leafname, sizeof(leafname), "%s-dithered.png", dt->name);
   wuss_saveas_set_leafname(dt->saveas, leafname);
 }
 
-/* Load and dither images[index], resizing the window to fit. A load failure
- * keeps the current image. */
-static result_t dithering_show(dithering_task_t *dt, int index)
+/* Load the PNG at path and dither it, resizing the window to fit. A load
+ * failure keeps the current image and is returned. */
+static result_t dithering_show(dithering_task_t *dt, const char *path)
 {
   result_t rc;
   bitmap_t next;
+  char     name[DITHERING_MAX_NAME_LEN];
 
-  rc = dithering_load(dt, index, &next);
+  if (!path_leaf_strip_ext(path_leaf(path), ".png", name, sizeof(name)))
+    return result_BAD_ARG;
+
+  rc = dithering_load(path, &next);
   if (rc != result_OK)
   {
-    logf_warning("dithering: skipping \"%s\" (rc=0x%X)", dt->images[index],
-                 rc);
-    return result_OK;
+    logf_warning("dithering: cannot load \"%s\" (rc=0x%X)", path, rc);
+    return rc;
   }
 
   free(dt->source.base);
   dt->source = next;
-  dt->image  = index;
+  strcpy(dt->name, name);
   dithering_saveas_name(dt);
 
   rc = wuss_window_resize(dt->window, dt->source.size);
@@ -213,7 +214,6 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
   result_t          rc;
   dithering_task_t *task;
   wuss_task_desc_t  delegate_desc;
-  const char       *resources;
   filetype_t        png_type;
   int               i;
 
@@ -227,27 +227,11 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
   task->count      = 3; /* 16 */
   task->strength   = DITHERING_NSTRENGTHS - 1; /* 100% */
   task->serpentine = 1;
+  task->source.size = SIZE2D(DITHERING_EMPTYSZ, DITHERING_EMPTYSZ); /* no pixels */
 
-  resources = wuss_get_resources(wuss);
-  rc = namelist_scan(pathf("%s/resources/images", resources), ".png",
-                     task->images[0], sizeof(task->images[0]),
-                     DITHERING_MAX_IMAGES, 1 /* sorted */, &task->nimages);
-  if (rc == result_OK && task->nimages == 0)
-    rc = result_BAD_ARG; /* no PNGs found under resources/images */
-  if (rc != result_OK)
-  {
-    free(task); /* nothing registered yet; nobody else owns it */
-    return rc;
-  }
-
-  namelist_scan(pathf("%s/resources/palettes", resources), ".hex",
-                task->palettes[0], sizeof(task->palettes[0]),
+  namelist_scan(pathf("%s/resources/palettes", wuss_get_resources(wuss)),
+                ".hex", task->palettes[0], sizeof(task->palettes[0]),
                 PALETTE_MAX_FILES, 1 /* sorted */, &task->npalettes);
-
-  for (i = 0; i < task->nimages; i++)
-    WUSS_MENU_ITEM(task->image_items, i, task->images[i], wuss_MENU_ITEM_NONE);
-  WUSS_MENU_TITLE(task->image_menu, "Image", task->image_items,
-                  task->nimages);
 
   for (i = 0; i < dither__LIMIT; i++)
     WUSS_MENU_ITEM(task->method_items, i, dithering_method_names[i],
@@ -278,8 +262,6 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
   WUSS_MENU_TITLE(task->strength_menu, "Strength", task->strength_items,
                   DITHERING_NSTRENGTHS);
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, DITHERING_MENU_IMAGE, "Image",
-                      wuss_MENU_ITEM_DASHED, &task->image_menu);
   WUSS_MENU_ITEM_MENU(task->menu_items, DITHERING_MENU_METHOD, "Method",
                       wuss_MENU_ITEM_NONE, &task->method_menu);
   WUSS_MENU_ITEM_MENU(task->menu_items, DITHERING_MENU_PALETTE, "Palette",
@@ -295,26 +277,24 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
   WUSS_MENU_TITLE(task->menu, "Dithering", task->menu_items,
                   DITHERING_MENU__LIMIT);
 
-  rc = dithering_load(task, 0, &task->source);
-  if (rc != result_OK)
-  {
-    free(task); /* nothing registered yet; nobody else owns it */
-    return rc;
-  }
-
   delegate_desc.handle    = dithering_handle;
   delegate_desc.task_data = task;
   delegate_desc.name      = "dithering";
   rc = wuss_task_create(wuss, &delegate_desc, &task->delegate);
   if (rc != result_OK)
   {
-    free(task->source.base);
     free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
 
-  rc = task_window_create(task->delegate, task->source.size, "Dithering",
-                          &task->window);
+  rc = wuss_window_create_placed(task->delegate,
+                                 task->source.size,
+                                 "Dithering",
+                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
+                                 task->source.size,
+                                 SIZE2D(0, 0),
+                                 &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(task->delegate); /* QUIT frees the block */
@@ -332,12 +312,9 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
     wuss_task_destroy(task->delegate); /* QUIT frees the block */
     return rc;
   }
-  dithering_saveas_name(task);
   /* hover opens the Save As dialogue as a submenu */
   task->menu_items[DITHERING_MENU_SAVE].window =
     wuss_saveas_window(task->saveas);
-
-  dithering_apply(task);
 
   if (out)
     *out = task;
@@ -351,7 +328,9 @@ result_t dithering_app_create(wuss_t *wuss)
   {
     "Dithering",
     "Error-diffusion image dithering",
-    (taskapp_create_fn_t) dithering_create
+    (taskapp_create_fn_t) dithering_create,
+    (taskapp_data_load_fn_t) dithering_show,
+    true
   };
 
   return taskapp_install(wuss, &desc);
@@ -374,7 +353,10 @@ static result_t dithering_redraw(dithering_task_t   *dt,
   const bitmap_t *bm;
 
   bounds = event->data.redraw.bounds;
-  bm     = (dt->show_original || dt->dithered == NULL) ? &dt->source
+  if (dt->source.base == NULL)
+    return result_OK; /* the backdrop shows */
+
+  bm = (dt->show_original || dt->dithered == NULL) ? &dt->source
                                                        : dt->dithered;
 
   return screen_copy_bitmap(event->data.redraw.scr,
@@ -398,7 +380,6 @@ static void dithering_menu_refresh(dithering_task_t *dt)
   else
     colours->flags |= wuss_MENU_ITEM_DISABLED;
 
-  wuss_menu_tick_exclusive(&dt->image_menu, dt->image);
   wuss_menu_tick_exclusive(&dt->method_menu, (int) dt->method);
   wuss_menu_tick_exclusive(&dt->palette_menu, dt->palette);
   wuss_menu_tick_exclusive(&dt->count_menu, dt->count);
@@ -423,14 +404,6 @@ static result_t dithering_menu_select(dithering_task_t   *dt,
 
   menu  = event->data.menu_select.menu;
   index = event->data.menu_select.index;
-
-  if (menu == &dt->image_menu)
-  {
-    dithering_show(dt, index);
-    dithering_menu_refresh(dt);
-    wuss_menu_tick_exclusive_live(dt->menu_handle, menu, dt->image);
-    return result_OK;
-  }
 
   /* clicking the row, rather than hovering, shows Save As standalone */
   if (menu == &dt->menu && index == DITHERING_MENU_SAVE)
@@ -495,6 +468,13 @@ result_t dithering_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_CLOSED:
     dt->menu_handle = NULL; /* wuss closed the chain under us */
     return result_OK;
+
+  case wuss_EVENT_MESSAGE:
+    if (dt->window == NULL || window != dt->window)
+      return result_OK;
+    return taskapp_window_data_load(dt->wuss, dt->delegate, dt,
+                                    (taskapp_data_load_fn_t) dithering_show,
+                                    event->data.message);
 
   case wuss_EVENT_PALETTE:
     if (dt->palette == DITHERING_PALETTE_DESKTOP)

@@ -27,23 +27,11 @@ typedef struct reading_span
 }
 reading_span_t;
 
-#define READING_MAX_SAMPLES 16 /* only the first this many files in
-                             * resources/text, by name, are kept */
-
-/* one row of the "Sample" submenu, found in resources/text */
-typedef struct reading_sample
-{
-  char leaf[64];  /* leafname, for loading */
-  char name[64];  /* menu label: leaf less extension, '_' shown as ' ' */
-  bool markdown;  /* leaf is ".md": parse with reading__markdown_parse */
-}
-reading_sample_t;
-
-/* window B's task: flows a chosen sample string over its wuss-filled
- * background, one line per bmfont_draw call. A MENU click on the window opens
- * a top-level menu with five submenus -- "Font" (the shared wuss_fontmenu
- * singleton over resources/bmfonts, swapping the paragraph font in place),
- * "Sample" (swaps the shown string: one row per file in resources/text),
+/* window B's task: flows a text file dropped on its icon or window
+ * (DataLoad) over its wuss-filled background, one line per bmfont_draw call.
+ * A MENU click on the window opens a top-level menu with three submenus --
+ * "Font" (the shared wuss_fontmenu singleton over resources/bmfonts,
+ * swapping the paragraph font in place),
  * "Spacing" (swaps the letter/word spacing), "Alignment" (Left, Centre or
  * Right per line) and "Colours" (a submenu of "Foreground"/"Background",
  * each retargeting the shared wuss_colourmenu singleton on hover) -- whose
@@ -65,13 +53,6 @@ typedef struct reading_task
                                    * &task->bg_index: which field the open
                                    * colourmenu picks into, set by
                                    * reading_pre_submenu_open */
-  reading_sample_t       samples[READING_MAX_SAMPLES]; /* sorted by leaf */
-  int                 nsamples;   /* used entries of samples[] */
-  wuss_menu_item_t    sample_items[READING_MAX_SAMPLES]; /* "Sample" submenu
-                                   * rows, one per samples[]; per-instance
-                                   * so ticks/selection state can't bleed
-                                   * across two Reading windows */
-  wuss_menu_t         sample_menu;
   wuss_menu_item_t    spacing_items[4]; /* "Spacing" submenu rows; per-
                                    * instance for the same reason -- each
                                    * carries its own tick state */
@@ -85,25 +66,22 @@ typedef struct reading_task
                                    * retargeted per hover in
                                    * reading_pre_submenu_open */
   wuss_menu_t         colours_menu;
-  wuss_menu_item_t    top_items[6]; /* "Font", "Sample", "Spacing",
-                                   * "Alignment", "Colours", "Auto-size",
-                                   * built once the fontmenu
-                                   * exists so items[0].submenu can borrow
-                                   * its live wuss_menu_t */
+  wuss_menu_item_t    top_items[5]; /* "Font", "Spacing", "Alignment",
+                                   * "Colours", "Auto-size", built once the
+                                   * fontmenu exists so items[0].submenu can
+                                   * borrow its live wuss_menu_t */
   wuss_menu_t         top_menu;   /* root menu passed to wuss_menu_open */
   wuss_menu_handle_t  menu_handle; /* chain handle from the last
                                    * wuss_menu_open, for the _live tick calls
                                    * when an ADJUST pick keeps the chain
                                    * open; NULL if closed */
-  int                 sample;     /* index into samples[] currently shown,
-                                   * or -1 before the first is loaded */
   char               *text;       /* owned; what reading_redraw lays out and
-                                   * draws: samples[sample]'s file contents,
-                                   * stripped of Markdown markers if
-                                   * samples[sample].markdown is set */
+                                   * draws: the dropped file's contents,
+                                   * stripped of Markdown markers if it is
+                                   * ".md"; NULL until the first DataLoad */
   reading_span_t        *markdown_spans; /* owned array of styled runs into
                                    * text, from reading__markdown_parse; NULL
-                                   * when the current sample isn't
+                                   * when the current file isn't
                                    * Markdown */
   int                 markdown_nspans; /* length of markdown_spans */
   int                 spacing_idx; /* index into reading_spacing_presets[]
@@ -131,10 +109,10 @@ reading_task_t;
 
 wuss_window_fn_t reading_handle;
 
-/* create the Reading window against the given wuss instance; the font
- * picker loads bmfonts from wuss_get_resources(wuss)/resources/bmfonts/
- * <family>/<style>.png. if out is non-NULL, the task block is also returned through
- * it */
+/* create an empty Reading window against the given wuss instance; it shows
+ * text once a file is dropped on it. the font picker loads bmfonts from
+ * wuss_get_resources(wuss)/resources/bmfonts/<family>/<style>.png. if out is
+ * non-NULL, the task block is also returned through it */
 result_t reading_create(wuss_t *wuss, reading_task_t **out);
 
 /* install the icon bar app that opens Reading windows on demand */

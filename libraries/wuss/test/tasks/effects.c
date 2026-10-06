@@ -15,7 +15,6 @@
 #include "framebuf/effects.h"
 #include "framebuf/tonemap.h"
 #include "io/filetype.h"
-#include "io/namelist.h"
 #include "io/path.h"
 #include "wuss/menu.h"
 #include "wuss/menu-desc.h"
@@ -23,8 +22,6 @@
 #include "effects.h"
 #include "taskapp.h"
 #include "common.h"
-
-#define EFFECTS_EXT      ".png"
 
 static const int g_amounts[EFFECTS_NAMOUNTS] = { 2, 4, 8, 16, 32, 48 };
 
@@ -37,6 +34,9 @@ static result_t effects_apply(effects_task_t *ec)
   tonemap_t     *map;
   tonemap_spec_t spec;
   int            amount;
+
+  if (ec->source.base == NULL)
+    return result_OK;
 
   amount = g_amounts[ec->amount];
 
@@ -107,6 +107,8 @@ static result_t effects_saveas_save(const char *path, void *opaque)
   effects_task_t *ec;
 
   ec = opaque;
+  if (ec->result.base == NULL)
+    return result_BAD_ARG; /* nothing loaded yet; nothing to save */
 
   return bitmap_save_png(&ec->result, path);
 }
@@ -116,51 +118,43 @@ static void effects_saveas_name(effects_task_t *ec)
 {
   char leafname[EFFECTS_MAX_NAME_LEN + 16];
 
-  snprintf(leafname, sizeof(leafname), "%s-effects.png", ec->names[ec->index]);
+  snprintf(leafname, sizeof(leafname), "%s-effects.png", ec->name);
   wuss_saveas_set_leafname(ec->saveas, leafname);
 }
 
-/* Load names[index] and re-apply, resizing the window to fit. */
-static result_t effects_show(effects_task_t *ec, int index)
+/* Load the PNG at path and re-apply, resizing the window to fit. A load
+ * failure keeps the current image and is returned. */
+static result_t effects_show(effects_task_t *ec, const char *path)
 {
-  result_t    rc;
-  const char *filename;
-  bitmap_t    next;
-  size2d_t    sz;
+  result_t rc;
+  bitmap_t next;
+  char     name[EFFECTS_MAX_NAME_LEN];
 
-  if (index < 0 || index >= ec->nnames)
-    return result_OK;
+  if (!path_leaf_strip_ext(path_leaf(path), ".png", name, sizeof(name)))
+    return result_BAD_ARG;
 
-  filename = pathf("%s/resources/images/%s.png", wuss_get_resources(ec->wuss),
-                   ec->names[index]);
-
-  rc = load_png_deep(&next, filename, pixelfmt_rgbx8888);
+  rc = load_png_deep(&next, path, pixelfmt_rgbx8888);
   if (rc != result_OK)
   {
-    logf_warning("effects: skipping \"%s\" (rc=0x%X)", filename, rc);
-    return result_OK; /* keep showing the current image */
+    logf_warning("effects: cannot load \"%s\" (rc=0x%X)", path, rc);
+    return rc;
   }
 
   free(ec->source.base);
   ec->source = next;
-  ec->index  = index;
+  strcpy(ec->name, name);
   effects_saveas_name(ec);
 
   rc = effects_rebuild(ec);
   if (rc != result_OK)
     return rc;
 
-  if (ec->window == NULL)
-    return result_OK;
-
-  sz.w = ec->source.size.w;
-  sz.h = ec->source.size.h;
-
-  rc = wuss_window_resize(ec->window, sz);
+  rc = wuss_window_resize(ec->window, ec->source.size);
   if (rc != result_OK)
     return rc;
 
-  return wuss_window_set_doc(ec->window, sz);
+  wuss_window_invalidate_visible(ec->window);
+  return wuss_window_set_doc(ec->window, ec->source.size);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -172,8 +166,6 @@ result_t effects_create(wuss_t *wuss, effects_task_t **out)
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   filetype_t       png_type;
-  const char      *resources;
-  const char      *path;
   size2d_t         sz;
   int              i;
 
@@ -215,61 +207,25 @@ result_t effects_create(wuss_t *wuss, effects_task_t **out)
   WUSS_MENU_TITLE(task->amount_menu, "Amount", task->amount_items,
                   NELEMS(task->amount_items));
 
-  resources = wuss_get_resources(wuss);
-  rc = namelist_scan(pathf("%s/resources/images", resources), EFFECTS_EXT,
-                     task->names[0], sizeof(task->names[0]),
-                     EFFECTS_MAX_NAMES, 0 /* unsorted */, &task->nnames);
-  if (rc == result_OK && task->nnames == 0)
-    rc = result_BAD_ARG; /* no PNGs found under resources/images */
-  if (rc != result_OK)
-  {
-    free(task);
-    return rc;
-  }
-
-  for (i = 0; i < task->nnames; i++)
-    WUSS_MENU_ITEM(task->load_items, i, task->names[i], wuss_MENU_ITEM_NONE);
-  WUSS_MENU_TITLE(task->load_menu, "Load", task->load_items, task->nnames);
-
-  path = pathf("%s/resources/images/%s.png", resources, task->names[0]);
-  rc = load_png_deep(&task->source, path, pixelfmt_rgbx8888);
-  if (rc != result_OK)
-  {
-    free(task);
-    return rc;
-  }
-
-  rc = effects_rebuild(task);
-  if (rc != result_OK)
-  {
-    free(task->source.base);
-    free(task->result.base);
-    free(task);
-    return rc;
-  }
-
   delegate_desc.handle    = effects_handle;
   delegate_desc.task_data = task;
   delegate_desc.name      = "effects";
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
   {
-    free(task->source.base);
-    free(task->result.base);
     free(task);
     return rc;
   }
   task->delegate = delegate;
   /* No autoclose: QUIT is delivered at wuss_destroy instead. */
 
-  sz.w = task->source.size.w;
-  sz.h = task->source.size.h;
+  sz = SIZE2D(EFFECTS_EMPTYSZ, EFFECTS_EMPTYSZ);
 
   rc = wuss_window_create_placed(delegate,
                                  sz,
                                  "Effects",
                                  wuss_WINDOW_DEFAULT,
-                                 wuss_NO_BACKDROP,
+                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                                  sz,
                                  SIZE2D(32, 32),
                                  &task->window);
@@ -287,7 +243,6 @@ result_t effects_create(wuss_t *wuss, effects_task_t **out)
     wuss_task_destroy(delegate);
     return rc;
   }
-  effects_saveas_name(task);
 
   if (out)
     *out = task;
@@ -301,7 +256,9 @@ result_t effects_app_create(wuss_t *wuss)
   {
     "Effects",
     "Apply effects to PNGs",
-    (taskapp_create_fn_t) effects_create
+    (taskapp_create_fn_t) effects_create,
+    (taskapp_data_load_fn_t) effects_show,
+    true
   };
 
   return taskapp_install(wuss, &desc);
@@ -329,7 +286,10 @@ static result_t effects_redraw(const wuss_event_t *event, void *task_data)
 
   scr    = event->data.redraw.scr;
   bounds = event->data.redraw.bounds;
-  bm     = ec->show_original ? &ec->source : &ec->result;
+  if (ec->source.base == NULL)
+    return result_OK; /* the backdrop shows */
+
+  bm = ec->show_original ? &ec->source : &ec->result;
 
   return screen_copy_bitmap_dithered(scr,
                                      bounds->x0 - event->data.redraw.scroll.x,
@@ -346,13 +306,12 @@ static result_t effects_open_menu(effects_task_t *ec)
   wuss_menu_t *m;
   int          i;
 
-  rc = wuss_menu_create_from_desc(&m, "Effects, Effect, Amount, Load, |Save PNG");
+  rc = wuss_menu_create_from_desc(&m, "Effects, Effect, Amount, |Save PNG");
   if (rc != result_OK)
     return rc;
 
   wuss_menu_tick_exclusive(&ec->effect_menu, ec->effect);
   wuss_menu_tick_exclusive(&ec->amount_menu, ec->amount);
-  wuss_menu_tick_exclusive(&ec->load_menu, ec->index);
 
   for (i = 0; i < m->nitems; i++)
   {
@@ -369,8 +328,6 @@ static result_t effects_open_menu(effects_task_t *ec)
       it->submenu = &ec->effect_menu;
     else if (strcmp(it->text, "Amount") == 0)
       it->submenu = &ec->amount_menu;
-    else if (strcmp(it->text, "Load") == 0)
-      it->submenu = &ec->load_menu;
     else
       continue;
     it->flags |= wuss_MENU_ITEM_BORROWED_SUBMENU;
@@ -409,8 +366,6 @@ result_t effects_handle(wuss_window_t      *window,
       wuss_window_invalidate_visible(ec->window);
       return result_OK;
     }
-    if (event->data.mouse.button & wuss_BUTTON_ADJUST)
-      return effects_show(ec, (ec->index + 1) % ec->nnames);
     if (event->data.mouse.button & wuss_BUTTON_MENU)
       return effects_open_menu(ec);
     return result_OK;
@@ -418,14 +373,6 @@ result_t effects_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_SELECT:
     menu  = event->data.menu_select.menu;
     index = event->data.menu_select.index;
-    if (menu == &ec->load_menu)
-    {
-      rc = effects_show(ec, index);
-      wuss_menu_tick_exclusive(&ec->load_menu, ec->index);
-      wuss_menu_tick_exclusive_live(ec->menu_handle, &ec->load_menu,
-                                    ec->index);
-      return rc;
-    }
     if (menu == ec->menu && ec->menu->items[index].window ==
         wuss_saveas_window(ec->saveas))
       return wuss_saveas_open(ec->saveas); /* a click, not a hover */
@@ -447,6 +394,13 @@ result_t effects_handle(wuss_window_t      *window,
     rc = effects_apply(ec);
     wuss_window_invalidate_visible(ec->window);
     return rc;
+
+  case wuss_EVENT_MESSAGE:
+    if (ec->window == NULL || window != ec->window)
+      return result_OK;
+    return taskapp_window_data_load(ec->wuss, ec->delegate, ec,
+                                    (taskapp_data_load_fn_t) effects_show,
+                                    event->data.message);
 
   case wuss_EVENT_MENU_CLOSED:
     ec->menu_handle = NULL; /* wuss closed the chain under us */

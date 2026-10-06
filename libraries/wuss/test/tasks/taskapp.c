@@ -98,6 +98,28 @@ static result_t app_data_load(app_t *app, const wuss_message_t *msg)
   return result_OK;
 }
 
+result_t taskapp_window_data_load(wuss_t                *wuss,
+                                  wuss_task_t           *delegate,
+                                  void                  *instance,
+                                  taskapp_data_load_fn_t load,
+                                  const wuss_message_t  *msg)
+{
+  char   path[DPTLIB_MAXPATH];
+  size_t len;
+
+  if (msg->action != wuss_MESSAGE_DATA_LOAD)
+    return result_OK;
+
+  len = MIN(msg->size, sizeof(path) - 1);
+  memcpy(path, msg->data, len);
+  path[len] = '\0';
+
+  if (load(instance, path) == result_OK)
+    (void) wuss_acknowledge(wuss, delegate, msg);
+
+  return result_OK;
+}
+
 static result_t app_menu_open(app_t *app)
 {
   const wuss_proginfo_desc_t desc =

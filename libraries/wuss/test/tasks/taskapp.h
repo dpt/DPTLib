@@ -8,6 +8,7 @@
 #include <stdbool.h>
 
 #include "base/result.h"
+#include "wuss/message.h"
 #include "wuss/wuss.h"
 
 /* Every demo task's X_create shares one shape: (wuss_t *, X_task_t **). The
@@ -45,6 +46,17 @@ taskapp_desc_t;
  * Does nothing, returning result_OK, if desc is already installed. Without
  * the icon bar, calls desc->create at once instead. */
 result_t taskapp_install(wuss_t *wuss, const taskapp_desc_t *desc);
+
+/* A DataLoad on an instance's window: load the file it names through load
+ * and acknowledge it. A file that will not load is not acknowledged, so the
+ * send bounces to the sender. Messages of any other action are ignored. Call
+ * it from the instance's wuss_EVENT_MESSAGE handler, after checking the
+ * message is for the instance's main window. */
+result_t taskapp_window_data_load(wuss_t                *wuss,
+                                  wuss_task_t           *delegate,
+                                  void                  *instance,
+                                  taskapp_data_load_fn_t load,
+                                  const wuss_message_t  *msg);
 
 /* Destroy every app whose Quit was picked, with its instances. Call it after
  * wuss_idle, never from inside it: destroying an app takes its child tasks
