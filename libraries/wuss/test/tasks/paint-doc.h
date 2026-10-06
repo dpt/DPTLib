@@ -28,6 +28,12 @@ result_t paintdoc_create(size2d_t size, paintdoc_t **doc);
 /* free a canvas and its undo history. doc may be NULL */
 void paintdoc_destroy(paintdoc_t *doc);
 
+/* replace the canvas with the PNG at path, resized to match it. an image with
+ * transparency is composited over white. discards the undo history, as it
+ * could not be applied to a canvas of another size. on any failure the canvas
+ * and its history are left as they were */
+result_t paintdoc_load_png(paintdoc_t *doc, const char *path);
+
 /* the canvas pixels, for drawing to a window. owned by doc: valid until the
  * next paintdoc_undo or paintdoc_destroy */
 const bitmap_t *paintdoc_bitmap(const paintdoc_t *doc);

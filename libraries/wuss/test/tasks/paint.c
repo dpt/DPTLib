@@ -11,6 +11,7 @@
 #include "base/utils.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "io/filetype.h"
 
 #include "paint.h"
 #include "taskapp.h"
@@ -134,12 +135,47 @@ static result_t paint_toolbox_icons(paint_task_t *pt)
   return result_OK;
 }
 
+/* wuss_saveas_save_fn_t: opaque is the paint_task_t */
+static result_t paint_saveas_save(const char *path, void *opaque)
+{
+  paint_task_t *pt;
+
+  pt = opaque;
+
+  return bitmap_save_png(paintdoc_bitmap(pt->doc), path);
+}
+
+/* load the PNG at path as the canvas, shrinking the window to the image if
+ * that is smaller than the usual view. A failure keeps the current canvas */
+static result_t paint_load(paint_task_t *pt, const char *path)
+{
+  result_t rc;
+  size2d_t size;
+
+  pt->held = 0; /* abandon any stroke in progress */
+
+  rc = paintdoc_load_png(pt->doc, path);
+  if (rc != result_OK)
+    return rc;
+
+  size = paintdoc_bitmap(pt->doc)->size;
+
+  rc = wuss_window_resize(pt->window,
+                          SIZE2D(MIN(size.w, PAINT_VIEW_W),
+                                 MIN(size.h, PAINT_VIEW_H)));
+  if (rc != result_OK)
+    return rc;
+
+  return wuss_window_set_doc(pt->window, size);
+}
+
 result_t paint_create(wuss_t *wuss, paint_task_t **out)
 {
   result_t         rc;
   paint_task_t    *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  filetype_t       png_type;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -209,8 +245,21 @@ result_t paint_create(wuss_t *wuss, paint_task_t **out)
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PAINT_MENU_UNDO, "Undo",
                           wuss_MENU_ITEM_NONE, "^Z");
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PAINT_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_DASHED, "^S");
   WUSS_MENU_TITLE(task->menu, "Paint", task->menu_items,
                   NELEMS(task->menu_items));
+
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type, "paint.png",
+                          paint_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate); /* closes both windows, QUIT frees the block */
+    return rc;
+  }
+  /* hover opens the Save As dialogue as a submenu */
+  task->menu_items[PAINT_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   /* both windows up: from here, closing the last one reaps the task and its
    * wuss_EVENT_QUIT frees task_data */
@@ -228,7 +277,8 @@ result_t paint_app_create(wuss_t *wuss)
   {
     "Paint",
     "Basic painting",
-    (taskapp_create_fn_t) paint_create
+    (taskapp_create_fn_t) paint_create,
+    (taskapp_data_load_fn_t) paint_load
   };
 
   return taskapp_install(wuss, &desc);
@@ -236,6 +286,7 @@ result_t paint_app_create(wuss_t *wuss)
 
 void paint_destroy(paint_task_t *task)
 {
+  wuss_saveas_destroy(task->saveas);
   paintdoc_destroy(task->doc);
   free(task);
 }
@@ -606,7 +657,17 @@ result_t paint_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_SELECT:
     if (event->data.menu_select.index == PAINT_MENU_UNDO)
       return paint_undo(pt);
+    /* clicking the row, rather than hovering, shows Save As standalone */
+    if (event->data.menu_select.index == PAINT_MENU_SAVE)
+      return wuss_saveas_open(pt->saveas);
     return result_OK;
+
+  case wuss_EVENT_MESSAGE:
+    if (pt->window == NULL || window != pt->window)
+      return result_OK;
+    return taskapp_window_data_load(pt->wuss, pt->delegate, pt,
+                                    (taskapp_data_load_fn_t) paint_load,
+                                    event->data.message);
 
   case wuss_EVENT_MENU_CLOSED:
     pt->menu_handle = NULL;
