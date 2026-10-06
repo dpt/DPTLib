@@ -44,6 +44,7 @@ typedef struct chars_task
   int                 cols;        /* grid width in cells: a power of two
                                     * that fits the window */
   wuss_gridview_t    *gv;          /* lays out and draws the cells */
+  int                 rows;        /* rows of gv's grid, for the grid lines */
   int                 offset;      /* index of gv's first item within the page:
                                     * the rows above it hold no glyphs */
   colour_t            fg, mg, bg;
