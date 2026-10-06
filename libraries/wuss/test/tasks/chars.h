@@ -35,6 +35,8 @@ typedef struct chars_task
                                     * an ADJUST pick that keeps it open */
   bmfont_t           *font;        /* currently shown; == fonts[current]
                                     * once loaded */
+  bmfont_t           *index_font;  /* "Tiny Regular" for the cell numbers, or
+                                    * NULL to use the wuss system font */
   bmfont_t          **fonts;       /* one slot per menu item, lazily loaded */
   int                 nfonts;      /* length of fonts[]; == menu item count */
   int                 current;     /* index into fonts[], or -1 if the

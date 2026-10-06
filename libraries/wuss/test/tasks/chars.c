@@ -47,6 +47,8 @@ enum
 
 #define CHARS_SAVE_NAME "chars.png" /* Save As's initial leafname */
 
+#define CHARS_INDEX_FONT "Tiny Regular" /* the font for the cell numbers */
+
 /* ----------------------------------------------------------------------- */
 
 /* the shared fontmenu singleton, retargeted at task->wuss's bmfonts dir --
@@ -109,8 +111,17 @@ static int chars_page_has_glyphs(bmfont_t *font, unsigned long page)
   return 0;
 }
 
+/* the font the cell numbers are drawn in */
+static bmfont_t *chars_index_font(const chars_task_t *task)
+{
+  if (task->index_font != NULL)
+    return task->index_font;
+
+  return wuss_get_font(task->wuss);
+}
+
 /* cell size at the given font's metrics. Each cell stacks the index (drawn
- * in the wuss system font) above the glyph. */
+ * in the index font) above the glyph. */
 static void chars_cell_size(chars_task_t *task,
                             bmfont_t     *font,
                             int          *cell_w,
@@ -119,7 +130,7 @@ static void chars_cell_size(chars_task_t *task,
   int fw, fh, ifw, ifh;
 
   bmfont_get_info(font, &fw, &fh, NULL, NULL);
-  bmfont_get_info(wuss_get_font(task->wuss), &ifw, &ifh, NULL, NULL);
+  bmfont_get_info(chars_index_font(task), &ifw, &ifh, NULL, NULL);
   *cell_w = MAX(fw, ifw * 3) + CHARS_PAD * 2;
   *cell_h = ifh + fh + CHARS_PAD * 3;
 }
@@ -193,20 +204,15 @@ static void chars_relayout(chars_task_t *task, const wuss_event_t *event)
     chars_sync(task);
 }
 
-/* load fonts[idx] if not already in hand; returns it or NULL on failure.
- * name is the menu label for that row -- "Family Style". */
-static bmfont_t *chars_load_font(chars_task_t *task,
-                                 int           idx,
-                                 const char   *name)
+/* acquire the font labelled name -- "Family Style" -- from the font cache;
+ * returns it or NULL on failure */
+static bmfont_t *chars_load_named(chars_task_t *task, const char *name)
 {
   result_t    rc;
   const char *resources;
   const char *dir;
   char        filename[512];
   bmfont_t   *font;
-
-  if (task->fonts[idx] != NULL)
-    return task->fonts[idx];
 
   resources = wuss_get_resources(task->wuss);
   dir       = pathf("%s/resources/bmfonts", resources);
@@ -219,8 +225,19 @@ static bmfont_t *chars_load_font(chars_task_t *task,
   if (rc != result_OK)
     return NULL;
 
-  task->fonts[idx] = font;
   return font;
+}
+
+/* load fonts[idx] if not already in hand; returns it or NULL on failure.
+ * name is the menu label for that row -- "Family Style". */
+static bmfont_t *chars_load_font(chars_task_t *task,
+                                 int           idx,
+                                 const char   *name)
+{
+  if (task->fonts[idx] == NULL)
+    task->fonts[idx] = chars_load_named(task, name);
+
+  return task->fonts[idx];
 }
 
 /* the grid's cell metrics scale with the font and its row count with the
@@ -459,6 +476,9 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   wuss_task_set_autoclose(delegate, 1);
   task->delegate = delegate;
 
+  /* optional: without it the numbers use the wuss system font */
+  task->index_font = chars_load_named(task, CHARS_INDEX_FONT);
+
   /* 16 columns may not fit a small screen; OPEN is not sent at create, so cap
    * here and rewrap against the real (screen-capped) content size after */
   chars_cell_size(task, font, &cell_w, &cell_h);
@@ -546,6 +566,8 @@ void chars_destroy(chars_task_t *task)
     if (task->fonts[i] != NULL)
       bmfontcache_release(wuss_get_font_cache(task->wuss), task->fonts[i]);
   free(task->fonts);
+  if (task->index_font != NULL)
+    bmfontcache_release(wuss_get_font_cache(task->wuss), task->index_font);
 
   wuss_gridview_destroy(task->gv);
   wuss_saveas_destroy(task->saveas);
@@ -562,8 +584,8 @@ static void chars_draw_cell(wuss_gridview_t    *gv,
 {
   chars_task_t  *cc;
   screen_t      *scr;
-  bmfont_t      *sysfont;
-  int            font_ascent, sysfont_height, sysfont_ascent;
+  bmfont_t      *idxfont;
+  int            font_ascent, idxfont_height, idxfont_ascent;
   int            cell_w, cell_h, x, y, len;
   unsigned long  cp;
   char           label[4];
@@ -578,9 +600,9 @@ static void chars_draw_cell(wuss_gridview_t    *gv,
   cc  = opaque;
   scr = event->data.redraw.scr;
 
-  sysfont = wuss_get_font(cc->wuss);
+  idxfont = chars_index_font(cc);
   bmfont_get_info(cc->font, NULL, NULL, &font_ascent, NULL);
-  bmfont_get_info(sysfont, NULL, &sysfont_height, &sysfont_ascent, NULL);
+  bmfont_get_info(idxfont, NULL, &idxfont_height, &idxfont_ascent, NULL);
 
   x      = screen_box->x0;
   y      = screen_box->y0;
@@ -594,16 +616,16 @@ static void chars_draw_cell(wuss_gridview_t    *gv,
 
   snprintf(label, 4, "%02lX", cp & 0xFF);
   pos.x = x + CHARS_PAD;
-  pos.y = y + CHARS_PAD + sysfont_ascent;
-  wuss_text_draw(cc->wuss, 0, scr, label, (int) strlen(label), cc->mg, cc->bg,
-                 &pos, NULL);
+  pos.y = y + CHARS_PAD + idxfont_ascent;
+  bmfont_draw(idxfont, scr, label, (int) strlen(label), cc->mg, cc->bg, NULL,
+              &pos, NULL);
 
   if (bmfont_lookup(cc->font, cp) < 0)
     return; /* no glyph for this codepoint: leave the cell blank */
 
   len   = utf8_encode(cp, utf8);
   pos.x = x + CHARS_PAD;
-  pos.y = y + CHARS_PAD * 2 + sysfont_height + font_ascent;
+  pos.y = y + CHARS_PAD * 2 + idxfont_height + font_ascent;
   screen_draw_dashed_line(scr, x + CHARS_PAD, pos.y, x + cell_w - 1 - CHARS_PAD,
                           pos.y, 1, 1, cc->mg);
   bmfont_draw(cc->font, scr, utf8, len, cc->fg, cc->bg, NULL, &pos, NULL);
