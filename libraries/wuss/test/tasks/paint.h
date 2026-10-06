@@ -9,6 +9,7 @@
 #include "geom/point.h"
 #include "wuss/icon.h"
 #include "wuss/icon-spec.h"
+#include "wuss/menu.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
 
@@ -28,6 +29,13 @@ typedef enum paint_tool
   paint_TOOL__COUNT
 }
 paint_tool_t;
+
+/* the Menu click menu's rows */
+enum
+{
+  PAINT_MENU_UNDO,
+  PAINT_MENU__COUNT
+};
 
 /* a 640x480 white canvas in a scrollable window, with a small toolbox window
  * beside it. Select paints with the foreground colour and Adjust with the
@@ -50,6 +58,9 @@ typedef struct paint_task
   wuss_icon_t       *tool_icons[paint_TOOL__COUNT];
   wuss_icon_t       *fill_icon;
   wuss_slider_row_t  size_row;
+  wuss_menu_handle_t menu_handle; /* live only between open and a pick */
+  wuss_menu_item_t   menu_items[PAINT_MENU__COUNT];
+  wuss_menu_t        menu;
   char               size_text[WUSS_SLIDER_ROW_BUF];
 }
 paint_task_t;
