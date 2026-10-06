@@ -8,7 +8,6 @@
 #include "framebuf/bitmap.h"
 #include "io/dirlist.h"
 #include "io/path.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/gadget/gridview.h"
 #include "wuss/iconbar.h"
 #include "wuss/menu.h"
@@ -19,11 +18,14 @@
  * this ever feels cramped. */
 #define FILER_MAX_WINDOWS 16
 
-/* Filer menu rows. Download only exists in the browser build, where saved
- * files otherwise stay trapped in Emscripten's in-memory filesystem. */
+/* Filer menu rows, which act on the window the menu was opened over.
+ * Download only exists in the browser build, where saved files
+ * otherwise stay trapped in Emscripten's in-memory filesystem. */
 enum
 {
-  FILER_MENU_INFO,
+  FILER_MENU_SELECT_ALL,
+  FILER_MENU_CLEAR_SELECTION,
+  FILER_MENU_OPEN_PARENT,
 #ifdef __EMSCRIPTEN__
   FILER_MENU_DOWNLOAD,
 #endif

@@ -6954,6 +6954,13 @@ StringSetOK: ;
     if (activated != -1) goto GridViewFail;
     wuss_gridview_set_drag(gv, NULL);
 
+    /* select all, then clear */
+    wuss_gridview_select_all(gv);
+    if (wuss_gridview_selected_count(gv) != (int) NELEMS(gridview_test_labels))
+      goto GridViewFail;
+    wuss_gridview_clear_selection(gv);
+    if (wuss_gridview_selected_count(gv) != 0) goto GridViewFail;
+
     wuss_gridview_destroy(gv);
 
     reap_test_tasks();

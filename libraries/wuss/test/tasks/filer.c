@@ -306,11 +306,12 @@ result_t filer_create(wuss_t *wuss, filer_task_t **out)
   task->wuss     = wuss;
   task->nwindows = 0;
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, FILER_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo
-                                * singleton just before open, in
-                                * filer_menu_open */
+  WUSS_MENU_ITEM(task->menu_items, FILER_MENU_SELECT_ALL, "Select all",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->menu_items, FILER_MENU_CLEAR_SELECTION,
+                 "Clear selection", wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->menu_items, FILER_MENU_OPEN_PARENT, "Open parent",
+                 wuss_MENU_ITEM_NONE);
 #ifdef __EMSCRIPTEN__
   WUSS_MENU_ITEM(task->menu_items, FILER_MENU_DOWNLOAD, "Download",
                  wuss_MENU_ITEM_NONE);
@@ -427,28 +428,65 @@ static int filer_download_selection(const filer_window_t *fw, int download)
 }
 #endif
 
+/* the directory holding path, in out (capacity cap). Returns zero if path is
+ * the root or has no parent to give. */
+static int filer_parent_path(const char *path, char *out, size_t cap)
+{
+  const char *slash;
+  size_t      len;
+
+  slash = strrchr(path, '/');
+  if (slash == NULL || (slash == path && path[1] == '\0'))
+    return 0;
+
+  len = (size_t) (slash - path);
+  if (len == 0)
+    len = 1; /* the parent of "/a" is "/" */
+
+  return snprintf(out, cap, "%.*s", (int) len, path) < (int) cap;
+}
+
+/* shade or unshade a menu row, on screen too if the menu is open */
+static void filer_menu_enable(filer_task_t *task, int row, int enabled)
+{
+  if (enabled)
+    task->menu_items[row].flags &= ~wuss_MENU_ITEM_DISABLED;
+  else
+    task->menu_items[row].flags |= wuss_MENU_ITEM_DISABLED;
+
+  if (task->menu_handle != NULL)
+    wuss_menu_disable_item_live(task->menu_handle, &task->menu, row, !enabled);
+}
+
+/* set which rows apply to the window the menu was opened over, from its
+ * listing and selection. Called as the menu opens and again after a pick that
+ * leaves it open (ADJUST) and changes the selection. */
+static void filer_menu_update(filer_task_t *task)
+{
+  filer_window_t *fw;
+  char            parent[DPTLIB_MAXPATH];
+  int             count;
+  int             selected;
+
+  fw       = filer_find_by_window(task, task->menu_window);
+  count    = fw != NULL ? dirlist_count(fw->listing) : 0;
+  selected = fw != NULL ? wuss_gridview_selected_count(fw->gridview) : 0;
+
+  filer_menu_enable(task, FILER_MENU_SELECT_ALL, selected < count);
+  filer_menu_enable(task, FILER_MENU_CLEAR_SELECTION, selected > 0);
+  filer_menu_enable(task, FILER_MENU_OPEN_PARENT,
+                    fw != NULL &&
+                    filer_parent_path(fw->path, parent, sizeof(parent)));
+#ifdef __EMSCRIPTEN__
+  filer_menu_enable(task, FILER_MENU_DOWNLOAD,
+                    fw != NULL && filer_download_selection(fw, 0) > 0);
+#endif
+}
+
 static result_t filer_menu_open(filer_task_t *task, wuss_window_t *window)
 {
-  static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Filer", "Directory browser, save target");
-
-#ifdef __EMSCRIPTEN__
-  filer_window_t *fw;
-#endif
-
-  wuss_proginfo_set_desc(&desc);
-  task->menu_items[FILER_MENU_INFO].window =
-    wuss_proginfo_window(task->delegate);
-
   task->menu_window = window;
-
-#ifdef __EMSCRIPTEN__
-  fw = filer_find_by_window(task, window);
-  if (fw != NULL && filer_download_selection(fw, 0) > 0)
-    task->menu_items[FILER_MENU_DOWNLOAD].flags &= ~wuss_MENU_ITEM_DISABLED;
-  else
-    task->menu_items[FILER_MENU_DOWNLOAD].flags |= wuss_MENU_ITEM_DISABLED;
-#endif
+  filer_menu_update(task);
 
   return wuss_menu_open_at_pointer(task->delegate, &task->menu,
                                    &task->menu_handle);
@@ -556,40 +594,52 @@ result_t filer_handle(wuss_window_t      *window,
     return filer_open_path(task, filer_root());
 
   case wuss_EVENT_MENU_SELECT:
+  {
+    filer_window_t *fw;
+    char            parent[DPTLIB_MAXPATH];
+
     if (event->data.menu_select.menu != &task->menu)
       return result_OK;
-#ifdef __EMSCRIPTEN__
-    if (event->data.menu_select.index == FILER_MENU_DOWNLOAD)
-    {
-      filer_window_t *fw;
 
-      fw = filer_find_by_window(task, task->menu_window);
+    fw = filer_find_by_window(task, task->menu_window);
+    switch (event->data.menu_select.index)
+    {
+    case FILER_MENU_SELECT_ALL:
+      if (fw != NULL)
+      {
+        wuss_gridview_select_all(fw->gridview);
+        filer_menu_update(task);
+      }
+      return result_OK;
+
+    case FILER_MENU_CLEAR_SELECTION:
+      if (fw != NULL)
+      {
+        wuss_gridview_clear_selection(fw->gridview);
+        filer_menu_update(task);
+      }
+      return result_OK;
+
+    case FILER_MENU_OPEN_PARENT:
+      if (fw != NULL && filer_parent_path(fw->path, parent, sizeof(parent)))
+        return filer_open_path(task, parent);
+      return result_OK;
+
+#ifdef __EMSCRIPTEN__
+    case FILER_MENU_DOWNLOAD:
       if (fw != NULL)
         (void) filer_download_selection(fw, 1);
       return result_OK;
-    }
 #endif
-    return filer_open_path(task, filer_root());
+
+    default:
+      return result_OK;
+    }
+  }
 
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == task->menu_items[FILER_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_MESSAGE:
     return filer_message(task, window, event);
