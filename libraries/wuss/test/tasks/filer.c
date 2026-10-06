@@ -150,6 +150,7 @@ static void filer_activate(wuss_gridview_t *gridview,
       (int) sizeof(child))
     return;
 
+  wuss_gridview_deselect(gridview, index);
   (void) filer_open_path(fw->owner, child);
 }
 
