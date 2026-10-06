@@ -16,7 +16,7 @@ Filer: 'open' directory icon variant.
 
 PostScript style renderer.
 
-Chars: Clicking on a character inserts it into the keyboard buffer.
+Chars: Clicking on a character inserts it into the keyboard buffer. Smaller numeric font?
 
 Wussmoji. Would need colour fonts.
 
@@ -29,7 +29,13 @@ Tiled backdrop generation.
 
 Configure: CRT shader params.
 
-Shift-TAB in writables - what should that do?
+System iconpool
+
+Private iconpool
+
+Task dirs
+
+
 
 
 
@@ -120,5 +126,4 @@ NO STRONG DEPS (do any time)
 NOTES
 
 - Inspirations: RISC OS, Compo/PCA, Classic Mac OS, Kai's Power Tools, Asprite, Reason racks, Blender, Infinity Textures, p5.js & co.
-
 
