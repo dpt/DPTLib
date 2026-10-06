@@ -116,7 +116,8 @@ result_t viewing_app_create(wuss_t *wuss)
     "Viewing",
     "View PNG images",
     (taskapp_create_fn_t) viewing_create,
-    (taskapp_data_load_fn_t) viewing_show
+    (taskapp_data_load_fn_t) viewing_show,
+    true
   };
 
   return taskapp_install(wuss, &desc);
