@@ -68,7 +68,7 @@ result_t app_set_mode(size2d_t size, int depth);
 int app_get_depth(void);
 
 /* Turn the software pointer on or off, hiding or showing the OS pointer to
- * match. Returns whether it is now on: false if resources/wuss/pointer.png
+ * match. Returns whether it is now on: false if the "pointer" icon pool entry
  * failed to load or the frontend keeps its own pointer (RISC OS). */
 bool app_set_pointer(bool on);
 
