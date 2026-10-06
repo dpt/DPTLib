@@ -43,8 +43,10 @@ void filer_set_root(const char *root);
  * icon both open (or, if already open, bring to the front) a window on the
  * root directory (see filer_set_root); each subsequent window is opened by
  * double-clicking a directory entry in an existing window, one window per
- * path, never duplicated. Double-clicking a file does nothing (v1 has no
- * load side).
+ * path, never duplicated. Double-clicking a file does nothing. Dragging a
+ * file out of a window starts a core drag; when it ends over a window of
+ * another task, the Filer sends that window a wuss_MESSAGE_DATA_LOAD whose
+ * payload is the file's full path as a NUL-terminated string.
  *
  * Every window is a wuss_gridview_t over an io/dirlist listing of its
  * directory, titled with the directory's full path. As a DataSave drop
@@ -80,6 +82,13 @@ struct filer_task
   const bitmap_t        *glyph_file; /* borrowed from the icon pool */
   const bitmap_t        *glyph_directory;
   const bitmap_t        *glyph_png;
+
+  filer_window_t        *press_fw;    /* window of the file pressed, or NULL;
+                                       * the press may become a drag */
+  int                    press_index; /* the pressed file's item index */
+  point_t                press_point; /* its document point */
+  char                   drag_path[DPTLIB_MAXPATH]; /* file being dragged,
+                                       * or "" */
 
   wuss_menu_handle_t     menu_handle;
   wuss_window_t         *menu_window; /* Filer window the menu was opened
