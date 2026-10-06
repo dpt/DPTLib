@@ -7,6 +7,14 @@
 
 #define DPTLIB_MAXPATH 256 /* not ideal */
 
+/* Prefix for scratch files written by tests: /tmp on POSIX, the current
+ * directory elsewhere. */
+#if defined(__riscos) || defined(_WIN32)
+#define DPTLIB_TMPPREFIX ""
+#else
+#define DPTLIB_TMPPREFIX "/tmp/"
+#endif
+
 /**
  * Build a path from a printf-like format string, substituting `%s` from the
  * varargs exactly as printf would, then rewriting the result for the host
