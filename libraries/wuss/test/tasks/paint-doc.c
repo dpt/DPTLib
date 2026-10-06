@@ -191,41 +191,48 @@ box_t paintdoc_undo(paintdoc_t *doc)
 
 /* ----------------------------------------------------------------------- */
 
+void paintdoc_draw_stroke(screen_t *scr,
+                          point_t   a,
+                          point_t   b,
+                          int       width,
+                          colour_t  colour)
+{
+  width = MAX(width, 1);
+
+  if (width == 1)
+  {
+    screen_draw_line(scr, a.x, a.y, b.x, b.y, colour);
+    return;
+  }
+
+  /* a zero-length thick line is a square, not a dab */
+  if (a.x != b.x || a.y != b.y)
+    screen_draw_thick_line(scr, a.x, a.y, b.x, b.y, width, colour);
+  screen_fill_circle(scr, a.x, a.y, width / 2, colour);
+  screen_fill_circle(scr, b.x, b.y, width / 2, colour);
+}
+
 box_t paintdoc_stroke(paintdoc_t *doc,
                       point_t     a,
                       point_t     b,
                       int         width,
                       colour_t    colour)
 {
-  int r;
-
   width = MAX(width, 1);
-  r     = width / 2;
 
-  if (width == 1)
-  {
-    screen_draw_line(&doc->scr, a.x, a.y, b.x, b.y, colour);
-  }
-  else
-  {
-    /* a zero-length thick line is a square, not a dab */
-    if (a.x != b.x || a.y != b.y)
-      screen_draw_thick_line(&doc->scr, a.x, a.y, b.x, b.y, width, colour);
-    screen_fill_circle(&doc->scr, a.x, a.y, r, colour);
-    screen_fill_circle(&doc->scr, b.x, b.y, r, colour);
-  }
+  paintdoc_draw_stroke(&doc->scr, a, b, width, colour);
 
-  return clipped_box(doc, a, b, r);
+  return clipped_box(doc, a, b, width / 2);
 }
 
 /* ----------------------------------------------------------------------- */
 
-box_t paintdoc_rect(paintdoc_t *doc,
-                    point_t     a,
-                    point_t     b,
-                    int         width,
-                    int         fill,
-                    colour_t    colour)
+void paintdoc_draw_rect(screen_t *scr,
+                        point_t   a,
+                        point_t   b,
+                        int       width,
+                        int       fill,
+                        colour_t  colour)
 {
   int x0, y0, w, h, t;
 
@@ -235,20 +242,29 @@ box_t paintdoc_rect(paintdoc_t *doc,
   h  = MAX(a.y, b.y) - y0 + 1;
   t  = MAX(width, 1);
 
-  checkpoint_or_warn(doc);
-
   if (fill || 2 * t >= w || 2 * t >= h)
   {
-    screen_fill_rect(&doc->scr, x0, y0, SIZE2D(w, h), colour);
+    screen_fill_rect(scr, x0, y0, SIZE2D(w, h), colour);
   }
   else
   {
-    screen_fill_rect(&doc->scr, x0, y0, SIZE2D(w, t), colour);
-    screen_fill_rect(&doc->scr, x0, y0 + h - t, SIZE2D(w, t), colour);
-    screen_fill_rect(&doc->scr, x0, y0 + t, SIZE2D(t, h - 2 * t), colour);
-    screen_fill_rect(&doc->scr, x0 + w - t, y0 + t, SIZE2D(t, h - 2 * t),
-                     colour);
+    screen_fill_rect(scr, x0, y0, SIZE2D(w, t), colour);
+    screen_fill_rect(scr, x0, y0 + h - t, SIZE2D(w, t), colour);
+    screen_fill_rect(scr, x0, y0 + t, SIZE2D(t, h - 2 * t), colour);
+    screen_fill_rect(scr, x0 + w - t, y0 + t, SIZE2D(t, h - 2 * t), colour);
   }
+}
+
+box_t paintdoc_rect(paintdoc_t *doc,
+                    point_t     a,
+                    point_t     b,
+                    int         width,
+                    int         fill,
+                    colour_t    colour)
+{
+  checkpoint_or_warn(doc);
+
+  paintdoc_draw_rect(&doc->scr, a, b, width, fill, colour);
 
   return clipped_box(doc, a, b, 0);
 }

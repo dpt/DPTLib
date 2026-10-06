@@ -237,16 +237,67 @@ void paint_destroy(paint_task_t *task)
 
 /* ----------------------------------------------------------------------- */
 
+/* line and rect are rubber-banded: shown on the window, not drawn into the
+ * canvas, until the button is released */
+static int paint_is_rubber_band(const paint_task_t *pt)
+{
+  return pt->tool == paint_TOOL_LINE || pt->tool == paint_TOOL_RECT;
+}
+
+/* the colour a stroke in progress paints: the eraser always uses the
+ * background colour, the others the colour of the button held */
+static colour_t paint_stroke_colour(const paint_task_t *pt)
+{
+  if (pt->tool == paint_TOOL_ERASER || pt->held == wuss_BUTTON_ADJUST)
+    return pt->bg;
+
+  return pt->fg;
+}
+
+/* the canvas box the rubber band at its current size may cover */
+static box_t paint_band_box(const paint_task_t *pt)
+{
+  int   r;
+  box_t box;
+
+  r = pt->size / 2 + 1;
+
+  box.x0 = MIN(pt->anchor.x, pt->last.x) - r;
+  box.y0 = MIN(pt->anchor.y, pt->last.y) - r;
+  box.x1 = MAX(pt->anchor.x, pt->last.x) + r + 1;
+  box.y1 = MAX(pt->anchor.y, pt->last.y) + r + 1;
+
+  return box;
+}
+
 static result_t paint_redraw(paint_task_t *pt, const wuss_event_t *event)
 {
+  result_t     rc;
   const box_t *bounds;
+  screen_t    *scr;
+  point_t      a, b;
+  int          ox, oy;
 
+  scr    = event->data.redraw.scr;
   bounds = event->data.redraw.bounds;
+  ox     = bounds->x0 - event->data.redraw.scroll.x;
+  oy     = bounds->y0 - event->data.redraw.scroll.y;
 
-  return screen_copy_bitmap(event->data.redraw.scr,
-                            bounds->x0 - event->data.redraw.scroll.x,
-                            bounds->y0 - event->data.redraw.scroll.y,
-                            paintdoc_bitmap(pt->doc));
+  rc = screen_copy_bitmap(scr, ox, oy, paintdoc_bitmap(pt->doc));
+
+  if (pt->held && paint_is_rubber_band(pt))
+  {
+    a = POINT(pt->anchor.x + ox, pt->anchor.y + oy);
+    b = POINT(pt->last.x + ox, pt->last.y + oy);
+
+    if (pt->tool == paint_TOOL_LINE)
+      paintdoc_draw_stroke(scr, a, b, pt->size, paint_stroke_colour(pt));
+    else
+      paintdoc_draw_rect(scr, a, b, pt->size, pt->fill,
+                         paint_stroke_colour(pt));
+  }
+
+  return rc;
 }
 
 /* the swatch grid and, below it, the background colour behind the foreground
@@ -353,21 +404,29 @@ static result_t paint_toolbox_icon(paint_task_t       *pt,
   return result_OK;
 }
 
-/* the colour a brush stroke in progress paints: the eraser always uses the
- * background colour, the brush the colour of the button held */
-static colour_t paint_stroke_colour(const paint_task_t *pt)
+/* draw the finished rubber band into the canvas */
+static box_t paint_band_commit(paint_task_t *pt)
 {
-  if (pt->tool == paint_TOOL_ERASER || pt->held == wuss_BUTTON_ADJUST)
-    return pt->bg;
+  colour_t colour;
 
-  return pt->fg;
+  colour = paint_stroke_colour(pt);
+
+  if (pt->tool == paint_TOOL_RECT)
+    return paintdoc_rect(pt->doc, pt->anchor, pt->last, pt->size, pt->fill,
+                         colour);
+
+  if (paintdoc_checkpoint(pt->doc) != result_OK)
+    return (box_t) BOX_INIT; /* no undo step, so no line */
+
+  return paintdoc_stroke(pt->doc, pt->anchor, pt->last, pt->size, colour);
 }
 
 /* a MOVE always reports the Select button, hovering or not, so a stroke in
  * progress is tracked in pt->held instead */
 static result_t paint_mouse(paint_task_t *pt, const wuss_event_t *event)
 {
-  box_t    dirty;
+  box_t    dirty = BOX_INIT;
+  box_t    old;
   point_t  p;
   colour_t colour;
 
@@ -379,13 +438,15 @@ static result_t paint_mouse(paint_task_t *pt, const wuss_event_t *event)
     if (!(event->data.mouse.button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
       return result_OK;
 
-    pt->held = (event->data.mouse.button & wuss_BUTTON_SELECT) ?
-               wuss_BUTTON_SELECT : wuss_BUTTON_ADJUST;
+    pt->held   = (event->data.mouse.button & wuss_BUTTON_SELECT) ?
+                 wuss_BUTTON_SELECT : wuss_BUTTON_ADJUST;
+    pt->anchor = p;
+    pt->last   = p;
 
     switch (pt->tool)
     {
     case paint_TOOL_FILL:
-      colour   = (pt->held == wuss_BUTTON_SELECT) ? pt->fg : pt->bg;
+      colour   = paint_stroke_colour(pt);
       pt->held = 0; /* a click, not a stroke */
       dirty    = paintdoc_fill(pt->doc, p, colour);
       break;
@@ -397,14 +458,13 @@ static result_t paint_mouse(paint_task_t *pt, const wuss_event_t *event)
         pt->held = 0; /* no undo step, so no stroke */
         return result_OK;
       }
-      pt->last = p;
-      dirty    = paintdoc_stroke(pt->doc, p, p, pt->size,
-                                 paint_stroke_colour(pt));
+      dirty = paintdoc_stroke(pt->doc, p, p, pt->size,
+                              paint_stroke_colour(pt));
       break;
 
     default:
-      pt->held = 0; /* line and rect are not drawn yet */
-      return result_OK;
+      dirty = paint_band_box(pt);
+      break;
     }
     break;
 
@@ -412,14 +472,37 @@ static result_t paint_mouse(paint_task_t *pt, const wuss_event_t *event)
     if (!pt->held)
       return result_OK;
 
-    dirty    = paintdoc_stroke(pt->doc, pt->last, p, pt->size,
-                               paint_stroke_colour(pt));
-    pt->last = p;
+    if (paint_is_rubber_band(pt))
+    {
+      old = paint_band_box(pt);
+      wuss_window_invalidate(pt->window, &old);
+      pt->last = p;
+      dirty    = paint_band_box(pt);
+    }
+    else
+    {
+      dirty    = paintdoc_stroke(pt->doc, pt->last, p, pt->size,
+                                 paint_stroke_colour(pt));
+      pt->last = p;
+    }
     break;
 
   case wuss_MOUSE_UP:
+    if (!pt->held)
+      return result_OK;
+
+    if (paint_is_rubber_band(pt))
+    {
+      pt->last = p;
+      dirty    = paint_band_commit(pt);
+
+      /* the band is no longer drawn over the canvas */
+      old = paint_band_box(pt);
+      wuss_window_invalidate(pt->window, &old);
+    }
+
     pt->held = 0;
-    return result_OK;
+    break;
 
   default:
     return result_OK;
