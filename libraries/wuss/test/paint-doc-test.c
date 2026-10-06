@@ -78,6 +78,16 @@ result_t paintdoc_test(const char *resources)
   CHECK(px(doc, 0, 0) == WHITE);
   CHECK(px(doc, 19, 9) == WHITE);
   CHECK(!paintdoc_can_undo(doc));
+  paintdoc_destroy(doc);
+
+  printf("test: create_filled fills the canvas with the colour\n");
+
+  CHECK(paintdoc_create_filled(SIZE2D(0, 10), red(), &doc) == result_BAD_ARG);
+  CHECK(paintdoc_create_filled(SIZE2D(4, 3), red(), &doc) == result_OK);
+  CHECK(px(doc, 0, 0) == RED);
+  CHECK(px(doc, 3, 2) == RED);
+  paintdoc_destroy(doc);
+  CHECK(paintdoc_create(SIZE2D(20, 10), &doc) == result_OK);
 
   printf("test: a width 1 stroke sets just its pixels and reports its box\n");
 

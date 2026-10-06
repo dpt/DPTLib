@@ -29,16 +29,19 @@
 /* ----- icon bar apps ----------------------------------------------------
  *
  * SELECT on an app's icon opens another instance of the task's main window
- * by calling its X_create; MENU opens the app menu, whose "Info" row shows
- * the program information dialogue and whose "Quit" row removes the icon and
- * shuts down every instance. Each instance is a task of its own, parented to
- * the app task (wuss_set_task_parent) so Quit can find it. */
+ * by calling its X_create (or opens its new-instance dialogue, if it has
+ * one); MENU opens the app menu, whose "Info" row shows the program
+ * information dialogue, whose optional "New..." row opens that dialogue and
+ * whose "Quit" row removes the icon and shuts down every instance. Each
+ * instance is a task of its own, parented to the app task
+ * (wuss_set_task_parent) so Quit can find it. */
 
+/* "New..." is present only for an app with a new_dialogue, so Quit's row
+ * index varies: see app_t::new_row and quit_row. Info is always first */
 enum
 {
   APP_MENU_INFO,
-  APP_MENU_QUIT,
-  APP_MENU_COUNT
+  APP_MENU_MAX = 3
 };
 
 typedef struct app app_t;
@@ -51,25 +54,78 @@ struct app
   wuss_task_t          *task;
   wuss_iconbar_icon_t  *icon;
   wuss_menu_handle_t    menu_handle;
-  wuss_menu_item_t      menu_items[APP_MENU_COUNT];
+  wuss_menu_item_t      menu_items[APP_MENU_MAX];
   wuss_menu_t           menu;
+  int                   new_row;  /* menu row of "New...", or -1 */
+  int                   quit_row; /* menu row of "Quit" */
   bool                  quit; /* Quit picked; taskapp_reap destroys the task */
 };
 
 static app_t *g_apps; /* every installed app */
 
-static result_t app_spawn_instance(app_t *app, void **out)
+static result_t app_spawn(app_t             *app,
+                          taskapp_spawn_fn_t fn,
+                          void              *param,
+                          void             **out)
 {
   result_t rc;
 
   wuss_set_task_parent(app->wuss, app->task);
-  rc = app->desc->create(app->wuss, out);
+  rc = fn(app->wuss, param, out);
   wuss_set_task_parent(app->wuss, NULL);
 
   if (rc != result_OK)
     logf_error("wuss: %s create failed, rc=0x%X (%s)", app->desc->name, rc,
                result_string(rc));
   return rc;
+}
+
+/* adapts desc->create to taskapp_spawn_fn_t; param is the app */
+static result_t app_create_adapter(wuss_t *wuss, void *param, void **out)
+{
+  const app_t *app;
+
+  app = param;
+
+  return app->desc->create(wuss, out);
+}
+
+static result_t app_spawn_instance(app_t *app, void **out)
+{
+  return app_spawn(app, app_create_adapter, app, out);
+}
+
+/* what SELECT on the icon and the "New..." row do */
+static result_t app_new(app_t *app)
+{
+  result_t rc;
+
+  if (app->desc->new_dialogue == NULL)
+    return app_spawn_instance(app, NULL);
+
+  /* a task the dialogue makes belongs to the app too, and goes with it */
+  wuss_set_task_parent(app->wuss, app->task);
+  rc = app->desc->new_dialogue(app->wuss);
+  wuss_set_task_parent(app->wuss, NULL);
+
+  return rc;
+}
+
+result_t taskapp_spawn(wuss_t               *wuss,
+                       const taskapp_desc_t *desc,
+                       taskapp_spawn_fn_t    fn,
+                       void                 *param,
+                       void                **out)
+{
+  app_t *app;
+
+  for (app = g_apps; app != NULL; app = app->next)
+    if (app->desc == desc)
+      return app_spawn(app, fn, param, out);
+
+  (void) wuss;
+
+  return result_NOT_FOUND;
 }
 
 /* A file dropped on the icon: open an instance and load it. An instance that
@@ -148,8 +204,7 @@ static result_t app_handle(wuss_window_t      *window,
     if (event->data.iconbar_icon.button & wuss_BUTTON_MENU)
       return app_menu_open(app);
     if (event->data.iconbar_icon.button & wuss_BUTTON_SELECT)
-      return app->desc->drop_only ? result_OK
-                                  : app_spawn_instance(app, NULL);
+      return app->desc->drop_only ? result_OK : app_new(app);
     return result_OK; /* ADJUST: nothing yet */
 
   case wuss_EVENT_MESSAGE:
@@ -158,9 +213,12 @@ static result_t app_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
-    if (event->data.menu_select.menu == &app->menu &&
-        event->data.menu_select.index == APP_MENU_QUIT)
+    if (event->data.menu_select.menu != &app->menu)
+      return result_OK;
+    if (event->data.menu_select.index == app->quit_row)
       app->quit = true;
+    else if (event->data.menu_select.index == app->new_row)
+      return app_new(app);
     return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
@@ -201,6 +259,7 @@ result_t taskapp_install(wuss_t *wuss, const taskapp_desc_t *desc)
   app_t                   *app;
   wuss_task_desc_t         task_desc;
   wuss_iconbar_icon_spec_t spec;
+  int                      n;
 
   for (app = g_apps; app != NULL; app = app->next)
     if (app->desc == desc)
@@ -217,9 +276,18 @@ result_t taskapp_install(wuss_t *wuss, const taskapp_desc_t *desc)
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo
                                 * singleton in app_menu_open */
-  WUSS_MENU_ITEM_SHORTCUT(app->menu_items, APP_MENU_QUIT, "Quit", 0, NULL);
-  WUSS_MENU_TITLE(app->menu, desc->name, app->menu_items,
-                  NELEMS(app->menu_items));
+  n = APP_MENU_INFO + 1;
+  app->new_row = -1;
+  if (desc->new_dialogue != NULL)
+  {
+    app->new_row = n;
+    WUSS_MENU_ITEM(app->menu_items, n, "New...", wuss_MENU_ITEM_NONE);
+    n++;
+  }
+  app->quit_row = n;
+  WUSS_MENU_ITEM_SHORTCUT(app->menu_items, n, "Quit", 0, NULL);
+  n++;
+  WUSS_MENU_TITLE(app->menu, desc->name, app->menu_items, n);
 
   task_desc.handle    = app_handle;
   task_desc.task_data = app;
@@ -266,6 +334,17 @@ void taskapp_reap(void)
 result_t taskapp_install(wuss_t *wuss, const taskapp_desc_t *desc)
 {
   return desc->create(wuss, NULL);
+}
+
+result_t taskapp_spawn(wuss_t               *wuss,
+                       const taskapp_desc_t *desc,
+                       taskapp_spawn_fn_t    fn,
+                       void                 *param,
+                       void                **out)
+{
+  (void) desc;
+
+  return fn(wuss, param, out);
 }
 
 void taskapp_reap(void)

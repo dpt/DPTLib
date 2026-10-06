@@ -15,6 +15,7 @@
 #include "wuss/window.h"
 
 #include "paint-doc.h"
+#include "paint-new.h"
 
 #define PAINT_SIZE_MIN 1
 #define PAINT_SIZE_MAX 32
@@ -73,6 +74,11 @@ wuss_window_fn_t paint_handle;
 /* create the paint windows against the given wuss instance;
  * if out is non-NULL, the task block is also returned through it */
 result_t paint_create(wuss_t *wuss, paint_task_t **out);
+
+/* as paint_create, but with a canvas of the given size and colour */
+result_t paint_create_with(wuss_t                  *wuss,
+                           const paintnew_params_t *params,
+                           paint_task_t           **out);
 
 /* install the icon bar app that opens paint windows on demand */
 result_t paint_app_create(wuss_t *wuss);

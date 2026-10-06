@@ -25,6 +25,11 @@ typedef struct paintdoc paintdoc_t;
  * either dimension is not positive */
 result_t paintdoc_create(size2d_t size, paintdoc_t **doc);
 
+/* as paintdoc_create, but filled with colour rather than white */
+result_t paintdoc_create_filled(size2d_t     size,
+                                colour_t     colour,
+                                paintdoc_t **doc);
+
 /* free a canvas and its undo history. doc may be NULL */
 void paintdoc_destroy(paintdoc_t *doc);
 

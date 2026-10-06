@@ -31,8 +31,8 @@ struct paintdoc
 
 /* ----------------------------------------------------------------------- */
 
-/* a white bgrx8888 bitmap of the given size, with its own pixel store */
-static result_t canvas_make(size2d_t size, bitmap_t *bm)
+/* a bgrx8888 bitmap of the given size and colour, with its own pixel store */
+static result_t canvas_make(size2d_t size, colour_t colour, bitmap_t *bm)
 {
   result_t rc;
   void    *pixels;
@@ -48,12 +48,19 @@ static result_t canvas_make(size2d_t size, bitmap_t *bm)
     return rc;
   }
 
-  bitmap_clear(bm, colour_rgb(255, 255, 255));
+  bitmap_clear(bm, colour);
 
   return result_OK;
 }
 
 result_t paintdoc_create(size2d_t size, paintdoc_t **doc)
+{
+  return paintdoc_create_filled(size, colour_rgb(255, 255, 255), doc);
+}
+
+result_t paintdoc_create_filled(size2d_t     size,
+                                colour_t     colour,
+                                paintdoc_t **doc)
 {
   result_t    rc;
   paintdoc_t *d;
@@ -65,7 +72,7 @@ result_t paintdoc_create(size2d_t size, paintdoc_t **doc)
   if (d == NULL)
     return result_OOM;
 
-  rc = canvas_make(size, &d->bm);
+  rc = canvas_make(size, colour, &d->bm);
   if (rc != result_OK)
   {
     free(d);
@@ -133,7 +140,7 @@ result_t paintdoc_load_png(paintdoc_t *doc, const char *path)
     }
   }
 
-  rc = canvas_make(src.size, &next);
+  rc = canvas_make(src.size, colour_rgb(255, 255, 255), &next);
   if (rc == result_OK)
   {
     screen_for_bitmap(&scr, &next);

@@ -11,8 +11,19 @@ and saves and loads PNG files.
 ## Using it
 
 Run `wuss -t Paint` (or pick Paint from the demo's icon bar) and click the
-icon. Two windows open: the canvas and a toolbox. Closing the canvas closes
-the toolbox and ends the task.
+icon. The New dialogue opens above the icon bar. Menu > New... on the icon
+bar opens the same dialogue.
+
+- **Width** and **Height** are 1 to 2048 pixels, starting at 640 x 480. A
+  value out of range is clamped when you click Create.
+- **Background** is white, black or grey. The pen starts in a colour that
+  shows on it.
+- **Create** opens two windows: the canvas and a toolbox. Adjust-click Create
+  keeps the dialogue open, so you can open several canvases in a row.
+  **Cancel** closes the dialogue.
+
+Closing the canvas closes the toolbox and ends that instance. Each Create
+makes an instance of its own.
 
 - **Select** paints with the foreground colour, **Adjust** with the
   background colour. Clicking a swatch in the toolbox sets the foreground
@@ -28,7 +39,8 @@ the toolbox and ends the task.
 
 ## The canvas
 
-The canvas is a 640 x 480 `bgrx8888` bitmap, initially white. Drawing is
+The canvas is a `bgrx8888` bitmap of the size and colour the New dialogue
+asks for. The window shows up to 400 x 300 of it and scrolls. Drawing is
 opaque and hard-edged. There is no alpha channel because `screen_t` has no
 span table for the alpha formats, so drawing straight onto one asserts.
 
