@@ -14,6 +14,7 @@
 #include "io/filetype.h"
 
 #include "paint.h"
+#include "paint-new.h"
 #include "taskapp.h"
 #include "common.h"
 
@@ -171,6 +172,19 @@ static result_t paint_load(paint_task_t *pt, const char *path)
 
 result_t paint_create(wuss_t *wuss, paint_task_t **out)
 {
+  paintnew_params_t params;
+
+  params.size = SIZE2D(PAINT_CANVAS_W, PAINT_CANVAS_H);
+  params.bg   = colour_rgb(0xFF, 0xFF, 0xFF);
+  params.fg   = colour_rgb(0x00, 0x00, 0x00);
+
+  return paint_create_with(wuss, &params, out);
+}
+
+result_t paint_create_with(wuss_t                  *wuss,
+                           const paintnew_params_t *params,
+                           paint_task_t           **out)
+{
   result_t         rc;
   paint_task_t    *task;
   wuss_task_t     *delegate;
@@ -182,12 +196,12 @@ result_t paint_create(wuss_t *wuss, paint_task_t **out)
     return result_OOM;
 
   task->wuss = wuss;
-  task->fg   = colour_rgb(0x00, 0x00, 0x00);
-  task->bg   = colour_rgb(0xFF, 0xFF, 0xFF);
+  task->fg   = params->fg;
+  task->bg   = params->bg;
   task->tool = paint_TOOL_BRUSH;
   task->size = 3;
 
-  rc = paintdoc_create(SIZE2D(PAINT_CANVAS_W, PAINT_CANVAS_H), &task->doc);
+  rc = paintdoc_create_filled(params->size, params->bg, &task->doc);
   if (rc != result_OK)
   {
     free(task);
@@ -208,11 +222,12 @@ result_t paint_create(wuss_t *wuss, paint_task_t **out)
   task->delegate = delegate;
 
   rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(PAINT_VIEW_W, PAINT_VIEW_H),
+                                 SIZE2D(MIN(params->size.w, PAINT_VIEW_W),
+                                        MIN(params->size.h, PAINT_VIEW_H)),
                                  "Paint",
                                  wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                                  wuss_NO_BACKDROP,
-                                 SIZE2D(PAINT_CANVAS_W, PAINT_CANVAS_H),
+                                 params->size,
                                  SIZE2D(0, 0),
                                  &task->window);
   if (rc != result_OK)
@@ -271,17 +286,55 @@ result_t paint_create(wuss_t *wuss, paint_task_t **out)
   return result_OK;
 }
 
+/* the New dialogue: made when first wanted, as a child of the app's task so
+ * Quit takes it too, which also clears this */
+static paintnew_t *g_paint_new;
+
+static result_t paint_new_dialogue(wuss_t *wuss);
+
+static const taskapp_desc_t paint_desc =
+{
+  "Paint",
+  "Basic painting",
+  (taskapp_create_fn_t) paint_create,
+  (taskapp_data_load_fn_t) paint_load,
+  false,
+  paint_new_dialogue
+};
+
+/* taskapp_spawn_fn_t: param is the dialogue's paintnew_params_t */
+static result_t paint_spawn_new(wuss_t *wuss, void *param, void **out)
+{
+  (void) out;
+
+  return paint_create_with(wuss, param, NULL);
+}
+
+/* paintnew_accept_fn_t: opaque is the wuss_t */
+static result_t paint_accept_new(const paintnew_params_t *params,
+                                 void                    *opaque)
+{
+  return taskapp_spawn(opaque, &paint_desc, paint_spawn_new,
+                       (void *) params, NULL);
+}
+
+static result_t paint_new_dialogue(wuss_t *wuss)
+{
+  result_t rc;
+
+  if (g_paint_new == NULL)
+  {
+    rc = paintnew_create(&g_paint_new, wuss, paint_accept_new, wuss);
+    if (rc != result_OK)
+      return rc;
+  }
+
+  return paintnew_open(g_paint_new);
+}
+
 result_t paint_app_create(wuss_t *wuss)
 {
-  static const taskapp_desc_t desc =
-  {
-    "Paint",
-    "Basic painting",
-    (taskapp_create_fn_t) paint_create,
-    (taskapp_data_load_fn_t) paint_load
-  };
-
-  return taskapp_install(wuss, &desc);
+  return taskapp_install(wuss, &paint_desc);
 }
 
 void paint_destroy(paint_task_t *task)

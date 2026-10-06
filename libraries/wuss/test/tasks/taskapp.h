@@ -23,6 +23,16 @@ typedef result_t (*taskapp_create_fn_t)(wuss_t *wuss, void **out);
  * acknowledged. */
 typedef result_t (*taskapp_data_load_fn_t)(void *instance, const char *path);
 
+/* Open the app's "new instance" dialogue. Optional in a taskapp_desc: with
+ * one, SELECT on the app's icon and a "New..." row in its menu call it in
+ * place of create. The dialogue opens an instance itself, once the user
+ * accepts it, through taskapp_spawn. */
+typedef result_t (*taskapp_new_fn_t)(wuss_t *wuss);
+
+/* Make an instance as create does, but from fn with the caller's param; see
+ * taskapp_spawn */
+typedef result_t (*taskapp_spawn_fn_t)(wuss_t *wuss, void *param, void **out);
+
 /* A task's description of its app. Each task keeps one as a static const and
  * passes it to taskapp_install from its X_app_create. */
 typedef struct taskapp_desc
@@ -32,6 +42,7 @@ typedef struct taskapp_desc
   taskapp_create_fn_t  create;  /* opens an instance of the main window */
   taskapp_data_load_fn_t data_load; /* optional: file dropped on the icon */
   bool                 drop_only;   /* SELECT on the icon opens nothing */
+  taskapp_new_fn_t     new_dialogue; /* optional: see taskapp_new_fn_t */
 }
 taskapp_desc_t;
 
@@ -46,6 +57,17 @@ taskapp_desc_t;
  * Does nothing, returning result_OK, if desc is already installed. Without
  * the icon bar, calls desc->create at once instead. */
 result_t taskapp_install(wuss_t *wuss, const taskapp_desc_t *desc);
+
+/* Open an instance of desc's app by calling fn(wuss, param, out), as create
+ * would be called: the instance becomes a child task of the app's, so Quit
+ * takes it too. For a "new instance" dialogue to call once accepted. Fails
+ * with result_NOT_FOUND if desc is not installed. Without the icon bar, just
+ * calls fn. */
+result_t taskapp_spawn(wuss_t               *wuss,
+                       const taskapp_desc_t *desc,
+                       taskapp_spawn_fn_t    fn,
+                       void                 *param,
+                       void                **out);
 
 /* A DataLoad on an instance's window: load the file it names through load
  * and acknowledge it. A file that will not load is not acknowledged, so the
