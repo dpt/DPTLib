@@ -9,12 +9,14 @@
 #include "fortify/fortify.h"
 #endif
 
+#include "base/debug.h"
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
 #include "io/path.h"
 #include "wuss/menu.h"
 #include "wuss/menu-desc.h"
+#include "wuss/message.h"
 
 #include "viewing.h"
 #include "taskapp.h"
@@ -23,7 +25,7 @@
 #define NINEPATCHSZ      9
 #define VIEWING_BORDERSZ 8 /* solid inset band drawn inside the ninepatch */
 #define VIEWING_MARGINSZ (NINEPATCHSZ + VIEWING_BORDERSZ)
-#define VIEWING_DEFAULT  "elvira" /* leafname under resources/images */
+#define VIEWING_EMPTYSZ  64 /* image area before the first DataLoad */
 
 result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
 {
@@ -32,7 +34,6 @@ result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   const char      *resources;
-  const char      *path;
   const char      *background_path;
   size2d_t         sz;
 
@@ -41,6 +42,7 @@ result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
     return result_OOM;
 
   task->wuss        = wuss;
+  task->bitmap.size = SIZE2D(VIEWING_EMPTYSZ, VIEWING_EMPTYSZ); /* no pixels */
   task->delegate    = NULL;
   task->menu        = NULL;
   task->menu_handle = NULL;
@@ -56,15 +58,7 @@ result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
   WUSS_MENU_TITLE(task->dither_menu, "Dithering", task->dither_items,
                   NELEMS(task->dither_items));
 
-  resources = wuss_get_resources(wuss);
-  path      = pathf("%s/resources/images/%s.png", resources, VIEWING_DEFAULT);
-  rc = load_png_deep(&task->bitmap, path, pixelfmt_rgbx8888);
-  if (rc != result_OK)
-  {
-    free(task); /* nothing registered yet; nobody else owns it */
-    return rc;
-  }
-
+  resources       = wuss_get_resources(wuss);
   background_path = pathf("%s/resources/wuss/ninepatch.png", resources);
   rc = load_png_deep(&task->ninepatch, background_path, pixelfmt_rgbx8888);
   if (rc != result_OK)
@@ -171,8 +165,64 @@ static result_t viewing_redraw(const wuss_event_t *event, void *task_data)
   palette = wuss_get_palette(ic->wuss, NULL);
   screen_fill_rects(scr, band, 4, palette[ic->background]);
 
-  screen_copy_bitmap_dithered(scr, bx, by, &ic->bitmap, ic->dithering);
+  if (ic->bitmap.base != NULL)
+    screen_copy_bitmap_dithered(scr, bx, by, &ic->bitmap, ic->dithering);
 
+  return result_OK;
+}
+
+/* Load the PNG at path and show it, resizing the window to fit. On failure
+ * the current image stays and the error is returned. */
+static result_t viewing_show(viewing_task_t *ic, const char *path)
+{
+  result_t rc;
+  bitmap_t next;
+  size2d_t sz;
+
+  rc = load_png_deep(&next, path, pixelfmt_rgbx8888);
+  if (rc != result_OK)
+  {
+    logf_warning("viewing: cannot load \"%s\" (rc=0x%X)", path, rc);
+    return rc;
+  }
+
+  free(ic->bitmap.base);
+  ic->bitmap = next;
+
+  sz.w = ic->bitmap.size.w + VIEWING_MARGINSZ * 2;
+  sz.h = ic->bitmap.size.h + VIEWING_MARGINSZ * 2;
+
+  rc = wuss_window_resize(ic->window, sz);
+  if (rc != result_OK)
+    return rc;
+
+  return wuss_window_set_doc(ic->window, sz);
+}
+
+/* A DataLoad on the viewing window: show the file it names. A file that will
+ * not load is not acknowledged, so the send bounces to the sender. */
+static result_t viewing_message(viewing_task_t     *ic,
+                                wuss_window_t      *window,
+                                const wuss_event_t *event)
+{
+  const wuss_message_t *msg;
+  char                  path[DPTLIB_MAXPATH];
+  size_t                len;
+
+  msg = event->data.message;
+
+  if (msg->action != wuss_MESSAGE_DATA_LOAD || ic->window == NULL ||
+      window != ic->window)
+    return result_OK;
+
+  len = MIN(msg->size, sizeof(path) - 1);
+  memcpy(path, msg->data, len);
+  path[len] = '\0';
+
+  if (viewing_show(ic, path) != result_OK)
+    return result_OK;
+
+  (void) wuss_acknowledge(ic->wuss, ic->delegate, msg);
   return result_OK;
 }
 
@@ -281,6 +331,9 @@ result_t viewing_handle(wuss_window_t      *window,
       wuss_menu_tick_exclusive_live(ic->menu_handle, &ic->dither_menu, index);
     }
     return result_OK;
+
+  case wuss_EVENT_MESSAGE:
+    return viewing_message(ic, window, event);
 
   case wuss_EVENT_MENU_CLOSED:
     ic->menu_handle = NULL; /* wuss closed the chain under us */
