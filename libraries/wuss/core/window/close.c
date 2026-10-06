@@ -74,6 +74,7 @@ void wuss_window_close(wuss_window_t *doomed)
   wuss__pointer_forget_window(wuss, doomed);
   wuss__focus_forget_window(wuss, doomed);
   wuss__drag_forget_window(wuss, doomed);
+  wuss__capture_forget_window(wuss, doomed);
 
   /* Stop double-click detection matching a freed window: a later
    * wuss_window_create could reuse this address, giving a false match.

@@ -52,6 +52,16 @@ static result_t mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
 
   wuss->pointer = p;
 
+  /* A captured press owns the pointer until released: no hit test, hover or
+   * enter/exit tracking, just the move to the capturing window. */
+  if (wuss->capture != NULL)
+  {
+    if (hit != NULL)
+      *hit = wuss->capture;
+
+    return wuss__capture_deliver(wuss, p, wuss_BUTTON_SELECT, wuss_MOUSE_MOVE);
+  }
+
   if (wuss->drag.window != NULL)
   {
     win = wuss__window_at(wuss, p);

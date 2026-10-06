@@ -74,6 +74,16 @@ static result_t mouse_click(wuss_t             *wuss,
     return result_OK;
   }
 
+  /* A captured press owns the pointer until released: a further press or the
+   * release goes to the capturing window, wherever it lands. */
+  if (wuss->capture != NULL)
+  {
+    if (hit != NULL)
+      *hit = wuss->capture;
+
+    return wuss__capture_deliver(wuss, p, button, action);
+  }
+
   if (action == wuss_MOUSE_DOWN)
   {
     wuss_window_t *hit_now;
@@ -491,6 +501,11 @@ static result_t mouse_click(wuss_t             *wuss,
       }
     }
 #endif
+
+    /* Set before delivery: closing the window in the handler clears it. */
+    if (action == wuss_MOUSE_DOWN &&
+        (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+      wuss->capture = win;
 
     event.kind              = wuss_EVENT_MOUSE;
     event.data.mouse.action = action;

@@ -10700,6 +10700,58 @@ QuitFail:
     wuss_icon_delete(win_a, draggable);
   }
 
+  printf("test: a Select press on plain content captures the mouse -- moves "
+        "and the release go to that window even over another window, and the "
+        "release ends the capture\n");
+
+  tc_a.mouse_count = 0;
+  tc_b.mouse_count = 0;
+
+  rc = wuss_mouse_click(wuss, POINT(50, 50), wuss_BUTTON_SELECT,
+                        wuss_MOUSE_DOWN, NULL);
+  if (rc != result_OK)
+    goto Failure;
+  if (!wuss_is_capturing(wuss))
+    goto Failure;
+  if (tc_a.mouse_count != 1)
+    goto Failure;
+
+  rc = wuss_mouse_move(wuss, POINT(150, 150), &hit); /* over B */
+  if (rc != result_OK)
+    goto Failure;
+  if (hit != win_a)
+    goto Failure;
+  if (tc_a.mouse_count != 2 || tc_a.last_action != wuss_MOUSE_MOVE)
+    goto Failure;
+  if (tc_a.last_x < 100)
+    goto Failure; /* a point outside A's own content box */
+  if (tc_b.mouse_count != 0)
+    goto Failure;
+
+  rc = wuss_mouse_click(wuss, POINT(150, 150), wuss_BUTTON_SELECT,
+                        wuss_MOUSE_UP, NULL);
+  if (rc != result_OK)
+    goto Failure;
+  if (wuss_is_capturing(wuss))
+    goto Failure;
+  if (tc_a.mouse_count != 3 || tc_a.last_action != wuss_MOUSE_UP)
+    goto Failure;
+  if (tc_b.mouse_count != 0)
+    goto Failure;
+
+  printf("test: closing the capturing window ends the capture\n");
+
+  rc = wuss_mouse_click(wuss, POINT(50, 50), wuss_BUTTON_SELECT,
+                        wuss_MOUSE_DOWN, NULL);
+  if (rc != result_OK)
+    goto Failure;
+  if (!wuss_is_capturing(wuss))
+    goto Failure;
+
+  wuss_window_close(win_a);
+  if (wuss_is_capturing(wuss))
+    goto Failure;
+
   wuss_destroy(wuss);
 
   free(pixels);

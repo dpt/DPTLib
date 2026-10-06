@@ -375,7 +375,8 @@ static void wuss_frame(void *arg)
   wuss_idle(c->wuss);
   tasks_reap_apps();
 
-  wuss_frontend_capture_mouse(c->frontend, wuss_is_dragging(c->wuss));
+  wuss_frontend_capture_mouse(c->frontend,
+                              wuss_is_dragging(c->wuss) || wuss_is_capturing(c->wuss));
 
   /* the launcher's Debug picks only set flags; act on them once per frame */
   garbage    = g_tasks.debug_garbage;
