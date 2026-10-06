@@ -1,4 +1,4 @@
-/* wuss/test/tasks/text.c -- sample-text task with font and sample pickers */
+/* wuss/test/tasks/reading.c -- Reading task with font and sample pickers */
 
 #ifdef WUSS_APP
 
@@ -23,7 +23,7 @@
 #include "text/bmtext.h"
 #include "wuss/menu.h"
 
-#include "text.h"
+#include "reading.h"
 #include "taskapp.h"
 #include "common.h"
 
@@ -33,26 +33,26 @@
 
 /* "Colours" leads to a submenu with one row per task->fg_index/bg_index;
  * both rows share the colourmenu singleton, retargeted per hover by
- * text_pre_submenu_open (wuss_EVENT_PRE_SUBMENU_OPEN) so one instance
+ * reading_pre_submenu_open (wuss_EVENT_PRE_SUBMENU_OPEN) so one instance
  * serves either row -- see saturn.c's SATURN_COLOURS_MENU_* for the same
  * pattern. */
-enum { TEXT_COLOURS_MENU_FOREGROUND = 0, TEXT_COLOURS_MENU_BACKGROUND };
+enum { READING_COLOURS_MENU_FOREGROUND = 0, READING_COLOURS_MENU_BACKGROUND };
 
 /* the "Sample" submenu is built from the files in resources/text: ".md"
  * files are parsed as Markdown, ".txt" files laid out as plain text. Rows
  * are sorted by leafname, and the first is the default. */
-#define TEXT_SAMPLES_DIR "%s/resources/text"
+#define READING_SAMPLES_DIR "%s/resources/text"
 
 /* one entry per row of the "Spacing" submenu */
-typedef struct text_spacing_preset
+typedef struct reading_spacing_preset
 {
   const char *name;
   int         letter_spacing;
   int         word_spacing;
 }
-text_spacing_preset_t;
+reading_spacing_preset_t;
 
-static const text_spacing_preset_t text_spacing_presets[] =
+static const reading_spacing_preset_t reading_spacing_presets[] =
 {
   { "Normal",      0, 0 },
   { "Letter",      1, 0 },
@@ -60,23 +60,23 @@ static const text_spacing_preset_t text_spacing_presets[] =
   { "Letter+Word", 1, 1 }
 };
 
-#define TEXT_DEFAULT_SPACING 0 /* "Normal" */
+#define READING_DEFAULT_SPACING 0 /* "Normal" */
 
-/* fixed tint colours text__markdown_parse assigns to styled runs -- palette-
+/* fixed tint colours reading__markdown_parse assigns to styled runs -- palette-
  * independent since bmfont has no bold/italic glyph variants to switch to,
  * so emphasis is shown by colour instead */
-#define TEXT_MD_HEADER_COLOUR colour_rgb(0x20, 0x60, 0xd0)
-#define TEXT_MD_BOLD_COLOUR   colour_rgb(0xd0, 0x20, 0x20)
-#define TEXT_MD_ITALIC_COLOUR colour_rgb(0x20, 0x90, 0x40)
-#define TEXT_MD_CODE_COLOUR   colour_rgb(0x90, 0x40, 0xc0)
+#define READING_MD_HEADER_COLOUR colour_rgb(0x20, 0x60, 0xd0)
+#define READING_MD_BOLD_COLOUR   colour_rgb(0xd0, 0x20, 0x20)
+#define READING_MD_ITALIC_COLOUR colour_rgb(0x20, 0x90, 0x40)
+#define READING_MD_CODE_COLOUR   colour_rgb(0x90, 0x40, 0xc0)
 
-#define TEXT_MD_MAX_SPANS 128 /* sample text is short; overflow is
+#define READING_MD_MAX_SPANS 128 /* sample text is short; overflow is
                                * dropped */
 
 /* is c the start of an ATX header line ("#" through "######" then a
  * space), given p points at the first "#" and is known to be at a line
  * start? advances *p past the "# " prefix and returns true if so. */
-static bool text__markdown_header_prefix(const char **p, const char *end)
+static bool reading__markdown_header_prefix(const char **p, const char *end)
 {
   const char *q;
 
@@ -95,13 +95,13 @@ static bool text__markdown_header_prefix(const char **p, const char *end)
  * found append the run's text (marker stripped) to out/outlen with colour
  * span colour, advance *p past the closing marker, and return true. false
  * (with *p unchanged) if no matching close exists before newline or end. */
-static bool text__markdown_emphasis(const char **p,
-                                    const char  *end,
-                                    char        *out,
-                                    int         *outlen,
-                                    text_span_t *spans,
-                                    int         *nspans,
-                                    int          maxspans)
+static bool reading__markdown_emphasis(const char    **p,
+                                       const char     *end,
+                                       char           *out,
+                                       int            *outlen,
+                                       reading_span_t *spans,
+                                       int            *nspans,
+                                       int             maxspans)
 {
   const char *start;
   const char *marker;
@@ -115,17 +115,17 @@ static bool text__markdown_emphasis(const char **p,
   if (start[0] == '*' && start[1] == '*')
   {
     markerlen = 2;
-    colour    = TEXT_MD_BOLD_COLOUR;
+    colour    = READING_MD_BOLD_COLOUR;
   }
   else if (start[0] == '*' || start[0] == '_')
   {
     markerlen = 1;
-    colour    = TEXT_MD_ITALIC_COLOUR;
+    colour    = READING_MD_ITALIC_COLOUR;
   }
   else /* '`' */
   {
     markerlen = 1;
-    colour    = TEXT_MD_CODE_COLOUR;
+    colour    = READING_MD_CODE_COLOUR;
   }
   marker = start;
   run    = start + markerlen;
@@ -154,33 +154,33 @@ static bool text__markdown_emphasis(const char **p,
   return true;
 }
 
-/* text__markdown_parse's per-character state: which kind of line the
+/* reading__markdown_parse's per-character state: which kind of line the
  * cursor is currently in. LINE_START only ever lasts for the header-prefix
  * check on the first character of a line; every other character on a line
  * is scanned in HEADER or BODY. */
-typedef enum text_md_state
+typedef enum reading_md_state
 {
-  TEXT_MD_LINE_START,
-  TEXT_MD_HEADER,
-  TEXT_MD_BODY
+  READING_MD_LINE_START,
+  READING_MD_HEADER,
+  READING_MD_BODY
 }
-text_md_state_t;
+reading_md_state_t;
 
 /* emit the pending header span for the line running [line_start, textlen)
  * into text, if state says it's a header and the line isn't empty */
-static void text__markdown_emit_header(text_md_state_t state,
-                                       int             line_start,
-                                       int             textlen,
-                                       text_span_t    *spans,
-                                       int            *nspans)
+static void reading__markdown_emit_header(reading_md_state_t state,
+                                          int                line_start,
+                                          int                textlen,
+                                          reading_span_t    *spans,
+                                          int               *nspans)
 {
-  if (state != TEXT_MD_HEADER || line_start >= textlen ||
-      *nspans >= TEXT_MD_MAX_SPANS)
+  if (state != READING_MD_HEADER || line_start >= textlen ||
+      *nspans >= READING_MD_MAX_SPANS)
     return;
 
   spans[*nspans].start  = line_start;
   spans[*nspans].len    = textlen - line_start;
-  spans[*nspans].colour = TEXT_MD_HEADER_COLOUR;
+  spans[*nspans].colour = READING_MD_HEADER_COLOUR;
   (*nspans)++;
 }
 
@@ -191,26 +191,26 @@ static void text__markdown_emit_header(text_md_state_t state,
  * caller frees both with free(). Headers get a run for their whole
  * (marker-stripped) line; inline markers must close on the same line as
  * they open or are left as literal text. */
-static result_t text__markdown_parse(const char   *md,
-                                     int           mdlen,
-                                     char        **out_text,
-                                     text_span_t **out_spans,
-                                     int          *out_nspans)
+static result_t reading__markdown_parse(const char      *md,
+                                        int              mdlen,
+                                        char           **out_text,
+                                        reading_span_t **out_spans,
+                                        int             *out_nspans)
 {
-  char           *text;
-  text_span_t    *spans;
-  int             nspans;
-  int             textlen;
-  const char     *p;
-  const char     *end;
-  text_md_state_t state;
-  int             line_start;
+  char              *text;
+  reading_span_t    *spans;
+  int                nspans;
+  int                textlen;
+  const char        *p;
+  const char        *end;
+  reading_md_state_t state;
+  int                line_start;
 
   text = malloc((size_t) mdlen + 1);
   if (text == NULL)
     goto oom;
 
-  spans = malloc(TEXT_MD_MAX_SPANS * sizeof(*spans));
+  spans = malloc(READING_MD_MAX_SPANS * sizeof(*spans));
   if (spans == NULL)
   {
     free(text);
@@ -221,33 +221,33 @@ static result_t text__markdown_parse(const char   *md,
   textlen    = 0;
   p          = md;
   end        = md + mdlen;
-  state      = TEXT_MD_LINE_START;
+  state      = READING_MD_LINE_START;
   line_start = 0;
 
   while (p < end)
   {
     switch (state)
     {
-    case TEXT_MD_LINE_START:
-      if (*p == '#' && text__markdown_header_prefix(&p, end))
-        state = TEXT_MD_HEADER;
+    case READING_MD_LINE_START:
+      if (*p == '#' && reading__markdown_header_prefix(&p, end))
+        state = READING_MD_HEADER;
       else
-        state = TEXT_MD_BODY;
+        state = READING_MD_BODY;
       break;
 
-    case TEXT_MD_HEADER:
-    case TEXT_MD_BODY:
+    case READING_MD_HEADER:
+    case READING_MD_BODY:
       if (*p == '\n')
       {
-        text__markdown_emit_header(state, line_start, textlen, spans,
+        reading__markdown_emit_header(state, line_start, textlen, spans,
                                    &nspans);
         text[textlen++] = *p++;
         line_start      = textlen;
-        state           = TEXT_MD_LINE_START;
+        state           = READING_MD_LINE_START;
       }
       else if ((*p == '*' || *p == '_' || *p == '`') &&
-              text__markdown_emphasis(&p, end, text, &textlen, spans,
-                                      &nspans, TEXT_MD_MAX_SPANS))
+              reading__markdown_emphasis(&p, end, text, &textlen, spans,
+                                      &nspans, READING_MD_MAX_SPANS))
       {
         /* state unchanged: stay in HEADER or BODY */
       }
@@ -259,7 +259,7 @@ static result_t text__markdown_parse(const char   *md,
     }
   }
 
-  text__markdown_emit_header(state, line_start, textlen, spans, &nspans);
+  reading__markdown_emit_header(state, line_start, textlen, spans, &nspans);
 
   text[textlen] = '\0';
 
@@ -276,20 +276,20 @@ oom:
 }
 
 /* index into task->top_items[] of the "Font" leaf */
-#define TEXT_MENU_FONT 0
+#define READING_MENU_FONT 0
 
 /* index into task->top_items[] of the "Auto-size" leaf */
-#define TEXT_MENU_AUTOSIZE 5
+#define READING_MENU_AUTOSIZE 5
 
 /* "Alignment" submenu rows */
-enum { TEXT_ALIGN_LEFT = 0, TEXT_ALIGN_CENTRE, TEXT_ALIGN_RIGHT };
+enum { READING_ALIGN_LEFT = 0, READING_ALIGN_CENTRE, READING_ALIGN_RIGHT };
 
 /* ----------------------------------------------------------------------- */
 
 /* the shared fontmenu singleton, retargeted at task->wuss's bmfonts dir --
  * cheap to call repeatedly since wuss_fontmenu_menu only rebuilds when the
  * dir or wuss_t actually changes */
-static const wuss_menu_t *text_fontmenu(text_task_t *task)
+static const wuss_menu_t *reading_fontmenu(reading_task_t *task)
 {
   const char *resources;
   const char *bmfonts_dir;
@@ -301,10 +301,10 @@ static const wuss_menu_t *text_fontmenu(text_task_t *task)
 
 /* load fonts[idx] if not already in hand; returns it or NULL on failure.
  * name is the menu label for that row -- "Family Style". */
-static bmfont_t *text_load_font(text_task_t *task,
-                                const char  *resources,
-                                int          idx,
-                                const char  *name)
+static bmfont_t *reading_load_font(reading_task_t *task,
+                                   const char     *resources,
+                                   int             idx,
+                                   const char     *name)
 {
   result_t    rc;
   const char *dir;
@@ -329,14 +329,16 @@ static bmfont_t *text_load_font(text_task_t *task,
 }
 
 /* switch the paragraph to the font at menu row idx (label name) */
-static result_t text_set_font(text_task_t *task, int idx, const char *name)
+static result_t reading_set_font(reading_task_t *task,
+                                 int             idx,
+                                 const char     *name)
 {
   bmfont_t *font;
 
   if (idx < 0 || idx >= task->nfonts || idx == task->current)
     return result_OK;
 
-  font = text_load_font(task, wuss_get_resources(task->wuss), idx, name);
+  font = reading_load_font(task, wuss_get_resources(task->wuss), idx, name);
   if (font == NULL)
     return result_OK; /* leave the current font in place */
 
@@ -349,20 +351,20 @@ static result_t text_set_font(text_task_t *task, int idx, const char *name)
 
 /* dirscan_walk callback: add leaf to task->samples if it is a ".md" or
  * ".txt" file. Once full, a leaf evicts the greatest one kept if it sorts
- * before it, so the first TEXT_MAX_SAMPLES by name are kept whatever order
+ * before it, so the first READING_MAX_SAMPLES by name are kept whatever order
  * the directory is walked in. */
-static result_t text__scan_sample(const char *leaf, void *opaque)
+static result_t reading__scan_sample(const char *leaf, void *opaque)
 {
-  text_task_t   *task;
-  text_sample_t *sample;
-  int            i;
-  char          *c;
+  reading_task_t   *task;
+  reading_sample_t *sample;
+  int               i;
+  char             *c;
 
   task = opaque;
   if (strlen(leaf) >= sizeof(sample->leaf))
     return result_OK;
 
-  if (task->nsamples < TEXT_MAX_SAMPLES)
+  if (task->nsamples < READING_MAX_SAMPLES)
   {
     sample = &task->samples[task->nsamples];
   }
@@ -395,17 +397,17 @@ static result_t text__scan_sample(const char *leaf, void *opaque)
   return result_OK;
 }
 
-static int text__sample_compare(const void *a, const void *b)
+static int reading__sample_compare(const void *a, const void *b)
 {
-  return strcmp(((const text_sample_t *) a)->leaf,
-                ((const text_sample_t *) b)->leaf);
+  return strcmp(((const reading_sample_t *) a)->leaf,
+                ((const reading_sample_t *) b)->leaf);
 }
 
 /* read the whole of path into a freshly malloc'd NUL-terminated buffer,
  * less any trailing newlines; caller frees *out_text */
-static result_t text__load_file(const char *path,
-                                char      **out_text,
-                                int        *out_len)
+static result_t reading__load_file(const char *path,
+                                   char      **out_text,
+                                   int        *out_len)
 {
   result_t rc;
   FILE    *f;
@@ -456,16 +458,16 @@ exit:
  * task->text/markdown_spans if that sample is marked markdown, and freeing
  * the previous sample's buffers; on failure the previous sample stays
  * shown. idx must already be range-checked */
-static result_t text__apply_sample(text_task_t *task, int idx)
+static result_t reading__apply_sample(reading_task_t *task, int idx)
 {
-  result_t     rc;
-  char        *raw;
-  int          rawlen;
-  char        *text;
-  text_span_t *spans;
-  int          nspans;
+  result_t        rc;
+  char           *raw;
+  int             rawlen;
+  char           *text;
+  reading_span_t *spans;
+  int             nspans;
 
-  rc = text__load_file(pathf(TEXT_SAMPLES_DIR "/%s",
+  rc = reading__load_file(pathf(READING_SAMPLES_DIR "/%s",
                              wuss_get_resources(task->wuss),
                              task->samples[idx].leaf),
                        &raw, &rawlen);
@@ -477,7 +479,7 @@ static result_t text__apply_sample(text_task_t *task, int idx)
   nspans = 0;
   if (task->samples[idx].markdown)
   {
-    rc = text__markdown_parse(raw, rawlen, &text, &spans, &nspans);
+    rc = reading__markdown_parse(raw, rawlen, &text, &spans, &nspans);
     free(raw);
     if (rc != result_OK)
       return rc;
@@ -493,14 +495,14 @@ static result_t text__apply_sample(text_task_t *task, int idx)
 }
 
 /* switch the shown text to task->samples[idx] */
-static result_t text_set_sample(text_task_t *task, int idx)
+static result_t reading_set_sample(reading_task_t *task, int idx)
 {
   result_t rc;
 
   if (idx < 0 || idx >= task->nsamples || idx == task->sample)
     return result_OK;
 
-  rc = text__apply_sample(task, idx);
+  rc = reading__apply_sample(task, idx);
   if (rc != result_OK)
     return rc;
 
@@ -512,7 +514,7 @@ static result_t text_set_sample(text_task_t *task, int idx)
 }
 
 /* switch the paragraph's foreground to system palette index "picked" */
-static result_t text_set_fg(text_task_t *task, wuss_colour_t picked)
+static result_t reading_set_fg(reading_task_t *task, wuss_colour_t picked)
 {
   task->fg_index = picked;
   wuss_window_invalidate_visible(task->window);
@@ -522,7 +524,7 @@ static result_t text_set_fg(text_task_t *task, wuss_colour_t picked)
 /* switch the paragraph's background to system palette index "picked", or to
  * none (glyphs blend straight onto whatever is behind the window's content)
  * for wuss_NO_BACKGROUND, the colourmenu's "None" row */
-static result_t text_set_bg(text_task_t *task, wuss_colour_t picked)
+static result_t reading_set_bg(reading_task_t *task, wuss_colour_t picked)
 {
   task->bg_transparent = (picked == wuss_NO_BACKGROUND);
   if (!task->bg_transparent)
@@ -531,15 +533,15 @@ static result_t text_set_bg(text_task_t *task, wuss_colour_t picked)
   return result_OK;
 }
 
-/* switch letter/word spacing to text_spacing_presets[idx] */
-static result_t text_set_spacing(text_task_t *task, int idx)
+/* switch letter/word spacing to reading_spacing_presets[idx] */
+static result_t reading_set_spacing(reading_task_t *task, int idx)
 {
-  if (idx < 0 || idx >= NELEMS(text_spacing_presets) || idx == task->spacing_idx)
+  if (idx < 0 || idx >= NELEMS(reading_spacing_presets) || idx == task->spacing_idx)
     return result_OK;
 
   task->spacing_idx           = idx;
-  task->spacing.letter_spacing = text_spacing_presets[idx].letter_spacing;
-  task->spacing.word_spacing   = text_spacing_presets[idx].word_spacing;
+  task->spacing.letter_spacing = reading_spacing_presets[idx].letter_spacing;
+  task->spacing.word_spacing   = reading_spacing_presets[idx].word_spacing;
 
   wuss_menu_tick_exclusive(&task->spacing_menu, idx);
   wuss_menu_tick_exclusive_live(task->menu_handle, &task->spacing_menu, idx);
@@ -548,7 +550,7 @@ static result_t text_set_spacing(text_task_t *task, int idx)
 }
 
 /* align each line to the left, centre or right of the wrap width */
-static result_t text_set_align(text_task_t *task, int idx)
+static result_t reading_set_align(reading_task_t *task, int idx)
 {
   if (idx < 0 || idx >= NELEMS(task->align_items) || idx == task->align)
     return result_OK;
@@ -561,7 +563,7 @@ static result_t text_set_align(text_task_t *task, int idx)
   return result_OK;
 }
 
-static result_t text_open_menu(text_task_t *task)
+static result_t reading_open_menu(reading_task_t *task)
 {
   return wuss_menu_open_at_pointer(task->delegate, &task->top_menu,
                                    &task->menu_handle);
@@ -573,8 +575,8 @@ static result_t text_open_menu(text_task_t *task)
  * Foreground/Background level needs to retarget the shared colourmenu
  * singleton before opening it -- see saturn.c's saturn_pre_submenu_open for
  * the same pattern. */
-static result_t text_pre_submenu_open(text_task_t        *task,
-                                      const wuss_event_t *event)
+static result_t reading_pre_submenu_open(reading_task_t     *task,
+                                         const wuss_event_t *event)
 {
   wuss_menu_handle_t handle;
   int                index;
@@ -584,15 +586,15 @@ static result_t text_pre_submenu_open(text_task_t        *task,
 
   if (wuss_menu_handle_menu(handle) != &task->colours_menu)
   {
-    if (index == TEXT_MENU_FONT)
+    if (index == READING_MENU_FONT)
     {
       const wuss_menu_t *fontmenu;
 
       /* the fontmenu singleton may have been rebuilt (at a new address) by
-       * another task since top_items[TEXT_MENU_FONT].submenu was cached in
-       * text_create -- re-fetch instead of handing the spawner a stale
+       * another task since top_items[READING_MENU_FONT].submenu was cached in
+       * reading_create -- re-fetch instead of handing the spawner a stale
        * pointer, and before ticking, as a rebuild would drop the tick */
-      fontmenu = text_fontmenu(task);
+      fontmenu = reading_fontmenu(task);
       wuss_fontmenu_set_ticked(task->current);
       return wuss_menu_open_submenu_now(handle, index, fontmenu);
     }
@@ -601,7 +603,7 @@ static result_t text_pre_submenu_open(text_task_t        *task,
                                       task->top_items[index].submenu);
   }
 
-  if (index == TEXT_COLOURS_MENU_FOREGROUND)
+  if (index == READING_COLOURS_MENU_FOREGROUND)
   {
     task->colourmenu_target = &task->fg_index;
     wuss_colourmenu_set_none(0);
@@ -621,10 +623,10 @@ static result_t text_pre_submenu_open(text_task_t        *task,
 
 /* ----------------------------------------------------------------------- */
 
-result_t text_create(wuss_t *wuss, text_task_t **out)
+result_t reading_create(wuss_t *wuss, reading_task_t **out)
 {
   result_t           rc;
-  text_task_t       *task;
+  reading_task_t    *task;
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
   const wuss_menu_t *menu;
@@ -639,9 +641,9 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   task->wuss        = wuss;
   task->font        = wuss_get_font(wuss);
   task->current     = -1; /* until the system font's row is found below */
-  task->spacing_idx = TEXT_DEFAULT_SPACING;
-  task->spacing.letter_spacing = text_spacing_presets[TEXT_DEFAULT_SPACING].letter_spacing;
-  task->spacing.word_spacing   = text_spacing_presets[TEXT_DEFAULT_SPACING].word_spacing;
+  task->spacing_idx = READING_DEFAULT_SPACING;
+  task->spacing.letter_spacing = reading_spacing_presets[READING_DEFAULT_SPACING].letter_spacing;
+  task->spacing.word_spacing   = reading_spacing_presets[READING_DEFAULT_SPACING].word_spacing;
   task->fg_index    = wuss_nearest_colour(wuss, 0x00, 0x00, 0x00);
   task->bg_index    = wuss_nearest_colour(wuss, 0xFF, 0xFF, 0xFF);
   task->bg_transparent = true; /* "None": blend onto the window backdrop */
@@ -653,7 +655,7 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   /* the shared picker: every ".png" font under resources/bmfonts, sorted,
    * less any SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows
    * from) */
-  menu = text_fontmenu(task);
+  menu = reading_fontmenu(task);
   if (menu == NULL)
   {
     free(task); /* nothing registered yet; the spawner will not free it */
@@ -683,15 +685,15 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
     return result_OOM;
   }
 
-  rc = dirscan_walk(pathf(TEXT_SAMPLES_DIR, wuss_get_resources(wuss)),
-                    text__scan_sample, task);
+  rc = dirscan_walk(pathf(READING_SAMPLES_DIR, wuss_get_resources(wuss)),
+                    reading__scan_sample, task);
   if (rc == result_OK && task->nsamples == 0)
     rc = result_FILE_NOT_FOUND;
   if (rc == result_OK)
   {
     qsort(task->samples, (size_t) task->nsamples, sizeof(*task->samples),
-          text__sample_compare);
-    rc = text__apply_sample(task, 0);
+          reading__sample_compare);
+    rc = reading__apply_sample(task, 0);
   }
   if (rc != result_OK)
   {
@@ -732,11 +734,11 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   WUSS_MENU_TITLE(task->spacing_menu, "Spacing", task->spacing_items,
                  NELEMS(task->spacing_items));
 
-  WUSS_MENU_ITEM(task->align_items, TEXT_ALIGN_LEFT, "Left",
+  WUSS_MENU_ITEM(task->align_items, READING_ALIGN_LEFT, "Left",
                  wuss_MENU_ITEM_TICKED);
-  WUSS_MENU_ITEM(task->align_items, TEXT_ALIGN_CENTRE, "Centre",
+  WUSS_MENU_ITEM(task->align_items, READING_ALIGN_CENTRE, "Centre",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->align_items, TEXT_ALIGN_RIGHT, "Right",
+  WUSS_MENU_ITEM(task->align_items, READING_ALIGN_RIGHT, "Right",
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->align_menu, "Alignment", task->align_items,
@@ -744,12 +746,12 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
 
   /* Both rows' .submenu just need to be non-NULL to draw an arrow and
    * become hoverable; which menu they name doesn't matter since
-   * text_pre_submenu_open always supplies the menu to open (see saturn.c's
+   * reading_pre_submenu_open always supplies the menu to open (see saturn.c's
    * SATURN_COLOURS_MENU_* for the same pattern). */
-  WUSS_MENU_ITEM_MENU(task->colours_items, TEXT_COLOURS_MENU_FOREGROUND,
+  WUSS_MENU_ITEM_MENU(task->colours_items, READING_COLOURS_MENU_FOREGROUND,
                       "Foreground", wuss_MENU_ITEM_PRE_OPEN,
                       wuss_colourmenu_menu(wuss));
-  WUSS_MENU_ITEM_MENU(task->colours_items, TEXT_COLOURS_MENU_BACKGROUND,
+  WUSS_MENU_ITEM_MENU(task->colours_items, READING_COLOURS_MENU_BACKGROUND,
                       "Background", wuss_MENU_ITEM_PRE_OPEN,
                       wuss_colourmenu_menu(wuss));
 
@@ -784,12 +786,12 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   task->top_items[5].submenu = NULL;
   task->top_items[5].window  = NULL;
 
-  WUSS_MENU_TITLE(task->top_menu, "Text", task->top_items,
+  WUSS_MENU_TITLE(task->top_menu, "Reading", task->top_items,
                  NELEMS(task->top_items));
 
-  delegate_desc.handle    = text_handle;
+  delegate_desc.handle    = reading_handle;
   delegate_desc.task_data = task;
-  delegate_desc.name      = "text";
+  delegate_desc.name      = "reading";
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
   {
@@ -808,7 +810,7 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
 
   rc = wuss_window_create_placed(delegate,
                                  sz,
-                                 "Sample Text",
+                                 "Reading",
                                  wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
                                  wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                                  SIZE2D(sz.w, 220 * 4),
@@ -826,19 +828,19 @@ result_t text_create(wuss_t *wuss, text_task_t **out)
   return result_OK;
 }
 
-result_t text_app_create(wuss_t *wuss)
+result_t reading_app_create(wuss_t *wuss)
 {
   static const taskapp_desc_t desc =
   {
-    "Text",
-    "Text layout sampler",
-    (taskapp_create_fn_t) text_create
+    "Reading",
+    "Reading layout sampler",
+    (taskapp_create_fn_t) reading_create
   };
 
   return taskapp_install(wuss, &desc);
 }
 
-void text_destroy(text_task_t *task)
+void reading_destroy(reading_task_t *task)
 {
   int i;
 
@@ -851,7 +853,7 @@ void text_destroy(text_task_t *task)
   free(task);
 }
 
-#define TEXT_INSET 4
+#define READING_INSET 4
 #define LEADING    2
 #define MAX_LINES  64 /* sample text is short; overflow is dropped */
 
@@ -859,14 +861,14 @@ void text_destroy(text_task_t *task)
  * offsets into tcx->text) so a span's run is drawn in its own colour
  * instead of fg; used only when tcx->markdown_nspans > 0. Line i starts
  * dx[i] pixels right of origin. */
-static void text__draw_styled(text_task_t         *tcx,
-                              screen_t            *scr,
-                              const bmtext_line_t *lines,
-                              int                  nlines,
-                              const int           *dx,
-                              colour_t             fg,
-                              colour_t             bg,
-                              point_t              origin)
+static void reading__draw_styled(reading_task_t      *tcx,
+                                 screen_t            *scr,
+                                 const bmtext_line_t *lines,
+                                 int                  nlines,
+                                 const int           *dx,
+                                 colour_t             fg,
+                                 colour_t             bg,
+                                 point_t              origin)
 {
   int     font_height, font_ascent;
   point_t pos;
@@ -891,18 +893,18 @@ static void text__draw_styled(text_task_t         *tcx,
 
     while (cursor < line_len)
     {
-      int                abs_pos;
-      const text_span_t *span;
-      int                j;
-      int                run_start;
-      int                run_len;
-      colour_t           run_colour;
+      int                   abs_pos;
+      const reading_span_t *span;
+      int                   j;
+      int                   run_start;
+      int                   run_len;
+      colour_t              run_colour;
 
       abs_pos = line_off + cursor;
       span    = NULL;
       for (j = 0; j < tcx->markdown_nspans; j++)
       {
-        const text_span_t *s;
+        const reading_span_t *s;
 
         s = &tcx->markdown_spans[j];
         if (abs_pos >= s->start && abs_pos < s->start + s->len)
@@ -925,8 +927,8 @@ static void text__draw_styled(text_task_t         *tcx,
         run_len = line_len - cursor;
         for (j = 0; j < tcx->markdown_nspans; j++)
         {
-          const text_span_t *s;
-          int                rel;
+          const reading_span_t *s;
+          int                   rel;
 
           s   = &tcx->markdown_spans[j];
           rel = s->start - line_off;
@@ -953,12 +955,12 @@ static void text__draw_styled(text_task_t         *tcx,
  * produces one empty bmtext_line_t, so blank-line paragraph gaps survive
  * as a blank output line). Returns the number of lines written, capped at
  * max. */
-static int text__layout_lines(bmfont_t               *font,
-                              const char             *text,
-                              int                     wrap_width,
-                              const bmfont_spacing_t *spacing,
-                              bmtext_line_t          *lines,
-                              int                     max)
+static int reading__layout_lines(bmfont_t               *font,
+                                 const char             *text,
+                                 int                     wrap_width,
+                                 const bmfont_spacing_t *spacing,
+                                 bmtext_line_t          *lines,
+                                 int                     max)
 {
   int         nlines;
   const char *seg;
@@ -996,9 +998,9 @@ static int text__layout_lines(bmfont_t               *font,
   return nlines;
 }
 
-static result_t text_redraw(const wuss_event_t *event, void *task_data)
+static result_t reading_redraw(const wuss_event_t *event, void *task_data)
 {
-  text_task_t    *tcx;
+  reading_task_t *tcx;
   screen_t       *scr;
   const box_t    *bounds;
   int             sx, sy;
@@ -1023,8 +1025,8 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
   fg      = palette[tcx->fg_index];
   bg      = tcx->bg_transparent ? colour_rgba(0, 0, 0, 0) : palette[tcx->bg_index];
 
-  wrap_width = (bounds->x1 - TEXT_INSET) - (bounds->x0 + TEXT_INSET);
-  nlines     = text__layout_lines(tcx->font,
+  wrap_width = (bounds->x1 - READING_INSET) - (bounds->x0 + READING_INSET);
+  nlines     = reading__layout_lines(tcx->font,
                                   tcx->text,
                                   wrap_width,
                                   &tcx->spacing,
@@ -1040,7 +1042,7 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
     bmfont_width_t width;
 
     dx[i] = 0;
-    if (tcx->align == TEXT_ALIGN_LEFT)
+    if (tcx->align == READING_ALIGN_LEFT)
       continue;
 
     if (bmfont_measure(tcx->font, lines[i].str, lines[i].len, &tcx->spacing,
@@ -1048,16 +1050,16 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
       continue;
 
     dx[i] = wrap_width - width;
-    if (tcx->align == TEXT_ALIGN_CENTRE)
+    if (tcx->align == READING_ALIGN_CENTRE)
       dx[i] /= 2;
   }
 
-  origin.x = bounds->x0 - sx + TEXT_INSET;
-  origin.y = bounds->y0 - sy + TEXT_INSET;
+  origin.x = bounds->x0 - sx + READING_INSET;
+  origin.y = bounds->y0 - sy + READING_INSET;
 
   if (tcx->markdown_nspans > 0)
   {
-    text__draw_styled(tcx, scr, lines, nlines, dx, fg, bg, origin);
+    reading__draw_styled(tcx, scr, lines, nlines, dx, fg, bg, origin);
     return result_OK;
   }
 
@@ -1078,25 +1080,25 @@ static result_t text_redraw(const wuss_event_t *event, void *task_data)
 
 /* toggle the window's automatic width swing, keeping the "Auto-size" tick
  * in step */
-static result_t text_toggle_resizing(text_task_t *tcx)
+static result_t reading_toggle_resizing(reading_task_t *tcx)
 {
   tcx->resizing = !tcx->resizing;
 
-  wuss_menu_tick_item(&tcx->top_menu, TEXT_MENU_AUTOSIZE, tcx->resizing);
+  wuss_menu_tick_item(&tcx->top_menu, READING_MENU_AUTOSIZE, tcx->resizing);
   wuss_menu_tick_item_live(tcx->menu_handle, &tcx->top_menu,
-                           TEXT_MENU_AUTOSIZE, tcx->resizing);
+                           READING_MENU_AUTOSIZE, tcx->resizing);
   return result_OK;
 }
 
-#define TEXT_RESIZE_PERIOD_FRAMES 300 /* one full swing every 5s at 60fps */
-#define TEXT_RESIZE_AMPLITUDE     50  /* +/-50px either side of base_width */
+#define READING_RESIZE_PERIOD_FRAMES 300 /* one full swing every 5s at 60fps */
+#define READING_RESIZE_AMPLITUDE     50  /* +/-50px either side of base_width */
 
-static result_t text_idle(void *task_data)
+static result_t reading_idle(void *task_data)
 {
-  text_task_t *tcx;
-  int          height, width;
-  double       angle;
-  result_t     rc;
+  reading_task_t *tcx;
+  int             height, width;
+  double          angle;
+  result_t        rc;
 
   tcx = task_data;
 
@@ -1113,28 +1115,28 @@ static result_t text_idle(void *task_data)
   height = tcx->base_height;
 
   tcx->frame_count++;
-  angle = tcx->frame_count * (2.0 * M_PI / TEXT_RESIZE_PERIOD_FRAMES);
-  width = tcx->base_width + (int) (TEXT_RESIZE_AMPLITUDE * sin(angle));
+  angle = tcx->frame_count * (2.0 * M_PI / READING_RESIZE_PERIOD_FRAMES);
+  width = tcx->base_width + (int) (READING_RESIZE_AMPLITUDE * sin(angle));
 
   rc = wuss_window_resize(tcx->window, SIZE2D(width, height));
   if (rc != result_OK)
-    logf_warning("text_idle: wuss_window_resize(%d, %d) failed", width, height);
+    logf_warning("reading_idle: wuss_window_resize(%d, %d) failed", width, height);
 
   return rc;
 }
 
-result_t text_handle(wuss_window_t      *window,
-                     const wuss_event_t *event,
-                     void               *task_data)
+result_t reading_handle(wuss_window_t      *window,
+                        const wuss_event_t *event,
+                        void               *task_data)
 {
-  text_task_t *tcx;
+  reading_task_t *tcx;
 
   tcx = task_data;
 
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return text_redraw(event, task_data);
+    return reading_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
     if (window != tcx->window)
@@ -1142,11 +1144,11 @@ result_t text_handle(wuss_window_t      *window,
                          * its own */
     if (event->data.mouse.action == wuss_MOUSE_DOWN &&
         (event->data.mouse.button & wuss_BUTTON_MENU))
-      return text_open_menu(tcx);
+      return reading_open_menu(tcx);
     if (event->data.mouse.action != wuss_MOUSE_DOWN ||
         !(event->data.mouse.button & wuss_BUTTON_SELECT))
       return result_OK;
-    return text_toggle_resizing(tcx);
+    return reading_toggle_resizing(tcx);
 
   case wuss_EVENT_MENU_SELECT:
     {
@@ -1158,11 +1160,11 @@ result_t text_handle(wuss_window_t      *window,
       name = wuss_fontmenu_selected(event);
       if (name != NULL)
       {
-        rc = text_set_font(tcx, event->data.menu_select.index, name);
+        rc = reading_set_font(tcx, event->data.menu_select.index, name);
 
         /* ADJUST keeps the chain open, so retick the still-open font level
          * in place (a no-op once a SELECT pick has closed it). Use the
-         * event's own menu, not a fresh text_fontmenu(): that can rebuild
+         * event's own menu, not a fresh reading_fontmenu(): that can rebuild
          * the singleton under the open chain. */
         wuss_menu_tick_exclusive_live(tcx->menu_handle,
                                       event->data.menu_select.menu,
@@ -1170,27 +1172,27 @@ result_t text_handle(wuss_window_t      *window,
         return rc;
       }
       if (event->data.menu_select.menu == &tcx->sample_menu)
-        return text_set_sample(tcx, event->data.menu_select.index);
+        return reading_set_sample(tcx, event->data.menu_select.index);
       if (event->data.menu_select.menu == &tcx->spacing_menu)
-        return text_set_spacing(tcx, event->data.menu_select.index);
+        return reading_set_spacing(tcx, event->data.menu_select.index);
       if (event->data.menu_select.menu == &tcx->align_menu)
-        return text_set_align(tcx, event->data.menu_select.index);
+        return reading_set_align(tcx, event->data.menu_select.index);
       if (event->data.menu_select.menu == &tcx->top_menu &&
-          event->data.menu_select.index == TEXT_MENU_AUTOSIZE)
-        return text_toggle_resizing(tcx);
+          event->data.menu_select.index == READING_MENU_AUTOSIZE)
+        return reading_toggle_resizing(tcx);
       if (tcx->colourmenu_target == NULL)
         return result_OK;
       picked = wuss_colourmenu_selected(event, &mine);
       if (!mine)
         return result_OK;
       if (tcx->colourmenu_target == &tcx->fg_index)
-        return text_set_fg(tcx, picked);
-      return text_set_bg(tcx, picked);
+        return reading_set_fg(tcx, picked);
+      return reading_set_bg(tcx, picked);
     }
     return result_OK;
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
-    return text_pre_submenu_open(tcx, event);
+    return reading_pre_submenu_open(tcx, event);
 
   case wuss_EVENT_MENU_CLOSED:
     tcx->menu_handle = NULL;
@@ -1202,11 +1204,11 @@ result_t text_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_QUIT:
-    text_destroy(tcx);
+    reading_destroy(tcx);
     return result_OK;
 
   case wuss_EVENT_IDLE:
-    return text_idle(task_data);
+    return reading_idle(task_data);
 
   default:
     return result_OK;

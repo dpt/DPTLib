@@ -827,7 +827,7 @@ typedef struct wuss_options
   int         res_height;
   const char *tasks;        /* -t/--tasks: comma-separated launcher task
                              * names to auto-open at startup, or "all";
-                             * default "Filer" ("Filer,Configure,Text"
+                             * default "Filer" ("Filer,Configure,Reading"
                              * under Emscripten); giving -t replaces it */
   const char *root;         /* --root: directory Filer's icon bar icon and
                              * System menu row open; default "." (or "/"
@@ -986,7 +986,7 @@ int main(int argc, char *argv[])
   opts.res_width    = 640;
   opts.res_height   = 480;
 #ifdef __EMSCRIPTEN__
-  opts.tasks        = "Filer,Configure,Text"; /* browser has no command line */
+  opts.tasks        = "Filer,Configure,Reading"; /* browser has no command line */
 #else
   opts.tasks        = "Filer";
 #endif

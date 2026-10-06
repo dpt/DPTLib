@@ -104,7 +104,7 @@ void tasks_set_pointer(bool on);
 
 /* Install the apps named in names, a comma-separated list of launcher-menu
  * task names (e.g. "Saturn,Clock"), or "all" to install every task in every
- * category (games, image, tests, system, utilities, visuals), in table
+ * category (games, image, tests, toys, system, text, utilities, visuals), in table
  * order; an empty string installs nothing. Installing puts the app's icon on
  * the icon bar but opens no window: that waits for a SELECT click on the icon.
  * Logs and continues past any individual failure or unknown name rather

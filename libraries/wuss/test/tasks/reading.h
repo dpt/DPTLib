@@ -1,7 +1,7 @@
-/* wuss/test/tasks/text.h -- sample-text task */
+/* wuss/test/tasks/reading.h -- Reading task */
 
-#ifndef TASKS_TEXT_H
-#define TASKS_TEXT_H
+#ifndef TASKS_READING_H
+#define TASKS_READING_H
 
 #ifdef WUSS_APP
 
@@ -16,28 +16,28 @@
 #include "wuss/window.h"
 
 /* one styled run within a task's markdown_text, produced by
- * text__markdown_parse: [start, start+len) is drawn in colour instead of
+ * reading__markdown_parse: [start, start+len) is drawn in colour instead of
  * the paragraph's normal foreground. Runs never overlap and are sorted by
  * start. */
-typedef struct text_span
+typedef struct reading_span
 {
   int      start;
   int      len;
   colour_t colour;
 }
-text_span_t;
+reading_span_t;
 
-#define TEXT_MAX_SAMPLES 16 /* only the first this many files in
+#define READING_MAX_SAMPLES 16 /* only the first this many files in
                              * resources/text, by name, are kept */
 
 /* one row of the "Sample" submenu, found in resources/text */
-typedef struct text_sample
+typedef struct reading_sample
 {
   char leaf[64];  /* leafname, for loading */
   char name[64];  /* menu label: leaf less extension, '_' shown as ' ' */
-  bool markdown;  /* leaf is ".md": parse with text__markdown_parse */
+  bool markdown;  /* leaf is ".md": parse with reading__markdown_parse */
 }
-text_sample_t;
+reading_sample_t;
 
 /* window B's task: flows a chosen sample string over its wuss-filled
  * background, one line per bmfont_draw call. A MENU click on the window opens
@@ -50,7 +50,7 @@ text_sample_t;
  * "Background" row also offers a "None" chip that unsets the paragraph's
  * background colour so glyphs blend straight onto whatever is already
  * behind the window's content. */
-typedef struct text_task
+typedef struct reading_task
 {
   wuss_window_t      *window;
   wuss_task_t        *delegate;   /* the wuss task backing this window */
@@ -64,13 +64,13 @@ typedef struct text_task
   wuss_colour_t      *colourmenu_target; /* &task->fg_index or
                                    * &task->bg_index: which field the open
                                    * colourmenu picks into, set by
-                                   * text_pre_submenu_open */
-  text_sample_t       samples[TEXT_MAX_SAMPLES]; /* sorted by leaf */
+                                   * reading_pre_submenu_open */
+  reading_sample_t       samples[READING_MAX_SAMPLES]; /* sorted by leaf */
   int                 nsamples;   /* used entries of samples[] */
-  wuss_menu_item_t    sample_items[TEXT_MAX_SAMPLES]; /* "Sample" submenu
+  wuss_menu_item_t    sample_items[READING_MAX_SAMPLES]; /* "Sample" submenu
                                    * rows, one per samples[]; per-instance
                                    * so ticks/selection state can't bleed
-                                   * across two Text windows */
+                                   * across two Reading windows */
   wuss_menu_t         sample_menu;
   wuss_menu_item_t    spacing_items[4]; /* "Spacing" submenu rows; per-
                                    * instance for the same reason -- each
@@ -83,7 +83,7 @@ typedef struct text_task
   wuss_menu_item_t    colours_items[2]; /* "Foreground"/"Background" rows;
                                    * both share the colourmenu singleton,
                                    * retargeted per hover in
-                                   * text_pre_submenu_open */
+                                   * reading_pre_submenu_open */
   wuss_menu_t         colours_menu;
   wuss_menu_item_t    top_items[6]; /* "Font", "Sample", "Spacing",
                                    * "Alignment", "Colours", "Auto-size",
@@ -97,18 +97,18 @@ typedef struct text_task
                                    * open; NULL if closed */
   int                 sample;     /* index into samples[] currently shown,
                                    * or -1 before the first is loaded */
-  char               *text;       /* owned; what text_redraw lays out and
+  char               *text;       /* owned; what reading_redraw lays out and
                                    * draws: samples[sample]'s file contents,
                                    * stripped of Markdown markers if
                                    * samples[sample].markdown is set */
-  text_span_t        *markdown_spans; /* owned array of styled runs into
-                                   * text, from text__markdown_parse; NULL
+  reading_span_t        *markdown_spans; /* owned array of styled runs into
+                                   * text, from reading__markdown_parse; NULL
                                    * when the current sample isn't
                                    * Markdown */
   int                 markdown_nspans; /* length of markdown_spans */
-  int                 spacing_idx; /* index into text_spacing_presets[]
+  int                 spacing_idx; /* index into reading_spacing_presets[]
                                    * currently applied */
-  bmfont_spacing_t    spacing;    /* text_spacing_presets[spacing_idx],
+  bmfont_spacing_t    spacing;    /* reading_spacing_presets[spacing_idx],
                                    * passed to bmtext_layout/bmtext_draw */
   wuss_colour_t       fg_index;   /* system palette index picked from
                                    * "Foreground" */
@@ -124,26 +124,26 @@ typedef struct text_task
   int                 frame_count;
   bool                resizing;    /* off by default; toggled by the
                                    * "Auto-size" menu row or a content
-                                   * click. text_idle only resizes the
+                                   * click. reading_idle only resizes the
                                    * window while this is true */
 }
-text_task_t;
+reading_task_t;
 
-wuss_window_fn_t text_handle;
+wuss_window_fn_t reading_handle;
 
-/* create the sample-text window against the given wuss instance; the font
+/* create the Reading window against the given wuss instance; the font
  * picker loads bmfonts from wuss_get_resources(wuss)/resources/bmfonts/
  * <family>/<style>.png. if out is non-NULL, the task block is also returned through
  * it */
-result_t text_create(wuss_t *wuss, text_task_t **out);
+result_t reading_create(wuss_t *wuss, reading_task_t **out);
 
-/* install the icon bar app that opens text windows on demand */
-result_t text_app_create(wuss_t *wuss);
+/* install the icon bar app that opens Reading windows on demand */
+result_t reading_app_create(wuss_t *wuss);
 
-/* free a task block allocated by text_create; normally called by the
+/* free a task block allocated by reading_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
-void text_destroy(text_task_t *task);
+void reading_destroy(reading_task_t *task);
 
 #endif /* WUSS_APP */
 
-#endif /* TASKS_TEXT_H */
+#endif /* TASKS_READING_H */
