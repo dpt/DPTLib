@@ -139,6 +139,18 @@ static void gridview_test_activate(wuss_gridview_t *gridview,
 
   *(int *) opaque = index;
 }
+
+/* gridview drag callback: records the offered index at opaque, then declines
+ * so no core drag starts */
+static int gridview_test_drag(wuss_gridview_t *gridview,
+                              int              index,
+                              void            *opaque)
+{
+  NOT_USED(gridview);
+
+  *(int *) opaque = index;
+  return 0;
+}
 #endif
 
 #ifdef WUSS_COMPONENTS
@@ -6877,11 +6889,70 @@ StringSetOK: ;
     if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
     if (activated != 1) goto GridViewFail;
 
-    /* a DOWN on empty space (past the last row) clears the selection */
-    ev.data.mouse.point  = POINT(2, 2 + cell_h * (int) NELEMS(gridview_test_labels));
+    /* the activated item is deselected */
+    if (wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+
+    /* a hit test finds items by document point, and misses past the last */
+    if (wuss_gridview_hit_test(gv, POINT(2, 2 + cell_h)) != 1) goto GridViewFail;
+    if (wuss_gridview_hit_test(gv, POINT(2, 2 + cell_h * (int) NELEMS(gridview_test_labels))) != -1)
+      goto GridViewFail;
+
+    /* Select on an already-selected item changes nothing: the rest of the
+     * selection stays */
     ev.data.mouse.button = wuss_BUTTON_SELECT;
     if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
-    if (wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+    ev.data.mouse.point  = POINT(2, 2);
+    ev.data.mouse.button = wuss_BUTTON_ADJUST;
+    if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+    ev.data.mouse.button = wuss_BUTTON_SELECT;
+    if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+    if (!wuss_gridview_is_selected(gv, 0) ||
+        !wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+
+    /* Adjust on empty space leaves the selection alone */
+    ev.data.mouse.point  = POINT(2, 2 + cell_h * (int) NELEMS(gridview_test_labels));
+    ev.data.mouse.button = wuss_BUTTON_ADJUST;
+    if (wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+    if (!wuss_gridview_is_selected(gv, 0) ||
+        !wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+
+    /* Select on empty space clears the selection */
+    ev.data.mouse.button = wuss_BUTTON_SELECT;
+    if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+    if (wuss_gridview_is_selected(gv, 0) ||
+        wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+
+    /* a press and a move past the drag threshold offers the item to the drag
+     * callback, once */
+    wuss_gridview_set_drag(gv, gridview_test_drag);
+    ev.data.mouse.point  = POINT(2, 2 + cell_h);
+    ev.data.mouse.button = wuss_BUTTON_SELECT;
+    ev.data.mouse.action = wuss_MOUSE_DOWN;
+    (void) wuss_gridview_handle_event(gv, &ev);
+    activated            = -1;
+    ev.data.mouse.action = wuss_MOUSE_MOVE;
+    ev.data.mouse.point  = POINT(3, 2 + cell_h);
+    (void) wuss_gridview_handle_event(gv, &ev);
+    if (activated != -1) goto GridViewFail;
+    ev.data.mouse.point  = POINT(30, 2 + cell_h);
+    (void) wuss_gridview_handle_event(gv, &ev);
+    if (activated != 1) goto GridViewFail;
+    activated = -1;
+    (void) wuss_gridview_handle_event(gv, &ev);
+    if (activated != -1) goto GridViewFail;
+
+    /* leaving the window forgets a press */
+    ev.data.mouse.action = wuss_MOUSE_DOWN;
+    ev.data.mouse.point  = POINT(2, 2 + cell_h);
+    (void) wuss_gridview_handle_event(gv, &ev);
+    ev.kind = wuss_EVENT_POINTER_EXIT;
+    (void) wuss_gridview_handle_event(gv, &ev);
+    ev.kind              = wuss_EVENT_MOUSE;
+    ev.data.mouse.action = wuss_MOUSE_MOVE;
+    ev.data.mouse.point  = POINT(30, 2 + cell_h);
+    (void) wuss_gridview_handle_event(gv, &ev);
+    if (activated != -1) goto GridViewFail;
+    wuss_gridview_set_drag(gv, NULL);
 
     wuss_gridview_destroy(gv);
 

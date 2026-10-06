@@ -40,6 +40,9 @@ struct wuss_gridview
   int                            count;
   wuss_gridview_item_fn_t       *item_fn;
   wuss_gridview_activate_fn_t   *activate;
+  wuss_gridview_drag_fn_t       *drag;    /* NULL: items are not draggable */
+  int                            press_index; /* item pressed, -1 for none */
+  point_t                        press_point; /* its document point */
   void                          *opaque;
   bitvec_t                      *selected;
   int                            label_chars;
@@ -163,6 +166,8 @@ result_t wuss_gridview_create(wuss_gridview_t            **out,
   gv->count       = count;
   gv->item_fn     = item_fn;
   gv->activate    = activate;
+  gv->drag        = NULL;
+  gv->press_index = -1;
   gv->opaque      = opaque;
   gv->label_chars = label_chars;
   gv->columns     = 0;
@@ -301,6 +306,42 @@ static void gridview_invalidate_cell(wuss_gridview_t *gv, int index)
 
   box = gridview_cell_box(gv, index);
   wuss_window_invalidate(gv->window, &box);
+}
+
+/* The pointer moved with an item pressed: past the drag threshold, offer the
+ * item to the drag callback and, if it takes it, start a core drag sized to
+ * the cell. Hover moves also arrive here, so a press the pointer left the
+ * window during (see wuss_EVENT_POINTER_EXIT) must already have been
+ * forgotten. */
+static void gridview_drag_maybe(wuss_gridview_t *gv, point_t point)
+{
+  wuss_t *wuss;
+  box_t   cell;
+  point_t hotspot;
+  int     threshold;
+  int     index;
+  int     dx;
+  int     dy;
+
+  if (gv->press_index < 0)
+    return;
+
+  wuss      = gv->window->task->wuss;
+  threshold = wuss->input.drag_threshold_px;
+  dx        = point.x - gv->press_point.x;
+  dy        = point.y - gv->press_point.y;
+  if (dx * dx + dy * dy < threshold * threshold)
+    return;
+
+  index           = gv->press_index;
+  gv->press_index = -1;
+
+  if (!gv->drag(gv, index, gv->opaque))
+    return;
+
+  cell    = gridview_cell_box(gv, index);
+  hotspot = POINT(gv->press_point.x - cell.x0, gv->press_point.y - cell.y0);
+  (void) wuss_drag_start(wuss, gv->window, gv->cell, hotspot);
 }
 
 /* Deselect everything, dirtying only the cells that were selected. */
@@ -458,8 +499,22 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
   }
 
   case wuss_EVENT_MOUSE:
+    if (event->data.mouse.action == wuss_MOUSE_MOVE)
+    {
+      gridview_drag_maybe(gv, event->data.mouse.point);
+      return 0;
+    }
+
+    if (event->data.mouse.action == wuss_MOUSE_UP)
+    {
+      gv->press_index = -1;
+      return 0;
+    }
+
     if (event->data.mouse.action != wuss_MOUSE_DOWN)
       return 0;
+
+    gv->press_index = -1;
 
     /* a MENU click leaves the selection and the display alone */
     if (!(event->data.mouse.button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
@@ -475,6 +530,12 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
         return 0;
       gridview_clear_selected(gv);
       return 1;
+    }
+
+    if (gv->drag != NULL)
+    {
+      gv->press_index = index;
+      gv->press_point = event->data.mouse.point;
     }
 
     if (!gv->selectable)
@@ -501,9 +562,24 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
 
     if ((event->data.mouse.button & wuss_BUTTON_DOUBLE) &&
         gv->activate != NULL)
+    {
+      /* before the call: it may rescan or reorder the items */
+      if (bitvec_get(gv->selected, (bitvec_index_t) index))
+      {
+        bitvec_clear(gv->selected, (bitvec_index_t) index);
+        gridview_invalidate_cell(gv, index);
+      }
+
       gv->activate(gv, index, gv->opaque);
+    }
 
     return 1;
+
+  case wuss_EVENT_POINTER_EXIT:
+    /* no button state reaches a hover move, so a press the pointer leaves the
+     * window during must end here or the next hover would start a drag */
+    gv->press_index = -1;
+    return 0;
 
   default:
     return 0;
@@ -523,16 +599,6 @@ void wuss_gridview_clear_selection(wuss_gridview_t *gv)
     return;
 
   gridview_clear_selected(gv);
-}
-
-void wuss_gridview_deselect(wuss_gridview_t *gv, int index)
-{
-  if (index < 0 || index >= gv->count ||
-      !bitvec_get(gv->selected, (bitvec_index_t) index))
-    return;
-
-  bitvec_clear(gv->selected, (bitvec_index_t) index);
-  gridview_invalidate_cell(gv, index);
 }
 
 result_t wuss_gridview_set_count(wuss_gridview_t *gv, int count)
@@ -628,6 +694,13 @@ void wuss_gridview_set_padding(wuss_gridview_t *gv,
   wuss_window_invalidate_visible(gv->window);
 }
 
+void wuss_gridview_set_drag(wuss_gridview_t         *gv,
+                            wuss_gridview_drag_fn_t *drag)
+{
+  gv->drag        = drag;
+  gv->press_index = -1;
+}
+
 void wuss_gridview_set_draw(wuss_gridview_t         *gv,
                             wuss_gridview_draw_fn_t *draw,
                             int                      selectable)
@@ -664,4 +737,66 @@ size2d_t wuss_gridview_natural_size(const wuss_gridview_t *gv,
   rows    = MIN(MAX(rows, 1), MAX(max_rows, 1));
   return SIZE2D(gridview_width_for_columns(gv, columns),
                 rows * gv->cell.h + 2 * gv->inset);
+}
+
+int wuss_gridview_hit_test(const wuss_gridview_t *gv, point_t point)
+{
+  return gridview_hit_test(gv, point);
+}
+
+result_t wuss_gridview_window_create(wuss_gridview_t            **out,
+                                     wuss_task_t                 *task,
+                                     const char                  *title,
+                                     int                          count,
+                                     wuss_gridview_item_fn_t     *item_fn,
+                                     int                          label_chars,
+                                     wuss_gridview_activate_fn_t *activate,
+                                     void                        *opaque,
+                                     wuss_window_t              **window)
+{
+  result_t       rc;
+  wuss_window_t *win;
+
+  if (out == NULL || window == NULL)
+    return result_NULL_ARG;
+
+  /* No horizontal scrollbar: the grid reflows to the width instead. */
+  rc = wuss_window_create_placed(task, SIZE2D(320, 240), title,
+                                 (wuss_WINDOW_DEFAULT & ~wuss_WINDOW_HSCROLL) |
+                                 wuss_WINDOW_FOCUSABLE,
+                                 wuss_NO_BACKDROP, SIZE2D(320, 240),
+                                 SIZE2D(0, 0), &win);
+  if (rc != result_OK)
+    return rc;
+
+  rc = wuss_gridview_create(out, win, count, item_fn, label_chars, activate,
+                            opaque);
+  if (rc != result_OK)
+  {
+    wuss_window_close(win);
+    return rc;
+  }
+
+  *window = win;
+  return result_OK;
+}
+
+void wuss_gridview_fit_window(wuss_gridview_t *gv, int columns, int max_rows)
+{
+  box_t    content;
+  int      cols;
+  size2d_t size;
+
+  (void) wuss_window_resize(gv->window,
+                            wuss_gridview_natural_size(gv, columns, max_rows));
+
+  /* The resize is capped to the screen from the window's top-left, so it may
+   * have stopped part way across a column: drop to the columns that fit. */
+  wuss_window_get_content_bounds(gv->window, &content);
+  cols = (content.x1 - content.x0) / gv->cell.w;
+  if (cols < MIN(columns, MAX(gv->count, 1)))
+  {
+    size = wuss_gridview_natural_size(gv, MAX(cols, 1), max_rows);
+    (void) wuss_window_resize(gv->window, size);
+  }
 }
