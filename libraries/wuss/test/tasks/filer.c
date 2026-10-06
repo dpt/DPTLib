@@ -243,11 +243,13 @@ static void filer_drag_maybe(filer_task_t *task, point_t point)
     task->drag_path[0] = '\0';
 }
 
-/* The drag ended: offer the file to the window it was dropped on. Drops on
- * nothing, on a Filer window or after Escape do nothing. */
+/* The drag ended: offer the file to the window or icon bar icon it was
+ * dropped on. Drops on nothing, on a Filer window or after Escape do
+ * nothing. */
 static void filer_drop(filer_task_t *task, const wuss_event_t *event)
 {
-  char path[DPTLIB_MAXPATH];
+  char              path[DPTLIB_MAXPATH];
+  wuss_msg_target_t target = { NULL, NULL };
 
   if (task->drag_path[0] == '\0')
     return;
@@ -259,9 +261,12 @@ static void filer_drop(filer_task_t *task, const wuss_event_t *event)
       filer_find_by_window(task, event->data.drag_end.drop) != NULL)
     return;
 
-  (void) wuss_send_recorded(task->wuss, task->delegate,
-                            event->data.drag_end.drop, wuss_MESSAGE_DATA_LOAD,
-                            path, strlen(path) + 1, 0, NULL);
+  target.window = event->data.drag_end.drop;
+  target.icon   = event->data.drag_end.drop_icon;
+
+  (void) wuss_send_recorded_to(task->wuss, task->delegate, &target,
+                               wuss_MESSAGE_DATA_LOAD, path,
+                               strlen(path) + 1, 0, NULL);
 }
 
 /* ----------------------------------------------------------------------- */

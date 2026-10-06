@@ -9997,6 +9997,144 @@ QuitFail:
     reap_test_tasks();
   }
 
+#ifdef WUSS_ICONBAR
+  printf("test: wuss_send_recorded_to an icon bar icon reaches the icon's owner and "
+        "bounces if unacknowledged or the icon goes\n");
+
+  {
+    static msg_task_t        tc_recv, tc_send;
+    wuss_iconbar_icon_spec_t spec;
+    wuss_iconbar_icon_t     *icon;
+    wuss_task_t             *delegate_send, *delegate_recv;
+    unsigned int             my_ref;
+    wuss_msg_target_t        target = { NULL, NULL };
+
+    memset(&tc_recv, 0, sizeof(tc_recv));
+    memset(&tc_send, 0, sizeof(tc_send));
+    tc_recv.wuss           = wuss;
+    tc_recv.ack_on_receipt = 1;
+    delegate_recv = mk_task(wuss, msg_handle, &tc_recv);
+    if (delegate_recv == NULL) goto Failure;
+    tc_recv.self = delegate_recv;
+
+    tc_send.wuss = wuss;
+    delegate_send = mk_task(wuss, msg_handle, &tc_send);
+    if (delegate_send == NULL) goto Failure;
+    tc_send.self = delegate_send;
+
+    memset(&spec, 0, sizeof(spec));
+    spec.text = "M";
+    rc = wuss_iconbar_icon_create(wuss, delegate_recv, &spec, &icon);
+    if (rc != result_OK) goto Failure;
+    target.window = wuss->iconbar.window;
+    target.icon   = icon;
+
+    /* acknowledged: delivered with no window, no bounce */
+    rc = wuss_send_recorded_to(wuss, delegate_send, &target, MSG_TEST_ACTION,
+                               NULL, 0, 0, &my_ref);
+    if (rc != result_OK || my_ref == 0) goto Failure;
+    rc = wuss_idle(wuss);
+    if (rc != result_OK) goto Failure;
+    if (tc_recv.message_count != 1 ||
+        tc_recv.last_message.window != wuss->iconbar.window ||
+        tc_recv.last_message.icon != icon || tc_send.bounced_count != 0)
+      goto Failure;
+
+    /* not acknowledged: bounces */
+    tc_recv.ack_on_receipt = 0;
+    rc = wuss_send_recorded_to(wuss, delegate_send, &target, MSG_TEST_ACTION,
+                               NULL, 0, 0, &my_ref);
+    if (rc != result_OK) goto Failure;
+    rc = wuss_idle(wuss);
+    if (rc != result_OK) goto Failure;
+    if (tc_recv.message_count != 2 || tc_send.bounced_count != 1 ||
+        tc_send.last_message.my_ref != my_ref)
+      goto Failure;
+
+    /* icon destroyed before the queue drains: bounces, never delivered */
+    rc = wuss_send_recorded_to(wuss, delegate_send, &target, MSG_TEST_ACTION,
+                               NULL, 0, 0, NULL);
+    if (rc != result_OK) goto Failure;
+    wuss_iconbar_icon_destroy(wuss, icon);
+    rc = wuss_idle(wuss);
+    if (rc != result_OK) goto Failure;
+    if (tc_recv.message_count != 2 || tc_send.bounced_count != 2)
+      goto Failure;
+
+    reap_test_tasks();
+  }
+#endif
+
+  printf("test: wuss_send_recorded_to a window's icon reaches the window's "
+        "task with the icon, and bounces if the icon is deleted\n");
+
+  {
+    static msg_task_t tc_recv, tc_send;
+    wuss_task_t      *delegate_send, *delegate_recv;
+    wuss_window_t    *win_recv;
+    wuss_icon_t      *icon;
+    wuss_icon_spec_t  ispec;
+    wuss_msg_target_t target = { NULL, NULL };
+    box_t             box_recv;
+
+    memset(&tc_recv, 0, sizeof(tc_recv));
+    memset(&tc_send, 0, sizeof(tc_send));
+    tc_recv.wuss           = wuss;
+    tc_recv.ack_on_receipt = 1;
+    delegate_recv = mk_task(wuss, msg_handle, &tc_recv);
+    if (delegate_recv == NULL) goto Failure;
+    tc_recv.self = delegate_recv;
+
+    tc_send.wuss = wuss;
+    delegate_send = mk_task(wuss, msg_handle, &tc_send);
+    if (delegate_send == NULL) goto Failure;
+    tc_send.self = delegate_send;
+
+    box_recv.x0 = 10; box_recv.y0 = 10;
+    box_recv.x1 = 90; box_recv.y1 = 90;
+    rc = wuss_window_create(delegate_recv, &box_recv, "R",
+                            wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_recv);
+    if (rc != result_OK) goto Failure;
+
+    memset(&ispec, 0, sizeof(ispec));
+    ispec.type = wuss_ICON_TYPE_LABEL;
+    ispec.text = "I";
+    ispec.bbox.x0 = 2;  ispec.bbox.y0 = 2;
+    ispec.bbox.x1 = 20; ispec.bbox.y1 = 20;
+    rc = wuss_icon_create(win_recv, &ispec, &icon);
+    if (rc != result_OK) goto Failure;
+
+    /* an icon without its window is no target */
+    target.icon = icon;
+    rc = wuss_send_recorded_to(wuss, delegate_send, &target, MSG_TEST_ACTION,
+                               NULL, 0, 0, NULL);
+    if (rc != result_BAD_ARG) goto Failure;
+
+    target.window = win_recv;
+    rc = wuss_send_recorded_to(wuss, delegate_send, &target, MSG_TEST_ACTION,
+                               NULL, 0, 0, NULL);
+    if (rc != result_OK) goto Failure;
+    rc = wuss_idle(wuss);
+    if (rc != result_OK) goto Failure;
+    if (tc_recv.message_count != 1 || tc_recv.last_message.window != win_recv ||
+        tc_recv.last_message.icon != icon || tc_send.bounced_count != 0)
+      goto Failure;
+
+    /* deleted before the queue drains: bounces, never delivered */
+    rc = wuss_send_recorded_to(wuss, delegate_send, &target, MSG_TEST_ACTION,
+                               NULL, 0, 0, NULL);
+    if (rc != result_OK) goto Failure;
+    wuss_icon_delete(win_recv, icon);
+    rc = wuss_idle(wuss);
+    if (rc != result_OK) goto Failure;
+    if (tc_recv.message_count != 1 || tc_send.bounced_count != 1)
+      goto Failure;
+
+    wuss_window_close(win_recv);
+    reap_test_tasks();
+  }
+
   printf("test: replying with your_ref == my_ref from within the handler "
         "counts as acknowledging a recorded send\n");
 

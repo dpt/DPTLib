@@ -32,6 +32,8 @@ void wuss_iconbar_icon_destroy(wuss_t *wuss, wuss_iconbar_icon_t *icon)
     }
   }
 
+  wuss__message_purge_icon(wuss, icon);
+
   wuss__iconbar_box(wuss, &bar);
   wuss__invalidate_clipped(wuss->iconbar.window, &bar);
 
