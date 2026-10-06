@@ -31,11 +31,32 @@ struct paintdoc
 
 /* ----------------------------------------------------------------------- */
 
+/* a white bgrx8888 bitmap of the given size, with its own pixel store */
+static result_t canvas_make(size2d_t size, bitmap_t *bm)
+{
+  result_t rc;
+  void    *pixels;
+
+  pixels = malloc((size_t) size.w * (size_t) size.h * 4);
+  if (pixels == NULL)
+    return result_OOM;
+
+  rc = bitmap_init(bm, size, pixelfmt_bgrx8888, size.w * 4, NULL, pixels);
+  if (rc != result_OK)
+  {
+    free(pixels);
+    return rc;
+  }
+
+  bitmap_clear(bm, colour_rgb(255, 255, 255));
+
+  return result_OK;
+}
+
 result_t paintdoc_create(size2d_t size, paintdoc_t **doc)
 {
   result_t    rc;
   paintdoc_t *d;
-  void       *pixels;
 
   if (size.w <= 0 || size.h <= 0)
     return result_BAD_ARG;
@@ -44,40 +65,96 @@ result_t paintdoc_create(size2d_t size, paintdoc_t **doc)
   if (d == NULL)
     return result_OOM;
 
-  pixels = malloc((size_t) size.w * (size_t) size.h * 4);
-  if (pixels == NULL)
-  {
-    free(d);
-    return result_OOM;
-  }
-
-  rc = bitmap_init(&d->bm, size, pixelfmt_bgrx8888, size.w * 4, NULL, pixels);
+  rc = canvas_make(size, &d->bm);
   if (rc != result_OK)
   {
-    free(pixels);
     free(d);
     return rc;
   }
 
-  bitmap_clear(&d->bm, colour_rgb(255, 255, 255));
   screen_for_bitmap(&d->scr, &d->bm);
 
   *doc = d;
   return result_OK;
 }
 
-void paintdoc_destroy(paintdoc_t *doc)
+/* drop every undo step */
+static void undo_clear(paintdoc_t *doc)
 {
   int i;
-
-  if (doc == NULL)
-    return;
 
   for (i = 0; i < doc->nundo; i++)
     free(doc->undo[i].base);
 
+  doc->nundo = 0;
+}
+
+void paintdoc_destroy(paintdoc_t *doc)
+{
+  if (doc == NULL)
+    return;
+
+  undo_clear(doc);
   free(doc->bm.base);
   free(doc);
+}
+
+/* free a bitmap that bitmap_load_png or bitmap_convert made */
+static void bitmap_discard(bitmap_t *bm, int heap_struct)
+{
+  free(bm->base);
+  free(bm->palette);
+  if (heap_struct)
+    free(bm);
+}
+
+result_t paintdoc_load_png(paintdoc_t *doc, const char *path)
+{
+  result_t  rc;
+  bitmap_t  src;
+  bitmap_t *deep;
+  bitmap_t  next;
+  screen_t  scr;
+
+  rc = bitmap_load_png(&src, path);
+  if (rc != result_OK)
+    return rc;
+
+  /* a paletted image blits only once converted; bgrx8888 is the only deep
+   * target bitmap_convert offers for it, so palette transparency is lost */
+  deep = NULL;
+  if (src.format >= pixelfmt_p1 && src.format <= pixelfmt_p8)
+  {
+    rc = bitmap_convert(&src, pixelfmt_bgrx8888, &deep);
+    if (rc != result_OK)
+    {
+      bitmap_discard(&src, 0);
+      return rc;
+    }
+  }
+
+  rc = canvas_make(src.size, &next);
+  if (rc == result_OK)
+  {
+    screen_for_bitmap(&scr, &next);
+    rc = screen_copy_bitmap(&scr, 0, 0, deep != NULL ? deep : &src);
+    if (rc != result_OK)
+      free(next.base);
+  }
+
+  bitmap_discard(&src, 0);
+  if (deep != NULL)
+    bitmap_discard(deep, 1);
+
+  if (rc != result_OK)
+    return rc;
+
+  undo_clear(doc);
+  free(doc->bm.base);
+  doc->bm = next;
+  screen_for_bitmap(&doc->scr, &doc->bm);
+
+  return result_OK;
 }
 
 const bitmap_t *paintdoc_bitmap(const paintdoc_t *doc)

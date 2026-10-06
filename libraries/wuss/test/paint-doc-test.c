@@ -62,9 +62,9 @@ result_t paintdoc_test(const char *resources)
 {
   paintdoc_t *doc = NULL;
   box_t       dirty;
+  char        path[256];
   int         i, n, x, y;
-
-  (void) resources;
+  uint32_t    before, after;
 
   printf("test: create makes a white bgrx8888 canvas; a bad size is "
          "rejected\n");
@@ -283,6 +283,53 @@ result_t paintdoc_test(const char *resources)
   CHECK(px(doc, 0, 0) == BLACK);
   CHECK(px(doc, 4, 0) == BLACK);
   CHECK(px(doc, 5, 0) == WHITE);
+
+  printf("test: loading a paletted or an RGB PNG resizes the canvas, drops "
+         "the undo history and keeps the picture\n");
+
+  snprintf(path, sizeof(path), "%s/resources/images/bob-lady.png", resources);
+  CHECK(paintdoc_checkpoint(doc) == result_OK);
+  CHECK(paintdoc_load_png(doc, path) == result_OK);
+  CHECK(paintdoc_bitmap(doc)->size.w == 64);
+  CHECK(paintdoc_bitmap(doc)->size.h == 64);
+  CHECK(!paintdoc_can_undo(doc));
+
+  /* a sprite is not a blank white sheet */
+  n = 0;
+  for (y = 0; y < 64; y++)
+    for (x = 0; x < 64; x++)
+      n += px(doc, x, y) != WHITE;
+  CHECK(n > 100);
+
+  snprintf(path, sizeof(path), "%s/resources/images/smred.png", resources);
+  CHECK(paintdoc_load_png(doc, path) == result_OK);
+  CHECK(paintdoc_bitmap(doc)->size.w == 512);
+  CHECK(paintdoc_bitmap(doc)->size.h == 512);
+
+  printf("test: a PNG that will not load leaves the canvas alone\n");
+
+  paintdoc_stroke(doc, POINT(5, 5), POINT(5, 5), 1, red());
+  snprintf(path, sizeof(path), "%s/resources/images/no-such-file.png",
+           resources);
+  CHECK(paintdoc_load_png(doc, path) != result_OK);
+  CHECK(paintdoc_bitmap(doc)->size.w == 512);
+  CHECK(px(doc, 5, 5) == RED);
+
+  printf("test: a saved canvas loads back the same\n");
+
+  snprintf(path, sizeof(path), "/tmp/dptlib-paintdoc-test.png");
+  before = px(doc, 6, 5);
+  after  = px(doc, 300, 400);
+  CHECK(bitmap_save_png(paintdoc_bitmap(doc), path) == result_OK);
+  paintdoc_destroy(doc);
+
+  CHECK(paintdoc_create(SIZE2D(8, 8), &doc) == result_OK);
+  CHECK(paintdoc_load_png(doc, path) == result_OK);
+  remove(path);
+  CHECK(paintdoc_bitmap(doc)->size.w == 512);
+  CHECK(px(doc, 5, 5) == RED);
+  CHECK(px(doc, 6, 5) == before);
+  CHECK(px(doc, 300, 400) == after);
 
   paintdoc_destroy(doc);
 

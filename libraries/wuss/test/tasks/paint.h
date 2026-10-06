@@ -10,6 +10,7 @@
 #include "wuss/icon.h"
 #include "wuss/icon-spec.h"
 #include "wuss/menu.h"
+#include "wuss/component/saveas.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
 
@@ -34,6 +35,7 @@ paint_tool_t;
 enum
 {
   PAINT_MENU_UNDO,
+  PAINT_MENU_SAVE,
   PAINT_MENU__COUNT
 };
 
@@ -48,6 +50,7 @@ typedef struct paint_task
   wuss_window_t     *window;    /* the canvas window; NULL once closed */
   wuss_window_t     *toolbox;   /* the toolbox window; NULL once closed */
   paintdoc_t        *doc;
+  wuss_saveas_t     *saveas;
   colour_t           fg, bg;
   paint_tool_t       tool;
   int                size;      /* brush and outline width in pixels */
