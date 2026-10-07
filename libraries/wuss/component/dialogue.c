@@ -211,6 +211,14 @@ result_t wuss_dialogue_handle_pre_show(wuss_dialogue_t *dialogue)
   return dialogue->fillout(dialogue->opaque);
 }
 
+void wuss_dialogue_set_focusable(wuss_dialogue_t *dialogue, int focusable)
+{
+  if (focusable)
+    dialogue->window->flags |= wuss_WINDOW_FOCUSABLE;
+  else
+    dialogue->window->flags &= ~wuss_WINDOW_FOCUSABLE;
+}
+
 result_t wuss_dialogue_hide(wuss_dialogue_t *dialogue)
 {
   return wuss_window_set_hidden(dialogue->window, 1);
