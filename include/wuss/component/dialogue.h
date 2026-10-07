@@ -228,6 +228,16 @@ int wuss_dialogue_handle_key(wuss_dialogue_t    *dialogue,
 result_t wuss_dialogue_handle_pre_show(wuss_dialogue_t *dialogue);
 
 /**
+ * Set whether the dialogue's window can take the input focus. A dialogue is
+ * created focusable; clear it for one with no writable icons, which has
+ * nothing to type into (see docs/windowing/wuss-layout.md).
+ *
+ * \param[in] dialogue  Handle.
+ * \param[in] focusable Non-zero to allow the focus, zero to refuse it.
+ */
+void wuss_dialogue_set_focusable(wuss_dialogue_t *dialogue, int focusable);
+
+/**
  * Hide the dialogue without destroying it, as wuss_window_set_hidden(window,
  * 1). For a standalone dialogue (not a wuss_menu_item_t::window leaf, which
  * dismisses via wuss_menu_close instead).

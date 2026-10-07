@@ -534,13 +534,13 @@ static const stack_item_t g_saturn_conf_stack[SIZE_STACK__LIMIT] =
   [ST_SLDR4] = STACK_LEAF_EX(ST_ROW4, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
   [ST_VAL4]  = STACK_LEAF_GROUP(ST_ROW4, 0, 16, stack_ALIGN_CENTRE, ST_G_VALUE),
 
-  [ST_BTNS]  = STACK_HBOX(ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
+  [ST_BTNS]  = STACK_HBOX(ST_ROOT, wuss_STD_SECONDARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
   [ST_BSPC]  = STACK_SPACER_GROUP(ST_BTNS, 0, ST_G_LABEL),
   [ST_BBOX]  = { .kind = stack_KIND_HBOX, .parent = ST_BTNS,
                 .gap = wuss_STD_GAP, .flex = 1 },
   [ST_DFLT]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, 0, 0),
   [ST_CNCL]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, 0, 0),
-  [ST_APLY]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, 0, 0),
+  [ST_APLY]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, 0, 0),
 };
 
 /* Build the size dialogue once: a label, a slider snapped to
@@ -586,7 +586,7 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
                                          wuss_STD_SECONDARY_BUTTON_BORDER);
   items[ST_CNCL].min = items[ST_DFLT].min;
   items[ST_APLY].min = task_button_width(task->wuss, "Default",
-                                         wuss_STD_PRIMARY_BUTTON_BORDER);
+                                         wuss_STD_SECONDARY_BUTTON_BORDER);
 
   /* smallest window the layout can be solved into without any flex item
    * (the sliders) growing past its minimum */
@@ -598,6 +598,8 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
                             "Configuration", saturn_conf_fillout, task);
   if (rc != result_OK)
     return rc;
+
+  wuss_dialogue_set_focusable(task->conf.dialogue, 0); /* no writables */
 
   root = (box_t) BOX_POS_SIZE(0, 0, min_sz.w, min_sz.h);
   rc = stack_solve(items, NELEMS(items), &root, boxes);
@@ -621,7 +623,7 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
 
   wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_DEFAULT], boxes[ST_DFLT], "Default", 0);
   wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_CANCEL], boxes[ST_CNCL], "Cancel", 0);
-  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_APPLY], boxes[ST_APLY], "Apply", 1);
+  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_APPLY], boxes[ST_APLY], "Apply", 0);
 
   rc = wuss_icon_create_array(wuss_dialogue_window(task->conf.dialogue),
                               specs, SATURN_SIZE_NICONS, made);
@@ -903,13 +905,6 @@ result_t saturn_handle(wuss_window_t      *window,
   case wuss_EVENT_KEY:
   {
     result_t rc;
-
-    if (window == wuss_dialogue_window(task->conf.dialogue))
-    {
-      rc = result_WUSS_KEY_UNCLAIMED;
-      (void) wuss_dialogue_handle_key(task->conf.dialogue, event, &rc);
-      return rc;
-    }
 
     if (window != task->window)
       return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */

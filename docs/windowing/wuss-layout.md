@@ -57,6 +57,18 @@ Derived from the dialogues in `libraries/wuss/test/tasks/` (`display.c`,
 - Axis sizes from `task_button_width()` with
   `wuss_STD_SECONDARY_BUTTON_BORDER` / `wuss_STD_PRIMARY_BUTTON_BORDER`.
 
+## Default button
+
+- RETURN activates the dialogue's default button (`wuss_dialogue_handle_key`),
+  so a default button only makes sense when something can hold the input
+  focus: the dialogue must contain a writable icon.
+- A dialogue with no writable icons, e.g. only sliders, must NOT have a
+  default button. Its action buttons are all ordinary
+  (`wuss_STD_SECONDARY_BUTTON_HEIGHT` and `_BORDER`, `wuss_ICON_FLAGS_DEFAULT`
+  clear), and the button row is `wuss_STD_SECONDARY_BUTTON_HEIGHT` tall.
+- Such a dialogue is also not focusable: call
+  `wuss_dialogue_set_focusable(dialogue, 0)` after creating it.
+
 ## Frames
 
 Contents of a `wuss_ICON_TYPE_FRAME` use `wuss_STD_FRAME_INSETS` as the pad.
