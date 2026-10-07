@@ -1011,9 +1011,20 @@ result_t particles_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_KEY:
+  {
+    result_t rc;
+
+    if (window == wuss_dialogue_window(pt->strength_dialogue))
+    {
+      rc = result_WUSS_KEY_UNCLAIMED;
+      (void) wuss_dialogue_handle_key(pt->strength_dialogue, event, &rc);
+      return rc;
+    }
+
     if (window != pt->window)
       return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
     return wuss_menu_dispatch_shortcut(pt->delegate, &pt->menu, event);
+  }
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
     /* the "Background" row: the shared colourmenu, set up per open */

@@ -178,6 +178,31 @@ int wuss_dialogue_handle_icon(wuss_dialogue_t    *dialogue,
   return 0;
 }
 
+int wuss_dialogue_handle_key(wuss_dialogue_t    *dialogue,
+                             const wuss_event_t *event,
+                             result_t           *out_result)
+{
+  int i;
+
+  if (dialogue == NULL || event == NULL)
+    return 0;
+  if (event->kind != wuss_EVENT_KEY ||
+      event->data.key.code != wuss_KEY_RETURN)
+    return 0;
+
+  for (i = 0; i < dialogue->nactions; i++)
+  {
+    if (dialogue->actions[i].icon->spec.flags & wuss_ICON_FLAGS_DEFAULT)
+    {
+      *out_result = dialogue->actions[i].fn(dialogue->opaque,
+                                            wuss_BUTTON_SELECT);
+      return 1;
+    }
+  }
+
+  return 0;
+}
+
 result_t wuss_dialogue_handle_pre_show(wuss_dialogue_t *dialogue)
 {
   if (dialogue->fillout == NULL)

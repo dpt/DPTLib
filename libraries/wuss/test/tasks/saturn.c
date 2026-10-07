@@ -904,6 +904,13 @@ result_t saturn_handle(wuss_window_t      *window,
   {
     result_t rc;
 
+    if (window == wuss_dialogue_window(task->conf.dialogue))
+    {
+      rc = result_WUSS_KEY_UNCLAIMED;
+      (void) wuss_dialogue_handle_key(task->conf.dialogue, event, &rc);
+      return rc;
+    }
+
     if (window != task->window)
       return result_WUSS_KEY_UNCLAIMED; /* not the proginfo dialogue */
 

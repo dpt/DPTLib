@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -11,6 +12,7 @@
 
 #include "base/utils.h"
 #include "geom/box.h"
+#include "geom/stack.h"
 #include "wuss/component/dialogue.h"
 #include "wuss/icon.h"
 #include "wuss/icon-spec.h"
@@ -18,23 +20,15 @@
 #include "wuss/task.h"
 #include "wuss/window.h"
 
+#include "common.h"
 #include "paint-new.h"
 
 /* ----------------------------------------------------------------------- */
 
-#define PN_W        196
-#define PN_H        144
-#define PN_MARGIN   8
-#define PN_ROW      28   /* pitch of the width and height rows */
 #define PN_FIELD_H  22
-#define PN_LABEL_W  56
-#define PN_FIELD_X  (PN_MARGIN + PN_LABEL_W + 4)
 #define PN_FIELD_W  60
 #define PN_DIGITS   4    /* PAINTNEW_SIZE_MAX is four digits */
-#define PN_BG_Y     (PN_MARGIN + 2 * PN_ROW)
-#define PN_RADIO_W  56
-#define PN_BUTTON_W 64
-#define PN_BUTTON_Y (PN_BG_Y + 38)
+#define PN_G_LABEL  1    /* size group, see stack_item_t::group */
 
 #define PN_BAR_GAP   47 /* the gap an icon bar menu leaves */
 
@@ -67,6 +61,54 @@ enum
   PN_ICON_CANCEL = PN_ICON_BG + PN_BG__COUNT,
   PN_ICON_CREATE,
   PN_ICON__COUNT
+};
+
+/* layout items, in creation order. See docs/windowing/wuss-layout.md */
+enum
+{
+  PN_ST_ROOT,
+  PN_ST_WIDTH_ROW,
+  PN_ST_WIDTH_LABEL,
+  PN_ST_WIDTH,
+  PN_ST_HEIGHT_ROW,
+  PN_ST_HEIGHT_LABEL,
+  PN_ST_HEIGHT,
+  PN_ST_BG_ROW,
+  PN_ST_BG_LABEL,
+  PN_ST_BG,          /* first of PN_BG__COUNT radios */
+  PN_ST_BUTTONS = PN_ST_BG + PN_BG__COUNT,
+  PN_ST_SPACER,
+  PN_ST_CANCEL,
+  PN_ST_CREATE,
+  PN_ST__LIMIT
+};
+
+#define PN_ST_RADIO(i) \
+  [PN_ST_BG + (i)] = STACK_LEAF(PN_ST_BG_ROW, 0, wuss_STD_OPTION_SIZE, stack_ALIGN_CENTRE)
+
+static const stack_item_t g_paintnew_stack[PN_ST__LIMIT] =
+{
+  [PN_ST_ROOT] = { .kind = stack_KIND_VBOX, .parent = -1,
+                   .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
+
+  [PN_ST_WIDTH_ROW]    = STACK_HBOX(PN_ST_ROOT, PN_FIELD_H, wuss_STD_GAP, stack_ALIGN_START),
+  [PN_ST_WIDTH_LABEL]  = STACK_LEAF_GROUP(PN_ST_WIDTH_ROW, 0, PN_FIELD_H, stack_ALIGN_CENTRE, PN_G_LABEL),
+  [PN_ST_WIDTH]        = STACK_LEAF(PN_ST_WIDTH_ROW, PN_FIELD_W, PN_FIELD_H, stack_ALIGN_CENTRE),
+
+  [PN_ST_HEIGHT_ROW]   = STACK_HBOX(PN_ST_ROOT, PN_FIELD_H, wuss_STD_GAP, stack_ALIGN_START),
+  [PN_ST_HEIGHT_LABEL] = STACK_LEAF_GROUP(PN_ST_HEIGHT_ROW, 0, PN_FIELD_H, stack_ALIGN_CENTRE, PN_G_LABEL),
+  [PN_ST_HEIGHT]       = STACK_LEAF(PN_ST_HEIGHT_ROW, PN_FIELD_W, PN_FIELD_H, stack_ALIGN_CENTRE),
+
+  [PN_ST_BG_ROW]       = STACK_HBOX(PN_ST_ROOT, wuss_STD_OPTION_SIZE, wuss_STD_GAP, stack_ALIGN_START),
+  [PN_ST_BG_LABEL]     = STACK_LEAF_GROUP(PN_ST_BG_ROW, 0, wuss_STD_OPTION_SIZE, stack_ALIGN_CENTRE, PN_G_LABEL),
+  PN_ST_RADIO(0),
+  PN_ST_RADIO(1),
+  PN_ST_RADIO(2),
+
+  [PN_ST_BUTTONS]      = STACK_HBOX(PN_ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_END),
+  [PN_ST_SPACER]       = STACK_SPACER(PN_ST_BUTTONS, 1), /* push the buttons right */
+  [PN_ST_CANCEL]       = STACK_LEAF(PN_ST_BUTTONS, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+  [PN_ST_CREATE]       = STACK_LEAF(PN_ST_BUTTONS, 0, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
 };
 
 struct paintnew
@@ -172,59 +214,71 @@ static result_t paintnew_action_create(void *opaque, wuss_button_t button)
 
 /* ----------------------------------------------------------------------- */
 
-static result_t paintnew_build_icons(paintnew_t *pn)
+/* solve the layout: the window size, and a box for every item */
+static result_t paintnew_layout(const wuss_t *wuss,
+                                size2d_t     *size,
+                                box_t         boxes[PN_ST__LIMIT])
+{
+  result_t     rc;
+  stack_item_t items[PN_ST__LIMIT];
+  box_t        root;
+  int          i;
+
+  /* each label's natural width; the size group widens the others to match */
+  memcpy(items, g_paintnew_stack, sizeof(items));
+  items[PN_ST_WIDTH_LABEL].axis_size  = task_text_width(wuss, "Width");
+  items[PN_ST_HEIGHT_LABEL].axis_size = task_text_width(wuss, "Height");
+  items[PN_ST_BG_LABEL].axis_size     = task_text_width(wuss, "Background");
+  for (i = 0; i < PN_BG__COUNT; i++)
+    items[PN_ST_BG + i].axis_size = wuss_STD_OPTION_SIZE + wuss_STD_GAP +
+                                    task_text_width(wuss, paintnew_bg_names[i]);
+  items[PN_ST_CANCEL].axis_size =
+    task_button_width(wuss, "Cancel", wuss_STD_SECONDARY_BUTTON_BORDER);
+  items[PN_ST_CREATE].axis_size =
+    task_button_width(wuss, "Create", wuss_STD_PRIMARY_BUTTON_BORDER);
+
+  rc = stack_smallest(items, NELEMS(items), size);
+  if (rc != result_OK)
+    return rc;
+
+  root = (box_t) BOX_POS_SIZE(0, 0, size->w, size->h);
+
+  return stack_solve(items, NELEMS(items), &root, boxes);
+}
+
+static result_t paintnew_build_icons(paintnew_t *pn,
+                                     const box_t boxes[PN_ST__LIMIT])
 {
   result_t               rc;
   wuss_icon_spec_t       specs[PN_ICON__COUNT];
   wuss_dialogue_action_t actions[2];
   char                   width_text[PN_DIGITS + 2];
   char                   height_text[PN_DIGITS + 2];
-  int                    i, y;
+  int                    i;
 
-  /* width and height: a label and a writable on each row */
-  y = PN_MARGIN;
-  wuss_icon_spec_label(&specs[PN_ICON_WIDTH_LABEL],
-                       (box_t) BOX_POS_SIZE(PN_MARGIN, y, PN_LABEL_W,
-                                            PN_FIELD_H),
-                       "Width", 0);
+  wuss_icon_spec_label(&specs[PN_ICON_WIDTH_LABEL], boxes[PN_ST_WIDTH_LABEL],
+                       "Width", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
   snprintf(width_text, sizeof(width_text), "%d", PN_DEFAULT_W);
-  wuss_icon_spec_writable(&specs[PN_ICON_WIDTH],
-                          (box_t) BOX_POS_SIZE(PN_FIELD_X, y, PN_FIELD_W,
-                                               PN_FIELD_H),
+  wuss_icon_spec_writable(&specs[PN_ICON_WIDTH], boxes[PN_ST_WIDTH],
                           width_text, sizeof(width_text),
                           wuss_ICON_FLAGS_JUSTIFY_CENTRE);
 
-  y += PN_ROW;
-  wuss_icon_spec_label(&specs[PN_ICON_HEIGHT_LABEL],
-                       (box_t) BOX_POS_SIZE(PN_MARGIN, y, PN_LABEL_W,
-                                            PN_FIELD_H),
-                       "Height", 0);
+  wuss_icon_spec_label(&specs[PN_ICON_HEIGHT_LABEL], boxes[PN_ST_HEIGHT_LABEL],
+                       "Height", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
   snprintf(height_text, sizeof(height_text), "%d", PN_DEFAULT_H);
-  wuss_icon_spec_writable(&specs[PN_ICON_HEIGHT],
-                          (box_t) BOX_POS_SIZE(PN_FIELD_X, y, PN_FIELD_W,
-                                               PN_FIELD_H),
+  wuss_icon_spec_writable(&specs[PN_ICON_HEIGHT], boxes[PN_ST_HEIGHT],
                           height_text, sizeof(height_text),
                           wuss_ICON_FLAGS_JUSTIFY_CENTRE);
 
-  /* background: a caption over a row of radios */
-  wuss_icon_spec_label(&specs[PN_ICON_BG_LABEL],
-                       (box_t) BOX_POS_SIZE(PN_MARGIN, PN_BG_Y,
-                                            PN_W - 2 * PN_MARGIN, 16),
-                       "Background", 0);
+  wuss_icon_spec_label(&specs[PN_ICON_BG_LABEL], boxes[PN_ST_BG_LABEL],
+                       "Background", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
   for (i = 0; i < PN_BG__COUNT; i++)
-    wuss_icon_spec_radio(&specs[PN_ICON_BG + i],
-                         (box_t) BOX_POS_SIZE(PN_MARGIN + i * PN_RADIO_W,
-                                              PN_BG_Y + 18, PN_RADIO_W, 16),
+    wuss_icon_spec_radio(&specs[PN_ICON_BG + i], boxes[PN_ST_BG + i],
                          paintnew_bg_names[i], 1);
 
-  /* Cancel centred against the taller, default Create */
-  wuss_icon_spec_action(&specs[PN_ICON_CANCEL],
-                        (box_t) BOX_POS_SIZE(PN_MARGIN, PN_BUTTON_Y + 4,
-                                             PN_BUTTON_W, 24),
+  wuss_icon_spec_action(&specs[PN_ICON_CANCEL], boxes[PN_ST_CANCEL],
                         "Cancel", 0);
-  wuss_icon_spec_action(&specs[PN_ICON_CREATE],
-                        (box_t) BOX_POS_SIZE(PN_W - PN_MARGIN - PN_BUTTON_W,
-                                             PN_BUTTON_Y, PN_BUTTON_W, 32),
+  wuss_icon_spec_action(&specs[PN_ICON_CREATE], boxes[PN_ST_CREATE],
                         "Create", 1);
 
   rc = wuss_icon_create_array(wuss_dialogue_window(pn->dialogue), specs,
@@ -264,6 +318,11 @@ static result_t paintnew_handle(wuss_window_t      *window,
     (void) wuss_dialogue_handle_icon(pn->dialogue, event, &rc);
     return rc;
 
+  case wuss_EVENT_KEY:
+    rc = result_WUSS_KEY_UNCLAIMED;
+    (void) wuss_dialogue_handle_key(pn->dialogue, event, &rc);
+    return rc;
+
   case wuss_EVENT_MENU_CLOSED:
     pn->menu_handle = NULL; /* wuss closed the chain under us */
     return result_OK;
@@ -287,6 +346,8 @@ result_t paintnew_create(paintnew_t          **slot,
   result_t         rc;
   paintnew_t      *pn;
   wuss_task_desc_t desc;
+  size2d_t         size;
+  box_t            boxes[PN_ST__LIMIT];
 
   pn = calloc(1, sizeof(*pn));
   if (pn == NULL)
@@ -307,10 +368,11 @@ result_t paintnew_create(paintnew_t          **slot,
     return rc;
   }
 
-  rc = wuss_dialogue_create(&pn->dialogue, pn->task, SIZE2D(PN_W, PN_H),
-                            "New", NULL, pn);
+  rc = paintnew_layout(wuss, &size, boxes);
   if (rc == result_OK)
-    rc = paintnew_build_icons(pn);
+    rc = wuss_dialogue_create(&pn->dialogue, pn->task, size, "New", NULL, pn);
+  if (rc == result_OK)
+    rc = paintnew_build_icons(pn, boxes);
   if (rc != result_OK)
   {
     wuss_task_destroy(pn->task); /* its QUIT frees pn */

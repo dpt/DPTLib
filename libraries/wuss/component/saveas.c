@@ -487,6 +487,9 @@ int wuss_saveas_handle_event(wuss_saveas_t      *saveas,
   case wuss_EVENT_ICON:
     return wuss_dialogue_handle_icon(saveas->dialogue, event, &action_result);
 
+  case wuss_EVENT_KEY:
+    return wuss_dialogue_handle_key(saveas->dialogue, event, &action_result);
+
   case wuss_EVENT_DRAG_END:
     return saveas_handle_drag_end(saveas, event);
 
