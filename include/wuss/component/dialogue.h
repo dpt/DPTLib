@@ -202,6 +202,22 @@ int wuss_dialogue_handle_icon(wuss_dialogue_t    *dialogue,
                               result_t           *out_result);
 
 /**
+ * Handle a wuss_EVENT_KEY from the task's own handler: RETURN activates the
+ * dialogue's default action, the registered icon flagged
+ * wuss_ICON_FLAGS_DEFAULT, as a Select click on it would. Any other key, or
+ * a dialogue with no default action, is left alone.
+ *
+ * \param[in]  dialogue   Handle.
+ * \param[in]  event      The wuss_EVENT_KEY event.
+ * \param[out] out_result Filled with the action callback's return value if
+ *                        (and only if) this call returns 1.
+ * \return 1 if the key activated the default action, else 0.
+ */
+int wuss_dialogue_handle_key(wuss_dialogue_t    *dialogue,
+                             const wuss_event_t *event,
+                             result_t           *out_result);
+
+/**
  * Handle a wuss_EVENT_PRE_SHOW from the task's own handler: calls the
  * fillout callback passed to wuss_dialogue_create, if any.
  *

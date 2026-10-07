@@ -487,9 +487,13 @@ static result_t mouse_click(wuss_t             *wuss,
           if (icon->spec.type == wuss_ICON_TYPE_OPTION)
             wuss__icon_select(win, icon, !wuss__icon_selected(icon));
           else if (icon->spec.type == wuss_ICON_TYPE_RADIO)
+            /* ADJUST toggles a lone radio; a grouped one always keeps one
+             * member selected */
             wuss__icon_select(win, icon,
-                              (button & wuss_BUTTON_ADJUST) ? !wuss__icon_selected(icon)
-                                                            : 1);
+                              ((button & wuss_BUTTON_ADJUST) &&
+                               icon->spec.u.radio.group == 0)
+                                ? !wuss__icon_selected(icon)
+                                : 1);
         }
 
         event.kind             = wuss_EVENT_ICON;
