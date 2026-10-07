@@ -162,6 +162,7 @@ static void saveas_set_actions(wuss_saveas_t *sa)
   actions[1].fn   = saveas_action_save;
 
   (void) wuss_dialogue_set_actions(sa->dialogue, actions, 2);
+  wuss_dialogue_set_cancel(sa->dialogue, sa->cancel_icon);
 }
 
 /* ----------------------------------------------------------------------- */
