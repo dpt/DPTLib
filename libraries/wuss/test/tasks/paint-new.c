@@ -294,6 +294,8 @@ static result_t paintnew_build_icons(paintnew_t *pn,
   actions[1].icon = pn->icons[PN_ICON_CREATE];
   actions[1].fn   = paintnew_action_create;
 
+  wuss_dialogue_set_cancel(pn->dialogue, pn->icons[PN_ICON_CANCEL]);
+
   return wuss_dialogue_set_actions(pn->dialogue, actions, 2);
 }
 

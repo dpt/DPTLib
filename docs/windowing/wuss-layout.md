@@ -69,6 +69,15 @@ Derived from the dialogues in `libraries/wuss/test/tasks/` (`display.c`,
 - Such a dialogue is also not focusable: call
   `wuss_dialogue_set_focusable(dialogue, 0)` after creating it.
 
+## Cancel button
+
+- ESCAPE activates the dialogue's Cancel button (`wuss_dialogue_handle_key`),
+  as a Select click on it would. Name the button with
+  `wuss_dialogue_set_cancel` after registering the actions.
+- Like RETURN, it is a key event, so it reaches only a focusable dialogue.
+  A dialogue with no writable icons is not focusable and so is cancelled
+  with the mouse alone.
+
 ## Frames
 
 Contents of a `wuss_ICON_TYPE_FRAME` use `wuss_STD_FRAME_INSETS` as the pad.

@@ -37,6 +37,7 @@ struct wuss_dialogue
   void                       *opaque;
   wuss_dialogue_action_t      actions[WUSS_DIALOGUE_MAX_ACTIONS];
   int                         nactions;
+  wuss_icon_t                *cancel;  /* the icon ESCAPE activates, or NULL */
 };
 
 /* ----------------------------------------------------------------------- */
@@ -56,6 +57,7 @@ static wuss_dialogue_t *dialogue_alloc(wuss_alloc_t                alloc,
   dialogue->fillout  = fillout;
   dialogue->opaque   = opaque;
   dialogue->nactions = 0;
+  dialogue->cancel   = NULL;
 
   return dialogue;
 }
@@ -154,6 +156,11 @@ result_t wuss_dialogue_set_actions(wuss_dialogue_t              *dialogue,
   return result_OK;
 }
 
+void wuss_dialogue_set_cancel(wuss_dialogue_t *dialogue, wuss_icon_t *icon)
+{
+  dialogue->cancel = icon;
+}
+
 int wuss_dialogue_handle_icon(wuss_dialogue_t    *dialogue,
                               const wuss_event_t *event,
                               result_t           *out_result)
@@ -186,13 +193,17 @@ int wuss_dialogue_handle_key(wuss_dialogue_t    *dialogue,
 
   if (dialogue == NULL || event == NULL)
     return 0;
-  if (event->kind != wuss_EVENT_KEY ||
-      event->data.key.code != wuss_KEY_RETURN)
+  if (event->kind != wuss_EVENT_KEY)
+    return 0;
+  if (event->data.key.code != wuss_KEY_RETURN &&
+      event->data.key.code != wuss_KEY_ESCAPE)
     return 0;
 
   for (i = 0; i < dialogue->nactions; i++)
   {
-    if (dialogue->actions[i].icon->spec.flags & wuss_ICON_FLAGS_DEFAULT)
+    if (event->data.key.code == wuss_KEY_RETURN
+        ? (dialogue->actions[i].icon->spec.flags & wuss_ICON_FLAGS_DEFAULT) != 0
+        : dialogue->actions[i].icon == dialogue->cancel)
     {
       *out_result = dialogue->actions[i].fn(dialogue->opaque,
                                             wuss_BUTTON_SELECT);
