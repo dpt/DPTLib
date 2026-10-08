@@ -70,6 +70,7 @@ static const test_t tests[] =
   { "box",        box_test        },
   { "layout",     layout_test     },
   { "packer",     packer_test     },
+  { "region",     region_test     },
   { "stack",      stack_test      },
 
   { "dirlist",    dirlist_test    },

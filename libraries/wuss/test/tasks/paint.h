@@ -28,6 +28,8 @@ typedef enum paint_tool
   paint_TOOL_LINE,
   paint_TOOL_RECT,
   paint_TOOL_FILL,
+  paint_TOOL_SELECT, /* rubber-band a rectangular selection */
+  paint_TOOL_LASSO,  /* drag out a freeform selection */
   paint_TOOL__COUNT
 }
 paint_tool_t;
@@ -59,6 +61,10 @@ typedef struct paint_task
   int                held;      /* button of the stroke in progress, or 0 */
   point_t            anchor;    /* where the stroke began */
   point_t            last;      /* where the stroke last reached */
+  point_t           *lasso;     /* points dragged out so far by the lasso */
+  int                nlasso, caplasso;
+  int                ants_tick; /* idles since the marching ants last moved */
+  int                ants_phase; /* where the ants have marched to, 0..7 */
   wuss_icon_t       *tool_icons[paint_TOOL__COUNT];
   wuss_icon_t       *fill_icon;
   wuss_slider_row_t  size_row;

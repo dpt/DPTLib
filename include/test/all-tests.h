@@ -46,6 +46,7 @@ extern testfn_t bitmap_load_test,
 extern testfn_t box_test,
                 layout_test,
                 packer_test,
+                region_test,
                 stack_test;
 
 /* io */

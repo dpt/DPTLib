@@ -88,6 +88,33 @@ box_t paintdoc_rect(paintdoc_t *doc,
  * the fill colour; otherwise takes its own checkpoint */
 box_t paintdoc_fill(paintdoc_t *doc, point_t p, colour_t colour);
 
+/* the selection limits every drawing operation to its pixels, so a stroke,
+ * rect or fill leaves the rest of the canvas as it was. there is at most one;
+ * making a new one replaces it. it is not part of the undo history. loading a
+ * PNG drops it */
+
+/* select the canvas pixels in box (clipped to the canvas, x1/y1 exclusive).
+ * an empty box selects nothing, as paintdoc_select_none */
+result_t paintdoc_select_rect(paintdoc_t *doc, box_t box);
+
+/* select the area enclosed by the polygon of n points (even-odd rule; the
+ * last point joins back to the first). fewer than 3 points, or an area with
+ * no pixels in it, selects nothing */
+result_t paintdoc_select_poly(paintdoc_t *doc, const point_t *pts, int n);
+
+/* drop the selection, so drawing reaches the whole canvas again */
+void paintdoc_select_none(paintdoc_t *doc);
+
+int paintdoc_has_selection(const paintdoc_t *doc);
+
+/* the box (x1/y1 exclusive) enclosing the selected pixels; empty if none */
+box_t paintdoc_selection_bounds(const paintdoc_t *doc);
+
+/* the selection's boundary pixels as single-row boxes (x1/y1 exclusive), for
+ * drawing its outline. *n is their number; a pixel may appear twice. valid
+ * until the selection changes */
+const box_t *paintdoc_selection_outline(const paintdoc_t *doc, int *n);
+
 /* non-zero if there is a step to undo */
 int paintdoc_can_undo(const paintdoc_t *doc);
 

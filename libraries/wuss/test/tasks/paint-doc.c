@@ -12,6 +12,7 @@
 #include "base/utils.h"
 #include "framebuf/pixelfmt.h"
 #include "framebuf/screen.h"
+#include "geom/region.h"
 
 #include "paint-doc.h"
 
@@ -27,6 +28,13 @@ struct paintdoc
   /* RLE-compressed copies of bm, oldest first */
   bitmap_t undo[PAINTDOC_UNDO_MAX];
   int      nundo;
+  /* the selection, or NULL for none, and its boundary pixels for the ants.
+   * pre is a raw copy of the canvas as of the last checkpoint, kept while
+   * there is a selection so drawing outside it can be put back */
+  region_t *sel;
+  box_t    *outline;
+  int       noutline;
+  uint8_t  *pre;
 };
 
 /* ----------------------------------------------------------------------- */
@@ -102,6 +110,7 @@ void paintdoc_destroy(paintdoc_t *doc)
     return;
 
   undo_clear(doc);
+  paintdoc_select_none(doc);
   free(doc->bm.base);
   free(doc);
 }
@@ -157,6 +166,7 @@ result_t paintdoc_load_png(paintdoc_t *doc, const char *path)
     return rc;
 
   undo_clear(doc);
+  paintdoc_select_none(doc);
   free(doc->bm.base);
   doc->bm = next;
   screen_for_bitmap(&doc->scr, &doc->bm);
@@ -203,6 +213,126 @@ static box_t clipped_box(const paintdoc_t *doc,
 
 /* ----------------------------------------------------------------------- */
 
+void paintdoc_select_none(paintdoc_t *doc)
+{
+  region_destroy(doc->sel);
+  free(doc->outline);
+  free(doc->pre);
+  doc->sel      = NULL;
+  doc->outline  = NULL;
+  doc->noutline = 0;
+  doc->pre      = NULL;
+}
+
+/* take a freshly built region as the selection (NULL selects nothing) */
+static result_t sel_adopt(paintdoc_t *doc, region_t *sel)
+{
+  result_t rc;
+
+  paintdoc_select_none(doc);
+
+  if (sel == NULL)
+    return result_OK;
+
+  rc = region_outline(sel, &doc->outline, &doc->noutline);
+  if (rc != result_OK)
+  {
+    region_destroy(sel);
+    return rc;
+  }
+
+  doc->sel = sel;
+  return result_OK;
+}
+
+result_t paintdoc_select_rect(paintdoc_t *doc, box_t box)
+{
+  result_t  rc;
+  box_t     canvas, r;
+  region_t *sel;
+
+  canvas = canvas_box(doc);
+  if (box_intersection(&box, &canvas, &r))
+    r = (box_t) BOX_INIT;
+
+  rc = region_from_box(&r, &sel);
+  if (rc != result_OK)
+    return rc;
+
+  return sel_adopt(doc, sel);
+}
+
+result_t paintdoc_select_poly(paintdoc_t *doc, const point_t *pts, int n)
+{
+  result_t  rc;
+  box_t     canvas;
+  region_t *sel;
+
+  canvas = canvas_box(doc);
+  rc     = region_from_polygon(pts, n, &canvas, &sel);
+  if (rc != result_OK)
+    return rc;
+
+  return sel_adopt(doc, sel);
+}
+
+int paintdoc_has_selection(const paintdoc_t *doc)
+{
+  return doc->sel != NULL;
+}
+
+box_t paintdoc_selection_bounds(const paintdoc_t *doc)
+{
+  return region_bounds(doc->sel);
+}
+
+const box_t *paintdoc_selection_outline(const paintdoc_t *doc, int *n)
+{
+  *n = doc->noutline;
+  return doc->outline;
+}
+
+/* put back, from the last checkpoint, the pixels of dirty that lie outside the
+ * selection */
+static void sel_clip(paintdoc_t *doc, box_t dirty)
+{
+  box_t      canvas, r;
+  uint32_t  *dst;
+  uint32_t  *src;
+  const int *runs;
+  int        nruns, x, y, i;
+
+  if (doc->sel == NULL || doc->pre == NULL)
+    return;
+
+  canvas = canvas_box(doc);
+  if (box_intersection(&dirty, &canvas, &r))
+    return;
+
+  for (y = r.y0; y < r.y1; y++)
+  {
+    dst   = (uint32_t *) ((uint8_t *) doc->bm.base + (size_t) y * doc->bm.rowbytes);
+    src   = (uint32_t *) (doc->pre + (size_t) y * doc->bm.rowbytes);
+    nruns = region_row(doc->sel, y, &runs);
+
+    /* restore the gaps between the selected runs */
+    x = r.x0;
+    for (i = 0; i < nruns && x < r.x1; i++)
+    {
+      if (runs[i * 2] > x)
+        memcpy(dst + x, src + x,
+               (size_t) (MIN(runs[i * 2], r.x1) - x) * sizeof(*dst));
+
+      x = MAX(x, runs[i * 2 + 1]);
+    }
+
+    if (x < r.x1)
+      memcpy(dst + x, src + x, (size_t) (r.x1 - x) * sizeof(*dst));
+  }
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t paintdoc_checkpoint(paintdoc_t *doc)
 {
   result_t rc;
@@ -210,7 +340,18 @@ result_t paintdoc_checkpoint(paintdoc_t *doc)
   void    *pixels;
   bitmap_t snap;
 
-  n      = (size_t) doc->bm.rowbytes * (size_t) doc->bm.size.h;
+  n = (size_t) doc->bm.rowbytes * (size_t) doc->bm.size.h;
+
+  if (doc->sel != NULL)
+  {
+    if (doc->pre == NULL)
+      doc->pre = malloc(n);
+    if (doc->pre != NULL)
+      memcpy(doc->pre, doc->bm.base, n);
+    else
+      logf_warning("paint: no memory to clip drawing to the selection");
+  }
+
   pixels = malloc(n);
   if (pixels == NULL)
     return result_OOM;
@@ -302,11 +443,16 @@ box_t paintdoc_stroke(paintdoc_t *doc,
                       int         width,
                       colour_t    colour)
 {
+  box_t dirty;
+
   width = MAX(width, 1);
 
   paintdoc_draw_stroke(&doc->scr, a, b, width, colour);
 
-  return clipped_box(doc, a, b, width / 2);
+  dirty = clipped_box(doc, a, b, width / 2);
+  sel_clip(doc, dirty);
+
+  return dirty;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -346,11 +492,16 @@ box_t paintdoc_rect(paintdoc_t *doc,
                     int         fill,
                     colour_t    colour)
 {
+  box_t dirty;
+
   checkpoint_or_warn(doc);
 
   paintdoc_draw_rect(&doc->scr, a, b, width, fill, colour);
 
-  return clipped_box(doc, a, b, 0);
+  dirty = clipped_box(doc, a, b, 0);
+  sel_clip(doc, dirty);
+
+  return dirty;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -447,6 +598,7 @@ box_t paintdoc_fill(paintdoc_t *doc, point_t p, colour_t colour)
           {
             logf_warning("paint: no memory to finish fill");
             free(stack);
+            sel_clip(doc, dirty);
             return dirty;
           }
           stack = grown;
@@ -459,5 +611,6 @@ box_t paintdoc_fill(paintdoc_t *doc, point_t p, colour_t colour)
   }
 
   free(stack);
+  sel_clip(doc, dirty);
   return dirty;
 }

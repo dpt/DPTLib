@@ -30,20 +30,22 @@
  * paint_toolbox_redraw and the swatches hit-tested by paint_toolbox_mouse, not
  * icons */
 #define TB_W           96
-#define TB_H           276
+#define TB_H           308
 #define TB_MARGIN      5
 #define TB_TOOL_COLS   2
 #define TB_TOOL_X      17
 #define TB_TOOL_CELL   32  /* pitch of the tool buttons */
 #define TB_TOOL_SIZE   30  /* button size, including its bevel */
-#define TB_FILL_Y      104
-#define TB_SLIDER_Y    128
+#define TB_FILL_Y      136
+#define TB_SLIDER_Y    160
 #define TB_SWATCH_COLS 4
 #define TB_SWATCH_ROWS 4
 #define TB_SWATCH      20  /* swatch size */
 #define TB_SWATCH_GAP  2
-#define TB_SWATCH_Y    156
-#define TB_CHIPS_Y     250
+#define TB_SWATCH_Y    188
+#define TB_CHIPS_Y     282
+
+#define PAINT_ANTS_IDLES 6 /* idles between steps of the marching ants */
 
 #define PAINT_NSWATCHES (TB_SWATCH_COLS * TB_SWATCH_ROWS)
 
@@ -54,7 +56,9 @@ static const char *paint_tool_names[paint_TOOL__COUNT] =
   "erase",
   "line",
   "rectangle",
-  "fill"
+  "fill",
+  "select",
+  "lasso"
 };
 
 /* the tool's button box in toolbox content space */
@@ -371,17 +375,71 @@ result_t paint_app_create(wuss_t *wuss)
 void paint_destroy(paint_task_t *task)
 {
   wuss_saveas_destroy(task->saveas);
+  free(task->lasso);
   paintdoc_destroy(task->doc);
   free(task);
 }
 
 /* ----------------------------------------------------------------------- */
 
-/* line and rect are rubber-banded: shown on the window, not drawn into the
- * canvas, until the button is released */
+/* line, rect and select are rubber-banded: shown on the window, not drawn
+ * into the canvas, until the button is released */
 static int paint_is_rubber_band(const paint_task_t *pt)
 {
-  return pt->tool == paint_TOOL_LINE || pt->tool == paint_TOOL_RECT;
+  return pt->tool == paint_TOOL_LINE || pt->tool == paint_TOOL_RECT ||
+         pt->tool == paint_TOOL_SELECT;
+}
+
+/* select and lasso make a selection rather than paint */
+static int paint_is_selector(const paint_task_t *pt)
+{
+  return pt->tool == paint_TOOL_SELECT || pt->tool == paint_TOOL_LASSO;
+}
+
+/* the lasso's path grows by one point; false if out of memory, when the
+ * point is dropped */
+static int paint_lasso_add(paint_task_t *pt, point_t p)
+{
+  point_t *grown;
+  int      cap;
+
+  if (pt->nlasso > 0 && pt->lasso[pt->nlasso - 1].x == p.x &&
+      pt->lasso[pt->nlasso - 1].y == p.y)
+    return 1;
+
+  if (pt->nlasso == pt->caplasso)
+  {
+    cap   = pt->caplasso ? pt->caplasso * 2 : 256;
+    grown = realloc(pt->lasso, (size_t) cap * sizeof(*grown));
+    if (grown == NULL)
+      return 0;
+
+    pt->lasso    = grown;
+    pt->caplasso = cap;
+  }
+
+  pt->lasso[pt->nlasso++] = p;
+
+  return 1;
+}
+
+/* the box covering a and b, with room for a line a few pixels wide */
+static box_t paint_span_box(point_t a, point_t b)
+{
+  box_t box;
+
+  box.x0 = MIN(a.x, b.x) - 2;
+  box.y0 = MIN(a.y, b.y) - 2;
+  box.x1 = MAX(a.x, b.x) + 3;
+  box.y1 = MAX(a.y, b.y) + 3;
+
+  return box;
+}
+
+static void paint_invalidate_box(paint_task_t *pt, const box_t *box)
+{
+  if (!box_is_empty(box))
+    wuss_window_invalidate(pt->window, box);
 }
 
 /* the colour a stroke in progress paints: the eraser always uses the
@@ -410,13 +468,93 @@ static box_t paint_band_box(const paint_task_t *pt)
   return box;
 }
 
+/* finish a selection drag: the new selection replaces the old, and all that
+ * the ants and the drag's own outline covered is repainted */
+static void paint_select_commit(paint_task_t *pt, point_t p)
+{
+  box_t old, now, drag;
+  box_t box;
+  int   i;
+
+  old = paintdoc_selection_bounds(pt->doc);
+  pt->last = p;
+
+  if (pt->tool == paint_TOOL_SELECT)
+  {
+    drag = paint_band_box(pt);
+
+    if (pt->anchor.x == p.x && pt->anchor.y == p.y)
+    {
+      paintdoc_select_none(pt->doc); /* a click drops the selection */
+    }
+    else
+    {
+      box.x0 = MIN(pt->anchor.x, p.x);
+      box.y0 = MIN(pt->anchor.y, p.y);
+      box.x1 = MAX(pt->anchor.x, p.x) + 1;
+      box.y1 = MAX(pt->anchor.y, p.y) + 1;
+      paintdoc_select_rect(pt->doc, box);
+    }
+  }
+  else
+  {
+    drag = (box_t) BOX_INIT;
+    for (i = 0; i < pt->nlasso; i++)
+    {
+      box    = paint_span_box(pt->lasso[i], pt->lasso[i]);
+      drag.x0 = MIN(drag.x0, box.x0);
+      drag.y0 = MIN(drag.y0, box.y0);
+      drag.x1 = MAX(drag.x1, box.x1);
+      drag.y1 = MAX(drag.y1, box.y1);
+    }
+
+    paintdoc_select_poly(pt->doc, pt->lasso, pt->nlasso);
+    pt->nlasso = 0;
+  }
+
+  now = paintdoc_selection_bounds(pt->doc);
+
+  paint_invalidate_box(pt, &old);
+  paint_invalidate_box(pt, &now);
+  paint_invalidate_box(pt, &drag);
+}
+
+/* the marching ants: a one pixel outline of black and white dashes round the
+ * selection, drawn over the canvas and shifted along by ants_phase */
+static void paint_draw_ants(const paint_task_t *pt,
+                            screen_t           *scr,
+                            int                 ox,
+                            int                 oy)
+{
+  const box_t *spans;
+  colour_t     black, white;
+  int          n, i, x, y;
+
+  spans = paintdoc_selection_outline(pt->doc, &n);
+  black = colour_rgb(0x00, 0x00, 0x00);
+  white = colour_rgb(0xFF, 0xFF, 0xFF);
+
+  for (i = 0; i < n; i++)
+  {
+    y = oy + spans[i].y0;
+    if (y < scr->clip.y0 || y >= scr->clip.y1)
+      continue;
+
+    for (x = MAX(ox + spans[i].x0, scr->clip.x0);
+         x < MIN(ox + spans[i].x1, scr->clip.x1);
+         x++)
+      screen_set_pixel(scr, x, y,
+                       ((x - ox + y - oy - pt->ants_phase) & 7) < 4 ? black : white);
+  }
+}
+
 static result_t paint_redraw(paint_task_t *pt, const wuss_event_t *event)
 {
   result_t     rc;
   const box_t *bounds;
   screen_t    *scr;
   point_t      a, b;
-  int          ox, oy;
+  int          i, ox, oy;
 
   scr    = event->data.redraw.scr;
   bounds = event->data.redraw.bounds;
@@ -432,10 +570,22 @@ static result_t paint_redraw(paint_task_t *pt, const wuss_event_t *event)
 
     if (pt->tool == paint_TOOL_LINE)
       paintdoc_draw_stroke(scr, a, b, pt->size, paint_stroke_colour(pt));
+    else if (pt->tool == paint_TOOL_SELECT)
+      paintdoc_draw_rect(scr, a, b, 1, 0, colour_rgb(0x00, 0x00, 0x00));
     else
       paintdoc_draw_rect(scr, a, b, pt->size, pt->fill,
                          paint_stroke_colour(pt));
   }
+
+  if (pt->held && pt->tool == paint_TOOL_LASSO)
+  {
+    for (i = 1; i < pt->nlasso; i++)
+      screen_draw_line(scr, pt->lasso[i - 1].x + ox, pt->lasso[i - 1].y + oy,
+                       pt->lasso[i].x + ox, pt->lasso[i].y + oy,
+                       colour_rgb(0x00, 0x00, 0x00));
+  }
+
+  paint_draw_ants(pt, scr, ox, oy);
 
   return rc;
 }
@@ -591,6 +741,12 @@ static result_t paint_mouse(paint_task_t *pt, const wuss_event_t *event)
       dirty    = paintdoc_fill(pt->doc, p, colour);
       break;
 
+    case paint_TOOL_LASSO:
+      pt->nlasso = 0;
+      paint_lasso_add(pt, p);
+      dirty = paint_span_box(p, p);
+      break;
+
     case paint_TOOL_BRUSH:
     case paint_TOOL_ERASER:
       if (paintdoc_checkpoint(pt->doc) != result_OK)
@@ -612,7 +768,13 @@ static result_t paint_mouse(paint_task_t *pt, const wuss_event_t *event)
     if (!pt->held)
       return result_OK;
 
-    if (paint_is_rubber_band(pt))
+    if (pt->tool == paint_TOOL_LASSO)
+    {
+      paint_lasso_add(pt, p);
+      dirty    = paint_span_box(pt->last, p);
+      pt->last = p;
+    }
+    else if (paint_is_rubber_band(pt))
     {
       old = paint_band_box(pt);
       wuss_window_invalidate(pt->window, &old);
@@ -631,7 +793,11 @@ static result_t paint_mouse(paint_task_t *pt, const wuss_event_t *event)
     if (!pt->held)
       return result_OK;
 
-    if (paint_is_rubber_band(pt))
+    if (paint_is_selector(pt))
+    {
+      paint_select_commit(pt, p);
+    }
+    else if (paint_is_rubber_band(pt))
     {
       pt->last = p;
       dirty    = paint_band_commit(pt);
@@ -673,10 +839,12 @@ static void paint_set_tool(paint_task_t *pt, paint_tool_t tool)
   wuss_icon_set_selected(pt->toolbox, pt->tool_icons[tool], 1);
 }
 
-/* B, E, L, R and F pick the matching tool. Anything else is passed back
+/* B, E, L, R, F, S and O pick the matching tool, Escape drops the selection. Anything else is passed back
  * unclaimed */
 static result_t paint_key(paint_task_t *pt, int code)
 {
+  box_t box;
+
   switch (code)
   {
   case 'b': case 'B': paint_set_tool(pt, paint_TOOL_BRUSH);  break;
@@ -684,6 +852,13 @@ static result_t paint_key(paint_task_t *pt, int code)
   case 'l': case 'L': paint_set_tool(pt, paint_TOOL_LINE);   break;
   case 'r': case 'R': paint_set_tool(pt, paint_TOOL_RECT);   break;
   case 'f': case 'F': paint_set_tool(pt, paint_TOOL_FILL);   break;
+  case 's': case 'S': paint_set_tool(pt, paint_TOOL_SELECT); break;
+  case 'o': case 'O': paint_set_tool(pt, paint_TOOL_LASSO);  break;
+  case wuss_KEY_ESCAPE:
+    box = paintdoc_selection_bounds(pt->doc);
+    paintdoc_select_none(pt->doc);
+    paint_invalidate_box(pt, &box);
+    break;
   default:            return result_WUSS_KEY_UNCLAIMED;
   }
 
@@ -752,6 +927,22 @@ result_t paint_handle(wuss_window_t      *window,
     return taskapp_window_data_load(pt->wuss, pt->delegate, pt,
                                     (taskapp_data_load_fn_t) paint_load,
                                     event->data.message);
+
+  case wuss_EVENT_IDLE:
+    if (pt->window == NULL || !paintdoc_has_selection(pt->doc))
+      return result_OK;
+
+    if (++pt->ants_tick >= PAINT_ANTS_IDLES)
+    {
+      box_t bounds;
+
+      pt->ants_tick  = 0;
+      pt->ants_phase = (pt->ants_phase + 1) & 7;
+
+      bounds = paintdoc_selection_bounds(pt->doc);
+      wuss_window_invalidate(pt->window, &bounds);
+    }
+    return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
     pt->menu_handle = NULL;
