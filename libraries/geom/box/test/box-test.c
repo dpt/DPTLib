@@ -124,6 +124,24 @@ static result_t test_list_add(void)
   if (!box_list_add(list, &n, 2, &far2) || n != 2 || !boxeq(&list[1], &last))
     return result_TEST_FAILED;
 
+  /* full again: the two near boxes merge and the far one keeps its own
+   * entry, instead of everything inflating into the last entry */
+  {
+    static const box_t near1  = {   0,   0,  10,  10 };
+    static const box_t near2  = {  12,   0,  22,  10 };
+    static const box_t near12 = {   0,   0,  22,  10 };
+    static const box_t far3   = { 100, 100, 110, 110 };
+
+    n = 0;
+    box_list_add(list, &n, 2, &near1);
+    box_list_add(list, &n, 2, &near2);
+    if (n != 2 || !box_list_add(list, &n, 2, &far3) || n != 2)
+      return result_TEST_FAILED;
+    if (!((boxeq(&list[0], &near12) && boxeq(&list[1], &far3)) ||
+          (boxeq(&list[1], &near12) && boxeq(&list[0], &far3))))
+      return result_TEST_FAILED;
+  }
+
   return result_TEST_PASSED;
 }
 

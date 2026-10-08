@@ -26,6 +26,11 @@ static int box_merge(box_t *a, const box_t *b)
   return 0;
 }
 
+static long box_area(const box_t *b)
+{
+  return (long) (b->x1 - b->x0) * (b->y1 - b->y0);
+}
+
 /* Repeatedly fold any existing entry that "cur" now covers, or that shares a
  * complete edge with it, into "cur" itself; growing "cur" can bring further
  * entries into range, so this settles to a fixed point before "cur" is
@@ -67,9 +72,51 @@ int box_list_add(box_t *list, int *n, int max, const box_t *box)
     return 0;
   }
 
-  /* full: fold into the last entry rather than growing storage;
-   * over-approximates that entry's area but stays correct */
-  box_union(&list[max - 1], &cur, &list[max - 1]);
+  /* full: rather than growing storage, merge the two boxes (counting "cur")
+   * whose union adds the least area. Over-approximates but stays correct,
+   * and a far-off box no longer inflates an unrelated entry. */
+  {
+    long  best, waste;
+    int   bi, bj;
+    box_t u;
+    int   i, j;
+
+    best = -1;
+    bi   = bj = 0;
+    for (i = 0; i < *n; i++)
+    {
+      box_union(&list[i], &cur, &u);
+      waste = box_area(&u) - box_area(&list[i]) - box_area(&cur);
+      if (best < 0 || waste < best)
+      {
+        best = waste;
+        bi   = i;
+        bj   = -1; /* merge "cur" into list[i] */
+      }
+
+      for (j = i + 1; j < *n; j++)
+      {
+        box_union(&list[i], &list[j], &u);
+        waste = box_area(&u) - box_area(&list[i]) - box_area(&list[j]);
+        if (waste < best)
+        {
+          best = waste;
+          bi   = i;
+          bj   = j; /* merge list[j] into list[i], "cur" takes list[j] */
+        }
+      }
+    }
+
+    if (bj < 0)
+    {
+      box_union(&list[bi], &cur, &list[bi]);
+    }
+    else
+    {
+      box_union(&list[bi], &list[bj], &list[bi]);
+      list[bj] = cur;
+    }
+  }
 
   return 1;
 }
