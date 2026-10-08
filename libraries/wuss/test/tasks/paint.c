@@ -296,6 +296,18 @@ result_t paint_create_with(wuss_t                  *wuss,
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PAINT_MENU_UNDO, "Undo",
                           wuss_MENU_ITEM_NONE, "^Z");
+
+  WUSS_MENU_ITEM(task->sel_items, PAINT_SEL_ALL, "Select All",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->sel_items, PAINT_SEL_NONE, "Deselect",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->sel_items, PAINT_SEL_INVERT, "Invert",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_TITLE(task->sel_menu, "Selection", task->sel_items,
+                  NELEMS(task->sel_items));
+  WUSS_MENU_ITEM_MENU(task->menu_items, PAINT_MENU_SELECTION, "Selection",
+                      wuss_MENU_ITEM_NONE, &task->sel_menu);
+
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PAINT_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_DASHED, "^S");
   WUSS_MENU_TITLE(task->menu, "Paint", task->menu_items,
@@ -811,6 +823,28 @@ static result_t paint_mouse(paint_task_t *pt, const wuss_event_t *event)
   return result_OK;
 }
 
+/* shade Undo when there is nothing to undo and Deselect when nothing is
+ * selected, also on the menu if it is open (an ADJUST pick keeps it open) */
+static void paint_menu_shade(paint_task_t *pt)
+{
+  int no_undo, no_sel;
+
+  no_undo = !paintdoc_can_undo(pt->doc);
+  no_sel  = !paintdoc_has_selection(pt->doc);
+
+  pt->menu_items[PAINT_MENU_UNDO].flags = no_undo ?
+                                          wuss_MENU_ITEM_DISABLED :
+                                          wuss_MENU_ITEM_NONE;
+  pt->sel_items[PAINT_SEL_NONE].flags   = no_sel ?
+                                          wuss_MENU_ITEM_DISABLED :
+                                          wuss_MENU_ITEM_NONE;
+
+  wuss_menu_disable_item_live(pt->menu_handle, &pt->menu, PAINT_MENU_UNDO,
+                              no_undo);
+  wuss_menu_disable_item_live(pt->menu_handle, &pt->sel_menu, PAINT_SEL_NONE,
+                              no_sel);
+}
+
 static result_t paint_undo(paint_task_t *pt)
 {
   box_t dirty;
@@ -820,6 +854,8 @@ static result_t paint_undo(paint_task_t *pt)
   dirty = paintdoc_undo(pt->doc);
   if (!box_is_empty(&dirty))
     wuss_window_invalidate(pt->window, &dirty);
+
+  paint_menu_shade(pt);
 
   return result_OK;
 }
@@ -856,13 +892,36 @@ static result_t paint_key(paint_task_t *pt, int code)
   return result_OK;
 }
 
+/* apply a Selection menu row, redrawing where the selection was and is */
+static result_t paint_selection_op(paint_task_t *pt, int op)
+{
+  result_t rc;
+  box_t    old, now;
+
+  old = paintdoc_selection_bounds(pt->doc);
+  rc  = result_OK;
+
+  switch (op)
+  {
+  case PAINT_SEL_ALL:    rc = paintdoc_select_all(pt->doc);    break;
+  case PAINT_SEL_NONE:   paintdoc_select_none(pt->doc);        break;
+  case PAINT_SEL_INVERT: rc = paintdoc_select_invert(pt->doc); break;
+  default:               break;
+  }
+
+  now = paintdoc_selection_bounds(pt->doc);
+  paint_invalidate_box(pt, &old);
+  paint_invalidate_box(pt, &now);
+  paint_menu_shade(pt);
+
+  return rc;
+}
+
 /* a MENU click on either window opens the menu, with Undo greyed out when
- * there is nothing to undo */
+ * there is nothing to undo and Deselect when there is nothing selected */
 static result_t paint_menu_open(paint_task_t *pt)
 {
-  pt->menu_items[PAINT_MENU_UNDO].flags = paintdoc_can_undo(pt->doc) ?
-                                          wuss_MENU_ITEM_NONE :
-                                          wuss_MENU_ITEM_DISABLED;
+  paint_menu_shade(pt);
 
   return wuss_menu_open_at_pointer(pt->delegate, &pt->menu, &pt->menu_handle);
 }
@@ -905,6 +964,8 @@ result_t paint_handle(wuss_window_t      *window,
   }
 
   case wuss_EVENT_MENU_SELECT:
+    if (event->data.menu_select.menu == &pt->sel_menu)
+      return paint_selection_op(pt, event->data.menu_select.index);
     if (event->data.menu_select.index == PAINT_MENU_UNDO)
       return paint_undo(pt);
     /* clicking the row, rather than hovering, shows Save As standalone */

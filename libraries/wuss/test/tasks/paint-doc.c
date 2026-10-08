@@ -262,6 +262,25 @@ result_t paintdoc_select_rect(paintdoc_t *doc, box_t box)
   return sel_adopt(doc, sel);
 }
 
+result_t paintdoc_select_all(paintdoc_t *doc)
+{
+  return paintdoc_select_rect(doc, canvas_box(doc));
+}
+
+result_t paintdoc_select_invert(paintdoc_t *doc)
+{
+  result_t  rc;
+  box_t     canvas;
+  region_t *sel;
+
+  canvas = canvas_box(doc);
+  rc     = region_invert(doc->sel, &canvas, &sel);
+  if (rc != result_OK)
+    return rc;
+
+  return sel_adopt(doc, sel);
+}
+
 result_t paintdoc_select_poly(paintdoc_t *doc, const point_t *pts, int n)
 {
   result_t  rc;

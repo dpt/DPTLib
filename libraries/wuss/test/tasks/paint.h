@@ -38,8 +38,18 @@ paint_tool_t;
 enum
 {
   PAINT_MENU_UNDO,
+  PAINT_MENU_SELECTION, /* submenu: PAINT_SEL_* */
   PAINT_MENU_SAVE,
   PAINT_MENU__COUNT
+};
+
+/* the Selection submenu's rows */
+enum
+{
+  PAINT_SEL_ALL,
+  PAINT_SEL_NONE,
+  PAINT_SEL_INVERT,
+  PAINT_SEL__COUNT
 };
 
 /* a 640x480 white canvas in a scrollable window, with a small toolbox window
@@ -71,6 +81,8 @@ typedef struct paint_task
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
   wuss_menu_item_t   menu_items[PAINT_MENU__COUNT];
   wuss_menu_t        menu;
+  wuss_menu_item_t   sel_items[PAINT_SEL__COUNT];
+  wuss_menu_t        sel_menu;
   char               size_text[WUSS_SLIDER_ROW_BUF];
 }
 paint_task_t;
