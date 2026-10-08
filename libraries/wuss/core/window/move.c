@@ -156,10 +156,4 @@ void wuss_window_move(wuss_window_t *window, point_t p)
   }
 
   (void) ncopied; /* move.c repairs via the sliver logic above, not "copied" */
-
-  if (window->wuss->dirty.n >= WUSS_MAX_DIRTY / 2)
-    logf_info("wuss_window_move: %d dirty regions after move of "
-              "(%d,%d)-(%d,%d) by (%d,%d), nclean=%d ncopied=%d",
-              window->wuss->dirty.n, before.x0, before.y0, before.x1,
-              before.y1, dx, dy, nclean, ncopied);
 }
