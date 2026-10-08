@@ -14,6 +14,7 @@
 #include "geom/box.h"
 #include "io/filetype.h"
 #include "utils/array.h"
+#include "utils/rng.h"
 
 #include "paint.h"
 #include "paint-new.h"
@@ -48,6 +49,9 @@
 
 #define PAINT_ANTS_IDLES 6 /* idles between steps of the marching ants */
 
+/* the spray's radius in pixels per unit of the size slider */
+#define PAINT_SPRAY_SCALE 3
+
 #define PAINT_NSWATCHES (TB_SWATCH_COLS * TB_SWATCH_ROWS)
 
 /* the tools' images, in the task's icon pool under resources/wuss/tasks/paint */
@@ -58,6 +62,7 @@ static const char *paint_tool_names[paint_TOOL__COUNT] =
   "line",
   "rectangle",
   "fill",
+  "spray",
   "select",
   "lasso"
 };
@@ -235,6 +240,7 @@ result_t paint_create_with(wuss_t                  *wuss,
   task->fg   = params->fg;
   task->bg   = params->bg;
   task->tool = paint_TOOL_BRUSH;
+  rng_seed(&task->rng, 1);
   task->size = 3;
 
   rc = paintdoc_create_filled(params->size, params->bg, &task->doc);
@@ -750,6 +756,16 @@ static result_t paint_mouse(paint_task_t *pt, const wuss_event_t *event)
       dirty = paint_span_box(p, p);
       break;
 
+    case paint_TOOL_SPRAY:
+      if (paintdoc_checkpoint(pt->doc) != result_OK)
+      {
+        pt->held = 0;
+        return result_OK;
+      }
+      dirty = paintdoc_spray(pt->doc, p, pt->size * PAINT_SPRAY_SCALE,
+                             paint_stroke_colour(pt), &pt->rng);
+      break;
+
     case paint_TOOL_BRUSH:
     case paint_TOOL_ERASER:
       if (paintdoc_checkpoint(pt->doc) != result_OK)
@@ -783,6 +799,12 @@ static result_t paint_mouse(paint_task_t *pt, const wuss_event_t *event)
       wuss_window_invalidate(pt->window, &old);
       pt->last = p;
       dirty    = paint_band_box(pt);
+    }
+    else if (pt->tool == paint_TOOL_SPRAY)
+    {
+      dirty    = paintdoc_spray(pt->doc, p, pt->size * PAINT_SPRAY_SCALE,
+                                paint_stroke_colour(pt), &pt->rng);
+      pt->last = p;
     }
     else
     {
@@ -879,6 +901,7 @@ static result_t paint_key(paint_task_t *pt, int code)
   case 'l': case 'L': paint_set_tool(pt, paint_TOOL_LINE);   break;
   case 'r': case 'R': paint_set_tool(pt, paint_TOOL_RECT);   break;
   case 'f': case 'F': paint_set_tool(pt, paint_TOOL_FILL);   break;
+  case 'p': case 'P': paint_set_tool(pt, paint_TOOL_SPRAY);  break;
   case 's': case 'S': paint_set_tool(pt, paint_TOOL_SELECT); break;
   case 'o': case 'O': paint_set_tool(pt, paint_TOOL_LASSO);  break;
   case wuss_KEY_ESCAPE:
@@ -981,7 +1004,20 @@ result_t paint_handle(wuss_window_t      *window,
                                     event->data.message);
 
   case wuss_EVENT_IDLE:
-    if (pt->window == NULL || !paintdoc_has_selection(pt->doc))
+    if (pt->window == NULL)
+      return result_OK;
+
+    /* the spray keeps building while the button is held still */
+    if (pt->held && pt->tool == paint_TOOL_SPRAY)
+    {
+      box_t dirty;
+
+      dirty = paintdoc_spray(pt->doc, pt->last, pt->size * PAINT_SPRAY_SCALE,
+                             paint_stroke_colour(pt), &pt->rng);
+      paint_invalidate_box(pt, &dirty);
+    }
+
+    if (!paintdoc_has_selection(pt->doc))
       return result_OK;
 
     if (++pt->ants_tick >= PAINT_ANTS_IDLES)

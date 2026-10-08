@@ -10,6 +10,7 @@
 #include "geom/box.h"
 #include "geom/point.h"
 #include "geom/size.h"
+#include "utils/rng.h"
 
 /* the canvas is a bgrx8888 bitmap; hard-edged, opaque drawing only. every
  * drawing operation takes canvas pixel coordinates (clipped to the canvas) and
@@ -72,6 +73,15 @@ box_t paintdoc_stroke(paintdoc_t *doc,
                       point_t     b,
                       int         width,
                       colour_t    colour);
+
+/* scatter dots of colour over the disc of the given radius in pixels centred
+ * on p. each call adds a light, even dusting, so repeat it to build up. the
+ * caller takes the checkpoint, as for paintdoc_stroke */
+box_t paintdoc_spray(paintdoc_t *doc,
+                     point_t     p,
+                     int         radius,
+                     colour_t    colour,
+                     rng_t      *rng);
 
 /* draw the rectangle with opposite corners a and b (both inclusive, any order),
  * filled or as an outline width pixels thick drawn inside it. takes its own

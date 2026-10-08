@@ -28,6 +28,7 @@ typedef enum paint_tool
   paint_TOOL_LINE,
   paint_TOOL_RECT,
   paint_TOOL_FILL,
+  paint_TOOL_SPRAY,  /* scatter dots around the pointer while held */
   paint_TOOL_SELECT, /* rubber-band a rectangular selection */
   paint_TOOL_LASSO,  /* drag out a freeform selection */
   paint_TOOL__COUNT
@@ -75,6 +76,7 @@ typedef struct paint_task
   int                nlasso, caplasso;
   int                ants_tick; /* idles since the marching ants last moved */
   int                ants_phase; /* where the ants have marched to, 0..7 */
+  rng_t              rng;        /* the spray's scatter */
   wuss_icon_t       *tool_icons[paint_TOOL__COUNT];
   wuss_icon_t       *fill_icon;
   wuss_slider_row_t  size_row;
