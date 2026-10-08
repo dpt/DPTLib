@@ -364,6 +364,8 @@ set(GEOM_SOURCES
     libraries/geom/packer/impl.h
     libraries/geom/packer/packer.c
     libraries/geom/region/impl.h
+    libraries/geom/region/builder.c
+    libraries/geom/region/invert.c
     libraries/geom/region/outline.c
     libraries/geom/region/polygon.c
     libraries/geom/region/region.c

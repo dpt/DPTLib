@@ -177,6 +177,50 @@ static result_t test_outline(void)
   return rc;
 }
 
+static result_t test_invert(void)
+{
+  static const box_t b = { 4, 4, 20, 15 };
+  region_t *r, *inv, *back = NULL;
+  box_t     bb;
+  int       ok;
+
+  if (region_from_box(&b, &r) != result_OK)
+    return result_TEST_FAILED;
+
+  if (region_invert(r, &clip, &inv) != result_OK || inv == NULL)
+    return result_TEST_FAILED;
+
+  ok = area(inv) == W * H - 16 * 11 &&
+       !region_contains(inv, 4, 4) && region_contains(inv, 3, 4) &&
+       region_contains(inv, 20, 14) && region_contains(inv, 10, 15);
+
+  /* inverting twice gives the original */
+  ok = ok && region_invert(inv, &clip, &back) == result_OK && back != NULL;
+  if (ok)
+  {
+    bb = region_bounds(back);
+    ok = bb.x0 == 4 && bb.y0 == 4 && bb.x1 == 20 && bb.y1 == 15 &&
+         area(back) == 16 * 11;
+  }
+
+  /* the complement of everything, and of nothing */
+  region_destroy(back);
+  region_destroy(inv);
+  region_destroy(r);
+
+  if (region_from_box(&clip, &r) != result_OK ||
+      region_invert(r, &clip, &inv) != result_OK || inv != NULL)
+    ok = 0;
+  region_destroy(r);
+
+  if (region_invert(NULL, &clip, &inv) != result_OK || inv == NULL ||
+      area(inv) != W * H)
+    ok = 0;
+  region_destroy(inv);
+
+  return ok ? result_TEST_PASSED : result_TEST_FAILED;
+}
+
 result_t region_test(const char *resources)
 {
   typedef result_t (*regiontestfn)(void);
@@ -187,7 +231,8 @@ result_t region_test(const char *resources)
     test_empty,
     test_polygon,
     test_polygon_clip,
-    test_outline
+    test_outline,
+    test_invert
   };
 
   size_t i;

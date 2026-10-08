@@ -54,6 +54,19 @@ result_t region_from_polygon(const point_t *pts,
                              const box_t   *clip,
                              region_t     **out);
 
+/**
+ * Creates the complement of a region within a box: the pixels of the box
+ * which are not in the region.
+ *
+ * \param[in]  region The region to invert (may be NULL).
+ * \param[in]  within The box to invert within (x1,y1 exclusive).
+ * \param[out] out    The new region, or NULL if it is empty.
+ * \return result_OK or result_OOM.
+ */
+result_t region_invert(const region_t *region,
+                       const box_t    *within,
+                       region_t      **out);
+
 /** Frees a region. */
 void region_destroy(region_t *region);
 
