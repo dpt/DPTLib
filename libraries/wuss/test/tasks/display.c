@@ -383,6 +383,9 @@ result_t display_handle(wuss_window_t      *window,
     display_destroy(dc);
     return result_OK;
 
+  case wuss_EVENT_KEY:
+    return result_WUSS_KEY_UNCLAIMED;
+
   default:
     return result_OK;
   }

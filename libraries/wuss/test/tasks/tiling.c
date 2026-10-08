@@ -221,6 +221,9 @@ result_t tiling_handle(wuss_window_t      *window,
     tiling_destroy(tc);
     return result_OK;
 
+  case wuss_EVENT_KEY:
+    return result_WUSS_KEY_UNCLAIMED;
+
   default:
     return result_OK;
   }

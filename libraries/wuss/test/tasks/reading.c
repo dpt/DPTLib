@@ -1143,6 +1143,9 @@ result_t reading_handle(wuss_window_t      *window,
   case wuss_EVENT_IDLE:
     return reading_idle(task_data);
 
+  case wuss_EVENT_KEY:
+    return result_WUSS_KEY_UNCLAIMED;
+
   default:
     return result_OK;
   }
