@@ -28,9 +28,8 @@ makes an instance of its own.
 - **Select** paints with the foreground colour, **Adjust** with the
   background colour. Clicking a swatch in the toolbox sets the foreground
   (Select) or the background (Adjust).
-- Tools: brush, eraser (paints the background colour), line, rect and flood
-  fill. Press `B` `E` `L` `R` or `F` to pick one. The Fill option makes rect
-  solid. The slider sets the width, 1 to 32 pixels.
+- Tools: brush, eraser (paints the background colour), line, rect, filled
+  rect and flood fill. Press `B` `E` `L` `R` `X` or `F` to pick one. The slider sets the width, 1 to 32 pixels.
 - Line and rect show a rubber band while the button is down. They draw into
   the canvas when it is released.
 - `Ctrl-Z` or Menu > Undo steps back. There are 20 levels and no redo.
