@@ -13,6 +13,7 @@
 #include "framebuf/screen.h"
 #include "geom/box.h"
 #include "io/filetype.h"
+#include "io/path.h"
 #include "utils/array.h"
 #include "utils/rng.h"
 
@@ -118,8 +119,10 @@ static result_t paint_toolbox_icons(paint_task_t *pt)
   wuss_icon_t     *icons[paint_TOOL__COUNT + 2];
   int              i, n;
 
-  snprintf(dir, sizeof(dir), "%s/resources/wuss/tasks/paint",
-           wuss_get_resources(pt->wuss));
+  /* pathf maps to native separators (RISC OS); it returns a shared static
+   * buffer, so copy it */
+  snprintf(dir, sizeof(dir), "%s",
+           pathf("%s/resources/wuss/tasks/paint", wuss_get_resources(pt->wuss)));
   rc = wuss_task_iconpool_load(pt->delegate, dir);
   if (rc != result_OK)
     return rc;
