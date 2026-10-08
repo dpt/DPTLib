@@ -33,19 +33,19 @@
  * paint_toolbox_redraw and the swatches hit-tested by paint_toolbox_mouse, not
  * icons */
 #define TB_W           96
-#define TB_H           316
+#define TB_H           286
 #define TB_MARGIN      5
 #define TB_TOOL_COLS   2
-#define TB_TOOL_X      17
-#define TB_TOOL_CELL   32  /* pitch of the tool buttons */
-#define TB_TOOL_SIZE   30  /* button size, including its bevel */
-#define TB_SLIDER_Y    168
+#define TB_TOOL_X      23
+#define TB_TOOL_CELL   26  /* pitch of the tool buttons */
+#define TB_TOOL_SIZE   24  /* button size, including its bevel */
+#define TB_SLIDER_Y    138
 #define TB_SWATCH_COLS 4
 #define TB_SWATCH_ROWS 4
 #define TB_SWATCH      20  /* swatch size */
 #define TB_SWATCH_GAP  2
-#define TB_SWATCH_Y    196
-#define TB_CHIPS_Y     290
+#define TB_SWATCH_Y    166
+#define TB_CHIPS_Y     260
 
 #define PAINT_ANTS_IDLES 6 /* idles between steps of the marching ants */
 
