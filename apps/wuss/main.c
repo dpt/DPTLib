@@ -293,6 +293,8 @@ static void wuss_frame(void *arg)
   struct wuss_frame_ctx *c = arg;
   bool         scripting;
   wuss_input_t ev;
+  bool         move_pending;
+  point_t      move_pos;
   bool         garbage;
   bool         stress;
   bool         redraw_all;
@@ -311,14 +313,37 @@ static void wuss_frame(void *arg)
   wuss_set_time(c->wuss, g_scripted ? g_script_ms
                                     : wuss_frontend_ms(c->frontend));
 
+  /* A move is only delivered once the pointer has stopped for a poll, or
+   * another event needs it in place first. A frontend that samples the
+   * pointer (RISC OS) reports a fresh move on every poll while it travels,
+   * and handling each one -- a window drag blits and queues dirty slivers
+   * per move -- keeps this loop spinning, so the dirty list overflows and
+   * nothing is redrawn until the pointer stops. */
+  move_pending = false;
+  move_pos     = POINT(0, 0);
+
   scripting = g_scripted;
   while (frame_poll(c, &scripting, &ev))
   {
+    if (ev.kind == wuss_INPUT_MOUSE_MOVE)
+    {
+      g_pointer.pos       = ev.pos;
+      g_pointer.in_window = true;
+      move_pos            = ev.pos;
+      move_pending        = true;
+      continue;
+    }
+
+    if (move_pending)
+    {
+      wuss_mouse_move(c->wuss, move_pos, NULL);
+      move_pending = false;
+    }
+
     switch (ev.kind)
     {
     case wuss_INPUT_MOUSE_DOWN:
     case wuss_INPUT_MOUSE_UP:
-    case wuss_INPUT_MOUSE_MOVE:
     case wuss_INPUT_WHEEL:
       g_pointer.pos       = ev.pos;
       g_pointer.in_window = true;
@@ -344,10 +369,6 @@ static void wuss_frame(void *arg)
       wuss_mouse_click(c->wuss, ev.pos, ev.button, wuss_MOUSE_UP, NULL);
       break;
 
-    case wuss_INPUT_MOUSE_MOVE:
-      wuss_mouse_move(c->wuss, ev.pos, NULL);
-      break;
-
     case wuss_INPUT_WHEEL:
       wuss_scroll(c->wuss, ev.pos, ev.wheel, NULL);
       break;
@@ -371,6 +392,9 @@ static void wuss_frame(void *arg)
       break;
     }
   }
+
+  if (move_pending)
+    wuss_mouse_move(c->wuss, move_pos, NULL);
 
   wuss_idle(c->wuss);
   tasks_reap_apps();
