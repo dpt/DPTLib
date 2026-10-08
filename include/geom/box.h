@@ -126,8 +126,8 @@ void box_union(const box_t *a, const box_t *b, box_t *c);
  * \param[in,out] n    The number of entries in use.
  * \param[in]     max  The capacity of the list.
  * \param[in]     box  The box to add.
- * \return Non-zero if the list was full and the box was unioned into the
- *         last entry, which then over-approximates the area.
+ * \return Non-zero if the list was full and two boxes were unioned (the pair
+ *         adding the least area), which then over-approximates the area.
  */
 int box_list_add(box_t *list, int *n, int max, const box_t *box);
 
