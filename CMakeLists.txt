@@ -114,6 +114,7 @@ set(PUBLIC_HEADERS
     include/geom/line.h
     include/geom/packer.h
     include/geom/point.h
+    include/geom/region.h
     include/geom/size.h
     include/geom/stack.h
     include/io/dirlist.h
@@ -362,6 +363,10 @@ set(GEOM_SOURCES
     libraries/geom/line/line.c
     libraries/geom/packer/impl.h
     libraries/geom/packer/packer.c
+    libraries/geom/region/impl.h
+    libraries/geom/region/outline.c
+    libraries/geom/region/polygon.c
+    libraries/geom/region/region.c
     libraries/geom/stack/impl.h
     libraries/geom/stack/axis-size.c
     libraries/geom/stack/measure-min.c
@@ -809,6 +814,7 @@ if(BUILD_TESTS)
         libraries/geom/box/test/box-test.c
         libraries/geom/layout/test/layout-test.c
         libraries/geom/packer/test/packer-test.c
+        libraries/geom/region/test/region-test.c
         libraries/geom/stack/test/stack-test.c
         libraries/io/dirlist/test/dirlist-test.c
         libraries/io/filetype/test/filetype-test.c
