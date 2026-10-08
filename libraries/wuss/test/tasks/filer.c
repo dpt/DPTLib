@@ -46,8 +46,24 @@ static const char *filer_default_root(void)
 {
 #ifdef __EMSCRIPTEN__
   return "/";
+#elif defined(__riscos)
+  return "@"; /* the current directory */
 #else
   return ".";
+#endif
+}
+
+/* native "dir<sep>leaf" (RISC OS joins with '.'). Returns the snprintf
+ * length, so >= cap means truncated. */
+static int filer_join(char       *out,
+                      size_t      cap,
+                      const char *dir,
+                      const char *leaf)
+{
+#ifdef __riscos
+  return snprintf(out, cap, "%s.%s", dir, leaf);
+#else
+  return snprintf(out, cap, "%s/%s", dir, leaf);
 #endif
 }
 
@@ -145,7 +161,7 @@ static void filer_activate(wuss_gridview_t *gridview,
   if (entry == NULL || !entry->is_dir)
     return;
 
-  if (snprintf(child, sizeof(child), "%s/%s", fw->path, entry->leaf) >=
+  if (filer_join(child, sizeof(child), fw->path, entry->leaf) >=
       (int) sizeof(child))
     return;
 
@@ -169,8 +185,8 @@ static int filer_drag(wuss_gridview_t *gridview, int index, void *opaque)
   if (entry == NULL || entry->is_dir)
     return 0;
 
-  if (snprintf(fw->owner->drag_path, sizeof(fw->owner->drag_path), "%s/%s",
-               fw->path, entry->leaf) >= (int) sizeof(fw->owner->drag_path))
+  if (filer_join(fw->owner->drag_path, sizeof(fw->owner->drag_path),
+                 fw->path, entry->leaf) >= (int) sizeof(fw->owner->drag_path))
   {
     fw->owner->drag_path[0] = '\0';
     return 0;
@@ -417,7 +433,7 @@ static int filer_download_selection(const filer_window_t *fw, int download)
     if (!download)
       continue;
 
-    if (snprintf(path, sizeof(path), "%s/%s", fw->path, entry->leaf) >=
+    if (filer_join(path, sizeof(path), fw->path, entry->leaf) >=
         (int) sizeof(path))
       continue;
 
@@ -433,8 +449,18 @@ static int filer_download_selection(const filer_window_t *fw, int download)
 static int filer_parent_path(const char *path, char *out, size_t cap)
 {
   const char *slash;
+#ifndef __riscos
   size_t      len;
+#endif
 
+#ifdef __riscos
+  /* "adfs::Disc.$.Dir" -> "adfs::Disc.$"; stop at the root or a bare name */
+  slash = strrchr(path, '.');
+  if (slash == NULL || slash == path)
+    return 0;
+
+  return snprintf(out, cap, "%.*s", (int) (slash - path), path) < (int) cap;
+#else
   slash = strrchr(path, '/');
   if (slash == NULL || (slash == path && path[1] == '\0'))
     return 0;
@@ -444,6 +470,7 @@ static int filer_parent_path(const char *path, char *out, size_t cap)
     len = 1; /* the parent of "/a" is "/" */
 
   return snprintf(out, cap, "%.*s", (int) len, path) < (int) cap;
+#endif
 }
 
 /* shade or unshade a menu row, on screen too if the menu is open */
@@ -505,7 +532,7 @@ static result_t filer_build_save_path(const filer_window_t *fw,
   if (!path_leaf_valid(leaf))
     return result_BAD_ARG;
 
-  if (snprintf(path, cap, "%s/%s", fw->path, leaf) >= (int) cap)
+  if (filer_join(path, cap, fw->path, leaf) >= (int) cap)
     return result_BAD_ARG;
 
   return result_OK;
