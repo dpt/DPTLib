@@ -320,6 +320,18 @@ typedef union wuss_icon_spec_data
      *  \c pressed_set is zero. NULL (the default) means none; an unknown
      *  name logs a warning and the normal image is drawn throughout. */
     const char     *pressed_name;
+    /** wuss_ICON_TYPE_BITMAP: bevel drawn inside the bounding box, with the
+     *  image centred in it. Only wuss_ICON_BORDER_NONE (the default, image at
+     *  the top-left as before), RIDGE and GROOVE are valid. A selected icon
+     *  (see \c group) swaps the two, so RIDGE reads raised at rest and sunk
+     *  when latched, and is then filled with the icon's bg colour (a
+     *  latched icon with no bg draws unfilled). */
+    wuss_icon_border_t border;
+    /** wuss_ICON_TYPE_BITMAP with wuss_ICON_FLAGS_INTERACTIVE: non-zero makes
+     *  the icon latch like a grouped wuss_ICON_TYPE_RADIO. A click selects it
+     *  and clears every other selected bitmap on the window with the same
+     *  group. Zero (the default) leaves it a plain button. */
+    int             group;
   }
   bitmap;
 

@@ -2,6 +2,7 @@
 
 #ifdef WUSS_APP
 
+#include <stdio.h>
 #include <stdlib.h>
 
 #ifdef FORTIFY
@@ -23,32 +24,46 @@
 #define PAINT_VIEW_W   400 /* initial visible size of the canvas window */
 #define PAINT_VIEW_H   300
 
-/* Toolbox layout, in its window's content space: tool radios, the rect Fill
- * option, the size slider, then a grid of colour swatches and the current
- * colours. The swatches and the colour chips are drawn by paint_toolbox_redraw
- * and hit-tested by paint_toolbox_mouse, not icons */
+/* Toolbox layout, in its window's content space: a grid of tool buttons, the
+ * rect Fill option, the size slider, then a grid of colour swatches and the
+ * current colours. The swatches and the colour chips are drawn by
+ * paint_toolbox_redraw and the swatches hit-tested by paint_toolbox_mouse, not
+ * icons */
 #define TB_W           96
-#define TB_H           260
+#define TB_H           276
 #define TB_MARGIN      5
-#define TB_ROW         18  /* pitch of the tool radios */
-#define TB_SLIDER_Y    116
+#define TB_TOOL_COLS   2
+#define TB_TOOL_X      17
+#define TB_TOOL_CELL   32  /* pitch of the tool buttons */
+#define TB_TOOL_SIZE   30  /* button size, including its bevel */
+#define TB_FILL_Y      104
+#define TB_SLIDER_Y    128
 #define TB_SWATCH_COLS 4
 #define TB_SWATCH_ROWS 4
 #define TB_SWATCH      20  /* swatch size */
 #define TB_SWATCH_GAP  2
-#define TB_SWATCH_Y    144
-#define TB_CHIPS_Y     238
+#define TB_SWATCH_Y    156
+#define TB_CHIPS_Y     250
 
 #define PAINT_NSWATCHES (TB_SWATCH_COLS * TB_SWATCH_ROWS)
 
+/* the tools' images, in the task's icon pool under resources/wuss/tasks/paint */
 static const char *paint_tool_names[paint_TOOL__COUNT] =
 {
-  "Brush",
-  "Eraser",
-  "Line",
-  "Rect",
-  "Flood fill"
+  "draw",
+  "erase",
+  "line",
+  "rectangle",
+  "fill"
 };
+
+/* the tool's button box in toolbox content space */
+static box_t paint_tool_box(int i)
+{
+  return (box_t) BOX_POS_SIZE(TB_TOOL_X + (i % TB_TOOL_COLS) * TB_TOOL_CELL,
+                              TB_MARGIN + (i / TB_TOOL_COLS) * TB_TOOL_CELL,
+                              TB_TOOL_SIZE, TB_TOOL_SIZE);
+}
 
 /* the fixed palette, as RGB, in swatch order */
 static const unsigned long paint_swatches[PAINT_NSWATCHES] =
@@ -84,26 +99,42 @@ static box_t paint_swatch_box(int i)
 
 /* ----------------------------------------------------------------------- */
 
-/* the tool radios, Fill option and size slider */
+/* the tool buttons, Fill option and size slider */
 static result_t paint_toolbox_icons(paint_task_t *pt)
 {
   result_t         rc;
+  char             dir[512];
   wuss_icon_spec_t specs[paint_TOOL__COUNT + 3];
   wuss_icon_t     *icons[paint_TOOL__COUNT + 3];
   int              i, n;
 
+  snprintf(dir, sizeof(dir), "%s/resources/wuss/tasks/paint",
+           wuss_get_resources(pt->wuss));
+  rc = wuss_task_iconpool_load(pt->delegate, dir);
+  if (rc != result_OK)
+    return rc;
+
+  memset(specs, 0, sizeof(specs));
   n = 0;
 
   for (i = 0; i < paint_TOOL__COUNT; i++)
-    wuss_icon_spec_radio(&specs[n++],
-                         (box_t) BOX_POS_SIZE(TB_MARGIN, TB_MARGIN + i * TB_ROW,
-                                              TB_W - 2 * TB_MARGIN, 16),
-                         paint_tool_names[i],
-                         1);
+  {
+    box_t cell;
+
+    cell = paint_tool_box(i);
+
+    specs[n].bbox = cell;
+    specs[n].type             = wuss_ICON_TYPE_BITMAP;
+    specs[n].flags            = wuss_ICON_FLAGS_INTERACTIVE;
+    specs[n].u.bitmap.border  = wuss_ICON_BORDER_RIDGE;
+    specs[n].u.bitmap.group   = 1;
+    specs[n].bg               = wuss_COLOUR_BUTTON_PRESSED; /* the latched fill */
+    specs[n].u.bitmap.name    = paint_tool_names[i];
+    n++;
+  }
 
   wuss_icon_spec_option(&specs[n++],
-                        (box_t) BOX_POS_SIZE(TB_MARGIN,
-                                             TB_MARGIN + i * TB_ROW,
+                        (box_t) BOX_POS_SIZE(TB_MARGIN, TB_FILL_Y,
                                              TB_W - 2 * TB_MARGIN, 16),
                         "Fill");
 

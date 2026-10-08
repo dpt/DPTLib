@@ -511,12 +511,41 @@ static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
   const box_t    *b = &c->b;
   const bitmap_t *bm;
   screen_t        clipped;
+  colour_t        light, dark;
+  box_t           ring;
+  int             x, y, raised;
 
   bm = NULL;
   if (wuss__icon_pressed(c->icon))
     bm = c->icon->spec.u.bitmap.pressed_image;
   if (bm == NULL)
     bm = c->icon->spec.u.bitmap.image;
+
+  /* a bevel (sunk when latched), with the image centred inside it */
+  x = b->x0;
+  y = b->y0;
+  if (c->icon->spec.type == wuss_ICON_TYPE_BITMAP &&
+      c->icon->spec.u.bitmap.border != wuss_ICON_BORDER_NONE)
+  {
+    light  = c->wuss->palette[c->wuss->bevel.light];
+    dark   = c->wuss->palette[c->wuss->bevel.dark];
+    raised = (c->icon->spec.u.bitmap.border == wuss_ICON_BORDER_RIDGE) !=
+             wuss__icon_selected(c->icon);
+    ring   = *b;
+
+    if (wuss__icon_selected(c->icon) && c->icon->spec.bg != wuss_NO_BACKGROUND)
+      screen_fill_rect(c->scr, b->x0, b->y0, box_size(b),
+                       c->wuss->palette[c->icon->spec.bg]);
+
+    screen_draw_bevel_edge(c->scr, &ring, raised ? light : dark,
+                           raised ? dark : light);
+
+    if (bm != NULL)
+    {
+      x += (b->x1 - b->x0 - bm->size.w) / 2;
+      y += (b->y1 - b->y0 - bm->size.h) / 2;
+    }
+  }
 
   /* screen_copy_bitmap clips to scr->clip and does not scale, so narrow the
    * clip to the icon box (intersected with whatever redraw already set) and
@@ -527,7 +556,7 @@ static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
 
   /* a missing bitmap or a failed blit leaves a red box in its place */
   if (bm == NULL ||
-      screen_copy_bitmap(&clipped, b->x0, b->y0, bm) != result_OK)
+      screen_copy_bitmap(&clipped, x, y, bm) != result_OK)
     screen_fill_rect(&clipped, b->x0, b->y0, box_size(b),
                      colour_rgb(255, 0, 0));
 }

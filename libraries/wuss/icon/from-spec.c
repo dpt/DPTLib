@@ -119,6 +119,12 @@ result_t wuss__icon_from_spec(const wuss_t           *w,
       spec->u.pattern.tile >= screen_PATTERN__LIMIT)
     return result_WUSS_BAD_ICON;
 
+  if (spec->type == wuss_ICON_TYPE_BITMAP &&
+      spec->u.bitmap.border != wuss_ICON_BORDER_NONE &&
+      spec->u.bitmap.border != wuss_ICON_BORDER_RIDGE &&
+      spec->u.bitmap.border != wuss_ICON_BORDER_GROOVE)
+    return result_WUSS_BAD_ICON;
+
   if (spec->type == wuss_ICON_TYPE_LABEL &&
       spec->u.label.border > wuss_ICON_BORDER_PLAIN)
     return result_WUSS_BAD_ICON;
