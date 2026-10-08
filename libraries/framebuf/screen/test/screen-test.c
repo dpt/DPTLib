@@ -2013,6 +2013,104 @@ static result_t test_copy_rect_packed(void)
   return result_TEST_PASSED;
 }
 
+/* screen_copy_rect on 1/2/4bpp against a pixel-by-pixel reference: random
+ * contents, random source boxes and shifts (every phase, overlapping or not,
+ * byte-aligned or not), compared over the whole screen so any stray write
+ * outside the destination shows up too. */
+static result_t test_copy_rect_packed_random(void)
+{
+  static const struct { pixelfmt_t fmt; int bits; } cases[] =
+  {
+    { pixelfmt_p1, 1 },
+    { pixelfmt_p2, 2 },
+    { pixelfmt_p4, 4 },
+  };
+
+  static unsigned char buf[WIDTH / 2 * HEIGHT];
+  static unsigned char want[WIDTH * HEIGHT];
+  static unsigned char before[WIDTH * HEIGHT];
+
+  colour_t             pal[16];
+  size_t               ci;
+  int                  i, trial;
+  unsigned int         seed;
+
+  for (i = 0; i < 16; i++)
+    pal[i] = colour_rgb((unsigned char) (i * 17),
+                        (unsigned char) (i * 17),
+                        (unsigned char) (i * 17));
+
+  seed = 12345;
+  for (ci = 0; ci < NELEMS(cases); ci++)
+  {
+    int bits, rowbytes;
+
+    bits     = cases[ci].bits;
+    rowbytes = WIDTH * bits / 8;
+
+    for (trial = 0; trial < 400; trial++)
+    {
+      screen_t scr;
+      box_t    src, got;
+      int      w, h, dx, dy, x, y, nx, ny;
+
+      for (i = 0; i < rowbytes * HEIGHT; i++)
+      {
+        seed   = seed * 1664525u + 1013904223u;
+        buf[i] = (unsigned char) (seed >> 24);
+      }
+      screen_init(&scr, SIZE2D(WIDTH, HEIGHT), cases[ci].fmt, rowbytes, pal,
+                  buf);
+
+      for (y = 0; y < HEIGHT; y++)
+        for (x = 0; x < WIDTH; x++)
+          before[y * WIDTH + x] = want[y * WIDTH + x] =
+            (unsigned char) house_pixel_at(buf + (size_t) y * rowbytes, x,
+                                           bits);
+
+      seed = seed * 1664525u + 1013904223u;
+      w    = 1 + (int) ((seed >> 16) % 40);
+      seed = seed * 1664525u + 1013904223u;
+      h    = 1 + (int) ((seed >> 16) % 6);
+      seed = seed * 1664525u + 1013904223u;
+      src.x0 = (int) ((seed >> 16) % (unsigned) (WIDTH - w + 1));
+      seed = seed * 1664525u + 1013904223u;
+      src.y0 = (int) ((seed >> 16) % (unsigned) (HEIGHT - h + 1));
+      src.x1 = src.x0 + w;
+      src.y1 = src.y0 + h;
+      seed = seed * 1664525u + 1013904223u;
+      nx   = (int) ((seed >> 16) % (unsigned) (WIDTH - w + 1));
+      seed = seed * 1664525u + 1013904223u;
+      ny   = (int) ((seed >> 16) % (unsigned) (HEIGHT - h + 1));
+      dx   = nx - src.x0;
+      dy   = ny - src.y0;
+
+      for (y = 0; y < h; y++)
+        for (x = 0; x < w; x++)
+          want[(ny + y) * WIDTH + nx + x] =
+            before[(src.y0 + y) * WIDTH + src.x0 + x];
+
+      if (screen_copy_rect(&scr, &src, POINT(nx, ny), &got) != result_OK)
+      {
+        printf("screen: copy_rect declined a p%d screen\n", bits);
+        return result_TEST_FAILED;
+      }
+
+      for (y = 0; y < HEIGHT; y++)
+        for (x = 0; x < WIDTH; x++)
+          if (house_pixel_at(buf + (size_t) y * rowbytes, x, bits) !=
+              want[y * WIDTH + x])
+          {
+            printf("screen: copy_rect p%d (%d,%d)+%dx%d by (%d,%d) wrong "
+                   "at (%d,%d)\n", bits, src.x0, src.y0, w, h, dx, dy, x, y);
+            return result_TEST_FAILED;
+          }
+    }
+  }
+
+  return result_TEST_PASSED;
+}
+
 /* screen_set_pixel and screen_set_pixel_value, plotted at every point from
  * just off each screen edge, must touch exactly the pixels inside both the
  * screen and the clip; an empty clip means unclipped. */
@@ -2322,6 +2420,7 @@ result_t screen_test(const char *resources)
     test_copy_bitmap_bgr_source,
     test_copy_bitmap_dithered,
     test_copy_rect_packed,
+    test_copy_rect_packed_random,
     test_fill_span_p4,
     test_set_pixel_clip,
     test_rgb565,
