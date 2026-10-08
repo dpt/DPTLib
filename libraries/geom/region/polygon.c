@@ -7,6 +7,7 @@
 #include "base/utils.h"
 
 #include "geom/region.h"
+#include "utils/array.h"
 
 #include "impl.h"
 
@@ -33,17 +34,8 @@ runlist_t;
 
 static result_t runlist_add(runlist_t *l, int x0, int x1)
 {
-  int *p;
-
-  if (l->n == l->cap)
-  {
-    l->cap = l->cap ? l->cap * 2 : 64;
-    p      = realloc(l->runs, (size_t) l->cap * sizeof(*p));
-    if (p == NULL)
-      return result_OOM;
-
-    l->runs = p;
-  }
+  if (array_grow((void **) &l->runs, sizeof(*l->runs), l->n, &l->cap, 2, 64))
+    return result_OOM;
 
   l->runs[l->n++] = x0;
   l->runs[l->n++] = x1;
