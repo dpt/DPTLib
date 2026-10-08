@@ -476,6 +476,44 @@ box_t paintdoc_stroke(paintdoc_t *doc,
 
 /* ----------------------------------------------------------------------- */
 
+box_t paintdoc_spray(paintdoc_t *doc,
+                     point_t     p,
+                     int         radius,
+                     colour_t    colour,
+                     rng_t      *rng)
+{
+  box_t dirty;
+  int   n, x, y, w;
+
+  radius = MAX(radius, 1);
+  w      = 2 * radius + 1;
+
+  /* about one dot per four pixels of the disc's area, at least a few */
+  n = MAX(radius * radius * 3 / 4, 3);
+
+  while (n-- > 0)
+  {
+    x = (int) (rng_xorshift32(rng) % (uint32_t) w) - radius;
+    y = (int) (rng_xorshift32(rng) % (uint32_t) w) - radius;
+    if (x * x + y * y > radius * radius)
+      continue;
+
+    x += p.x;
+    y += p.y;
+    if (x < 0 || y < 0 || x >= doc->bm.size.w || y >= doc->bm.size.h)
+      continue;
+
+    screen_set_pixel(&doc->scr, x, y, colour);
+  }
+
+  dirty = clipped_box(doc, p, p, radius);
+  sel_clip(doc, dirty);
+
+  return dirty;
+}
+
+/* ----------------------------------------------------------------------- */
+
 void paintdoc_draw_rect(screen_t *scr,
                         point_t   a,
                         point_t   b,
