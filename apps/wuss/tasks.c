@@ -129,6 +129,7 @@ g_image_tasks[] =
 {
   { "Dithering", dithering_app_create },
   { "Effects", effects_app_create },
+  { "Paint", paint_app_create },
   { "Viewing", viewing_app_create },
   { "Tiling", tiling_app_create }
 },
@@ -154,7 +155,6 @@ g_visuals_tasks[] =
   { "Gradient", gradient_app_create },
   { "Greeble", greeble_app_create },
   { "Lissajous", lissajous_app_create },
-  { "Paint", paint_app_create },
   { "Patterns", patterns_app_create }
 },
 g_toys_tasks[] =
