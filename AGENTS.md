@@ -111,6 +111,20 @@ New source/header files must be added by hand to the relevant `set(..._SOURCES .
 - After editing any `.c`/`.h` function prototype or definition, run `python3 tools/fmt/wrap_protos.py <file>`; after editing a header's Doxygen, run `python3 tools/fmt/wrap_doxygen.py <file>` (skip vendored headers).
 - Before committing any `.c`/`.h` changes, run `python3 tools/fmt/realign_decls.py <file>` (declaration-block alignment) and `python3 tools/fmt/balance_braces.py <file>` (if one branch of an `if`/`else` chain is braced, brace them all) alongside `wrap_protos.py`/`wrap_doxygen.py` on the same files.
 
+## Reuse library intrinsics
+
+Before hand-rolling, grep `include/` for an existing helper. Do not re-implement these:
+
+- Growable arrays: `array_grow` / `array_shrink` / `array_delete_element(s)` (`utils/array.h`), never a bare `realloc` doubling block. Also `datastruct/vector.h`, `list.h`, `hash.h`, `bitvec.h` before writing new containers.
+- `MIN` / `MAX` / `CLAMP` / `SWAP` / `NELEMS` / `NOT_USED` / `DIVIDE_ROUNDING_UP` (`base/utils.h`).
+- Sorted lookup: `utils/bsearch.h`. Maths and fixed point: `utils/maths.h`, `utils/fxp.h`.
+- Rectangles: `box_t` helpers in `geom/box.h` (`box_intersection`, `box_is_empty`, `box_list_add`, `BOX_INIT`...), `geom/line.h` for line clipping.
+- Pixel sets and polygons: `geom/region.h` (sparse per-row runs; box and even-odd polygon fill, contains, outline). Do not use dense per-pixel masks or write scanline fills.
+- Bitmap compression: `bitmap_compress` / `bitmap_decompress` (`framebuf/bitmap.h`); drawing primitives in `framebuf/screen.h`.
+- Errors: `result_t` codes and `check` / `sentinel` (`base/result.h`, `base/debug.h`).
+
+If a new helper is generic (no dependence on the calling module), put it in the matching library area with a test, not in a demo or task.
+
 ## Commit messages
 
 Use [Conventional Commits](https://www.conventionalcommits.org/): `<type>[optional scope]: <description>`, e.g. `fix(pickle): handle zero-length blobs`. Common types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`, `build`. Add a `!` before the colon (or a `BREAKING CHANGE:` footer) for breaking changes.
