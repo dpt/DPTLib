@@ -102,6 +102,13 @@ result_t paintdoc_select_rect(paintdoc_t *doc, box_t box);
  * no pixels in it, selects nothing */
 result_t paintdoc_select_poly(paintdoc_t *doc, const point_t *pts, int n);
 
+/* select the whole canvas */
+result_t paintdoc_select_all(paintdoc_t *doc);
+
+/* select exactly the canvas pixels not selected now: with no selection, the
+ * whole canvas; with the whole canvas selected, nothing */
+result_t paintdoc_select_invert(paintdoc_t *doc);
+
 /* drop the selection, so drawing reaches the whole canvas again */
 void paintdoc_select_none(paintdoc_t *doc);
 
