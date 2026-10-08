@@ -5,6 +5,7 @@
 #include "base/utils.h"
 
 #include "geom/region.h"
+#include "utils/array.h"
 
 #include "impl.h"
 
@@ -17,20 +18,11 @@ spanlist_t;
 
 static result_t spans_add(spanlist_t *l, int x0, int x1, int y)
 {
-  box_t *p;
-
   if (x0 >= x1)
     return result_OK;
 
-  if (l->n == l->cap)
-  {
-    l->cap = l->cap ? l->cap * 2 : 64;
-    p      = realloc(l->spans, (size_t) l->cap * sizeof(*p));
-    if (p == NULL)
-      return result_OOM;
-
-    l->spans = p;
-  }
+  if (array_grow((void **) &l->spans, sizeof(*l->spans), l->n, &l->cap, 1, 64))
+    return result_OOM;
 
   l->spans[l->n++] = (box_t) { x0, y, x1, y + 1 };
   return result_OK;

@@ -13,6 +13,7 @@
 #include "framebuf/screen.h"
 #include "geom/box.h"
 #include "io/filetype.h"
+#include "utils/array.h"
 
 #include "paint.h"
 #include "paint-new.h"
@@ -400,23 +401,13 @@ static int paint_is_selector(const paint_task_t *pt)
  * point is dropped */
 static int paint_lasso_add(paint_task_t *pt, point_t p)
 {
-  point_t *grown;
-  int      cap;
-
   if (pt->nlasso > 0 && pt->lasso[pt->nlasso - 1].x == p.x &&
       pt->lasso[pt->nlasso - 1].y == p.y)
     return 1;
 
-  if (pt->nlasso == pt->caplasso)
-  {
-    cap   = pt->caplasso ? pt->caplasso * 2 : 256;
-    grown = realloc(pt->lasso, (size_t) cap * sizeof(*grown));
-    if (grown == NULL)
-      return 0;
-
-    pt->lasso    = grown;
-    pt->caplasso = cap;
-  }
+  if (array_grow((void **) &pt->lasso, sizeof(*pt->lasso), pt->nlasso,
+                 &pt->caplasso, 1, 256))
+    return 0;
 
   pt->lasso[pt->nlasso++] = p;
 
