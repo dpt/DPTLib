@@ -1,13 +1,10 @@
 /* geom/region/polygon.c -- build a region from a polygon (even-odd fill) */
 
-#include <limits.h>
 #include <stdlib.h>
-#include <string.h>
 
 #include "base/utils.h"
 
 #include "geom/region.h"
-#include "utils/array.h"
 
 #include "impl.h"
 
@@ -24,40 +21,18 @@ static int edge_cmp(const void *a, const void *b)
   return ((const edge_t *) a)->ymin - ((const edge_t *) b)->ymin;
 }
 
-/* growable run list for the scanlines built so far */
-typedef struct
-{
-  int *runs;
-  int  n, cap;
-}
-runlist_t;
-
-static result_t runlist_add(runlist_t *l, int x0, int x1)
-{
-  if (array_grow((void **) &l->runs, sizeof(*l->runs), l->n, &l->cap, 2, 64))
-    return result_OOM;
-
-  l->runs[l->n++] = x0;
-  l->runs[l->n++] = x1;
-  return result_OK;
-}
-
 result_t region_from_polygon(const point_t *pts,
                              int            n,
                              const box_t   *clip,
                              region_t     **out)
 {
-  result_t  rc;
-  edge_t   *edges;
-  edge_t  **active;
-  int      *xs;
-  int      *start;
-  runlist_t l;
-  region_t *r;
-  int       ne, na, next, nx, rowstart, h;
-  int       y, y0, y1, i, j, k, t, a, b, first, last;
-  point_t   p, q;
-  int       xmin, xmax;
+  result_t          rc;
+  region__builder_t b;
+  edge_t           *edges;
+  edge_t          **active;
+  int              *xs;
+  int               ne, na, next, nx, y, y0, y1, i, j, k, t;
+  point_t           p, q;
 
   *out = NULL;
 
@@ -67,17 +42,11 @@ result_t region_from_polygon(const point_t *pts,
   edges  = malloc((size_t) n * sizeof(*edges));
   active = malloc((size_t) n * sizeof(*active));
   xs     = malloc((size_t) n * sizeof(*xs));
-  if (edges == NULL || active == NULL || xs == NULL)
-  {
-    free(edges);
-    free(active);
-    free(xs);
-    return result_OOM;
-  }
+  rc     = (edges && active && xs) ? result_OK : result_OOM;
 
   /* horizontal edges never cross a scanline centre */
   ne = 0;
-  for (i = 0; i < n; i++)
+  for (i = 0; rc == result_OK && i < n; i++)
   {
     p = pts[i];
     q = pts[(i + 1) % n];
@@ -91,42 +60,31 @@ result_t region_from_polygon(const point_t *pts,
     ne++;
   }
 
-  if (ne == 0)
+  y0 = y1 = 0;
+  if (rc == result_OK && ne > 0)
+  {
+    qsort(edges, (size_t) ne, sizeof(*edges), edge_cmp);
+
+    /* rows from the first crossed to one past the last, within the clip */
+    y0 = MAX(edges[0].ymin, clip->y0);
+    y1 = edges[0].ymax;
+    for (i = 1; i < ne; i++)
+      y1 = MAX(y1, edges[i].ymax);
+    y1 = MIN(y1, clip->y1);
+  }
+
+  if (rc != result_OK || y0 >= y1)
   {
     free(edges);
     free(active);
     free(xs);
-    return result_OK;
+    return rc;
   }
 
-  qsort(edges, (size_t) ne, sizeof(*edges), edge_cmp);
-
-  /* rows from the first crossed to one past the last, within the clip */
-  y0 = MAX(edges[0].ymin, clip->y0);
-  y1 = edges[0].ymax;
-  for (i = 1; i < ne; i++)
-    y1 = MAX(y1, edges[i].ymax);
-  y1 = MIN(y1, clip->y1);
-
-  if (y0 >= y1)
-  {
-    free(edges);
-    free(active);
-    free(xs);
-    return result_OK;
-  }
-
-  h     = y1 - y0;
-  start = malloc((size_t) (h + 1) * sizeof(*start));
-  l     = (runlist_t) { NULL, 0, 0 };
-  rc    = start == NULL ? result_OOM : result_OK;
+  rc = region__builder_init(&b, y0, y1 - y0);
 
   na   = 0;
   next = 0;
-  first = -1;
-  last  = -1;
-  xmin  = INT_MAX;
-  xmax  = INT_MIN;
 
   for (y = y0; rc == result_OK && y < y1; y++)
   {
@@ -152,69 +110,23 @@ result_t region_from_polygon(const point_t *pts,
       nx++;
     }
 
-    start[y - y0] = l.n;
-    rowstart      = l.n;
+    region__builder_row(&b, y);
 
+    /* even-odd: crossings pair up, the end pixel included */
     for (k = 0; rc == result_OK && k + 1 < nx; k += 2)
-    {
-      a = MAX(xs[k], clip->x0);
-      b = MIN(xs[k + 1] + 1, clip->x1);
-      if (a >= b)
-        continue;
-
-      /* merge with the previous run on this row if touching */
-      if (l.n > rowstart && a <= l.runs[l.n - 1])
-      {
-        l.runs[l.n - 1] = MAX(l.runs[l.n - 1], b);
-        continue;
-      }
-
-      rc = runlist_add(&l, a, b);
-    }
-
-    if (l.n > rowstart)
-    {
-      if (first < 0)
-        first = y - y0;
-      last = y - y0;
-      xmin = MIN(xmin, l.runs[rowstart]);
-      xmax = MAX(xmax, l.runs[l.n - 1]);
-    }
+      rc = region__builder_add(&b, MAX(xs[k], clip->x0),
+                               MIN(xs[k + 1] + 1, clip->x1));
   }
 
   free(edges);
   free(active);
   free(xs);
 
-  if (rc != result_OK || first < 0)
+  if (rc != result_OK)
   {
-    free(start);
-    free(l.runs);
+    region__builder_abort(&b);
     return rc;
   }
 
-  r = malloc(sizeof(*r));
-  if (r == NULL)
-  {
-    free(start);
-    free(l.runs);
-    return result_OOM;
-  }
-
-  /* trim empty leading and trailing rows */
-  start[h] = l.n;
-  if (first > 0)
-    memmove(start, start + first,
-            (size_t) (last - first + 1) * sizeof(*start));
-  start[last - first + 1] = l.n;
-  r->start = start;
-  r->runs  = l.runs;
-
-  r->bounds.x0 = xmin;
-  r->bounds.x1 = xmax;
-  r->bounds.y0 = y0 + first;
-  r->bounds.y1 = y0 + last + 1;
-
-  *out = r;
-  return result_OK;
+  return region__builder_finish(&b, out);
 }
