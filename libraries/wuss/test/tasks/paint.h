@@ -27,6 +27,7 @@ typedef enum paint_tool
   paint_TOOL_ERASER,
   paint_TOOL_LINE,
   paint_TOOL_RECT,
+  paint_TOOL_RECT_FILL, /* as RECT, but solid */
   paint_TOOL_FILL,
   paint_TOOL_SPRAY,  /* scatter dots around the pointer while held */
   paint_TOOL_SELECT, /* rubber-band a rectangular selection */
@@ -68,7 +69,6 @@ typedef struct paint_task
   colour_t           fg, bg;
   paint_tool_t       tool;
   int                size;      /* brush and outline width in pixels */
-  int                fill;      /* rect tool: filled, not an outline */
   int                held;      /* button of the stroke in progress, or 0 */
   point_t            anchor;    /* where the stroke began */
   point_t            last;      /* where the stroke last reached */
@@ -78,7 +78,6 @@ typedef struct paint_task
   int                ants_phase; /* where the ants have marched to, 0..7 */
   rng_t              rng;        /* the spray's scatter */
   wuss_icon_t       *tool_icons[paint_TOOL__COUNT];
-  wuss_icon_t       *fill_icon;
   wuss_slider_row_t  size_row;
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
   wuss_menu_item_t   menu_items[PAINT_MENU__COUNT];

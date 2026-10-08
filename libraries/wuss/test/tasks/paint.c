@@ -32,20 +32,19 @@
  * paint_toolbox_redraw and the swatches hit-tested by paint_toolbox_mouse, not
  * icons */
 #define TB_W           96
-#define TB_H           308
+#define TB_H           316
 #define TB_MARGIN      5
 #define TB_TOOL_COLS   2
 #define TB_TOOL_X      17
 #define TB_TOOL_CELL   32  /* pitch of the tool buttons */
 #define TB_TOOL_SIZE   30  /* button size, including its bevel */
-#define TB_FILL_Y      136
-#define TB_SLIDER_Y    160
+#define TB_SLIDER_Y    168
 #define TB_SWATCH_COLS 4
 #define TB_SWATCH_ROWS 4
 #define TB_SWATCH      20  /* swatch size */
 #define TB_SWATCH_GAP  2
-#define TB_SWATCH_Y    188
-#define TB_CHIPS_Y     282
+#define TB_SWATCH_Y    196
+#define TB_CHIPS_Y     290
 
 #define PAINT_ANTS_IDLES 6 /* idles between steps of the marching ants */
 
@@ -61,6 +60,7 @@ static const char *paint_tool_names[paint_TOOL__COUNT] =
   "erase",
   "line",
   "rectangle",
+  "rectangle-fill",
   "fill",
   "spray",
   "select",
@@ -109,13 +109,13 @@ static box_t paint_swatch_box(int i)
 
 /* ----------------------------------------------------------------------- */
 
-/* the tool buttons, Fill option and size slider */
+/* the tool buttons and size slider */
 static result_t paint_toolbox_icons(paint_task_t *pt)
 {
   result_t         rc;
   char             dir[512];
-  wuss_icon_spec_t specs[paint_TOOL__COUNT + 3];
-  wuss_icon_t     *icons[paint_TOOL__COUNT + 3];
+  wuss_icon_spec_t specs[paint_TOOL__COUNT + 2];
+  wuss_icon_t     *icons[paint_TOOL__COUNT + 2];
   int              i, n;
 
   snprintf(dir, sizeof(dir), "%s/resources/wuss/tasks/paint",
@@ -143,11 +143,6 @@ static result_t paint_toolbox_icons(paint_task_t *pt)
     n++;
   }
 
-  wuss_icon_spec_option(&specs[n++],
-                        (box_t) BOX_POS_SIZE(TB_MARGIN, TB_FILL_Y,
-                                             TB_W - 2 * TB_MARGIN, 16),
-                        "Fill");
-
   wuss_icon_spec_slider_row(&specs[n], &specs[n + 1],
                             (box_t) BOX_POS_SIZE(TB_MARGIN, TB_SLIDER_Y,
                                                  58, 18),
@@ -165,11 +160,10 @@ static result_t paint_toolbox_icons(paint_task_t *pt)
 
   for (i = 0; i < paint_TOOL__COUNT; i++)
     pt->tool_icons[i] = icons[i];
-  pt->fill_icon = icons[paint_TOOL__COUNT];
 
   wuss_slider_row_bind(&pt->size_row,
+                       icons[paint_TOOL__COUNT],
                        icons[paint_TOOL__COUNT + 1],
-                       icons[paint_TOOL__COUNT + 2],
                        NULL, PAINT_SIZE_MIN, PAINT_SIZE_MAX, 0);
 
   wuss_icon_set_selected(pt->toolbox, pt->tool_icons[pt->tool], 1);
@@ -406,7 +400,7 @@ void paint_destroy(paint_task_t *task)
 static int paint_is_rubber_band(const paint_task_t *pt)
 {
   return pt->tool == paint_TOOL_LINE || pt->tool == paint_TOOL_RECT ||
-         pt->tool == paint_TOOL_SELECT;
+         pt->tool == paint_TOOL_RECT_FILL || pt->tool == paint_TOOL_SELECT;
 }
 
 /* select and lasso make a selection rather than paint */
@@ -582,7 +576,7 @@ static result_t paint_redraw(paint_task_t *pt, const wuss_event_t *event)
     else if (pt->tool == paint_TOOL_SELECT)
       paintdoc_draw_rect(scr, a, b, 1, 0, colour_rgb(0x00, 0x00, 0x00));
     else
-      paintdoc_draw_rect(scr, a, b, pt->size, pt->fill,
+      paintdoc_draw_rect(scr, a, b, pt->size, pt->tool == paint_TOOL_RECT_FILL,
                          paint_stroke_colour(pt));
   }
 
@@ -697,9 +691,6 @@ static result_t paint_toolbox_icon(paint_task_t       *pt,
       pt->tool = (paint_tool_t) i;
   }
 
-  if (icon == pt->fill_icon)
-    pt->fill = wuss_icon_get_selected(icon);
-
   return result_OK;
 }
 
@@ -710,9 +701,9 @@ static box_t paint_band_commit(paint_task_t *pt)
 
   colour = paint_stroke_colour(pt);
 
-  if (pt->tool == paint_TOOL_RECT)
-    return paintdoc_rect(pt->doc, pt->anchor, pt->last, pt->size, pt->fill,
-                         colour);
+  if (pt->tool == paint_TOOL_RECT || pt->tool == paint_TOOL_RECT_FILL)
+    return paintdoc_rect(pt->doc, pt->anchor, pt->last, pt->size,
+                         pt->tool == paint_TOOL_RECT_FILL, colour);
 
   if (paintdoc_checkpoint(pt->doc) != result_OK)
     return (box_t) BOX_INIT; /* no undo step, so no line */
@@ -888,7 +879,7 @@ static void paint_set_tool(paint_task_t *pt, paint_tool_t tool)
   wuss_icon_set_selected(pt->toolbox, pt->tool_icons[tool], 1);
 }
 
-/* B, E, L, R, F, S and O pick the matching tool, Escape drops the selection. Anything else is passed back
+/* B, E, L, R, X, F, P, S and O pick the matching tool, Escape drops the selection. Anything else is passed back
  * unclaimed */
 static result_t paint_key(paint_task_t *pt, int code)
 {
@@ -900,6 +891,7 @@ static result_t paint_key(paint_task_t *pt, int code)
   case 'e': case 'E': paint_set_tool(pt, paint_TOOL_ERASER); break;
   case 'l': case 'L': paint_set_tool(pt, paint_TOOL_LINE);   break;
   case 'r': case 'R': paint_set_tool(pt, paint_TOOL_RECT);   break;
+  case 'x': case 'X': paint_set_tool(pt, paint_TOOL_RECT_FILL); break;
   case 'f': case 'F': paint_set_tool(pt, paint_TOOL_FILL);   break;
   case 'p': case 'P': paint_set_tool(pt, paint_TOOL_SPRAY);  break;
   case 's': case 'S': paint_set_tool(pt, paint_TOOL_SELECT); break;
