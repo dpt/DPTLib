@@ -54,13 +54,13 @@ result_t effects__convolve_init(const float     *kernel,
   if (n < 1 || (n + 2) / 3 > MAXLUTS)
     return result_BAD_ARG;
 
-  /* quantise the weights, then give the residue to the centre tap so that
+  /* quantise the weights (rounded by hand: RISC OS lacks lroundf), then give the residue to the centre tap so that
    * the whole kernel sums to exactly SCALE */
 
   sum = 0;
   for (i = 1; i < n; i++)
   {
-    w[i] = (int) lroundf(kernel[i] * SCALE);
+    w[i] = (int) (kernel[i] * SCALE + (kernel[i] >= 0 ? 0.5f : -0.5f));
     sum += w[i];
   }
 
