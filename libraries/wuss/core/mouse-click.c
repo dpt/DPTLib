@@ -486,6 +486,9 @@ static result_t mouse_click(wuss_t             *wuss,
            * told, so the wuss_EVENT_ICON handler sees the new value */
           if (icon->spec.type == wuss_ICON_TYPE_OPTION)
             wuss__icon_select(win, icon, !wuss__icon_selected(icon));
+          else if (icon->spec.type == wuss_ICON_TYPE_BITMAP &&
+                   icon->spec.u.bitmap.group != 0)
+            wuss__icon_select(win, icon, 1);
           else if (icon->spec.type == wuss_ICON_TYPE_RADIO)
             /* ADJUST toggles a lone radio; a grouped one always keeps one
              * member selected */

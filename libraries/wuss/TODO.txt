@@ -4,15 +4,27 @@ Ordered by dependency. Each layer builds on the ones above it.
 Items marked (blocks: X) are prerequisites for X.
 
 
+Filer
+- DataOpen
+- Adjust click on close icon
+- Adjust launching
+- Draw some icons - 'open' directory icon variant
+- Allow multiple selections?
+- Drags within the filer
+- File menu (including options)
+- FilerAction...
+
+
+General window positioning issues
+
+Message monitoring app? Filters?
+
 Icon internal layout. e.g. bbox+alignment possibilities.
 Icon bar: Sort out icon alignment.
 
 FontMenu: Add ability to select by font family.
 
 Icon Sprite Pools: Implement.
-
-Filer icons: Draw some.
-Filer: 'open' directory icon variant.
 
 PostScript style renderer.
 
@@ -28,10 +40,6 @@ Triangle/quad plotter for Magnetoid style rendering.
 Tiled backdrop generation.
 
 Configure: CRT shader params.
-
-System iconpool
-
-Private iconpool
 
 Task dirs
 
