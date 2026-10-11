@@ -90,12 +90,15 @@ static void apps_activate(wuss_gridview_t *gridview,
                           int              index,
                           void            *opaque);
 
-static result_t apps_open(apps_task_t *task, int category)
+static result_t apps_open(apps_task_t         *task,
+                          int                  category,
+                          const wuss_window_t *parent)
 {
   result_t       rc;
   apps_window_t *aw;
-  wuss_window_t *window;
   const char    *title;
+  wuss_place_t   place;
+  wuss_window_t *window;
 
   aw = &task->windows[category + 1];
   if (aw->window != NULL)
@@ -109,8 +112,10 @@ static result_t apps_open(apps_task_t *task, int category)
   aw->owner    = task;
   aw->category = category;
 
-  rc = wuss_gridview_window_create(&aw->gridview, task->delegate, title,
-                                   apps_count(aw), apps_item,
+  place = task_place_from(parent);
+
+  rc = wuss_gridview_window_create(&aw->gridview, task->delegate, &place,
+                                   title, apps_count(aw), apps_item,
                                    APPS_LABEL_CHARS, apps_activate, aw,
                                    &window);
   if (rc != result_OK)
@@ -130,7 +135,7 @@ static void apps_activate(wuss_gridview_t *gridview, int index, void *opaque)
 
   aw = opaque;
   if (aw->category < 0)
-    (void) apps_open(aw->owner, index);
+    (void) apps_open(aw->owner, index, aw->window);
   else
     (void) tasks_entry_spawn(aw->category, index);
 }
@@ -198,7 +203,7 @@ static result_t apps_handle(wuss_window_t      *window,
       return result_OK;
     if (event->data.iconbar_icon.button & wuss_BUTTON_MENU)
       return apps_menu_open(task);
-    return apps_open(task, -1);
+    return apps_open(task, -1, NULL);
 
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL;

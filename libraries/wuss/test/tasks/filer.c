@@ -144,7 +144,9 @@ static void filer_item(int index, void *opaque, wuss_gridview_item_t *out)
   out->glyph = filer_glyph_for(fw->owner, entry);
 }
 
-static result_t filer_open_path(filer_task_t *task, const char *path);
+static result_t filer_open_path(filer_task_t        *task,
+                                const char          *path,
+                                const wuss_window_t *parent);
 
 static void filer_activate(wuss_gridview_t *gridview,
                            int              index,
@@ -165,7 +167,7 @@ static void filer_activate(wuss_gridview_t *gridview,
       (int) sizeof(child))
     return;
 
-  (void) filer_open_path(fw->owner, child);
+  (void) filer_open_path(fw->owner, child, fw->window);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -223,13 +225,16 @@ static void filer_drop(filer_task_t *task, const wuss_event_t *event)
 
 /* ----------------------------------------------------------------------- */
 
-static result_t filer_open_path(filer_task_t *task, const char *path)
+static result_t filer_open_path(filer_task_t        *task,
+                                const char          *path,
+                                const wuss_window_t *parent)
 {
   result_t        rc;
   char            canon[DPTLIB_MAXPATH];
   filer_window_t *fw;
   int             slot;
   dirlist_t      *listing;
+  wuss_place_t    place;
   wuss_window_t  *window;
 
 #ifndef __riscos
@@ -267,8 +272,10 @@ static result_t filer_open_path(filer_task_t *task, const char *path)
   fw->listing = listing; /* wuss_gridview_create measures through filer_item */
   snprintf(fw->path, sizeof(fw->path), "%s", path);
 
-  rc = wuss_gridview_window_create(&fw->gridview, task->delegate, path,
-                                   dirlist_count(listing), filer_item,
+  place = task_place_from(parent);
+
+  rc = wuss_gridview_window_create(&fw->gridview, task->delegate, &place,
+                                   path, dirlist_count(listing), filer_item,
                                    FILER_LABEL_CHARS, filer_activate, fw,
                                    &window);
   if (rc != result_OK)
@@ -618,7 +625,7 @@ result_t filer_handle(wuss_window_t      *window,
       return result_OK; /* not the icon bar icon */
     if (event->data.iconbar_icon.action != wuss_MOUSE_UP)
       return result_OK;
-    return filer_open_path(task, filer_root());
+    return filer_open_path(task, filer_root(), NULL);
 
   case wuss_EVENT_MENU_SELECT:
   {
@@ -649,7 +656,7 @@ result_t filer_handle(wuss_window_t      *window,
 
     case FILER_MENU_OPEN_PARENT:
       if (fw != NULL && filer_parent_path(fw->path, parent, sizeof(parent)))
-        return filer_open_path(task, parent);
+        return filer_open_path(task, parent, fw->window);
       return result_OK;
 
 #ifdef __EMSCRIPTEN__

@@ -162,6 +162,9 @@ result_t wuss_gridview_create(wuss_gridview_t            **out,
  * \param[out] out         Filled with the new handle on success, untouched
  *                         on failure.
  * \param[in]  task        Task that owns the window.
+ * \param[in]  place       Where to open the window, placed at its initial
+ *                         320x240 size; NULL for the next spare region,
+ *                         centred, as wuss_window_create_placed.
  * \param[in]  title       Titlebar label.
  * \param[in]  count       As \ref wuss_gridview_create.
  * \param[in]  item_fn     As \ref wuss_gridview_create.
@@ -170,11 +173,12 @@ result_t wuss_gridview_create(wuss_gridview_t            **out,
  * \param[in]  opaque      As \ref wuss_gridview_create.
  * \param[out] window      Filled with the new window on success.
  * \return \ref result_OK on success, or a result code from
- *         wuss_window_create_placed or \ref wuss_gridview_create; no window
- *         is left behind on failure.
+ *         wuss_window_create_at or \ref wuss_gridview_create; no window is
+ *         left behind on failure.
  */
 result_t wuss_gridview_window_create(wuss_gridview_t            **out,
                                      wuss_task_t                 *task,
+                                     const wuss_place_t          *place,
                                      const char                  *title,
                                      int                          count,
                                      wuss_gridview_item_fn_t     *item_fn,

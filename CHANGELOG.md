@@ -649,6 +649,10 @@ _Unreleased_ until one is cut.
 
 ### Changed
 
+- **Breaking:** `wuss_gridview_window_create()` takes a `const wuss_place_t *`
+  after the task (NULL keeps the old first-free-region placement). The filer
+  and Apps windows use it to open a directory or category window offset
+  +32,+32 from the window it was opened from.
 - **Breaking:** the `wuss` icon set becomes the icon pool.
   `resources/wuss/icons/` and `resources/wuss/files/` merge into one flat
   directory, `resources/wuss/iconpool/`; `wuss_icons_*` is renamed

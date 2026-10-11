@@ -777,6 +777,7 @@ int wuss_gridview_hit_test(const wuss_gridview_t *gv, point_t point)
 
 result_t wuss_gridview_window_create(wuss_gridview_t            **out,
                                      wuss_task_t                 *task,
+                                     const wuss_place_t          *place,
                                      const char                  *title,
                                      int                          count,
                                      wuss_gridview_item_fn_t     *item_fn,
@@ -785,18 +786,24 @@ result_t wuss_gridview_window_create(wuss_gridview_t            **out,
                                      void                        *opaque,
                                      wuss_window_t              **window)
 {
+  static const wuss_place_t spare = { wuss_PLACE_SPARE, wuss_ALIGN_CENTRE,
+                                       NULL, { 0, 0 } };
+
   result_t       rc;
   wuss_window_t *win;
 
   if (out == NULL || window == NULL)
     return result_NULL_ARG;
 
+  if (place == NULL)
+    place = &spare;
+
   /* No horizontal scrollbar: the grid reflows to the width instead. */
-  rc = wuss_window_create_placed(task, SIZE2D(320, 240), title,
-                                 (wuss_WINDOW_DEFAULT & ~wuss_WINDOW_HSCROLL) |
-                                 wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP, SIZE2D(320, 240),
-                                 SIZE2D(0, 0), &win);
+  rc = wuss_window_create_at(task, place, SIZE2D(320, 240), title,
+                             (wuss_WINDOW_DEFAULT & ~wuss_WINDOW_HSCROLL) |
+                             wuss_WINDOW_FOCUSABLE,
+                             wuss_NO_BACKDROP, SIZE2D(320, 240),
+                             SIZE2D(0, 0), &win);
   if (rc != result_OK)
     return rc;
 

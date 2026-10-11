@@ -75,6 +75,20 @@ static inline wuss_place_t task_place_after(const wuss_window_t *parent)
   return place;
 }
 
+/* where a browser-style child window opens: cascaded from parent even when
+ * there is a free region, so it reads as opened from there. NULL parent gives
+ * task_place */
+static inline wuss_place_t task_place_from(const wuss_window_t *parent)
+{
+  wuss_place_t place;
+
+  place = task_place_after(parent);
+  if (parent != NULL)
+    place.flags &= ~wuss_PLACE_SPARE;
+
+  return place;
+}
+
 /* create a focusable window with no backdrop whose document is exactly size,
  * as most demo tasks want */
 static inline result_t task_window_create(wuss_task_t    *task,
