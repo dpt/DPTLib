@@ -91,9 +91,13 @@ static void apps_activate(wuss_gridview_t *gridview,
                           wuss_button_t    button,
                           void            *opaque);
 
+/* Opens the window for category (-1: the root), or brings it to the front
+ * if open. A new window cascades from parent, or with over set takes
+ * parent's place (top-left) for a parent that is about to close. */
 static result_t apps_open(apps_task_t         *task,
                           int                  category,
-                          const wuss_window_t *parent)
+                          const wuss_window_t *parent,
+                          int                  over)
 {
   result_t       rc;
   apps_window_t *aw;
@@ -114,6 +118,8 @@ static result_t apps_open(apps_task_t         *task,
   aw->category = category;
 
   place = task_place_from(parent);
+  if (over)
+    place.offset = POINT(0, 0);
 
   rc = wuss_gridview_window_create(&aw->gridview, task->delegate, &place,
                                    title, apps_count(aw), apps_item,
@@ -136,13 +142,21 @@ static void apps_activate(wuss_gridview_t *gridview,
   apps_window_t *aw;
 
   NOT_USED(gridview);
-  NOT_USED(button);
 
   aw = opaque;
-  if (aw->category < 0)
-    (void) apps_open(aw->owner, index, aw->window);
-  else
+  if (aw->category >= 0)
+  {
     (void) tasks_entry_spawn(aw->category, index);
+    return;
+  }
+
+  /* as the filer: a double ADJUST opens the category in the root's place and
+   * closes the root. That destroys gridview; neither it nor aw's window is
+   * used after. */
+  (void) apps_open(aw->owner, index, aw->window, button & wuss_BUTTON_ADJUST);
+
+  if (button & wuss_BUTTON_ADJUST)
+    (void) wuss_window_try_close(aw->window);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -208,7 +222,7 @@ static result_t apps_handle(wuss_window_t      *window,
       return result_OK;
     if (event->data.iconbar_icon.button & wuss_BUTTON_MENU)
       return apps_menu_open(task);
-    return apps_open(task, -1, NULL);
+    return apps_open(task, -1, NULL, 0);
 
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL;
@@ -227,6 +241,25 @@ static result_t apps_handle(wuss_window_t      *window,
 
     return wuss_menu_open_window_now(event->data.pre_show.handle,
                                      event->data.pre_show.index);
+  }
+
+  case wuss_EVENT_CLOSE_ADJUST:
+  {
+    int keep;
+
+    /* as the filer: open the root in this category's place and close this
+     * one -- or, with Shift held, cascade the root and keep this one. The
+     * root has no parent, so it just closes (or stays with Shift). */
+    aw = apps_find(task, window);
+    if (aw == NULL)
+      return result_OK;
+
+    keep = (event->data.close_adjust.modifiers & wuss_KEY_MOD_SHIFT) != 0;
+    if (aw->category >= 0)
+      (void) apps_open(task, -1, window, !keep);
+    if (!keep)
+      return wuss_window_try_close(window);
+    return result_OK;
   }
 
   case wuss_EVENT_CLOSE:

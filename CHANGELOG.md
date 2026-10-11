@@ -15,8 +15,10 @@ _Unreleased_ until one is cut.
   leaves the window open (it used to start a move drag). The filer uses it
   as RISC OS does: it opens the parent directory's window in the current
   one's place (or brings it to the front) and closes the current one; with
-  Shift held the parent cascades instead and the current one stays. Frontends
-  report held modifiers with the new `wuss_set_modifiers()` before each
+  Shift held the parent cascades instead and the current one stays. The
+  demo's Apps filer does the same between a category and the root, and a
+  double ADJUST on a category opens it in the root's place. Frontends report
+  held modifiers with the new `wuss_set_modifiers()` before each
   `wuss_mouse_click()`; the demo's SDL and RISC OS frontends do so, and
   script button names take `MOD+` prefixes (`click shift+adjust X Y`).
 - `wuss_window_create_at()` opens a window where a `wuss_place_t` says: in
