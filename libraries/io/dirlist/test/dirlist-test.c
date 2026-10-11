@@ -11,6 +11,7 @@
 #include "io/dirlist.h"
 
 #include "test/all-tests.h"
+#include "test/tmpdir.h"
 
 /* Filesystem-backed tests need a scratch directory to scan; only wired up
  * for the desktop POSIX build (mkdtemp), which is what build-asan runs.
@@ -27,7 +28,7 @@
 
 static int make_scratch_dir(char *path, size_t cap)
 {
-  if (snprintf(path, cap, "/tmp/dptlib-dirlist-XXXXXX") >= (int) cap)
+  if (snprintf(path, cap, "%s/dptlib-dirlist-XXXXXX", test_tmpdir()) >= (int) cap)
     return 0;
 
   return mkdtemp(path) != NULL;

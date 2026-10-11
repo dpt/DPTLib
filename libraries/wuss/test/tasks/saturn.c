@@ -20,10 +20,10 @@
 #include "io/filetype.h"
 #include "utils/rng.h"
 #include "wuss/component/dialogue.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 
 #include "saturn.h"
+#include "taskapp.h"
 #include "common.h"
 #include "snapshot.h"
 
@@ -84,13 +84,10 @@ static int saturn_rnd(int n)
  * instance serves either row. "Configuration" hover-opens
  * task->conf.dialogue's window, a borrowed window built once in
  * saturn_create and stored into task->menu_items[SATURN_MENU_SIZE].window
- * there. "Info" hover-opens the shared proginfo singleton's window,
- * retargeted into task->menu_items[SATURN_MENU_INFO].window just before
- * wuss_menu_open, in saturn_mouse. */
+ * there. */
 enum
 {
-  SATURN_MENU_INFO = 0,
-  SATURN_MENU_COLOURS,
+  SATURN_MENU_COLOURS = 0,
   SATURN_MENU_SIZE,
   SATURN_MENU_ANIMATE,
   SATURN_MENU_SAVE
@@ -160,9 +157,9 @@ static int *saturn_sizedlg_field(saturn_task_t *task, int row)
  * .submenu names, and saturn_pre_submenu_open retargets the shared
  * colourmenu before handing it back as the menu to actually open. The item
  * tables and wuss_menu_t values live per-instance in saturn_task_t, not as
- * file-scope statics, so that each window's Info/Configuration rows point at
- * their own .window pointers rather than every instance sharing (and
- * overwriting) one global .window pointer. */
+ * file-scope statics, so that each window's Configuration row points at its
+ * own .window pointer rather than every instance sharing (and overwriting)
+ * one global .window pointer. */
 
 static result_t saturn_conf_dialogue_create(saturn_task_t *task);
 static result_t saturn_conf_fillout(void *opaque);
@@ -244,11 +241,6 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   WUSS_MENU_TITLE(task->colours_menu, "Colours", task->colours_items,
                  NELEMS(task->colours_items));
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, SATURN_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in
-                                * saturn_mouse */
 
   WUSS_MENU_ITEM_MENU(task->menu_items, SATURN_MENU_COLOURS, "Colours",
                       wuss_MENU_ITEM_NONE, &task->colours_menu);
@@ -290,6 +282,18 @@ fail_delegate:
   wuss_saveas_destroy(task->saveas);
   wuss_task_destroy(delegate); /* unregisters; its QUIT frees the task block */
   return rc;
+}
+
+result_t saturn_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Saturn",
+    "Elite loading-screen planet",
+    (taskapp_create_fn_t) saturn_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void saturn_destroy(saturn_task_t *task)
@@ -416,13 +420,6 @@ static result_t saturn_mouse(saturn_task_t      *task,
 
   if (button & wuss_BUTTON_MENU)
   {
-    static const wuss_proginfo_desc_t desc =
-      TASK_PROGINFO_DESC("Saturn", "Elite loading-screen planet, recreated");
-
-    wuss_proginfo_set_desc(&desc);
-    task->menu_items[SATURN_MENU_INFO].window =
-      wuss_proginfo_window(task->delegate);
-
     wuss_menu_tick_item(&task->menu, SATURN_MENU_ANIMATE, task->animate);
 
     return wuss_menu_open_at_pointer(task->delegate, &task->menu,
@@ -511,12 +508,6 @@ enum
 #define ST_G_LABEL          1 /* size groups, see stack_item_t::group */
 #define ST_G_VALUE          2
 #define ST_SLIDER_MIN_W     (64)
-#define ST_CHAR_W           6 /* ponytail: assumes the 6px system font */
-#define ST_ACTION_WIDTH(W)  ((W)*ST_CHAR_W+2*wuss_STD_SECONDARY_BUTTON_BORDER)
-#define ST_DEFAULT_WIDTH(W) ((W)*ST_CHAR_W+2*wuss_STD_PRIMARY_BUTTON_BORDER)
-#define ST_DEFAULT_W        ST_ACTION_WIDTH(9)
-#define ST_CANCEL_W         ST_ACTION_WIDTH(9)
-#define ST_APPLY_W          ST_DEFAULT_WIDTH(9)
 
 static const stack_item_t g_saturn_conf_stack[SIZE_STACK__LIMIT] =
 {
@@ -543,13 +534,13 @@ static const stack_item_t g_saturn_conf_stack[SIZE_STACK__LIMIT] =
   [ST_SLDR4] = STACK_LEAF_EX(ST_ROW4, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, ST_SLIDER_MIN_W, 0),
   [ST_VAL4]  = STACK_LEAF_GROUP(ST_ROW4, 0, 16, stack_ALIGN_CENTRE, ST_G_VALUE),
 
-  [ST_BTNS]  = STACK_HBOX(ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
+  [ST_BTNS]  = STACK_HBOX(ST_ROOT, wuss_STD_SECONDARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
   [ST_BSPC]  = STACK_SPACER_GROUP(ST_BTNS, 0, ST_G_LABEL),
   [ST_BBOX]  = { .kind = stack_KIND_HBOX, .parent = ST_BTNS,
                 .gap = wuss_STD_GAP, .flex = 1 },
-  [ST_DFLT]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, ST_DEFAULT_W, 0),
-  [ST_CNCL]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, ST_CANCEL_W, 0),
-  [ST_APLY]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, ST_APPLY_W, 0),
+  [ST_DFLT]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, 0, 0),
+  [ST_CNCL]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, 0, 0),
+  [ST_APLY]  = STACK_LEAF_EX(ST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, 0, 0),
 };
 
 /* Build the size dialogue once: a label, a slider snapped to
@@ -590,6 +581,13 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
     items[value_box[row]].axis_size = task_text_width(task->wuss, widest);
   }
 
+  /* the buttons share the widest label's width */
+  items[ST_DFLT].min = task_button_width(task->wuss, "Default",
+                                         wuss_STD_SECONDARY_BUTTON_BORDER);
+  items[ST_CNCL].min = items[ST_DFLT].min;
+  items[ST_APLY].min = task_button_width(task->wuss, "Default",
+                                         wuss_STD_SECONDARY_BUTTON_BORDER);
+
   /* smallest window the layout can be solved into without any flex item
    * (the sliders) growing past its minimum */
   rc = stack_smallest(items, NELEMS(items), &min_sz);
@@ -600,6 +598,8 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
                             "Configuration", saturn_conf_fillout, task);
   if (rc != result_OK)
     return rc;
+
+  wuss_dialogue_set_focusable(task->conf.dialogue, 0); /* no writables */
 
   root = (box_t) BOX_POS_SIZE(0, 0, min_sz.w, min_sz.h);
   rc = stack_solve(items, NELEMS(items), &root, boxes);
@@ -623,7 +623,7 @@ static result_t saturn_conf_dialogue_create(saturn_task_t *task)
 
   wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_DEFAULT], boxes[ST_DFLT], "Default", 0);
   wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_CANCEL], boxes[ST_CNCL], "Cancel", 0);
-  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_APPLY], boxes[ST_APLY], "Apply", 1);
+  wuss_icon_spec_action(&specs[SATURN_SIZE_ICON_APPLY], boxes[ST_APLY], "Apply", 0);
 
   rc = wuss_icon_create_array(wuss_dialogue_window(task->conf.dialogue),
                               specs, SATURN_SIZE_NICONS, made);
@@ -844,8 +844,8 @@ static result_t saturn_pre_submenu_open(saturn_task_t      *task,
  * saturn_pre_submenu_open). "Configuration" is a wuss_menu_item_t::window
  * leaf, not a leaf pick, so it never reaches here -- see
  * saturn_conf_dialogue_icon and saturn_sizedlg_pre_show. */
-/* Menu > Animate: a fresh sketch every null event. The proginfo and
- * Configuration windows share this (autoclose) delegate, so the task can
+/* Menu > Animate: a fresh sketch every null event. The
+ * Configuration window shares this (autoclose) delegate, so the task can
  * outlive the planet window; skip the dangling window in the meantime. */
 static result_t saturn_idle(saturn_task_t *task)
 {
@@ -925,17 +925,15 @@ result_t saturn_handle(wuss_window_t      *window,
     result_t rc;
 
     if (window == wuss_dialogue_window(task->conf.dialogue))
+    {
       rc = wuss_dialogue_handle_pre_show(task->conf.dialogue);
-    else if (window == task->menu_items[SATURN_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
+      if (rc != result_OK)
+        return rc;
+    }
 
     if (event->data.pre_show.handle == NULL)
       return result_OK; /* plain window reveal, not a flagged menu leaf:
-                          * already proceeding by default */
+                         * already proceeding by default */
 
     return wuss_menu_open_window_now(event->data.pre_show.handle,
                                      event->data.pre_show.index);

@@ -18,6 +18,7 @@
 
 #include "snapshot.h"
 #include "sofa.h"
+#include "taskapp.h"
 #include "common.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live per-instance
@@ -26,8 +27,7 @@
  * just before wuss_menu_open */
 enum
 {
-  SOFA_MENU_INFO = 0,
-  SOFA_MENU_BACKGROUND,
+  SOFA_MENU_BACKGROUND = 0,
   SOFA_MENU_MODEL,
   SOFA_MENU_PAUSE,
   SOFA_MENU_CYCLE,
@@ -449,11 +449,6 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, SOFA_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in sofa_mouse */
-
   WUSS_MENU_ITEM_MENU(task->menu_items, SOFA_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
@@ -483,6 +478,18 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t sofa_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Sofa",
+    "Rotating wireframe shapes",
+    (taskapp_create_fn_t) sofa_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void sofa_destroy(sofa_task_t *task)
@@ -615,12 +622,6 @@ static result_t sofa_mouse(wuss_window_t *window,
 
   if (button & wuss_BUTTON_MENU)
   {
-    static const wuss_proginfo_desc_t desc =
-      TASK_PROGINFO_DESC("Sofa", "Rotating wireframe sofa, other shapes");
-
-    wuss_proginfo_set_desc(&desc);
-    sc->menu_items[SOFA_MENU_INFO].window = wuss_proginfo_window(sc->delegate);
-
     wuss_menu_tick_exclusive(&sc->model_menu, sc->shape);
     wuss_menu_tick_item(&sc->menu, SOFA_MENU_PAUSE, !sc->spinning);
     wuss_menu_tick_item(&sc->menu, SOFA_MENU_CYCLE, sc->cycling);
@@ -810,22 +811,6 @@ result_t sofa_handle(wuss_window_t      *window,
     if (window == sc->window)
       sc->window = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == sc->menu_items[SOFA_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_QUIT:
     sofa_destroy(sc);

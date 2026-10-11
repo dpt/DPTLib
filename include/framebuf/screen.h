@@ -24,11 +24,15 @@ screen_t;
 /**
  * Initialize a previously allocated screen structure.
  *
+ * A screen is a view onto memory the caller owns: unlike bitmap_init it
+ * neither copies the palette nor takes ownership of anything, so there is no
+ * matching destroy call. The palette and base must outlive the screen.
+ *
  * \param[in] scr       Screen to initialize.
  * \param[in] size      Width and height of the screen in pixels.
  * \param[in] fmt       Pixel format of the screen.
  * \param[in] rowbytes  Number of bytes per row of the screen.
- * \param[in] palette   Palette of the screen, or NULL.
+ * \param[in] palette   Palette of the screen, or NULL. Borrowed.
  * \param[in] base      Base address of the screen.
  */
 void screen_init(screen_t  *scr,
@@ -287,6 +291,29 @@ result_t screen_copy_ninepatch(screen_t       *scr,
                                unsigned int    flags);
 
 /**
+ * Fills a destination rectangle with repeated copies of a bitmap. The copies
+ * abut with no gap, in a grid in which one tile has its top-left at \p
+ * origin. \p origin need not lie inside \p dst, or even on the screen: the
+ * grid extends infinitely in every direction, so moving \p origin scrolls
+ * the pattern. Tiles are blended exactly as `screen_copy_bitmap` does.
+ *
+ * Drawing is clipped to both \p dst and the screen's clip region, which is
+ * restored on return. No scaling is performed.
+ *
+ * \param[in] scr    Screen to draw upon.
+ * \param[in] dst    Rectangle to fill.
+ * \param[in] src    Bitmap to repeat.
+ * \param[in] origin Screen position of the top-left of one tile.
+ * \return \ref result_OK on success, \ref result_BAD_ARG if \p src has no
+ *         area, or \ref result_NOT_SUPPORTED if the screen's pixel format
+ *         has no blit path.
+ */
+result_t screen_copy_bitmap_tiled(screen_t       *scr,
+                                  const box_t    *dst,
+                                  const bitmap_t *src,
+                                  point_t         origin);
+
+/**
  * Copies a rectangular region of the screen to another position on the same
  * screen (e.g. sliding an already-rendered window's pixels to a new position
  * without asking its owner to redraw). Source and destination may overlap;
@@ -341,6 +368,34 @@ void screen_draw_line(screen_t *scr,
                       int       x1,
                       int       y1,
                       colour_t  colour);
+
+/**
+ * Draws a solid line `width` pixels thick, with square (butt) ends.
+ *
+ * The stroke is a rectangle centred on the line from (x0,y0) to (x1,y1),
+ * extended half a pixel at each end so both endpoint pixels are covered, as
+ * for `screen_draw_line`. A pixel is set if its centre lies inside the
+ * rectangle. A `width` of 1 is exactly `screen_draw_line`; a `width` <= 0
+ * draws nothing; a zero-length line draws a `width` square. Clipped to the
+ * screen's clip region.
+ *
+ * Coordinates are `int`s and inclusive.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x0      X coordinate of first point of line.
+ * \param[in] y0      Y coordinate of first point of line.
+ * \param[in] x1      X coordinate of second point of line.
+ * \param[in] y1      Y coordinate of second point of line.
+ * \param[in] width   Thickness of the line in pixels.
+ * \param[in] colour  Colour of line.
+ */
+void screen_draw_thick_line(screen_t *scr,
+                            int       x0,
+                            int       y0,
+                            int       x1,
+                            int       y1,
+                            int       width,
+                            colour_t  colour);
 
 /**
  * Draws a connected polyline through `npoints` points: a `screen_draw_line`

@@ -94,6 +94,11 @@ struct wuss_message
    *  owning task; the window itself is passed through to the recipient. */
   wuss_window_t *window;
 
+  /** Target icon of \ref window, or NULL: a work-area wuss_icon_t, or an
+   *  icon bar wuss_iconbar_icon_t when window is the icon bar's. See \ref
+   *  wuss_msg_target_t. */
+  const void    *icon;
+
   /** Action code: a wuss_MESSAGE_* core code, or a task-defined code from
    *  \ref wuss_MESSAGE_APP_BASE upwards. */
   int            action;
@@ -121,6 +126,7 @@ struct wuss_message
    *  struct is ever reordered again. */
   unsigned char  data[wuss_MESSAGE_SIZE - sizeof(size_t) - sizeof(int) -
                        sizeof(wuss_task_t *) - sizeof(wuss_window_t *) -
+                       sizeof(const void *) -
                        2 * sizeof(unsigned int) - sizeof(int)];
 };
 
@@ -189,6 +195,62 @@ result_t wuss_send_recorded(wuss_t        *wuss,
                             size_t         size,
                             unsigned int   your_ref,
                             unsigned int  *my_ref);
+
+/**
+ * Where a message goes: a window, optionally narrowed to one of its icons.
+ * The same shape as a RISC OS Wimp (window, icon) pair. Zero-initialise,
+ * then set what applies:
+ *
+ *  - window only: as the \p window of wuss_send (NULL broadcasts); - window
+ *  and icon: the window's task, with the icon in wuss_message::icon. The
+ *  icon must belong to the window.
+ *
+ * An icon bar icon is addressed the same way: the window is the icon bar's
+ * (as reported by wuss_EVENT_DRAG_END's drop) and the icon is its
+ * wuss_iconbar_icon_t. It is delivered to the icon's owning task with window
+ * == NULL, as for a task-view wuss_EVENT_ICON.
+ *
+ * An icon without a window is \ref result_BAD_ARG.
+ */
+typedef struct wuss_msg_target
+{
+  wuss_window_t *window;
+  const void    *icon; /* a wuss_icon_t, or wuss_iconbar_icon_t on the bar */
+}
+wuss_msg_target_t;
+
+/**
+ * As \ref wuss_send, to a \ref wuss_msg_target_t. A message to an icon that
+ * is deleted (or whose window closes) before delivery is dropped, and a
+ * recorded one bounces.
+ *
+ * \param[in] target Destination; see \ref wuss_msg_target_t.
+ * \return As wuss_send, or \ref result_BAD_ARG for a bad \p target.
+ */
+result_t wuss_send_to(wuss_t                  *wuss,
+                      wuss_task_t             *sender,
+                      const wuss_msg_target_t *target,
+                      int                      action,
+                      const void              *data,
+                      size_t                   size,
+                      unsigned int             your_ref);
+
+/**
+ * As \ref wuss_send_recorded, to a \ref wuss_msg_target_t. Bounces to the
+ * sender if the recipient does not acknowledge it, or if the window or icon
+ * has gone by delivery time.
+ *
+ * \param[in] target Destination; see \ref wuss_msg_target_t.
+ * \return As wuss_send_recorded, or \ref result_BAD_ARG for a bad \p target.
+ */
+result_t wuss_send_recorded_to(wuss_t                  *wuss,
+                               wuss_task_t             *sender,
+                               const wuss_msg_target_t *target,
+                               int                      action,
+                               const void              *data,
+                               size_t                   size,
+                               unsigned int             your_ref,
+                               unsigned int            *my_ref);
 
 /**
  * Acknowledge a recorded message from within its own \ref wuss_EVENT_MESSAGE

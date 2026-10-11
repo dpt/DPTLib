@@ -19,12 +19,12 @@ void wuss_destroy(wuss_t *doomed)
     return;
 
 #ifdef WUSS_MENUS
-  menu_task = doomed->menu_task;
+  menu_task = doomed->menu.task;
 #else
   menu_task = NULL;
 #endif
 #ifdef WUSS_ICONBAR
-  iconbar_task = doomed->iconbar_task;
+  iconbar_task = doomed->iconbar.task;
 #else
   iconbar_task = NULL;
 #endif
@@ -73,7 +73,7 @@ void wuss_destroy(wuss_t *doomed)
        * wuss_menu_handle_t it holds, so a QUIT handler's own
        * wuss_menu_close on that handle doesn't walk an already-freed chain
        * -- the leftover-chain close below then just finds nothing to do. */
-      if (doomed->menu_chain != NULL && doomed->menu_chain->owner == task)
+      if (doomed->menu.chain != NULL && doomed->menu.chain->owner == task)
         wuss__menu_abandon(doomed);
 #endif
 
@@ -95,7 +95,7 @@ void wuss_destroy(wuss_t *doomed)
    * flashing pick's owner) is dangling and must not be delivered to. No path
    * leaves a mid-flash pick standing at wuss_destroy today; track the flash
    * owner per task if one ever does. */
-  wuss_menu_close(doomed->menu_chain);
+  wuss_menu_close(doomed->menu.chain);
 
   /* Now the menu task has nothing left to own -- QUIT and free it. */
   if (menu_task != NULL)
@@ -105,7 +105,7 @@ void wuss_destroy(wuss_t *doomed)
     event.kind = wuss_EVENT_QUIT;
     (void) wuss__deliver(menu_task, NULL, &event);
     wuss__free(doomed, &menu_task->link);
-    doomed->menu_task = NULL;
+    doomed->menu.task = NULL;
   }
 #endif
 
@@ -121,7 +121,7 @@ void wuss_destroy(wuss_t *doomed)
     event.kind = wuss_EVENT_QUIT;
     (void) wuss__deliver(iconbar_task, NULL, &event);
     wuss__free(doomed, &iconbar_task->link);
-    doomed->iconbar_task = NULL;
+    doomed->iconbar.task = NULL;
   }
 #endif
 
@@ -142,7 +142,7 @@ void wuss_destroy(wuss_t *doomed)
   }
 
 #ifdef WUSS_ICONS
-  wuss__icons_registry_free(doomed);
+  wuss__iconpool_clear(doomed, &doomed->icon);
 #endif
 
 #ifdef WUSS_ICONBAR
@@ -152,7 +152,7 @@ void wuss_destroy(wuss_t *doomed)
   bmfontcache_destroy(doomed->font_cache); /* after the task sweep above, so
                                             * every acquired font has already
                                             * been released */
-  wuss__free(doomed, doomed->queue);
+  wuss__free(doomed, doomed->msg.queue);
   wuss__free(doomed, doomed->palette);
   wuss__free(doomed, doomed); /* reads doomed->alloc.free before freeing */
 }

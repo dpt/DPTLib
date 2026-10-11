@@ -133,7 +133,23 @@ typedef enum wuss_event_kind
   wuss_EVENT_MESSAGE_BOUNCED,
   /** A core drag session (see wuss_drag_start) has ended; delivered to the
    *  window the drag was started against. See data.drag_end. */
-  wuss_EVENT_DRAG_END
+  wuss_EVENT_DRAG_END,
+  /** A key was released while this window had the input focus. Carries the
+   *  same data.key as wuss_EVENT_KEY, but a printable key's code is its
+   *  unshifted character, which may differ from the code its press
+   *  reported. Unclaimable: \ref result_WUSS_KEY_UNCLAIMED is treated as
+   *  \ref result_OK. Not reported by every frontend. */
+  wuss_EVENT_KEY_UP,
+  /** The room available to this window's layout has changed: the screen was
+   *  resized (wuss_resize) or the furniture metrics were (wuss_set_config).
+   *  Delivered once to every ordinary (non-pinned) window, after wuss has
+   *  already moved and shrunk windows to fit, so the window's bounds are
+   *  final. A window that is laid out from its size should re-read
+   *  wuss_window_get_max_content, re-measure anything that depends on the
+   *  furniture or fonts and update its document extent. It is not raised
+   *  for a window wuss left alone, nor by a plain move or resize (see
+   *  wuss_EVENT_OPEN). Carries no data. */
+  wuss_EVENT_RELAYOUT
 }
 wuss_event_kind_t;
 
@@ -146,8 +162,8 @@ wuss_event_kind_t;
  * wuss_EVENT_SCROLL, wuss_EVENT_OPEN, wuss_EVENT_PRE_SHOW, wuss_EVENT_SHOW,
  * wuss_EVENT_PRE_CLOSE, wuss_EVENT_CLOSE, wuss_EVENT_POINTER_ENTER,
  * wuss_EVENT_POINTER_EXIT, wuss_EVENT_GAIN_FOCUS, wuss_EVENT_LOSE_FOCUS,
- * wuss_EVENT_KEY, wuss_EVENT_MESSAGE (a message addressed to this window),
- * wuss_EVENT_DRAG_END.
+ * wuss_EVENT_KEY, wuss_EVENT_KEY_UP, wuss_EVENT_MESSAGE (a message addressed
+ * to this window), wuss_EVENT_DRAG_END, wuss_EVENT_RELAYOUT.
  */
 typedef wuss_event_kind_t wuss_window_event_kind_t;
 
@@ -299,9 +315,9 @@ typedef struct wuss_event
     }
     menu_closed;
 
-    /** wuss_EVENT_KEY: code is a Unicode codepoint or a wuss_KEY_*
-     * constant; modifiers is a set of wuss_key_modifiers_t flags, so test it
-     * with '&'. */
+    /** wuss_EVENT_KEY / wuss_EVENT_KEY_UP: code is a Unicode codepoint or
+     * a wuss_KEY_* constant; modifiers is a set of wuss_key_modifiers_t
+     * flags, so test it with '&'. */
     struct
     {
       int                  code;
@@ -316,15 +332,18 @@ typedef struct wuss_event
 
     /** wuss_EVENT_DRAG_END: drop is the window under the pointer when the
      * drag ended (NULL over bare backdrop, and always NULL when cancelled),
+     * drop_icon is the icon bar icon under the pointer (NULL if none, if
+     * cancelled, or without the icon bar; drop is then the bar's window),
      * point is the release/cancel position in screen space, cancelled is
      * non-zero if Escape ended the drag rather than a MOUSE_UP, button is
      * the button that started the drag (SELECT or ADJUST). */
     struct
     {
-      wuss_window_t *drop;
-      point_t        point;
-      int            cancelled;
-      wuss_button_t  button;
+      wuss_window_t       *drop;
+      wuss_iconbar_icon_t *drop_icon;
+      point_t              point;
+      int                  cancelled;
+      wuss_button_t        button;
     }
     drag_end;
 
@@ -386,7 +405,9 @@ typedef struct wuss_task_desc
   /** Opaque pointer passed back to handle. */
   void             *task_data;
 
-  /** Optional name, for debugging/tracing; borrowed, not copied. */
+  /** Optional name, for debugging/tracing and to locate the task's private
+   *  icon pool (see \ref wuss_task_iconpool_load_resource); borrowed, not
+   *  copied. */
   const char       *name;
 }
 wuss_task_desc_t;
@@ -439,6 +460,69 @@ void wuss_task_destroy(wuss_task_t *doomed);
  * \param[in] on   Non-zero to enable autoclose, zero to disable.
  */
 void wuss_task_set_autoclose(wuss_task_t *task, int on);
+
+/**
+ * Make every task created from now on a child of \p parent: destroying \p
+ * parent (wuss_task_destroy) first destroys its children, each firing its
+ * own wuss_EVENT_QUIT. Lets a launcher task start tasks it did not create
+ * itself and still shut them all down. Do not destroy a parent from inside a
+ * handler while wuss is walking the task list (wuss_idle, wuss_set_palette):
+ * its children vanish from under the walk. A child that self-destructs
+ * earlier (autoclose) just leaves. Pass NULL to stop; the setting is not
+ * scoped, so pair every set with a clear.
+ *
+ * \param[in] wuss   Window manager.
+ * \param[in] parent Task to parent new tasks to, or NULL for none.
+ */
+void wuss_set_task_parent(wuss_t *wuss, wuss_task_t *parent);
+
+#ifdef WUSS_ICONS
+
+/* ----------------------------------------------------------------------- */
+
+/**
+ * Load a private icon pool for \p task from a directory of PNGs, as \ref
+ * wuss_iconpool_load does for the shared pool (same decoding, RLE
+ * compression and name-sorted entries). A task's icons -- those in its own
+ * windows -- and \ref wuss_task_iconpool_find look a name up here first and
+ * fall back to the shared pool, so a task can ship its own artwork and
+ * shadow shared names. Calling this again replaces the previous private
+ * pool; \ref wuss_task_destroy frees it, after the task's windows.
+ *
+ * \param[in] task Task to give the pool to.
+ * \param[in] dir  Directory to scan for "*.png".
+ * \return As \ref wuss_iconpool_load.
+ */
+result_t wuss_task_iconpool_load(wuss_task_t *task, const char *dir);
+
+/**
+ * Convenience wrapper for \ref wuss_task_iconpool_load: loads
+ * "<resources>/resources/wuss/tasks/<name>/iconpool", where <name> is the
+ * task's name (\ref wuss_task_desc::name). A missing directory is not an
+ * error: the pool is just empty.
+ *
+ * \param[in] task      Task to give the pool to; must have a name.
+ * \param[in] resources Resource root, as returned by \ref
+ *                      wuss_get_resources.
+ * \return As \ref wuss_iconpool_load, or \ref result_BAD_ARG if \p task has
+ *         no name.
+ */
+result_t wuss_task_iconpool_load_resource(wuss_task_t *task,
+                                          const char  *resources);
+
+/**
+ * Find an icon by name: \p task's private pool first, then the shared pool.
+ *
+ * \param[in] task Task whose private pool to search first.
+ * \param[in] name Entry name: a loaded file's leafname without ".png".
+ * \return The (RLE-compressed) bitmap, owned by the window manager and valid
+ *         until the pool holding it is reloaded or freed, or NULL if neither
+ *         pool has \p name.
+ */
+const bitmap_t *wuss_task_iconpool_find(const wuss_task_t *task,
+                                        const char        *name);
+
+#endif /* WUSS_ICONS */
 
 #ifdef __cplusplus
 }

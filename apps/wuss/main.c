@@ -30,14 +30,16 @@
 #include "framebuf/screen.h"
 #include "geom/box.h"
 #include "io/path.h"
+#include "wuss/icon.h"
 #include "wuss/task.h"
 #include "wuss/wuss.h"
 
 #include "frontend.h"
 #include "script.h"
+#include "appsfiler.h"
+#include "taskmanager.h"
 #include "tasks.h"
 
-#include "tasks/config.h"  /* config_create at startup */
 #include "tasks/palette.h" /* palette_load_hex for the startup *.hex */
 #ifdef WUSS_ICONBAR
 #include "tasks/filer.h" /* filer_set_root for -root */
@@ -56,6 +58,9 @@ static screen_t g_scr;
  * 16-colour Wimp palette. */
 static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
 {
+  /* fields left at 0 (mouse timings, ...) take wuss's defaults */
+  memset(config, 0, sizeof(*config));
+
   config->titlebar_height = 0;
   config->backdrop.pattern = screen_PATTERN_DOTS;
 
@@ -153,7 +158,8 @@ static void pixel_stress(wuss_t *wuss, int scr_width, int scr_height)
  * afresh and redraws it once wuss is done. */
 static struct
 {
-  bitmap_t       image;     /* the arrow; hotspot at its top-left */
+  const bitmap_t *image;    /* the arrow, from the icon pool; hotspot at its
+                             * top-left; NULL if the pool lacks it */
   bool           loaded;
   unsigned char *under;     /* framebuffer bytes beneath the drawn arrow */
   box_t          drawn;     /* where it was drawn, if is_drawn */
@@ -215,8 +221,8 @@ static bool pointer_draw(box_t *box)
 
   arrow.x0  = g_pointer.pos.x;
   arrow.y0  = g_pointer.pos.y;
-  arrow.x1  = g_pointer.pos.x + g_pointer.image.size.w;
-  arrow.y1  = g_pointer.pos.y + g_pointer.image.size.h;
+  arrow.x1  = g_pointer.pos.x + g_pointer.image->size.w;
+  arrow.y1  = g_pointer.pos.y + g_pointer.image->size.h;
   screen.x0 = 0;
   screen.y0 = 0;
   screen.x1 = g_bm.size.w;
@@ -229,7 +235,7 @@ static bool pointer_draw(box_t *box)
   /* a private screen_t: wuss's own may be left clipped to its last redraw */
   screen_for_bitmap(&scr, &g_bm);
   (void) screen_copy_bitmap(&scr, g_pointer.pos.x, g_pointer.pos.y,
-                            &g_pointer.image);
+                            g_pointer.image);
 
   g_pointer.drawn    = *box;
   g_pointer.is_drawn = true;
@@ -287,6 +293,8 @@ static void wuss_frame(void *arg)
   struct wuss_frame_ctx *c = arg;
   bool         scripting;
   wuss_input_t ev;
+  bool         move_pending;
+  point_t      move_pos;
   bool         garbage;
   bool         stress;
   bool         redraw_all;
@@ -305,14 +313,37 @@ static void wuss_frame(void *arg)
   wuss_set_time(c->wuss, g_scripted ? g_script_ms
                                     : wuss_frontend_ms(c->frontend));
 
+  /* A move is only delivered once the pointer has stopped for a poll, or
+   * another event needs it in place first. A frontend that samples the
+   * pointer (RISC OS) reports a fresh move on every poll while it travels,
+   * and handling each one -- a window drag blits and queues dirty slivers
+   * per move -- keeps this loop spinning, so the dirty list overflows and
+   * nothing is redrawn until the pointer stops. */
+  move_pending = false;
+  move_pos     = POINT(0, 0);
+
   scripting = g_scripted;
   while (frame_poll(c, &scripting, &ev))
   {
+    if (ev.kind == wuss_INPUT_MOUSE_MOVE)
+    {
+      g_pointer.pos       = ev.pos;
+      g_pointer.in_window = true;
+      move_pos            = ev.pos;
+      move_pending        = true;
+      continue;
+    }
+
+    if (move_pending)
+    {
+      wuss_mouse_move(c->wuss, move_pos, NULL);
+      move_pending = false;
+    }
+
     switch (ev.kind)
     {
     case wuss_INPUT_MOUSE_DOWN:
     case wuss_INPUT_MOUSE_UP:
-    case wuss_INPUT_MOUSE_MOVE:
     case wuss_INPUT_WHEEL:
       g_pointer.pos       = ev.pos;
       g_pointer.in_window = true;
@@ -331,23 +362,11 @@ static void wuss_frame(void *arg)
       break;
 
     case wuss_INPUT_MOUSE_DOWN:
-      {
-        wuss_window_t *hit;
-
-        wuss_mouse_click(c->wuss, ev.pos, ev.button, wuss_MOUSE_DOWN, &hit);
-
-        /* MENU click on bare backdrop opens the task launcher there */
-        if (hit == NULL && (ev.button & wuss_BUTTON_MENU))
-          tasks_open_launcher(ev.pos);
-      }
+      wuss_mouse_click(c->wuss, ev.pos, ev.button, wuss_MOUSE_DOWN, NULL);
       break;
 
     case wuss_INPUT_MOUSE_UP:
       wuss_mouse_click(c->wuss, ev.pos, ev.button, wuss_MOUSE_UP, NULL);
-      break;
-
-    case wuss_INPUT_MOUSE_MOVE:
-      wuss_mouse_move(c->wuss, ev.pos, NULL);
       break;
 
     case wuss_INPUT_WHEEL:
@@ -365,14 +384,23 @@ static void wuss_frame(void *arg)
       }
       break;
 
+    case wuss_INPUT_KEY_UP:
+      wuss_key_up(c->wuss, ev.key, ev.mods);
+      break;
+
     default:
       break;
     }
   }
 
-  wuss_idle(c->wuss);
+  if (move_pending)
+    wuss_mouse_move(c->wuss, move_pos, NULL);
 
-  wuss_frontend_capture_mouse(c->frontend, wuss_is_dragging(c->wuss));
+  wuss_idle(c->wuss);
+  tasks_reap_apps();
+
+  wuss_frontend_capture_mouse(c->frontend,
+                              wuss_is_dragging(c->wuss) || wuss_is_capturing(c->wuss));
 
   /* the launcher's Debug picks only set flags; act on them once per frame */
   garbage    = g_tasks.debug_garbage;
@@ -492,14 +520,10 @@ static result_t run_wuss(const char *resources,
   void               *pixels;
   int                 rowbytes;
   pixelfmt_t          fmt;
-  bitmap_t            logo; /* desktop backdrop image; left unset (have_logo
-                             * false) if resources/wuss/wuss.png fails to
-                             * load */
-  bool     have_logo;
-  colour_t palette[wuss_SYSTEM_PALETTE_LENGTH]; /* the fixed-size UI palette */
-  colour_t scr_palette[256]; /* palette[] padded out to whatever
-                                        * count the chosen depth's bitmap
-                                        * needs (p8 reads all 256) */
+  colour_t            palette[wuss_SYSTEM_PALETTE_LENGTH]; /* fixed-size UI */
+  colour_t            scr_palette[256]; /* palette[] padded out to whatever
+                                         * count the chosen depth's bitmap
+                                         * needs (p8 reads all 256) */
   wuss_t          *wuss;
   wuss_frontend_t *frontend;
   bool             use_wimp16;
@@ -510,7 +534,6 @@ static result_t run_wuss(const char *resources,
   nfonts    = 0;
   family    = NULL;
   frontend  = NULL;
-  have_logo = false;
   wuss      = NULL;
 
   {
@@ -616,35 +639,6 @@ static result_t run_wuss(const char *resources,
 
   screen_for_bitmap(&g_scr, &g_bm);
 
-  filename = pathf("%s/resources/wuss/wuss.png", resources);
-  logf_info("wuss: loading backdrop image \"%s\"", filename);
-  rc = bitmap_load_png(&logo, filename);
-  have_logo = (rc == result_OK);
-  if (!have_logo)
-    logf_error("wuss: bitmap_load_png(\"%s\") failed, rc=0x%X (%s) -- "
-              "backdrop drawn without it", filename, rc, result_string(rc));
-
-  /* under holds the bytes beneath the arrow at any depth: at most 4 per
-   * pixel, which also covers a sub-byte format's extra partial byte */
-  filename = pathf("%s/resources/wuss/pointer.png", resources);
-  rc = bitmap_load_png(&g_pointer.image, filename);
-  if (rc == result_OK)
-  {
-    g_pointer.under = malloc((size_t) g_pointer.image.size.w * 4 *
-                             g_pointer.image.size.h);
-    g_pointer.loaded = (g_pointer.under != NULL);
-    if (!g_pointer.loaded)
-    {
-      free(g_pointer.image.base);
-      free(g_pointer.image.palette);
-    }
-  }
-  else
-  {
-    logf_error("wuss: bitmap_load_png(\"%s\") failed, rc=0x%X (%s) -- "
-              "software pointer unavailable", filename, rc, result_string(rc));
-  }
-
   {
     wuss_config_t    config;
     wuss_font_desc_t descs[WUSS_MAIN_NFONTS]; /* slot classes/names for the
@@ -652,8 +646,6 @@ static result_t run_wuss(const char *resources,
                                 * never a text font choice */
 
     fill_chrome_config(&config, use_wimp16);
-    if (have_logo)
-      config.backdrop.image = &logo;
 
     for (i = 0; i < nfonts; i++)
     {
@@ -668,6 +660,31 @@ static result_t run_wuss(const char *resources,
     logf_info("wuss: wuss_create -> rc=0x%X (%s)", rc, result_string(rc));
     if (rc != result_OK)
       goto Failure;
+
+    /* the desktop logo and the pointer arrow live in the icon pool, which
+     * wuss_create has just loaded */
+    config.backdrop.image = wuss_iconpool_bitmap(wuss,
+                              wuss_iconpool_lookup(wuss, "wuss"));
+    if (config.backdrop.image == NULL)
+      logf_error("wuss: icon 'wuss' unavailable -- backdrop drawn without it");
+    else
+      (void) wuss_set_backdrop(wuss, &config.backdrop);
+
+    g_pointer.image = wuss_iconpool_bitmap(wuss,
+                        wuss_iconpool_lookup(wuss, "pointer"));
+    if (g_pointer.image == NULL)
+    {
+      logf_error("wuss: icon 'pointer' unavailable -- "
+                 "software pointer unavailable");
+    }
+    else
+    {
+      /* under holds the bytes beneath the arrow at any depth: at most 4 per
+       * pixel, which also covers a sub-byte format's extra partial byte */
+      g_pointer.under = malloc((size_t) g_pointer.image->size.w * 4 *
+                               g_pointer.image->size.h);
+      g_pointer.loaded = (g_pointer.under != NULL);
+    }
   }
 
   g_tasks.wuss           = wuss;
@@ -698,12 +715,16 @@ static result_t run_wuss(const char *resources,
 
   g_tasks.quit = false;
 
-#ifdef __EMSCRIPTEN__
-  /* browser users can't pass options, so show Configure up front */
-  rc = config_create(wuss, NULL);
-  logf_info("wuss: config_create -> rc=0x%X (%s)", rc, result_string(rc));
+#ifdef WUSS_ICONBAR
+  rc = appsfiler_create(wuss);
   if (rc != result_OK)
-    goto Failure;
+    logf_error("wuss: appsfiler_create -> rc=0x%X (%s)", rc,
+               result_string(rc));
+
+  rc = taskmanager_create(wuss);
+  if (rc != result_OK)
+    logf_error("wuss: taskmanager_create -> rc=0x%X (%s)", rc,
+               result_string(rc));
 #endif
 
   tasks_spawn(tasks);
@@ -747,18 +768,7 @@ Failure:
   wuss_destroy(wuss); /* also sweeps g.menu_task and closes any open chain,
                        * including the shared proginfo singleton's window */
 
-  if (have_logo) /* after wuss_destroy: the backdrop points at it */
-  {
-    free(logo.base);
-    free(logo.palette);
-  }
-
-  if (g_pointer.loaded)
-  {
-    free(g_pointer.under);
-    free(g_pointer.image.base);
-    free(g_pointer.image.palette);
-  }
+  free(g_pointer.under);
 
   for (i = 0; i < nfonts; i++)
     bmfont_destroy(fonts[i]);
@@ -842,8 +852,8 @@ typedef struct wuss_options
   int         res_height;
   const char *tasks;        /* -t/--tasks: comma-separated launcher task
                              * names to auto-open at startup, or "all";
-                             * default "" opens none ("Configure,Text"
-                             * under Emscripten) */
+                             * default "Filer" ("Filer,Configure,Reading"
+                             * under Emscripten); giving -t replaces it */
   const char *root;         /* --root: directory Filer's icon bar icon and
                              * System menu row open; default "." (or "/"
                              * under Emscripten, see filer_set_root) */
@@ -1001,9 +1011,9 @@ int main(int argc, char *argv[])
   opts.res_width    = 640;
   opts.res_height   = 480;
 #ifdef __EMSCRIPTEN__
-  opts.tasks        = "Configure,Text"; /* browser has no command line */
+  opts.tasks        = "Filer,Configure,Reading"; /* browser has no command line */
 #else
-  opts.tasks        = "";
+  opts.tasks        = "Filer";
 #endif
   opts.root       = NULL; /* NULL: leave filer_set_root's own default */
   opts.script       = NULL;

@@ -10,6 +10,13 @@ _Unreleased_ until one is cut.
 
 ### Added
 
+- `wuss` private icon pools: a task may load its own pool
+  (`wuss_task_iconpool_load()`, `wuss_task_iconpool_load_resource()`, from
+  `resources/wuss/tasks/<task name>/iconpool/`) and look names up with
+  `wuss_task_iconpool_find()`. Icons named by `u.bitmap.name` / `pressed_name`
+  search the task's pool first, then the shared one. Name-resolved icons now
+  store bitmap pointers; `wuss_icon_spec_t` gains `u.bitmap.pressed_image`.
+  Minesweeper's `mine` and `flag` icons move to its private pool.
 - `text/utf8.h` — a UTF-8 decoder/encoder (`utf8_decode`, `utf8_encode`,
   `utf8_prev`). `bmfont` gains `.map` Unicode-cmap sidecars (one per bundled
   font) and `bmfont_lookup()`, and `bmfont_draw()`/`bmfont_measure()` decode
@@ -603,9 +610,46 @@ _Unreleased_ until one is cut.
 - Release builds dead-strip unused code (`-ffunction-sections`/
   `-fdata-sections` with `-dead_strip` or `--gc-sections`), shrinking the
   release `wuss` binary by ~6%.
+- `wuss` Paint task: a scrollable canvas with a toolbox of nine tools (brush,
+  eraser, line, rectangle, filled rectangle, flood fill, spray, rectangle and
+  lasso selection) on 24x24 latching icons, a size slider and swatches; undo
+  (20 RLE-compressed steps, ^Z), a Selection menu (Select All, Deselect,
+  Invert), a New dialogue for canvas size and background, Save PNG (^S) and
+  PNG load by file drop. Its UI-free core is `paint-doc`, covered by the new
+  `paintdoc` test. See `docs/windowing/paint.md`.
+- `geom/region.h` — sparse pixel sets held as per-row runs: box and even-odd
+  polygon construction, `region_invert`, containment, row access and boundary
+  outline.
+- `wuss` bitmap icons can be latching and bevelled (RIDGE/GROOVE border plus a
+  radio-style group).
+- `wuss` per-window mouse capture while a button is held; `wuss_is_capturing()`
+  lets the SDL frontend keep OS capture.
+- `wuss` dialogues: `wuss_dialogue_handle_key()` (RETURN activates the default
+  action, ESCAPE the action set by `wuss_dialogue_set_cancel()`) and
+  `wuss_dialogue_set_focusable()`. Layout rules are in
+  `docs/windowing/wuss-layout.md`.
+- `wuss` messaging: `wuss_msg_target_t` (window plus optional icon),
+  `wuss_send_to()` and `wuss_send_recorded_to()`; icon bar icons receive
+  messages for their owning task. `wuss_EVENT_DRAG_END` gains `drop_icon`.
+- `wuss` DataLoad: the Filer drags files out and drops them on windows or icon
+  bar icons. Viewing, Reading, Dithering, Effects and Tiling load dropped
+  files through the shared `taskapp_window_data_load`; `taskapp_desc_t`
+  gains `drop_only` and an optional `data_load` hook.
+- `wuss` gridview: `wuss_gridview_window_create()`, `_fit_window()`,
+  `_hit_test()`, `_select_all()`, `_selected_count()`, `_set_drag()`; RISC OS
+  style selection. The Filer gains Select all, Clear selection and Open
+  parent menu rows and starts by default.
+- `DPTLIB_TMPPREFIX` places test scratch PNGs under `/tmp`.
 
 ### Changed
 
+- **Breaking:** the `wuss` icon set becomes the icon pool.
+  `resources/wuss/icons/` and `resources/wuss/files/` merge into one flat
+  directory, `resources/wuss/iconpool/`; `wuss_icons_*` is renamed
+  `wuss_iconpool_*` and `wuss_ICON_SET` becomes `wuss_ICONPOOL_SET`.
+  Entries are now sorted by name, so indices no longer depend on the
+  platform's directory scan order. Also moves `resources/palettes/` to
+  `resources/wuss/palettes/`.
 - **Breaking:** bitmap fonts move to a hierarchical layout,
   `resources/bmfonts/<Family>/<Style>.png` (e.g. `GrongyUI/Bold.png`,
   `Tiny/Regular.png`; the `-Lg` digits become the `DPT-DigitsLg` family).
@@ -923,6 +967,18 @@ _Unreleased_ until one is cut.
   menu categories are reordered.
 - `pattern_t.origin` is documented as the absolute coordinate of the
   tile's top-left bit.
+- The `wuss` Image task is renamed Viewing and shows dropped images only; the
+  Text task is renamed Reading and moves to a new Text category. Their old
+  image/sample lists and Load menus are removed. The default startup task list
+  follows the new names.
+- Task glyphs and the demo logo/pointer come from the icon pool instead of
+  per-task `bitmap_load_png` calls.
+- The Chars task draws cell numbers in Tiny Regular and its grid lines in one
+  pass per redraw.
+- `box_list_add()` merges the pair whose union adds least area when full,
+  rather than folding into the last entry.
+- `screen_copy_rect()` copies packed 1/2/4bpp rects bytewise.
+- Xcode schemes set the working directory for the test and wuss targets.
 
 ### Fixed
 
@@ -1364,3 +1420,13 @@ _Unreleased_ until one is cut.
   and recomputed theta trig in its inner loop.
 - `INSET` was a compound literal, not a constant expression under GCCSDK.
 - The `wuss` and `bmfont` enumerate tests hardcoded fixture counts.
+- `rng.h` used `__inline__`, which MSVC rejects; it now uses `INLINE`.
+- `wuss` core drag takes the pointer from a captured press.
+- Ten `wuss` tasks swallowed every keypress; unused keys now return
+  `result_WUSS_KEY_UNCLAIMED` so driver hotkeys work.
+- Pointer moves are coalesced per frame, fixing window-move trails and dirty
+  list overflow on polling frontends (RISC OS).
+- A toggled window is trimmed to the document extent after a task reflows.
+- RISC OS: the Filer and Paint use native path separators, and
+  `convolve` no longer uses `lroundf`, which the RISC OS libm lacks.
+- The pickle test deletes its temporary files.

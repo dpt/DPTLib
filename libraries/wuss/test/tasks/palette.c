@@ -20,6 +20,7 @@
 #include "wuss/menu.h"
 
 #include "palette.h"
+#include "taskapp.h"
 #include "common.h"
 
 #define PALETTE_HEX_EXT     ".hex"
@@ -29,45 +30,81 @@
                                 * length */
 
 /* indices of the top-level menu's fixed rows */
-#define PALETTE_MENU_INFO_INDEX    0
-#define PALETTE_MENU_LOAD_INDEX    1
-#define PALETTE_MENU_INVERT_INDEX  2
-#define PALETTE_MENU_GREY_INDEX    3
+#define PALETTE_MENU_LOAD_INDEX    0
+#define PALETTE_MENU_INVERT_INDEX  1
+#define PALETTE_MENU_GREY_INDEX    2
 
 /* ----------------------------------------------------------------------- */
 /* Parse a *.hex file: one "rrggbb" line per colour, no leading '#'. Fails
- * (leaving *out untouched) unless exactly PALETTE_NCOLOURS well-formed lines
- * are read, so a malformed or wrongly-sized file can never desync from the
- * fixed-length system palette wuss was created with. */
+ * (leaving *out untouched) unless the file is 1..max well-formed lines,
+ * setting *n to the count. */
 
-result_t palette_load_hex(const char *resources,
-                          const char *name,
-                          colour_t   *out)
+result_t palette_load_hex_n(const char *resources,
+                            const char *name,
+                            colour_t   *out,
+                            int         max,
+                            int        *n)
 {
   const char *path;
   FILE       *fp;
+  long        size;
+  int         count;
   char        line[16];
   int         i;
   unsigned    r, g, b;
 
-  path = pathf("%s/resources/palettes/%s.hex", resources, name);
+  path = pathf("%s/resources/wuss/palettes/%s.hex", resources, name);
 
   fp = fopen(path, "r");
   if (fp == NULL)
     return result_FILE_NOT_FOUND;
 
-  for (i = 0; i < PALETTE_NCOLOURS; i++)
+  /* each line is "rrggbb\n": 7 bytes */
+  if (fseek(fp, 0, SEEK_END) != 0 ||
+      (size = ftell(fp)) <= 0 || size % 7 != 0 || size / 7 > max ||
+      fseek(fp, 0, SEEK_SET) != 0)
+  {
+    fclose(fp);
+    return result_WUSS_BAD_PALETTE;
+  }
+
+  count = (int) (size / 7);
+  for (i = 0; i < count; i++)
   {
     if (fgets(line, sizeof(line), fp) == NULL ||
         sscanf(line, "%2x%2x%2x", &r, &g, &b) != 3)
     {
       fclose(fp);
-      return result_WUSS_BAD_COLOUR;
+      return result_WUSS_BAD_PALETTE;
     }
     out[i] = colour_rgb((int) r, (int) g, (int) b);
   }
 
   fclose(fp);
+  *n = count;
+  return result_OK;
+}
+
+/* As palette_load_hex_n, but exactly PALETTE_NCOLOURS lines, so a
+ * wrongly-sized file can never desync from the fixed-length system palette
+ * wuss was created with. */
+
+result_t palette_load_hex(const char *resources,
+                          const char *name,
+                          colour_t   *out)
+{
+  result_t rc;
+  colour_t tmp[PALETTE_NCOLOURS];
+  int      n;
+
+  rc = palette_load_hex_n(resources, name, tmp, PALETTE_NCOLOURS, &n);
+  if (rc != result_OK)
+    return rc;
+
+  if (n != PALETTE_NCOLOURS)
+    return result_WUSS_BAD_PALETTE;
+
+  memcpy(out, tmp, sizeof(tmp));
   return result_OK;
 }
 
@@ -94,7 +131,7 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
   task->selected  = 0;
 
   resources = wuss_get_resources(wuss);
-  dir       = pathf("%s/resources/palettes", resources);
+  dir       = pathf("%s/resources/wuss/palettes", resources);
   namelist_scan(dir, PALETTE_HEX_EXT, task->names[0],
                 sizeof(task->names[0]), PALETTE_MAX_FILES, 1 /* sorted */,
                 &task->nnames);
@@ -124,11 +161,6 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
   }
   WUSS_MENU_TITLE(task->load_menu, "Load", task->load_items, task->nnames);
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, PALETTE_MENU_INFO_INDEX, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in
-                                * palette_menu_open */
   WUSS_MENU_ITEM_MENU(task->menu_items, PALETTE_MENU_LOAD_INDEX, "Load",
                       wuss_MENU_ITEM_NONE, &task->load_menu);
   WUSS_MENU_ITEM(task->menu_items, PALETTE_MENU_INVERT_INDEX,
@@ -185,6 +217,18 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t palette_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Palette",
+    "Desktop palette swatches",
+    (taskapp_create_fn_t) palette_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void palette_destroy(palette_task_t *task)
@@ -311,14 +355,7 @@ static result_t palette_redraw_screen(palette_task_t     *pc,
  * touches the TICKED bit. */
 static result_t palette_menu_open(palette_task_t *pc)
 {
-  static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Palette", "Desktop and screen palette grid");
-
   unsigned int ticks;
-
-  wuss_proginfo_set_desc(&desc);
-  pc->menu_items[PALETTE_MENU_INFO_INDEX].window =
-    wuss_proginfo_window(pc->delegate);
 
   wuss_menu_tick_exclusive(&pc->load_menu, pc->selected);
 
@@ -385,6 +422,9 @@ static result_t palette_menu_select(palette_task_t     *pc,
     pc->selected = index;
     pc->invert   = false;
     pc->grey     = false;
+    /* the data tick too: a submenu reopened within the chain is rebuilt
+     * from the items */
+    wuss_menu_tick_exclusive(&pc->load_menu, index);
     if (event->data.menu_select.button & wuss_BUTTON_ADJUST)
     {
       wuss_menu_tick_item_live(pc->menu_handle, &pc->load_menu, old, 0);
@@ -442,9 +482,6 @@ result_t palette_handle(wuss_window_t      *window,
     return palette_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
-    if (window != pc->window && window != pc->window2)
-      return result_OK; /* the proginfo dialogue has no click behaviour of
-                         * its own */
     return palette_click(task_data, event);
 
   case wuss_EVENT_MENU_SELECT:
@@ -453,22 +490,6 @@ result_t palette_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_CLOSED:
     pc->menu_handle = NULL; /* wuss closed the chain under us */
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == pc->menu_items[PALETTE_MENU_INFO_INDEX].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_CLOSE:
     if (window == pc->window2)
@@ -482,6 +503,9 @@ result_t palette_handle(wuss_window_t      *window,
      * second one goes, so free it here */
     palette_destroy(pc);
     return result_OK;
+
+  case wuss_EVENT_KEY:
+    return result_WUSS_KEY_UNCLAIMED;
 
   default:
     return result_OK;

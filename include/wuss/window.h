@@ -195,10 +195,13 @@ result_t wuss_window_set_hidden(wuss_window_t *window, int hidden);
 result_t wuss_window_reveal_now(wuss_window_t *window);
 
 /**
- * Resize a window's content area, preserving its top-left position.
+ * Resize a window's content area, preserving its top-left position. As
+ * wuss_window_create does, the size is capped so the window fits the screen
+ * from its top-left, except that it never drops below the minimum grabbable
+ * size.
  *
  * \param[in] window Window to resize.
- * \param[in] size   New content size.
+ * \param[in] size   Requested content size; capped to the screen.
  * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if size's
  *         width or height is not positive.
  */
@@ -216,6 +219,36 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size);
  *         width or height is not positive.
  */
 result_t wuss_window_set_doc(wuss_window_t *window, size2d_t doc);
+
+/** Pass as a component of wuss_window_set_min_size to leave that axis as it
+ * is. */
+#define wuss_KEEP (-1)
+
+/**
+ * Set the smallest content size a resize-drag or toggle-size will shrink a
+ * window to, as wuss_window_create's min_doc parameter. Either axis may be
+ * left unchanged by passing \ref wuss_KEEP for it. The furniture's own
+ * minimum still applies.
+ *
+ * \param[in] window Window to configure.
+ * \param[in] min    Minimum content size; each component at least 0, or \ref
+ *                   wuss_KEEP.
+ * \return \ref result_OK, or \ref result_BAD_ARG if a component is below
+ *         \ref wuss_KEEP.
+ */
+result_t wuss_window_set_min_size(wuss_window_t *window, size2d_t min);
+
+/**
+ * Fetch the largest content size this window could have on the current
+ * screen if it were moved to fit: the whole screen less the window's own
+ * outline, titlebar and scrollbar furniture. Floored at the built-in minimum
+ * content size. Depends on the screen size and the furniture, so ask again
+ * after wuss_EVENT_RELAYOUT rather than caching it.
+ *
+ * \param[in]  window Window to query.
+ * \param[out] max    Filled with the largest content size.
+ */
+void wuss_window_get_max_content(const wuss_window_t *window, size2d_t *max);
 
 /**
  * Move a window to one end of its own stack (see wuss_stack_t). It never

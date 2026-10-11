@@ -27,20 +27,26 @@ extern testfn_t pickle_test,
                 tagdb_test;
 
 /* framebuf */
-extern testfn_t bitmap_rle_test,
+extern testfn_t bitmap_load_test,
+                bitmap_rle_test,
                 bmfont_test,
                 bmfontcache_test,
                 bmfontfamily_test,
                 composite_test,
                 curve_test,
+                dither_test,
+                effects_test,
+                octree_test,
                 pattern_test,
                 pixelmap_test,
-                screen_test;
+                screen_test,
+                tonemap_test;
 
 /* geom */
 extern testfn_t box_test,
                 layout_test,
                 packer_test,
+                region_test,
                 stack_test;
 
 /* io */
@@ -60,6 +66,8 @@ extern testfn_t array_test,
                 pack_test;
 
 /* wuss */
-extern testfn_t wuss_test;
+extern testfn_t gridview_bench_test,
+                paintdoc_test,
+                wuss_test;
 
 #endif /* TESTS_ALL_TESTS_H */

@@ -11,7 +11,6 @@
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
 #include "wuss/component/colourmenu.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/component/saveas.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
@@ -32,7 +31,7 @@ typedef struct clock_task
   wuss_saveas_t       *saveas;
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[6]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[5]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer
                                        * into another's menu */
   wuss_menu_t         menu;
@@ -51,6 +50,9 @@ wuss_window_fn_t clock_handle;
  * face with wuss's own regular font (wuss_get_font_n(wuss, 0)). if out is
  * non-NULL, the task block is also returned through it */
 result_t clock_create(wuss_t *wuss, clock_task_t **out);
+
+/* install the icon bar app that opens clock windows on demand */
+result_t clock_app_create(wuss_t *wuss);
 
 /* free a task block allocated by clock_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */

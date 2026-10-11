@@ -97,74 +97,78 @@ result_t wuss_create(screen_t               *scr,
   w->furniture_ops            = &wuss__furniture_default_ops;
 #endif
 #ifdef WUSS_ICONS
-  w->pressed_icon       = NULL;
-  w->pressed_window     = NULL;
-  w->hover_icon         = NULL;
-  w->hover_window       = NULL;
-  w->caret_icon         = NULL;
-  w->caret_window       = NULL;
-  w->caret_index        = 0;
+  w->pressed.icon       = NULL;
+  w->pressed.window     = NULL;
+  w->hover.icon         = NULL;
+  w->hover.window       = NULL;
+  w->caret.icon         = NULL;
+  w->caret.window       = NULL;
+  w->caret.index        = 0;
   w->icon.names         = NULL;
   w->icon.atoms         = NULL;
   w->icon.bitmaps       = NULL;
   w->icon.nbitmaps      = 0;
 #endif
 #ifdef WUSS_MENUS
-  w->menu_chain         = NULL;
-  w->menu_task          = NULL;
-  w->menu_eat_up        = 0;
+  w->menu.chain         = NULL;
+  w->menu.task          = NULL;
+  w->menu.eat_up        = 0;
+  w->menu.bottom_gap    = 0;
 #endif
 #ifdef WUSS_ICONBAR
-  w->iconbar_window         = NULL;
-  w->iconbar_task           = NULL;
-  w->iconbar_icons          = NULL;
-  w->niconbar_icons         = 0;
-  w->cap_iconbar_icons      = 0;
-  w->pressed_iconbar_icon   = NULL;
+  w->iconbar.window         = NULL;
+  w->iconbar.task           = NULL;
+  w->iconbar.icons          = NULL;
+  w->iconbar.n         = 0;
+  w->iconbar.cap      = 0;
+  w->iconbar.pressed   = NULL;
 #endif
 
-  w->queue          = NULL;
-  w->nqueued        = 0;
-  w->cap_queue      = 0;
-  w->next_ref       = 1;
-  w->dispatch_depth = 0;
-  w->acking         = NULL;
-  w->acked          = 0;
+  w->msg.queue          = NULL;
+  w->msg.count        = 0;
+  w->msg.cap      = 0;
+  w->msg.next_ref       = 1;
+  w->msg.dispatch_depth = 0;
+  w->msg.acking         = NULL;
+  w->msg.acked          = 0;
 
-  w->ndirty   = 0;
-  w->ntouched = 0;
+  w->dirty.n   = 0;
+  w->touched.n = 0;
 
   w->now_ms           = 0;
-  w->last_down_ms     = 0;
-  w->last_down_point.x = 0;
-  w->last_down_point.y = 0;
-  w->last_down_button = wuss_BUTTON_NONE;
-  w->last_down_window = NULL;
+  w->last_down.ms     = 0;
+  w->last_down.point.x = 0;
+  w->last_down.point.y = 0;
+  w->last_down.button = wuss_BUTTON_NONE;
+  w->last_down.window = NULL;
 
   w->pointer.x = 0;
   w->pointer.y = 0;
 
-  w->drag_window = NULL;
-  w->drag_button = wuss_BUTTON_NONE;
-  w->drag_drawn  = (box_t) BOX_INIT;
-  w->drag_frame  = 0;
+  w->capture = NULL;
+
+  w->drag.window = NULL;
+  w->drag.button = wuss_BUTTON_NONE;
+  w->drag.drawn  = (box_t) BOX_INIT;
+  w->drag.frame  = 0;
 
   for (s = 0; s < WUSS_STACK_COUNT; s++)
     list_init(&w->z_order[s]);
   list_init(&w->tasks);
+  w->task_parent = NULL;
 
 #ifdef WUSS_ICONS
   /* load the wuss-wide icon set now that w->resources is set; a missing
    * resources root or icons directory just leaves the set empty, not an
-   * error -- callers needing the icon set check wuss_icons_count/_lookup */
+   * error -- callers needing the icon set check wuss_iconpool_count/_lookup */
   if (resources != NULL)
-    (void) wuss_icons_load_resource(w, resources);
+    (void) wuss_iconpool_load_resource(w, resources);
 #endif
 
   if (bmfontcache_create(&w->font_cache) != result_OK)
   {
 #ifdef WUSS_ICONS
-    wuss__icons_registry_free(w);
+    wuss__iconpool_clear(w, &w->icon);
 #endif
     wuss__free(w, w->palette);
     wuss__free(w, w);

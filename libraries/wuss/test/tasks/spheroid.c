@@ -24,6 +24,7 @@
 #include "wuss/task.h"
 
 #include "spheroid.h"
+#include "taskapp.h"
 #include "common.h"
 
 /* After Kai's Power Tools 3's Spheroid Designer (MetaTools, 1995): one big
@@ -68,8 +69,7 @@
 
 enum
 {
-  SPHEROID_MENU_INFO = 0,
-  SPHEROID_MENU_LIGHT,
+  SPHEROID_MENU_LIGHT = 0,
   SPHEROID_MENU_DITHERING,
   SPHEROID_MENU_MUTATE,
   SPHEROID_MENU_RANDOMISE,
@@ -749,11 +749,6 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, SPHEROID_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in spheroid_mouse */
-
   for (i = 0; i < SPHEROID_NLIGHTS; i++)
   {
     static const char *const keys[SPHEROID_NLIGHTS] =
@@ -806,6 +801,18 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t spheroid_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Spheroid",
+    "Lit sphere designer",
+    (taskapp_create_fn_t) spheroid_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void spheroid_destroy(spheroid_task_t *task)
@@ -1200,9 +1207,6 @@ static result_t spheroid_mouse(spheroid_task_t    *task,
                                wuss_button_t       button,
                                wuss_window_t      *window)
 {
-  static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Spheroid Designer",
-                       "Lit sphere after Kai's Power Tools");
 
   box_t  content;
   double cx, cy, r;
@@ -1220,8 +1224,6 @@ static result_t spheroid_mouse(spheroid_task_t    *task,
 
   if (action == wuss_MOUSE_DOWN && (button & wuss_BUTTON_MENU))
   {
-    wuss_proginfo_set_desc(&desc);
-    task->menu_items[SPHEROID_MENU_INFO].window = wuss_proginfo_window(task->delegate);
     wuss_menu_tick_exclusive(&task->light_menu, task->current);
     wuss_menu_tick_exclusive(&task->dither_menu, (int) task->dithering);
 
@@ -1484,24 +1486,6 @@ result_t spheroid_handle(wuss_window_t      *window,
     if (window == task->window)
       task->window = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == task->menu_items[SPHEROID_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_QUIT:
     spheroid_destroy(task);

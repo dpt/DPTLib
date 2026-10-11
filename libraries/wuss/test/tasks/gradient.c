@@ -20,16 +20,14 @@
 #include "io/filetype.h"
 
 #include "gradient.h"
+#include "taskapp.h"
 #include "common.h"
 #include "snapshot.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live
- * per-instance in gradient_task_t, not as a file-scope static, so that each
- * window's Info row can hold its own .window pointer to the shared proginfo
- * singleton, retargeted just before wuss_menu_open */
+ * per-instance in gradient_task_t, not as a file-scope static */
 enum
 {
-  GRADIENT_MENU_INFO,
   GRADIENT_MENU_RESET,
   GRADIENT_MENU_SHAPE,
   GRADIENT_MENU_SAVE
@@ -290,12 +288,6 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, GRADIENT_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in
-                                * gradient_mouse */
-
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GRADIENT_MENU_RESET, "Reset",
                           wuss_MENU_ITEM_NONE, "R");
 
@@ -322,6 +314,18 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t gradient_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Gradient",
+    "Dithered colour gradients",
+    (taskapp_create_fn_t) gradient_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void gradient_destroy(gradient_task_t *task)
@@ -446,11 +450,6 @@ static result_t gradient_mouse(const wuss_event_t *event, void *task_data)
 
   if (button & wuss_BUTTON_MENU)
   {
-    static const wuss_proginfo_desc_t desc =
-      TASK_PROGINFO_DESC("Gradient", "Colour gradients with ordered dithering");
-    wuss_proginfo_set_desc(&desc);
-    gc->menu_items[GRADIENT_MENU_INFO].window =
-      wuss_proginfo_window(gc->delegate);
     wuss_menu_tick_exclusive(&gc->shape_menu, gc->shape);
 
     return wuss_menu_open_at_pointer(gc->delegate, &gc->menu,
@@ -586,22 +585,6 @@ result_t gradient_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_CLOSED:
     gc->menu_handle = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == gc->menu_items[GRADIENT_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_QUIT:
     gradient_destroy(gc);

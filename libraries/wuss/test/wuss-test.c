@@ -54,6 +54,7 @@
 #endif
 
 #include "test/all-tests.h"
+#include "test/tmpdir.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -139,6 +140,18 @@ static void gridview_test_activate(wuss_gridview_t *gridview,
 
   *(int *) opaque = index;
 }
+
+/* gridview drag callback: records the offered index at opaque, then declines
+ * so no core drag starts */
+static int gridview_test_drag(wuss_gridview_t *gridview,
+                              int              index,
+                              void            *opaque)
+{
+  NOT_USED(gridview);
+
+  *(int *) opaque = index;
+  return 0;
+}
 #endif
 
 #ifdef WUSS_COMPONENTS
@@ -167,7 +180,7 @@ static result_t colourset_test_changed(wuss_colourset_t *colourset,
 
 static int make_scratch_dir(char *path, size_t cap)
 {
-  if (snprintf(path, cap, "/tmp/dptlib-saveas-XXXXXX") >= (int) cap)
+  if (snprintf(path, cap, "%s/dptlib-saveas-XXXXXX", test_tmpdir()) >= (int) cap)
     return 0;
 
   return mkdtemp(path) != NULL;
@@ -250,6 +263,24 @@ static result_t saveas_recv_handle(wuss_window_t      *window,
   return result_OK;
 }
 #endif /* WUSS_COMPONENTS && !_WIN32 && !__riscos */
+
+#ifdef WUSS_GADGETS
+/* task handler that hands every event to gridview_forward_target */
+static wuss_gridview_t *gridview_forward_target;
+
+static result_t gridview_forward(wuss_window_t      *window,
+                                 const wuss_event_t *event,
+                                 void               *task_data)
+{
+  NOT_USED(window);
+  NOT_USED(task_data);
+
+  if (gridview_forward_target != NULL)
+    (void) wuss_gridview_handle_event(gridview_forward_target, event);
+
+  return result_OK;
+}
+#endif /* WUSS_GADGETS */
 
 static result_t test_handle(wuss_window_t      *window,
                             const wuss_event_t *event,
@@ -993,7 +1024,7 @@ result_t wuss_test(const char *resources)
     if (rc != result_WUSS_BAD_COLOUR ||
         wuss__resolve_colour(cfgw, wuss_COLOUR_TITLE_BG) != 0 ||
         wuss__resolve_colour(cfgw, wuss_COLOUR_TITLE_FG) != 3 ||
-        cfgw->window_bg != 3 ||
+        cfgw->body.window != 3 ||
         tc_cfg.palette_count != 1)
     {
       wuss_destroy(cfgw);
@@ -1484,24 +1515,23 @@ result_t wuss_test(const char *resources)
   if (width != 52 || height != 72)
     goto Failure;
 
-  printf("test: window_resize honours the requested size even past the "
-         "screen edge\n");
+  printf("test: window_resize caps the size at the screen edge\n");
 
   /* screen is 200x200; win_a's visible box sits at (0,25) with a 1px
    * outline all round and a 20px titlebar. asking for a 500x500 content
-   * area is honoured verbatim; the visible box simply overhangs the
-   * screen (width 500+2, height 500+2+20). */
+   * area is capped so the visible box ends at the screen edge (198 wide,
+   * 153 tall of content). */
   rc = wuss_window_resize(win_a, SIZE2D(500, 500));
   if (rc != result_OK)
     goto Failure;
   wuss_window_get_content_bounds(win_a, &content);
-  if (content.x1 - content.x0 != 500 || content.y1 - content.y0 != 500)
+  if (content.x1 - content.x0 != 198 || content.y1 - content.y0 != 153)
     goto Failure;
   wuss_window_get_visible_bounds(win_a, &visible);
-  if (visible.x1 != 502 || visible.y1 != 547)
+  if (visible.x1 != 200 || visible.y1 != 200)
     goto Failure;
 
-  /* a smaller request is likewise honoured verbatim */
+  /* a smaller request is honoured verbatim */
   rc = wuss_window_resize(win_a, SIZE2D(60, 40));
   if (rc != result_OK)
     goto Failure;
@@ -2248,7 +2278,7 @@ result_t wuss_test(const char *resources)
      * preserved, unlike a naive summed-region-area comparison, which
      * overcounts once furniture invalidation adds several regions that
      * overlap each other and the grown-edge region without merging (only
-     * exact-edge-aligned boxes merge; see box_merge in invalidate.c) */
+     * exact-edge-aligned boxes merge; see box_merge in geom/box/list-add.c) */
     interior_x = (before.x0 + outline_px + before.x1 - outline_px - icon) / 2;
     interior_y = (before.y0 + outline_px + titlebar_height + before.y1 - outline_px - icon) / 2;
 
@@ -2708,8 +2738,8 @@ result_t wuss_test(const char *resources)
                      wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, NULL);
     wuss_mouse_click(wuss, POINT(content_w.x0 + 5, content_w.y0 + 25),
                      wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
-    if (wuss_get_focus(wuss) != win_w || wuss->caret_icon != icons[1] ||
-        wuss->caret_index != 0)
+    if (wuss_get_focus(wuss) != win_w || wuss->caret.icon != icons[1] ||
+        wuss->caret.index != 0)
       goto Failure;
 
     /* typing inserts at the caret and raises an icon event per edit */
@@ -2719,7 +2749,7 @@ result_t wuss_test(const char *resources)
     wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_NONE, &claimed);
     wuss_key(wuss, 'b', wuss_KEY_MOD_NONE, &claimed);
     if (!claimed || strcmp(wuss_icon_get_text(icons[1]), "abc") != 0 ||
-        wuss->caret_index != 2 || tc_w.icon_count != 3 ||
+        wuss->caret.index != 2 || tc_w.icon_count != 3 ||
         tc_w.key_count != 0)
       goto Failure;
 
@@ -2729,7 +2759,7 @@ result_t wuss_test(const char *resources)
     wuss_key(wuss, wuss_KEY_END, wuss_KEY_MOD_NONE, &claimed);
     wuss_key(wuss, 8, wuss_KEY_MOD_NONE, &claimed);
     if (strcmp(wuss_icon_get_text(icons[1]), "b") != 0 ||
-        wuss->caret_index != 1 || tc_w.icon_count != 5)
+        wuss->caret.index != 1 || tc_w.icon_count != 5)
       goto Failure;
 
     /* keys the field doesn't use reach the task */
@@ -2748,25 +2778,25 @@ result_t wuss_test(const char *resources)
     if (!claimed ||
         strcmp(wuss_icon_get_text(icons[1]),
                "b\xC2\xA9\xE2\x98\xBA\xF0\x9F\x98\x80") != 0 ||
-        wuss->caret_index != 10 || tc_w.icon_count != 3)
+        wuss->caret.index != 10 || tc_w.icon_count != 3)
       goto Failure;
     wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_NONE, &claimed);
-    if (wuss->caret_index != 6) goto Failure;
+    if (wuss->caret.index != 6) goto Failure;
     wuss_key(wuss, 8, wuss_KEY_MOD_NONE, &claimed);
-    if (wuss->caret_index != 3 ||
+    if (wuss->caret.index != 3 ||
         strcmp(wuss_icon_get_text(icons[1]), "b\xC2\xA9\xF0\x9F\x98\x80") != 0)
       goto Failure;
     wuss_key(wuss, wuss_KEY_DELETE, wuss_KEY_MOD_NONE, &claimed);
     wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_NONE, &claimed);
-    if (wuss->caret_index != 1 ||
+    if (wuss->caret.index != 1 ||
         strcmp(wuss_icon_get_text(icons[1]), "b\xC2\xA9") != 0)
       goto Failure;
     wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_NONE, &claimed);
-    if (wuss->caret_index != 3) goto Failure;
+    if (wuss->caret.index != 3) goto Failure;
 
     /* a caret placed inside a codepoint snaps to its start */
     wuss_icon_set_caret(win_w, icons[1], 2);
-    if (wuss->caret_index != 1) goto Failure;
+    if (wuss->caret.index != 1) goto Failure;
 
     /* C1 controls aren't inserted: they reach the task */
     wuss_key(wuss, 0x85, wuss_KEY_MOD_NONE, &claimed);
@@ -2777,34 +2807,34 @@ result_t wuss_test(const char *resources)
     /* Ctrl+Left/Right jump to the ends; Shift+Left/Right move by words */
     wuss_icon_set_text(win_w, icons[1], "ab cd  ef");
     wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_CTRL, &claimed);
-    if (!claimed || wuss->caret_index != 0) goto Failure;
+    if (!claimed || wuss->caret.index != 0) goto Failure;
     wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_SHIFT, &claimed);
-    if (wuss->caret_index != 2) goto Failure;
+    if (wuss->caret.index != 2) goto Failure;
     wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_SHIFT, &claimed);
-    if (wuss->caret_index != 5) goto Failure;
+    if (wuss->caret.index != 5) goto Failure;
     wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_SHIFT, &claimed);
-    if (wuss->caret_index != 9) goto Failure;
+    if (wuss->caret.index != 9) goto Failure;
     wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_SHIFT, &claimed);
-    if (wuss->caret_index != 7) goto Failure;
+    if (wuss->caret.index != 7) goto Failure;
     wuss_key(wuss, wuss_KEY_LEFT, wuss_KEY_MOD_SHIFT, &claimed);
-    if (wuss->caret_index != 3) goto Failure;
+    if (wuss->caret.index != 3) goto Failure;
     wuss_key(wuss, wuss_KEY_RIGHT, wuss_KEY_MOD_CTRL, &claimed);
-    if (wuss->caret_index != 9) goto Failure;
+    if (wuss->caret.index != 9) goto Failure;
 
     /* Ctrl+U clears the field and raises an icon event */
     tc_w.icon_count = 0;
     wuss_key(wuss, 'u', wuss_KEY_MOD_CTRL, &claimed);
     if (!claimed || wuss_icon_get_text(icons[1])[0] != '\0' ||
-        wuss->caret_index != 0 || tc_w.icon_count != 1 ||
+        wuss->caret.index != 0 || tc_w.icon_count != 1 ||
         tc_w.key_count != 4)
       goto Failure;
 
     /* Tab wraps over the hidden field; Shift-Tab goes back */
     wuss_key(wuss, 9, wuss_KEY_MOD_NONE, &claimed);
-    if (!claimed || wuss->caret_icon != icons[0] || wuss->caret_index != 3)
+    if (!claimed || wuss->caret.icon != icons[0] || wuss->caret.index != 3)
       goto Failure;
     wuss_key(wuss, 9, wuss_KEY_MOD_SHIFT, &claimed);
-    if (wuss->caret_icon != icons[1]) goto Failure;
+    if (wuss->caret.icon != icons[1]) goto Failure;
 
     /* a full buffer swallows further characters */
     wuss_icon_set_caret(win_w, icons[0], -1);
@@ -2817,7 +2847,7 @@ result_t wuss_test(const char *resources)
     /* set_text truncates and moves the caret to the end */
     rc = wuss_icon_set_text(win_w, icons[0], "hi");
     if (rc != result_OK || strcmp(wuss_icon_get_text(icons[0]), "hi") != 0 ||
-        wuss->caret_index != 2)
+        wuss->caret.index != 2)
       goto Failure;
 
     /* ...without splitting a codepoint */
@@ -2829,19 +2859,19 @@ result_t wuss_test(const char *resources)
     if (wuss_icon_set_caret(win_w, icons[2], 0) != result_BAD_ARG)
       goto Failure;
     wuss_icon_set_hidden(win_w, icons[0], 1);
-    if (wuss->caret_icon != NULL) goto Failure;
+    if (wuss->caret.icon != NULL) goto Failure;
 
     /* losing the focus drops the caret; deleting the caret icon clears it */
     wuss_icon_set_caret(win_w, icons[1], 0);
-    if (wuss_set_focus(wuss, NULL) != result_OK || wuss->caret_icon != NULL)
+    if (wuss_set_focus(wuss, NULL) != result_OK || wuss->caret.icon != NULL)
       goto Failure;
     wuss_icon_set_caret(win_w, icons[1], 0);
     wuss_icon_delete(win_w, icons[1]);
-    if (wuss->caret_icon != NULL) goto Failure;
+    if (wuss->caret.icon != NULL) goto Failure;
 
     wuss_icon_set_caret(win_w, icons[2], 0); /* hidden: refused */
     wuss_window_close(win_w);
-    if (wuss->caret_window != NULL) goto Failure;
+    if (wuss->caret.window != NULL) goto Failure;
     rc = wuss_redraw_dirty(wuss);
     if (rc != result_OK) goto Failure;
   }
@@ -3120,7 +3150,7 @@ result_t wuss_test(const char *resources)
      * visible box, furniture included) instead of &before_content, so the
      * old titlebar/outline/scrollbar strips got queued twice -- once from
      * that call, once from wuss__furniture_invalidate -- as two rects that
-     * mark_region's containment/shared-edge merge doesn't fold together,
+     * box_list_add's containment/shared-edge merge doesn't fold together,
      * so wuss_redraw_dirty painted the overlap twice. */
     static test_task_t tc_h;
     wuss_task_t       *delegate_h;
@@ -3933,7 +3963,7 @@ result_t wuss_test(const char *resources)
      * needs less scroll and the clamp pulls the offset back) reads its blit
      * source straight from wuss__clip_to_visible over the *old* content box,
      * unlike wuss_window_move/wuss_window_set_scroll which both also strip
-     * anything still sitting in wuss->dirty[] (queued by an earlier call this
+     * anything still sitting in wuss->dirty.box[] (queued by an earlier call this
      * same frame, not yet painted). An interactive drag delivers several
      * resize calls before a redraw ever runs: one grow queues its
      * newly-exposed sliver dirty without painting it; that sliver sits
@@ -6103,6 +6133,35 @@ result_t wuss_test(const char *resources)
     mk_task_count = 0; /* delegate_ac reaped itself; drop the stale entry */
   }
 
+  printf("test: destroying a parent task destroys the tasks created under it\n");
+  {
+    static test_task_t tc_par, tc_kid1, tc_kid2, tc_other;
+    wuss_task_t       *par, *kid1, *kid2, *other;
+
+    memset(&tc_par, 0, sizeof(tc_par));
+    memset(&tc_kid1, 0, sizeof(tc_kid1));
+    memset(&tc_kid2, 0, sizeof(tc_kid2));
+    memset(&tc_other, 0, sizeof(tc_other));
+
+    par = mk_task(wuss, test_handle, &tc_par);
+    if (par == NULL) goto Failure;
+
+    wuss_set_task_parent(wuss, par);
+    kid1 = mk_task(wuss, test_handle, &tc_kid1);
+    kid2 = mk_task(wuss, test_handle, &tc_kid2);
+    wuss_set_task_parent(wuss, NULL);
+    other = mk_task(wuss, test_handle, &tc_other);
+    if (kid1 == NULL || kid2 == NULL || other == NULL) goto Failure;
+
+    wuss_task_destroy(par);
+    mk_task_count = 0; /* par and its kids are gone; drop the stale entries */
+    mk_task_reg[mk_task_count++] = other;
+
+    if (tc_par.stop_count != 1 || tc_kid1.stop_count != 1 ||
+        tc_kid2.stop_count != 1 || tc_other.stop_count != 0)
+      goto Failure;
+  }
+
   printf("test: a task reaping itself from inside wuss_idle does not derail the task walk\n");
   {
     static test_task_t tc_w1, tc_w2, tc_w3;
@@ -6520,7 +6579,7 @@ FontMenuOK: ;
       rc = wuss_redraw_dirty(cmwuss);
       if (rc != result_OK) goto ColourMenuFail;
 
-      wuss_menu_close(cmwuss->menu_chain);
+      wuss_menu_close(cmwuss->menu.chain);
       wuss_destroy(cmwuss);
       free(cmpixels);
       bmfont_destroy(cmfont);
@@ -6622,11 +6681,11 @@ ColourMenuOK: ;
     ev.data.icon.value   = 0;
     if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || ssrc != result_OK)
       goto StringSetFail;
-    if (sswuss->menu_chain == NULL) goto StringSetFail;
+    if (sswuss->menu.chain == NULL) goto StringSetFail;
 
     /* a pick of another entry updates the index and fires the callback */
     ev.kind                    = wuss_EVENT_MENU_SELECT;
-    ev.data.menu_select.menu   = wuss_menu_handle_menu(sswuss->menu_chain);
+    ev.data.menu_select.menu   = wuss_menu_handle_menu(sswuss->menu.chain);
     ev.data.menu_select.index  = 2;
     ev.data.menu_select.button = wuss_BUTTON_ADJUST;
     if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || ssrc != result_OK)
@@ -6644,7 +6703,7 @@ ColourMenuOK: ;
 
     /* destroying it closes the menu */
     wuss_stringset_destroy(ss);
-    if (sswuss->menu_chain != NULL) goto StringSetFail;
+    if (sswuss->menu.chain != NULL) goto StringSetFail;
 
     /* once the chain is freed behind the gadget -- after a Select pick, or
      * a wuss-initiated close reported by MENU_CLOSED -- destroying it must
@@ -6663,20 +6722,20 @@ ColourMenuOK: ;
       ev.data.icon.value  = 0;
       if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || ssrc != result_OK)
         goto StringSetFail;
-      if (sswuss->menu_chain == NULL) goto StringSetFail;
+      if (sswuss->menu.chain == NULL) goto StringSetFail;
 
       if (i == 0)
       {
         ev.kind                    = wuss_EVENT_MENU_SELECT;
-        ev.data.menu_select.menu   = wuss_menu_handle_menu(sswuss->menu_chain);
+        ev.data.menu_select.menu   = wuss_menu_handle_menu(sswuss->menu.chain);
         ev.data.menu_select.index  = 1;
         ev.data.menu_select.button = wuss_BUTTON_SELECT;
         if (!wuss_stringset_handle_event(ss, &ev, &ssrc)) goto StringSetFail;
-        wuss_menu_close(sswuss->menu_chain); /* as wuss does after Select */
+        wuss_menu_close(sswuss->menu.chain); /* as wuss does after Select */
       }
       else
       {
-        wuss_menu_close(sswuss->menu_chain); /* as a click outside does */
+        wuss_menu_close(sswuss->menu.chain); /* as a click outside does */
         ev.kind = wuss_EVENT_MENU_CLOSED;
         if (wuss_stringset_handle_event(ss, &ev, &ssrc)) goto StringSetFail;
       }
@@ -6712,6 +6771,7 @@ StringSetOK: ;
     wuss_event_t     ev;
     box_t            gvcontent;
     int              cell_h;
+    int              cell_w;
     int              activated;
 
     gvfontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
@@ -6764,6 +6824,30 @@ StringSetOK: ;
     if (gvwin->doc.h % (int) NELEMS(gridview_test_labels) != 0) goto GridViewFail;
     cell_h = gvwin->doc.h / (int) NELEMS(gridview_test_labels);
 
+    /* one column fits, and natural sizing and cell boxes follow the
+     * layout */
+    cell_w = wuss_gridview_get_cell_size(gv).w;
+    if (wuss_gridview_get_columns(gv) != 1) goto GridViewFail;
+
+    /* the minimum width is one column; wuss_KEEP leaves an axis alone */
+    if (gvwin->min_doc.w != wuss_gridview_width_for_columns(gv, 1)) goto GridViewFail;
+    if (wuss_window_set_min_size(gvwin, SIZE2D(wuss_KEEP, 9)) != result_OK) goto GridViewFail;
+    if (gvwin->min_doc.h != 9 ||
+        gvwin->min_doc.w != wuss_gridview_width_for_columns(gv, 1)) goto GridViewFail;
+    if (wuss_window_set_min_size(gvwin, SIZE2D(-2, 0)) != result_BAD_ARG) goto GridViewFail;
+    if (wuss_gridview_width_for_columns(gv, 3) != 3 * cell_w) goto GridViewFail;
+    if (wuss_gridview_natural_size(gv, 3, 1).h != cell_h) goto GridViewFail;
+    if (wuss_gridview_cell_box(gv, 1).y0 != cell_h) goto GridViewFail;
+
+    /* RELAYOUT and PALETTE re-measure without consuming the event */
+    ev.kind = wuss_EVENT_RELAYOUT;
+    if (wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+
+    /* an inset widens the width for a column count */
+    wuss_gridview_set_layout(gv, 0, 1, 4);
+    if (wuss_gridview_width_for_columns(gv, 2) != 2 * cell_w + 8) goto GridViewFail;
+    wuss_gridview_set_layout(gv, 0, 0, 0);
+
     /* a foreign event is declined */
     ev.kind = wuss_EVENT_IDLE;
     if (wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
@@ -6806,11 +6890,77 @@ StringSetOK: ;
     if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
     if (activated != 1) goto GridViewFail;
 
-    /* a DOWN on empty space (past the last row) clears the selection */
-    ev.data.mouse.point  = POINT(2, 2 + cell_h * (int) NELEMS(gridview_test_labels));
+    /* the activated item is deselected */
+    if (wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+
+    /* a hit test finds items by document point, and misses past the last */
+    if (wuss_gridview_hit_test(gv, POINT(2, 2 + cell_h)) != 1) goto GridViewFail;
+    if (wuss_gridview_hit_test(gv, POINT(2, 2 + cell_h * (int) NELEMS(gridview_test_labels))) != -1)
+      goto GridViewFail;
+
+    /* Select on an already-selected item changes nothing: the rest of the
+     * selection stays */
     ev.data.mouse.button = wuss_BUTTON_SELECT;
     if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
-    if (wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+    ev.data.mouse.point  = POINT(2, 2);
+    ev.data.mouse.button = wuss_BUTTON_ADJUST;
+    if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+    ev.data.mouse.button = wuss_BUTTON_SELECT;
+    if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+    if (!wuss_gridview_is_selected(gv, 0) ||
+        !wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+
+    /* Adjust on empty space leaves the selection alone */
+    ev.data.mouse.point  = POINT(2, 2 + cell_h * (int) NELEMS(gridview_test_labels));
+    ev.data.mouse.button = wuss_BUTTON_ADJUST;
+    if (wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+    if (!wuss_gridview_is_selected(gv, 0) ||
+        !wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+
+    /* Select on empty space clears the selection */
+    ev.data.mouse.button = wuss_BUTTON_SELECT;
+    if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+    if (wuss_gridview_is_selected(gv, 0) ||
+        wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+
+    /* a press and a move past the drag threshold offers the item to the drag
+     * callback, once */
+    wuss_gridview_set_drag(gv, gridview_test_drag);
+    ev.data.mouse.point  = POINT(2, 2 + cell_h);
+    ev.data.mouse.button = wuss_BUTTON_SELECT;
+    ev.data.mouse.action = wuss_MOUSE_DOWN;
+    (void) wuss_gridview_handle_event(gv, &ev);
+    activated            = -1;
+    ev.data.mouse.action = wuss_MOUSE_MOVE;
+    ev.data.mouse.point  = POINT(3, 2 + cell_h);
+    (void) wuss_gridview_handle_event(gv, &ev);
+    if (activated != -1) goto GridViewFail;
+    ev.data.mouse.point  = POINT(30, 2 + cell_h);
+    (void) wuss_gridview_handle_event(gv, &ev);
+    if (activated != 1) goto GridViewFail;
+    activated = -1;
+    (void) wuss_gridview_handle_event(gv, &ev);
+    if (activated != -1) goto GridViewFail;
+
+    /* leaving the window forgets a press */
+    ev.data.mouse.action = wuss_MOUSE_DOWN;
+    ev.data.mouse.point  = POINT(2, 2 + cell_h);
+    (void) wuss_gridview_handle_event(gv, &ev);
+    ev.kind = wuss_EVENT_POINTER_EXIT;
+    (void) wuss_gridview_handle_event(gv, &ev);
+    ev.kind              = wuss_EVENT_MOUSE;
+    ev.data.mouse.action = wuss_MOUSE_MOVE;
+    ev.data.mouse.point  = POINT(30, 2 + cell_h);
+    (void) wuss_gridview_handle_event(gv, &ev);
+    if (activated != -1) goto GridViewFail;
+    wuss_gridview_set_drag(gv, NULL);
+
+    /* select all, then clear */
+    wuss_gridview_select_all(gv);
+    if (wuss_gridview_selected_count(gv) != (int) NELEMS(gridview_test_labels))
+      goto GridViewFail;
+    wuss_gridview_clear_selection(gv);
+    if (wuss_gridview_selected_count(gv) != 0) goto GridViewFail;
 
     wuss_gridview_destroy(gv);
 
@@ -6824,6 +6974,94 @@ GridViewFail:
     printf("wuss_test: gridview check failed\n");
     return result_TEST_FAILED;
 GridViewOK: ;
+  }
+
+  printf("test: wuss_resize relays out a gridview window\n");
+  {
+    const char      *rlfontfile;
+    bmfont_t        *rlfont;
+    screen_t         rlscr, rlsmall;
+    bitmap_t         rlbm, rlsmallbm;
+    void            *rlpixels, *rlsmallpixels;
+    wuss_t          *rlwuss;
+    wuss_font_desc_t rlfdesc;
+    wuss_task_t     *rlowner;
+    wuss_window_t   *rlwin;
+    wuss_gridview_t *rlgv;
+    box_t            rlcontent, rlbounds;
+    int              big_doc_w;
+    int              min_w;
+
+    rlfontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
+    rc = bmfont_create(rlfontfile, &rlfont);
+    if (rc != result_OK) goto RelayoutFail;
+
+    rlpixels      = malloc((size_t) rowbytes * 300);
+    rlsmallpixels = malloc((size_t) rowbytes * 100);
+    if (rlpixels == NULL || rlsmallpixels == NULL) { rc = result_OOM; goto RelayoutFail; }
+    rc = bitmap_init(&rlbm, SIZE2D(300, 300), pixelfmt_bgrx8888, rowbytes,
+                     NULL, rlpixels);
+    if (rc != result_OK) goto RelayoutFail;
+    rc = bitmap_init(&rlsmallbm, SIZE2D(100, 100), pixelfmt_bgrx8888,
+                     rowbytes, NULL, rlsmallpixels);
+    if (rc != result_OK) goto RelayoutFail;
+    screen_for_bitmap(&rlscr, &rlbm);
+    screen_for_bitmap(&rlsmall, &rlsmallbm);
+
+    rlfdesc.font       = rlfont;
+    rlfdesc.font_class = wuss_FONT_CLASS_NONE;
+    rlfdesc.name       = NULL;
+    rc = wuss_create(&rlscr, &rlfdesc, 1, NULL, 0, NULL, NULL, resources,
+                     &rlwuss);
+    if (rc != result_OK) goto RelayoutFail;
+
+    rlowner = mk_task(rlwuss, gridview_forward, NULL);
+    if (rlowner == NULL) { rc = result_OOM; goto RelayoutFail; }
+
+    rlbounds = (box_t) BOX_POS_SIZE(10, 10, 280, 200);
+    rc = wuss_window_create(rlowner, &rlbounds, "RL", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP, SIZE2D(280, 200),
+                            SIZE2D(0, 0), &rlwin);
+    if (rc != result_OK) goto RelayoutFail;
+
+    rc = wuss_gridview_create(&rlgv, rlwin, NELEMS(gridview_test_labels),
+                              gridview_test_item, 8, NULL, NULL);
+    if (rc != result_OK) goto RelayoutFail;
+    gridview_forward_target = rlgv; /* events now reach the gridview */
+
+    big_doc_w = rlwin->doc.w;
+    min_w     = wuss_gridview_width_for_columns(rlgv, 1);
+
+    /* a smaller screen shrinks the window to it, the gridview rewraps to
+     * fit and the extent falls with the screen */
+    rc = wuss_resize(rlwuss, &rlsmall);
+    if (rc != result_OK) goto RelayoutFail;
+    wuss_window_get_content_bounds(rlwin, &rlcontent);
+    if (rlcontent.x1 > 100 || rlcontent.y1 > 100) goto RelayoutFail;
+    if (rlwin->doc.w >= big_doc_w) goto RelayoutFail;
+    if (wuss_gridview_get_columns(rlgv) < 1) goto RelayoutFail;
+    if (rlwin->min_doc.w != min_w) goto RelayoutFail;
+
+    /* a bigger screen raises the extent again so the window can be dragged
+     * wider */
+    rc = wuss_resize(rlwuss, &rlscr);
+    if (rc != result_OK) goto RelayoutFail;
+    if (rlwin->doc.w != big_doc_w) goto RelayoutFail;
+
+    wuss_gridview_destroy(rlgv);
+    gridview_forward_target = NULL;
+
+    reap_test_tasks();
+    wuss_destroy(rlwuss);
+    free(rlpixels);
+    free(rlsmallpixels);
+    bmfont_destroy(rlfont);
+    goto RelayoutOK;
+
+RelayoutFail:
+    printf("wuss_test: gridview relayout check failed\n");
+    return result_TEST_FAILED;
+RelayoutOK: ;
   }
 #endif /* WUSS_GADGETS */
 
@@ -6919,12 +7157,12 @@ GridViewOK: ;
     ev.data.icon.value   = 0;
     if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
       goto ColourSetFail;
-    if (cswuss->menu_chain == NULL) goto ColourSetFail;
+    if (cswuss->menu.chain == NULL) goto ColourSetFail;
 
     /* an Adjust pick of another colour refills the field and fires the
      * callback, keeping the menu open */
     ev.kind                    = wuss_EVENT_MENU_SELECT;
-    ev.data.menu_select.menu   = wuss_menu_handle_menu(cswuss->menu_chain);
+    ev.data.menu_select.menu   = wuss_menu_handle_menu(cswuss->menu.chain);
     ev.data.menu_select.index  = 1;
     ev.data.menu_select.button = wuss_BUTTON_ADJUST;
     if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
@@ -6946,7 +7184,7 @@ GridViewOK: ;
 
     /* a Select pick: wuss closes the chain and delivers MENU_CLOSED (picked)
      * before MENU_SELECT, which is still the gadget's */
-    wuss_menu_close(cswuss->menu_chain);
+    wuss_menu_close(cswuss->menu.chain);
     ev.kind                    = wuss_EVENT_MENU_CLOSED;
     ev.data.menu_closed.picked = 1;
     if (wuss_colourset_handle_event(cs, &ev, &csrc)) goto ColourSetFail;
@@ -6969,7 +7207,7 @@ GridViewOK: ;
     ev.data.icon.value   = 0;
     if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
       goto ColourSetFail;
-    wuss_menu_close(cswuss->menu_chain); /* as a click outside does */
+    wuss_menu_close(cswuss->menu.chain); /* as a click outside does */
     ev.kind                    = wuss_EVENT_MENU_CLOSED;
     ev.data.menu_closed.picked = 0;
     if (wuss_colourset_handle_event(cs, &ev, &csrc)) goto ColourSetFail;
@@ -6988,7 +7226,7 @@ GridViewOK: ;
     if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
       goto ColourSetFail;
     wuss_colourset_destroy(cs);
-    if (cswuss->menu_chain != NULL) goto ColourSetFail;
+    if (cswuss->menu.chain != NULL) goto ColourSetFail;
 
     reap_test_tasks();
     wuss_destroy(cswuss);
@@ -7247,7 +7485,7 @@ SaveAsOK: ;
     rc = wuss_menu_open(fowner, &flash_menu, POINT(40, 40), NULL);
     if (rc != result_OK) goto FlashDestroy;
 
-    chain = fwuss->menu_chain;
+    chain = fwuss->menu.chain;
     if (chain == NULL || chain->menu != &flash_menu) goto FlashCheckFail;
 
     flash_pick_row(fwuss, chain, 1, wuss_BUTTON_SELECT);
@@ -7260,12 +7498,12 @@ SaveAsOK: ;
 
     if (ftc.menu_select_count != 1)  goto FlashCheckFail;
     if (ftc.last_menu_index != 1)    goto FlashCheckFail;
-    if (fwuss->menu_chain != NULL)   goto FlashCheckFail; /* SELECT tore it down */
+    if (fwuss->menu.chain != NULL)   goto FlashCheckFail; /* SELECT tore it down */
 
     /* --- fast ADJUST re-picks: row 0, then row 2 mid-flash --- */
     rc = wuss_menu_open(fowner, &flash_menu, POINT(40, 40), NULL);
     if (rc != result_OK) goto FlashDestroy;
-    chain = fwuss->menu_chain;
+    chain = fwuss->menu.chain;
     ftc.menu_select_count = 0;
 
     flash_pick_row(fwuss, chain, 0, wuss_BUTTON_ADJUST);
@@ -7287,9 +7525,9 @@ SaveAsOK: ;
     /* ADJUST keeps the chain open. The flash ends un-highlit, but the pointer
      * is still parked on row 2 (flash_pick_row left it there) so that row --
      * and only that row -- comes back highlit. */
-    if (fwuss->menu_chain == NULL)  goto FlashCheckFail;
+    if (fwuss->menu.chain == NULL)  goto FlashCheckFail;
     for (i = 0; i < flash_menu.nitems; i++)
-      if (wuss__icon_hovered(fwuss->menu_chain->icons[i]) != (i == 2))
+      if (wuss__icon_hovered(fwuss->menu.chain->icons[i]) != (i == 2))
         goto FlashCheckFail;
 
     /* --- the chain lives in the top stack, so a window opened meanwhile
@@ -7317,7 +7555,7 @@ FlashCheckFail:
     printf("wuss_test: menu flash check failed "
            "(select_count=%d last_index=%d chain=%p)\n",
            ftc.menu_select_count, ftc.last_menu_index,
-           (void *) fwuss->menu_chain);
+           (void *) fwuss->menu.chain);
     rc = result_TEST_FAILED;
 
 FlashDestroy:
@@ -7395,7 +7633,7 @@ FlashFail:
     rc = wuss_menu_open(sowner, &sm_menu, POINT(40, 40), NULL);
     if (rc != result_OK) goto SubHiDestroy;
 
-    root = swuss->menu_chain;
+    root = swuss->menu.chain;
     if (root == NULL || root->menu != &sm_menu) goto SubHiCheckFail;
 
     /* pointer onto row 1's arrow gutter: its submenu opens */
@@ -7535,7 +7773,7 @@ SubHiFail:
     rc = wuss_menu_open(powner, &po_menu, POINT(40, 40), NULL);
     if (rc != result_OK) goto PreOpenDestroy;
 
-    proot = pwuss->menu_chain;
+    proot = pwuss->menu.chain;
     if (proot == NULL || proot->menu != &po_menu) goto PreOpenCheckFail;
 
     /* row 0 unflagged: opens po_sub_a directly, no PRE_SUBMENU_OPEN fired */
@@ -7659,7 +7897,7 @@ PreOpenFail:
     rc = wuss_menu_open(powner, &pw_menu, POINT(40, 40), NULL);
     if (rc != result_OK) goto PwDestroy;
 
-    proot = pwuss->menu_chain;
+    proot = pwuss->menu.chain;
     if (proot == NULL || proot->menu != &pw_menu) goto PwCheckFail;
 
     /* row 0 unflagged: still goes through the plain wuss_window_set_hidden
@@ -7762,8 +8000,8 @@ PwFail:
 
     rc = wuss_menu_open(sowner, &sc_menu, POINT(10, 20), NULL);
     if (rc != result_OK) goto ScDestroy;
-    plain_w = swuss->menu_chain->window->doc.w;
-    wuss_menu_close(swuss->menu_chain);
+    plain_w = swuss->menu.chain->window->doc.w;
+    wuss_menu_close(swuss->menu.chain);
 
     /* one font only, so the "bold" shortcut measures in the system font */
     sc_items[0].shortcut = "WWW";
@@ -7772,7 +8010,7 @@ PwFail:
 
     rc = wuss_menu_open(sowner, &sc_menu, POINT(10, 20), NULL);
     if (rc != result_OK) goto ScDestroy;
-    sroot = swuss->menu_chain;
+    sroot = swuss->menu.chain;
     if (sroot->window->doc.w < plain_w + (int) shortcut_w)
     {
       printf("wuss_test: shortcut menu width %d, want >= %d + %d\n",
@@ -7940,8 +8178,8 @@ ScFail:
                      wuss_MOUSE_UP, NULL);
 
     if (mta.menu_press_count != 1)            goto MoveCheckFail;
-    if (mwuss->menu_chain == NULL ||
-        mwuss->menu_chain->menu != &menu_a)   goto MoveCheckFail;
+    if (mwuss->menu.chain == NULL ||
+        mwuss->menu.chain->menu != &menu_a)   goto MoveCheckFail;
 
     /* MENU over B while menu A is still open: the old chain must close AND
      * task B must get the press so menu B opens in its place. Regression:
@@ -7953,8 +8191,8 @@ ScFail:
                      wuss_MOUSE_UP, NULL);
 
     if (mtb.menu_press_count != 1)            goto MoveCheckFail;
-    if (mwuss->menu_chain == NULL ||
-        mwuss->menu_chain->menu != &menu_b)   goto MoveCheckFail;
+    if (mwuss->menu.chain == NULL ||
+        mwuss->menu.chain->menu != &menu_b)   goto MoveCheckFail;
 
     /* replacing menu A's chain told task A its handle was gone */
     if (mta.menu_closed_count != 1)           goto MoveCheckFail;
@@ -7963,7 +8201,7 @@ ScFail:
     /* a plain SELECT press on bare backdrop still just dismisses */
     wuss_mouse_click(mwuss, POINT(4, 196), wuss_BUTTON_SELECT,
                      wuss_MOUSE_DOWN, NULL);
-    if (mwuss->menu_chain != NULL)            goto MoveCheckFail;
+    if (mwuss->menu.chain != NULL)            goto MoveCheckFail;
 
     /* the click-outside dismissal told task B too. Regression: before the
      * MENU_CLOSED fix wuss freed the chain here without telling task B, so
@@ -7972,7 +8210,7 @@ ScFail:
     if (mtb.menu_closed_count != 1)           goto MoveCheckFail;
     if (mtb.menu_handle != NULL)              goto MoveCheckFail;
     wuss_menu_close(mtb.menu_handle); /* NULL now: safe no-op */
-    if (mwuss->menu_chain != NULL)            goto MoveCheckFail;
+    if (mwuss->menu.chain != NULL)            goto MoveCheckFail;
 
     {
       int claimed;
@@ -7984,11 +8222,11 @@ ScFail:
                        wuss_MOUSE_DOWN, NULL);
       wuss_mouse_click(mwuss, POINT(20, 20), wuss_BUTTON_MENU,
                        wuss_MOUSE_UP, NULL);
-      if (mwuss->menu_chain == NULL)          goto MoveCheckFail;
+      if (mwuss->menu.chain == NULL)          goto MoveCheckFail;
 
       wuss_key(mwuss, wuss_KEY_ESCAPE, wuss_KEY_MOD_NONE, &claimed);
       if (!claimed)                           goto MoveCheckFail;
-      if (mwuss->menu_chain != NULL)          goto MoveCheckFail;
+      if (mwuss->menu.chain != NULL)          goto MoveCheckFail;
       if (mta.menu_closed_count != 2)         goto MoveCheckFail;
       if (mta.menu_handle != NULL)            goto MoveCheckFail;
     }
@@ -8000,7 +8238,7 @@ MoveCheckFail:
     printf("wuss_test: menu-move check failed "
            "(a_press=%d b_press=%d chain=%p)\n",
            mta.menu_press_count, mtb.menu_press_count,
-           (void *) mwuss->menu_chain);
+           (void *) mwuss->menu.chain);
     rc = result_TEST_FAILED;
 
 MoveDestroy:
@@ -8083,7 +8321,7 @@ MoveFail:
                      wuss_MOUSE_DOWN, NULL);
     wuss_mouse_click(qwuss, POINT(20, 20), wuss_BUTTON_MENU,
                      wuss_MOUSE_UP, NULL);
-    if (qwuss->menu_chain == NULL)           goto QuitCheckFail;
+    if (qwuss->menu.chain == NULL)           goto QuitCheckFail;
     if (qmt.menu_handle == NULL)             goto QuitCheckFail;
 
     /* Phase 1: wuss_task_destroy on the chain's owner. It abandons the chain
@@ -8093,7 +8331,7 @@ MoveFail:
      * chain (ASan: heap-use-after-free in wuss_menu_close). */
     reap_test_tasks();
     if (qmt.menu_handle != NULL)             goto QuitCheckFail;
-    if (qwuss->menu_chain != NULL)           goto QuitCheckFail;
+    if (qwuss->menu.chain != NULL)           goto QuitCheckFail;
 
     /* Phase 1b: an autoclose task losing its last window with its chain
      * still open. Its self-reap must abandon the chain before QUIT, as
@@ -8114,13 +8352,13 @@ MoveFail:
                      wuss_MOUSE_DOWN, NULL);
     wuss_mouse_click(qwuss, POINT(20, 20), wuss_BUTTON_MENU,
                      wuss_MOUSE_UP, NULL);
-    if (qwuss->menu_chain == NULL)           goto QuitCheckFail;
+    if (qwuss->menu.chain == NULL)           goto QuitCheckFail;
 
     forget_test_tasks(); /* the autoclose reap below frees task_q */
     wuss_window_close(wq);
     if (qmt.menu_closed_count != 1)          goto QuitCheckFail;
     if (qmt.menu_handle != NULL)             goto QuitCheckFail;
-    if (qwuss->menu_chain != NULL)           goto QuitCheckFail;
+    if (qwuss->menu.chain != NULL)           goto QuitCheckFail;
 
     /* Phase 1c: a window opened as a menu of its own (wuss_menu_open_window,
      * as a Save As dialogue from ^S) and then closed by its client. The close
@@ -8141,13 +8379,13 @@ MoveFail:
     if (rc != result_OK) goto QuitDestroy;
     rc = wuss_menu_open_window(task_q, wq, POINT(20, 20), &qmt.menu_handle);
     if (rc != result_OK) goto QuitDestroy;
-    if (qwuss->menu_chain == NULL)           goto QuitCheckFail;
+    if (qwuss->menu.chain == NULL)           goto QuitCheckFail;
     if (wq->flags & wuss_WINDOW_HIDDEN)      goto QuitCheckFail;
 
     wuss_window_close(wq);
     if (qmt.menu_closed_count != 1)          goto QuitCheckFail;
     if (qmt.menu_handle != NULL)             goto QuitCheckFail;
-    if (qwuss->menu_chain != NULL)           goto QuitCheckFail;
+    if (qwuss->menu.chain != NULL)           goto QuitCheckFail;
     reap_test_tasks();
 
     /* Phase 1d: a core drag started from a window leaf (a Save As file icon)
@@ -8180,7 +8418,7 @@ MoveFail:
       WUSS_MENU_TITLE(d_menu, "D", d_items, NELEMS(d_items));
       rc = wuss_menu_open(task_q, &d_menu, POINT(20, 40), &qmt.menu_handle);
       if (rc != result_OK) goto QuitDestroy;
-      root = qwuss->menu_chain;
+      root = qwuss->menu.chain;
 
       /* hover the row's arrow (its rightmost pixel) to open the leaf */
       wuss__content_box(root->window, &content);
@@ -8226,7 +8464,7 @@ MoveFail:
                      wuss_MOUSE_DOWN, NULL);
     wuss_mouse_click(qwuss, POINT(20, 20), wuss_BUTTON_MENU,
                      wuss_MOUSE_UP, NULL);
-    if (qwuss->menu_chain == NULL)           goto QuitCheckFail;
+    if (qwuss->menu.chain == NULL)           goto QuitCheckFail;
 
     forget_test_tasks(); /* drop task_q from the registry; wuss_destroy frees it */
     wuss_destroy(qwuss); /* QUIT -> task_q closes the chain; must not fault */
@@ -8237,7 +8475,7 @@ MoveFail:
 
 QuitCheckFail:
     printf("wuss_test: menu-quit check failed (chain=%p handle=%p)\n",
-           (void *) qwuss->menu_chain, (void *) qmt.menu_handle);
+           (void *) qwuss->menu.chain, (void *) qmt.menu_handle);
     rc = result_TEST_FAILED;
     goto QuitDestroy;
 
@@ -8965,35 +9203,46 @@ QuitFail:
     wuss_window_close(win_sl);
   }
 
-  printf("test: wuss_icons_load scans resources/wuss/icons and compresses\n");
+  printf("test: wuss_iconpool_load scans resources/wuss/iconpool and compresses\n");
 
   {
     const bitmap_t *icon_bm;
     int             idx, opton, count;
 
-    rc = wuss_icons_load_resource(wuss, resources);
+    rc = wuss_iconpool_load_resource(wuss, resources);
     if (rc != result_OK)
       goto Failure;
 
-    /* resources/wuss/icons/ may carry more than these four fixtures
+    /* resources/wuss/iconpool/ may carry more than these four fixtures
      * (optoff/opton/radoff/radon), so just require they're all present. */
-    count = wuss_icons_count(wuss);
+    count = wuss_iconpool_count(wuss);
     if (count < 4)
       goto Failure;
 
-    opton = wuss_icons_lookup(wuss, "opton");
-    if (opton < 0 || wuss_icons_lookup(wuss, "radoff") < 0)
+    opton = wuss_iconpool_lookup(wuss, "opton");
+    if (opton < 0 || wuss_iconpool_lookup(wuss, "radoff") < 0)
       goto Failure;
-    if (wuss_icons_lookup(wuss, "nonesuch") != -1)
+    if (wuss_iconpool_lookup(wuss, "nonesuch") != -1)
       goto Failure;
 
-    icon_bm = wuss_icons_bitmap(wuss, opton);
+    icon_bm = wuss_iconpool_bitmap(wuss, opton);
     if (icon_bm == NULL || !bitmap_is_compressed(icon_bm))
       goto Failure;
-    if (wuss_icons_bitmap(wuss, count) != NULL)
+    if (wuss_iconpool_bitmap(wuss, count) != NULL)
       goto Failure;
 
-    /* an icon spec picks it up by index via wuss_ICON_SET */
+    /* entries are sorted by name, whatever order the directory scan gave */
+    if (!(wuss_iconpool_lookup(wuss, "apps") <
+          wuss_iconpool_lookup(wuss, "gright") &&
+          wuss_iconpool_lookup(wuss, "gright") <
+          wuss_iconpool_lookup(wuss, "optoff") &&
+          wuss_iconpool_lookup(wuss, "optoff") < opton &&
+          opton < wuss_iconpool_lookup(wuss, "radoff") &&
+          wuss_iconpool_lookup(wuss, "radoff") <
+          wuss_iconpool_lookup(wuss, "radon")))
+      goto Failure;
+
+    /* an icon spec picks it up by index via wuss_ICONPOOL_SET */
     {
       static test_task_t tc_ic;
       wuss_task_t       *delegate_ic;
@@ -9016,26 +9265,64 @@ QuitFail:
       memset(&spec, 0, sizeof(spec));
       spec.bbox     = (box_t) BOX_POS_SIZE(0, 0, 16, 16);
       spec.type     = wuss_ICON_TYPE_BITMAP;
-      spec.u.bitmap.set = wuss_ICON_SET(opton);
+      spec.u.bitmap.set = wuss_ICONPOOL_SET(opton);
       rc = wuss_icon_create(win_ic, &spec, &icon);
       if (rc != result_OK)
         goto Failure;
 
       /* a pressed image resolves the same way */
       spec.u.bitmap.pressed_set =
-        wuss_ICON_SET(wuss_icons_lookup(wuss, "radon"));
+        wuss_ICONPOOL_SET(wuss_iconpool_lookup(wuss, "radon"));
       rc = wuss_icon_create(win_ic, &spec, &icon);
       if (rc != result_OK)
         goto Failure;
 
-      spec.u.bitmap.pressed_set = wuss_ICON_SET(99);
+      spec.u.bitmap.pressed_set = wuss_ICONPOOL_SET(99);
       if (wuss_icon_create(win_ic, &spec, &icon) != result_WUSS_BAD_INDEX)
         goto Failure;
       spec.u.bitmap.pressed_set = 0;
 
       /* a bogus index is rejected */
-      spec.u.bitmap.set = wuss_ICON_SET(99);
+      spec.u.bitmap.set = wuss_ICONPOOL_SET(99);
       if (wuss_icon_create(win_ic, &spec, &icon) != result_WUSS_BAD_INDEX)
+        goto Failure;
+
+      /* or by name, resolved to the pool bitmaps at creation; the borrowed
+       * names are not kept */
+      memset(&spec, 0, sizeof(spec));
+      spec.bbox                   = (box_t) BOX_POS_SIZE(0, 0, 16, 16);
+      spec.type                   = wuss_ICON_TYPE_BITMAP;
+      spec.u.bitmap.name          = "opton";
+      spec.u.bitmap.pressed_name  = "radon";
+      rc = wuss_icon_create(win_ic, &spec, &icon);
+      if (rc != result_OK)
+        goto Failure;
+      if (icon->spec.u.bitmap.image != wuss_iconpool_bitmap(wuss, opton) ||
+          icon->spec.u.bitmap.pressed_image !=
+            wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "radon")) ||
+          icon->spec.u.bitmap.name != NULL ||
+          icon->spec.u.bitmap.pressed_name != NULL)
+        goto Failure;
+
+      /* an explicit index wins over a name */
+      spec.u.bitmap.set = wuss_ICONPOOL_SET(wuss_iconpool_lookup(wuss, "radon"));
+      rc = wuss_icon_create(win_ic, &spec, &icon);
+      if (rc != result_OK ||
+          icon->spec.u.bitmap.image !=
+            wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "radon")))
+        goto Failure;
+      spec.u.bitmap.set = 0;
+
+      /* an unknown name warns but still creates (the icon draws the
+       * placeholder box); likewise an unknown pressed name */
+      spec.u.bitmap.name = "nonesuch";
+      rc = wuss_icon_create(win_ic, &spec, &icon);
+      if (rc != result_OK || icon->spec.u.bitmap.image != NULL)
+        goto Failure;
+      spec.u.bitmap.name         = "opton";
+      spec.u.bitmap.pressed_name = "nonesuch";
+      rc = wuss_icon_create(win_ic, &spec, &icon);
+      if (rc != result_OK || icon->spec.u.bitmap.pressed_image != NULL)
         goto Failure;
       rc = result_OK;
 
@@ -9043,11 +9330,11 @@ QuitFail:
     }
 
     /* a reload replaces the set cleanly (no leak, ASan would catch it) */
-    rc = wuss_icons_load_resource(wuss, resources);
-    if (rc != result_OK || wuss_icons_count(wuss) != count)
+    rc = wuss_iconpool_load_resource(wuss, resources);
+    if (rc != result_OK || wuss_iconpool_count(wuss) != count)
       goto Failure;
 
-    idx = wuss_icons_lookup(wuss, "optoff");
+    idx = wuss_iconpool_lookup(wuss, "optoff");
     if (idx < 0)
       goto Failure;
 
@@ -9060,7 +9347,7 @@ QuitFail:
       screen_t      p4scr;
       pixelfmt_t    fmt32;
 
-      icon_bm = wuss_icons_bitmap(wuss, opton);
+      icon_bm = wuss_iconpool_bitmap(wuss, opton);
       fmt32   = pixelfmt_base(icon_bm->format);
       if (fmt32 != pixelfmt_bgra8888 && fmt32 != pixelfmt_bgrx8888)
         goto Failure;
@@ -9074,7 +9361,7 @@ QuitFail:
       rc = wuss_resize(wuss, &p4scr);
       if (rc != result_OK)
         goto Failure;
-      if (wuss_icons_bitmap(wuss, opton) != icon_bm ||
+      if (wuss_iconpool_bitmap(wuss, opton) != icon_bm ||
           !bitmap_is_compressed(icon_bm) ||
           (pixelfmt_base(icon_bm->format) != pixelfmt_rgba8888 &&
            pixelfmt_base(icon_bm->format) != pixelfmt_rgbx8888))
@@ -9083,10 +9370,247 @@ QuitFail:
       rc = wuss_resize(wuss, &scr);
       if (rc != result_OK)
         goto Failure;
-      if (wuss_icons_bitmap(wuss, opton) != icon_bm ||
+      if (wuss_iconpool_bitmap(wuss, opton) != icon_bm ||
           pixelfmt_base(icon_bm->format) != fmt32)
         goto Failure;
     }
+  }
+
+  printf("test: wuss_iconpool_load keeps paletted icons uncompressed, compresses deep ones and fails the set on a bad PNG\n");
+
+  {
+    int idx;
+
+    rc = wuss_iconpool_load(wuss, pathf("%s/resources/wuss-test/icons",
+                                     resources));
+    if (rc != result_OK)
+      goto Failure;
+    if (wuss_iconpool_count(wuss) != 4)
+      goto Failure;
+
+    /* paletted PNGs can't be RLE-compressed, and stay as loaded: they must
+     * not abort the load or be dropped */
+    idx = wuss_iconpool_lookup(wuss, "pal2");
+    if (idx < 0 || wuss_iconpool_bitmap(wuss, idx)->format != pixelfmt_p2)
+      goto Failure;
+    idx = wuss_iconpool_lookup(wuss, "grey8");
+    if (idx < 0 || wuss_iconpool_bitmap(wuss, idx)->format != pixelfmt_p8)
+      goto Failure;
+
+    /* a grey+alpha PNG is expanded to 32bpp and so compresses like RGBA */
+    idx = wuss_iconpool_lookup(wuss, "greyalpha8");
+    if (idx < 0 || !bitmap_is_compressed(wuss_iconpool_bitmap(wuss, idx)))
+      goto Failure;
+    idx = wuss_iconpool_lookup(wuss, "rgba");
+    if (idx < 0 || !bitmap_is_compressed(wuss_iconpool_bitmap(wuss, idx)))
+      goto Failure;
+
+    /* a file that isn't a PNG fails the whole load */
+    if (wuss_iconpool_load(wuss, pathf("%s/resources/wuss-test/badicons",
+                                    resources)) == result_OK)
+      goto Failure;
+
+    /* put the standard set back for the tests that follow */
+    rc = wuss_iconpool_load_resource(wuss, resources);
+    if (rc != result_OK)
+      goto Failure;
+  }
+
+  printf("test: a task's private icon pool is searched before the shared one, falls back to it, and is freed with the task\n");
+
+  {
+    static test_task_t tc_pp;
+    wuss_task_t       *delegate_pp;
+    wuss_window_t     *win_pp;
+    wuss_icon_t       *icon;
+    wuss_icon_spec_t   spec;
+    box_t              box_pp;
+    const char        *dir_pp;
+    const bitmap_t    *priv;
+
+    dir_pp = pathf("%s/resources/wuss-test/icons", resources);
+
+    memset(&tc_pp, 0, sizeof(tc_pp));
+    delegate_pp = mk_task(wuss, test_handle, &tc_pp);
+    if (delegate_pp == NULL) goto Failure;
+
+    /* no private pool yet: only the shared pool answers */
+    if (wuss_task_iconpool_find(delegate_pp, "rgba") != NULL ||
+        wuss_task_iconpool_find(delegate_pp, "opton") !=
+          wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "opton")))
+      goto Failure;
+
+    rc = wuss_task_iconpool_load(delegate_pp, dir_pp);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* a private-only name is invisible to the shared pool */
+    priv = wuss_task_iconpool_find(delegate_pp, "rgba");
+    if (priv == NULL || wuss_iconpool_lookup(wuss, "rgba") != -1)
+      goto Failure;
+
+    /* a name the private pool lacks falls back to the shared one */
+    if (wuss_task_iconpool_find(delegate_pp, "opton") !=
+          wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "opton")) ||
+        wuss_task_iconpool_find(delegate_pp, "nonesuch") != NULL)
+      goto Failure;
+
+    /* icons in the task's windows resolve names privately first */
+    box_pp = (box_t) BOX_POS_SIZE(5, 5, 120, 100);
+    rc = wuss_window_create(delegate_pp, &box_pp, "PP", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_pp);
+    if (rc != result_OK)
+      goto Failure;
+
+    memset(&spec, 0, sizeof(spec));
+    spec.bbox          = (box_t) BOX_POS_SIZE(0, 0, 16, 16);
+    spec.type          = wuss_ICON_TYPE_BITMAP;
+    spec.u.bitmap.name = "rgba";
+    rc = wuss_icon_create(win_pp, &spec, &icon);
+    if (rc != result_OK || icon->spec.u.bitmap.image != priv)
+      goto Failure;
+
+    spec.u.bitmap.name = "opton";
+    rc = wuss_icon_create(win_pp, &spec, &icon);
+    if (rc != result_OK ||
+        icon->spec.u.bitmap.image != wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "opton")))
+      goto Failure;
+
+    /* another task's window can't see the private name: placeholder box */
+    {
+      static test_task_t tc_other;
+      wuss_task_t       *delegate_other;
+      wuss_window_t     *win_other;
+
+      memset(&tc_other, 0, sizeof(tc_other));
+      delegate_other = mk_task(wuss, test_handle, &tc_other);
+      if (delegate_other == NULL) goto Failure;
+
+      rc = wuss_window_create(delegate_other, &box_pp, "OT",
+                              wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                              SIZE2D(0, 0), SIZE2D(0, 0), &win_other);
+      if (rc != result_OK)
+        goto Failure;
+
+      spec.u.bitmap.name = "rgba";
+      rc = wuss_icon_create(win_other, &spec, &icon);
+      if (rc != result_OK || icon->spec.u.bitmap.image != NULL)
+        goto Failure;
+    }
+
+    /* a private name shadows the same name in the shared pool */
+    rc = wuss_iconpool_load(wuss, dir_pp);
+    if (rc != result_OK)
+      goto Failure;
+    if (wuss_task_iconpool_find(delegate_pp, "rgba") != priv ||
+        priv == wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "rgba")))
+      goto Failure;
+
+    /* a bad directory fails the load and leaves the pool empty, as for the
+     * shared pool; the task falls back to the shared one */
+    if (wuss_task_iconpool_load(delegate_pp,
+                                pathf("%s/resources/wuss-test/badicons",
+                                      resources)) == result_OK ||
+        wuss_task_iconpool_find(delegate_pp, "rgba") !=
+          wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "rgba")))
+      goto Failure;
+
+    /* the standard shared set goes back for the tests that follow; the
+     * private pool is freed with its task (ASan would catch a leak) */
+    rc = wuss_iconpool_load_resource(wuss, resources);
+    if (rc != result_OK)
+      goto Failure;
+    reap_test_tasks();
+  }
+
+  printf("test: a BITMAP or DRAGGABLE icon that can't be drawn leaves a red box, one that can doesn't\n");
+
+  {
+    static test_task_t         tc_rb;
+    static pixelfmt_rgba8888_t rgba_px[10 * 10];
+    static pixelfmt_bgrx8888_t bgrx_px[10 * 10];
+
+    wuss_task_t               *delegate_rb;
+    wuss_window_t             *win_rb;
+    wuss_icon_t               *icon;
+    wuss_icon_spec_t           spec;
+    box_t                      box_rb;
+    box_t                      content_rb;
+    bitmap_t                   rle_bm, plain_bm;
+    void                      *rle_blob;
+    pixelfmt_any_t             red;
+    int                        cx, cy, i;
+    unsigned int               px[3];
+
+    memset(&tc_rb, 0, sizeof(tc_rb));
+    delegate_rb = mk_task(wuss, test_handle, &tc_rb);
+    if (delegate_rb == NULL) goto Failure;
+
+    box_rb = (box_t) BOX_POS_SIZE(20, 20, 100, 100);
+    rc = wuss_window_create(delegate_rb, &box_rb, "RB", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_rb);
+    if (rc != result_OK)
+      goto Failure;
+
+    /* an rgba8888 RLE bitmap can't be blitted to this bgrx8888 screen */
+    for (i = 0; i < 10 * 10; i++)
+      rgba_px[i] = colour_rgb(0, 0, 255).primary;
+    rle_blob = malloc(sizeof(rgba_px));
+    if (rle_blob == NULL) goto Failure;
+    memcpy(rle_blob, rgba_px, sizeof(rgba_px));
+    rc = bitmap_init(&rle_bm, SIZE2D(10, 10), pixelfmt_rgba8888,
+                     10 * (int) sizeof(rgba_px[0]), NULL, rle_blob);
+    if (rc != result_OK) { free(rle_blob); goto Failure; }
+    rc = bitmap_compress(&rle_bm);
+    if (rc != result_OK) { free(rle_blob); goto Failure; }
+
+    /* a plain opaque blue bitmap in the screen's own format draws fine */
+    rc = bitmap_init(&plain_bm, SIZE2D(10, 10), pixelfmt_bgrx8888,
+                     10 * (int) sizeof(bgrx_px[0]), NULL, bgrx_px);
+    if (rc != result_OK) { free(rle_bm.base); goto Failure; }
+    bitmap_clear(&plain_bm, colour_rgb(0, 0, 255));
+
+    memset(&spec, 0, sizeof(spec));
+    spec.type = wuss_ICON_TYPE_BITMAP;
+
+    spec.bbox = (box_t) BOX_POS_SIZE(2, 2, 10, 10); /* undrawable */
+    spec.u.bitmap.image = &rle_bm;
+    rc = wuss_icon_create(win_rb, &spec, &icon);
+    if (rc != result_OK) { free(rle_bm.base); goto Failure; }
+
+    spec.bbox = (box_t) BOX_POS_SIZE(20, 2, 10, 10); /* drawable */
+    spec.u.bitmap.image = &plain_bm;
+    rc = wuss_icon_create(win_rb, &spec, &icon);
+    if (rc != result_OK) { free(rle_bm.base); goto Failure; }
+
+    spec.bbox = (box_t) BOX_POS_SIZE(38, 2, 10, 10); /* a blank draggable */
+    spec.type = wuss_ICON_TYPE_DRAGGABLE;
+    spec.u.bitmap.image = NULL;
+    rc = wuss_icon_create(win_rb, &spec, &icon);
+    if (rc != result_OK) { free(rle_bm.base); goto Failure; }
+
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK) { free(rle_bm.base); goto Failure; }
+
+    red = colour_to_pixel(NULL, 0, colour_rgb(255, 0, 0), pixelfmt_bgrx8888);
+    wuss_window_get_content_bounds(win_rb, &content_rb);
+    cy = content_rb.y0 + 2 + 5;
+    cx = content_rb.x0 + 2 + 5;
+    px[0] = ((const uint32_t *) pixels)[cy * 200 + cx];
+    px[1] = ((const uint32_t *) pixels)[cy * 200 + cx + 18];
+    px[2] = ((const uint32_t *) pixels)[cy * 200 + cx + 36];
+
+    if ((px[0] & 0xFFFFFF) != (red & 0xFFFFFF)) /* failed blit: red */
+      { free(rle_bm.base); goto Failure; }
+    if ((px[1] & 0xFFFFFF) == (red & 0xFFFFFF)) /* good blit: not red */
+      { free(rle_bm.base); goto Failure; }
+    if ((px[2] & 0xFFFFFF) != (red & 0xFFFFFF)) /* no bitmap at all: red */
+      { free(rle_bm.base); goto Failure; }
+
+    free(rle_bm.base);
+    wuss_window_close(win_rb);
   }
 
   printf("test: window stacks: top over middle over back, restack stays within a stack, set_stack relinks\n");
@@ -9191,22 +9715,51 @@ QuitFail:
 
     /* first icon creates the bar's window lazily, pinned to the bottom of
      * the 200x200 test screen and full width */
-    if (wuss->iconbar_window == NULL)
+    if (wuss->iconbar.window == NULL)
       goto Failure;
-    if (wuss->iconbar_window->visible.x0 != 0 ||
-        wuss->iconbar_window->visible.x1 != 200 ||
-        wuss->iconbar_window->visible.y1 != 200 ||
-        wuss->iconbar_window->visible.y0 != 200 - WUSS_ICONBAR_HEIGHT)
+    if (wuss->iconbar.window->visible.x0 != 0 ||
+        wuss->iconbar.window->visible.x1 != 200 ||
+        wuss->iconbar.window->visible.y1 != 200 ||
+        wuss->iconbar.window->visible.y0 != 200 - WUSS_ICONBAR_HEIGHT)
       goto Failure;
+
+    /* icons are as wide as their label, WUSS_ICONBAR_GAP apart, and pack
+     * from the edge of their side */
+    {
+      box_t                b0, b1, b2;
+      wuss_iconbar_icon_t *ic;
+
+      spec.text = "Left";
+      rc = wuss_iconbar_icon_create(wuss, owner, &spec, &ic);
+      if (rc != result_OK)
+        goto Failure;
+      spec.text = "Right";
+      spec.side = wuss_ICONBAR_RIGHT;
+      rc = wuss_iconbar_icon_create(wuss, owner, &spec, &ic);
+      if (rc != result_OK)
+        goto Failure;
+      spec.side = wuss_ICONBAR_LEFT;
+
+      wuss__iconbar_slot_box(wuss, 0, &b0);
+      wuss__iconbar_slot_box(wuss, 1, &b1);
+      wuss__iconbar_slot_box(wuss, 2, &b2);
+      if (b0.x0 != WUSS_ICONBAR_GAP || b0.x1 - b0.x0 < 1 ||
+          b1.x0 != b0.x1 + WUSS_ICONBAR_GAP ||
+          b2.x1 != 200 - WUSS_ICONBAR_GAP)
+        goto Failure;
+
+      wuss_iconbar_icon_destroy(wuss, wuss->iconbar.icons[2]);
+      wuss_iconbar_icon_destroy(wuss, wuss->iconbar.icons[1]);
+    }
 
     /* a real z-order member can be moved/resized like any other window --
      * except this one is pinned, so both must refuse */
-    wuss_window_move(wuss->iconbar_window, POINT(5, 5));
-    if (wuss->iconbar_window->visible.x0 != 0 ||
-        wuss->iconbar_window->visible.y0 != 200 - WUSS_ICONBAR_HEIGHT)
+    wuss_window_move(wuss->iconbar.window, POINT(5, 5));
+    if (wuss->iconbar.window->visible.x0 != 0 ||
+        wuss->iconbar.window->visible.y0 != 200 - WUSS_ICONBAR_HEIGHT)
       goto Failure; /* move silently ignored on a pinned window */
 
-    mrc = wuss_window_resize(wuss->iconbar_window, SIZE2D(50, 50));
+    mrc = wuss_window_resize(wuss->iconbar.window, SIZE2D(50, 50));
     if (mrc != result_WUSS_PINNED)
       goto Failure;
 
@@ -9243,11 +9796,11 @@ QuitFail:
     /* a click on the icon itself (below win_over's strip) reaches it --
      * past the bar's WUSS_ICONBAR_GAP leading gap */
     tc_bar.icon_count = 0;
-    rc = wuss_mouse_click(wuss, POINT(WUSS_ICONBAR_GAP + 10, 199),
+    rc = wuss_mouse_click(wuss, POINT(WUSS_ICONBAR_GAP + 1, 199),
                           wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, NULL);
     if (rc != result_OK)
       goto Failure;
-    rc = wuss_mouse_click(wuss, POINT(WUSS_ICONBAR_GAP + 10, 199),
+    rc = wuss_mouse_click(wuss, POINT(WUSS_ICONBAR_GAP + 1, 199),
                           wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
     if (rc != result_OK || tc_bar.icon_count == 0)
       goto Failure;
@@ -9256,14 +9809,14 @@ QuitFail:
 
     /* a screen resize keeps the bar pinned to the new bottom edge rather
      * than nudging/shrinking it like an ordinary window */
-    bar_before = wuss->iconbar_window->visible;
+    bar_before = wuss->iconbar.window->visible;
     rc = wuss_resize(wuss, &scr);
     if (rc != result_OK)
       goto Failure;
-    if (wuss->iconbar_window->visible.x0 != bar_before.x0 ||
-        wuss->iconbar_window->visible.y0 != bar_before.y0 ||
-        wuss->iconbar_window->visible.x1 != bar_before.x1 ||
-        wuss->iconbar_window->visible.y1 != bar_before.y1)
+    if (wuss->iconbar.window->visible.x0 != bar_before.x0 ||
+        wuss->iconbar.window->visible.y0 != bar_before.y0 ||
+        wuss->iconbar.window->visible.x1 != bar_before.x1 ||
+        wuss->iconbar.window->visible.y1 != bar_before.y1)
       goto Failure; /* same screen size in -> same pinned box out */
 
     wuss_iconbar_icon_destroy(wuss, icon);
@@ -9275,17 +9828,17 @@ QuitFail:
          "multi-byte UTF-8 codepoint\n");
 
   {
-    /* 61 ASCII bytes (0..60) then a 3-byte UTF-8 codepoint (U+20AC, EURO
-     * SIGN: 0xE2 0x82 0xAC) at bytes 61..63 -- WUSS_TITLE_MAX (63) lands on
-     * the euro sign's middle continuation byte, so a raw byte truncation to
-     * 63 chars (as strncpy alone would do) keeps 0xE2 0x82 and drops 0xAC,
+    /* WUSS_TITLE_MAX - 2 ASCII bytes then a 3-byte UTF-8 codepoint (U+20AC,
+     * EURO SIGN: 0xE2 0x82 0xAC) -- WUSS_TITLE_MAX lands on the euro sign's
+     * middle continuation byte, so a raw byte truncation to
+     * WUSS_TITLE_MAX chars (as strncpy alone would do) keeps 0xE2 0x82 and drops 0xAC,
      * leaving a malformed trailing sequence. The fix must back off over
      * both continuation bytes instead, dropping the whole codepoint. */
     static test_task_t tc_title;
     wuss_task_t       *delegate_title;
     wuss_window_t     *win_title;
     box_t              box_title;
-    char               long_title[70];
+    char               long_title[WUSS_TITLE_MAX + 8];
     const char        *got;
     size_t             len;
 
@@ -9302,23 +9855,23 @@ QuitFail:
     if (rc != result_OK)
       goto Failure;
 
-    memset(long_title, 'a', 61);
-    long_title[61] = (char) 0xE2;
-    long_title[62] = (char) 0x82;
-    long_title[63] = (char) 0xAC;
-    long_title[64] = '\0';
+    memset(long_title, 'a', WUSS_TITLE_MAX - 2);
+    long_title[WUSS_TITLE_MAX - 2] = (char) 0xE2;
+    long_title[WUSS_TITLE_MAX - 1] = (char) 0x82;
+    long_title[WUSS_TITLE_MAX]     = (char) 0xAC;
+    long_title[WUSS_TITLE_MAX + 1] = '\0';
 
     wuss_window_set_title(win_title, long_title);
     got = wuss_window_get_title(win_title);
     len = strlen(got);
 
-    if (len > 61)
+    if (len > WUSS_TITLE_MAX - 2)
       goto Failure; /* the euro sign's lead byte (0xE2) must have been
                       * dropped along with its continuations, not kept
                       * dangling on its own */
-    if (len != 61)
-      goto Failure; /* the 61 leading ASCII bytes must all survive */
-    if (((unsigned char) got[60]) != 'a')
+    if (len != WUSS_TITLE_MAX - 2)
+      goto Failure; /* the leading ASCII bytes must all survive */
+    if (((unsigned char) got[WUSS_TITLE_MAX - 3]) != 'a')
       goto Failure;
 
     wuss_window_close(win_title);
@@ -9517,6 +10070,144 @@ QuitFail:
     if (tc_send.bounced_count != 1)
       goto Failure;
     if (tc_send.last_message.my_ref != my_ref)
+      goto Failure;
+
+    wuss_window_close(win_recv);
+    reap_test_tasks();
+  }
+
+#ifdef WUSS_ICONBAR
+  printf("test: wuss_send_recorded_to an icon bar icon reaches the icon's owner and "
+        "bounces if unacknowledged or the icon goes\n");
+
+  {
+    static msg_task_t        tc_recv, tc_send;
+    wuss_iconbar_icon_spec_t spec;
+    wuss_iconbar_icon_t     *icon;
+    wuss_task_t             *delegate_send, *delegate_recv;
+    unsigned int             my_ref;
+    wuss_msg_target_t        target = { NULL, NULL };
+
+    memset(&tc_recv, 0, sizeof(tc_recv));
+    memset(&tc_send, 0, sizeof(tc_send));
+    tc_recv.wuss           = wuss;
+    tc_recv.ack_on_receipt = 1;
+    delegate_recv = mk_task(wuss, msg_handle, &tc_recv);
+    if (delegate_recv == NULL) goto Failure;
+    tc_recv.self = delegate_recv;
+
+    tc_send.wuss = wuss;
+    delegate_send = mk_task(wuss, msg_handle, &tc_send);
+    if (delegate_send == NULL) goto Failure;
+    tc_send.self = delegate_send;
+
+    memset(&spec, 0, sizeof(spec));
+    spec.text = "M";
+    rc = wuss_iconbar_icon_create(wuss, delegate_recv, &spec, &icon);
+    if (rc != result_OK) goto Failure;
+    target.window = wuss->iconbar.window;
+    target.icon   = icon;
+
+    /* acknowledged: delivered with no window, no bounce */
+    rc = wuss_send_recorded_to(wuss, delegate_send, &target, MSG_TEST_ACTION,
+                               NULL, 0, 0, &my_ref);
+    if (rc != result_OK || my_ref == 0) goto Failure;
+    rc = wuss_idle(wuss);
+    if (rc != result_OK) goto Failure;
+    if (tc_recv.message_count != 1 ||
+        tc_recv.last_message.window != wuss->iconbar.window ||
+        tc_recv.last_message.icon != icon || tc_send.bounced_count != 0)
+      goto Failure;
+
+    /* not acknowledged: bounces */
+    tc_recv.ack_on_receipt = 0;
+    rc = wuss_send_recorded_to(wuss, delegate_send, &target, MSG_TEST_ACTION,
+                               NULL, 0, 0, &my_ref);
+    if (rc != result_OK) goto Failure;
+    rc = wuss_idle(wuss);
+    if (rc != result_OK) goto Failure;
+    if (tc_recv.message_count != 2 || tc_send.bounced_count != 1 ||
+        tc_send.last_message.my_ref != my_ref)
+      goto Failure;
+
+    /* icon destroyed before the queue drains: bounces, never delivered */
+    rc = wuss_send_recorded_to(wuss, delegate_send, &target, MSG_TEST_ACTION,
+                               NULL, 0, 0, NULL);
+    if (rc != result_OK) goto Failure;
+    wuss_iconbar_icon_destroy(wuss, icon);
+    rc = wuss_idle(wuss);
+    if (rc != result_OK) goto Failure;
+    if (tc_recv.message_count != 2 || tc_send.bounced_count != 2)
+      goto Failure;
+
+    reap_test_tasks();
+  }
+#endif
+
+  printf("test: wuss_send_recorded_to a window's icon reaches the window's "
+        "task with the icon, and bounces if the icon is deleted\n");
+
+  {
+    static msg_task_t tc_recv, tc_send;
+    wuss_task_t      *delegate_send, *delegate_recv;
+    wuss_window_t    *win_recv;
+    wuss_icon_t      *icon;
+    wuss_icon_spec_t  ispec;
+    wuss_msg_target_t target = { NULL, NULL };
+    box_t             box_recv;
+
+    memset(&tc_recv, 0, sizeof(tc_recv));
+    memset(&tc_send, 0, sizeof(tc_send));
+    tc_recv.wuss           = wuss;
+    tc_recv.ack_on_receipt = 1;
+    delegate_recv = mk_task(wuss, msg_handle, &tc_recv);
+    if (delegate_recv == NULL) goto Failure;
+    tc_recv.self = delegate_recv;
+
+    tc_send.wuss = wuss;
+    delegate_send = mk_task(wuss, msg_handle, &tc_send);
+    if (delegate_send == NULL) goto Failure;
+    tc_send.self = delegate_send;
+
+    box_recv.x0 = 10; box_recv.y0 = 10;
+    box_recv.x1 = 90; box_recv.y1 = 90;
+    rc = wuss_window_create(delegate_recv, &box_recv, "R",
+                            wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_recv);
+    if (rc != result_OK) goto Failure;
+
+    memset(&ispec, 0, sizeof(ispec));
+    ispec.type = wuss_ICON_TYPE_LABEL;
+    ispec.text = "I";
+    ispec.bbox.x0 = 2;  ispec.bbox.y0 = 2;
+    ispec.bbox.x1 = 20; ispec.bbox.y1 = 20;
+    rc = wuss_icon_create(win_recv, &ispec, &icon);
+    if (rc != result_OK) goto Failure;
+
+    /* an icon without its window is no target */
+    target.icon = icon;
+    rc = wuss_send_recorded_to(wuss, delegate_send, &target, MSG_TEST_ACTION,
+                               NULL, 0, 0, NULL);
+    if (rc != result_BAD_ARG) goto Failure;
+
+    target.window = win_recv;
+    rc = wuss_send_recorded_to(wuss, delegate_send, &target, MSG_TEST_ACTION,
+                               NULL, 0, 0, NULL);
+    if (rc != result_OK) goto Failure;
+    rc = wuss_idle(wuss);
+    if (rc != result_OK) goto Failure;
+    if (tc_recv.message_count != 1 || tc_recv.last_message.window != win_recv ||
+        tc_recv.last_message.icon != icon || tc_send.bounced_count != 0)
+      goto Failure;
+
+    /* deleted before the queue drains: bounces, never delivered */
+    rc = wuss_send_recorded_to(wuss, delegate_send, &target, MSG_TEST_ACTION,
+                               NULL, 0, 0, NULL);
+    if (rc != result_OK) goto Failure;
+    wuss_icon_delete(win_recv, icon);
+    rc = wuss_idle(wuss);
+    if (rc != result_OK) goto Failure;
+    if (tc_recv.message_count != 1 || tc_send.bounced_count != 1)
       goto Failure;
 
     wuss_window_close(win_recv);
@@ -9983,7 +10674,7 @@ QuitFail:
       goto Failure; /* no movement yet: still an ordinary press */
 
     /* short of the threshold: stays an ordinary press */
-    rc = wuss_mouse_move(wuss, POINT(11 + dconfig.drag_threshold_px - 1, 31),
+    rc = wuss_mouse_move(wuss, POINT(11 + dconfig.mouse.drag_threshold_px - 1, 31),
                          NULL);
     if (rc != result_OK)
       goto Failure;
@@ -9991,14 +10682,14 @@ QuitFail:
       goto Failure;
 
     /* clears the threshold: becomes a core drag, released as an icon press */
-    rc = wuss_mouse_move(wuss, POINT(11 + dconfig.drag_threshold_px + 1, 31),
+    rc = wuss_mouse_move(wuss, POINT(11 + dconfig.mouse.drag_threshold_px + 1, 31),
                          NULL);
     if (rc != result_OK)
       goto Failure;
     if (!wuss_is_dragging(wuss))
       goto Failure;
 
-    rc = wuss_mouse_click(wuss, POINT(11 + dconfig.drag_threshold_px + 1, 31),
+    rc = wuss_mouse_click(wuss, POINT(11 + dconfig.mouse.drag_threshold_px + 1, 31),
                           wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
     if (rc != result_OK)
       goto Failure;
@@ -10009,6 +10700,79 @@ QuitFail:
 
     wuss_icon_delete(win_a, draggable);
   }
+
+  printf("test: a Select press on plain content captures the mouse -- moves "
+        "and the release go to that window even over another window, and the "
+        "release ends the capture\n");
+
+  tc_a.mouse_count = 0;
+  tc_b.mouse_count = 0;
+
+  rc = wuss_mouse_click(wuss, POINT(50, 50), wuss_BUTTON_SELECT,
+                        wuss_MOUSE_DOWN, NULL);
+  if (rc != result_OK)
+    goto Failure;
+  if (!wuss_is_capturing(wuss))
+    goto Failure;
+  if (tc_a.mouse_count != 1)
+    goto Failure;
+
+  rc = wuss_mouse_move(wuss, POINT(150, 150), &hit); /* over B */
+  if (rc != result_OK)
+    goto Failure;
+  if (hit != win_a)
+    goto Failure;
+  if (tc_a.mouse_count != 2 || tc_a.last_action != wuss_MOUSE_MOVE)
+    goto Failure;
+  if (tc_a.last_x < 100)
+    goto Failure; /* a point outside A's own content box */
+  if (tc_b.mouse_count != 0)
+    goto Failure;
+
+  rc = wuss_mouse_click(wuss, POINT(150, 150), wuss_BUTTON_SELECT,
+                        wuss_MOUSE_UP, NULL);
+  if (rc != result_OK)
+    goto Failure;
+  if (wuss_is_capturing(wuss))
+    goto Failure;
+  if (tc_a.mouse_count != 3 || tc_a.last_action != wuss_MOUSE_UP)
+    goto Failure;
+  if (tc_b.mouse_count != 0)
+    goto Failure;
+
+  printf("test: starting a core drag from a captured press hands the pointer "
+         "to the drag, so the ants follow it and the release ends it\n");
+
+  rc = wuss_mouse_click(wuss, POINT(50, 50), wuss_BUTTON_SELECT,
+                        wuss_MOUSE_DOWN, NULL);
+  if (rc != result_OK)
+    goto Failure;
+
+  rc = wuss_drag_start(wuss, win_a, SIZE2D(8, 8), POINT(4, 4));
+  if (rc != result_OK)
+    goto Failure;
+  if (wuss_is_capturing(wuss) || !wuss_is_dragging(wuss))
+    goto Failure;
+
+  rc = wuss_mouse_click(wuss, POINT(60, 60), wuss_BUTTON_SELECT,
+                        wuss_MOUSE_UP, NULL);
+  if (rc != result_OK)
+    goto Failure;
+  if (wuss_is_capturing(wuss) || wuss_is_dragging(wuss))
+    goto Failure;
+
+  printf("test: closing the capturing window ends the capture\n");
+
+  rc = wuss_mouse_click(wuss, POINT(50, 50), wuss_BUTTON_SELECT,
+                        wuss_MOUSE_DOWN, NULL);
+  if (rc != result_OK)
+    goto Failure;
+  if (!wuss_is_capturing(wuss))
+    goto Failure;
+
+  wuss_window_close(win_a);
+  if (wuss_is_capturing(wuss))
+    goto Failure;
 
   wuss_destroy(wuss);
 
@@ -10109,8 +10873,7 @@ result_t wuss_test(const char *resources)
       content.x1 != 100 || content.y1 != 100)
     goto Failure;
 
-  printf("test: window_resize honours the requested size even past the "
-         "screen edge\n");
+  printf("test: window_resize caps the size at the screen edge\n");
 
   /* screen is 200x200; win_a sits at (0,0), chromeless. asking for a
    * 500x500 content area is honoured verbatim. */

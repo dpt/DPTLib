@@ -116,6 +116,22 @@ void box_clipped(const box_t *a, const box_t *b, box_t *clipped);
 void box_union(const box_t *a, const box_t *b, box_t *c);
 
 /**
+ * Adds a box to a bounded list of boxes, such as a list of dirty regions.
+ *
+ * Entries the new box covers, or with which it shares a complete edge, are
+ * folded into it first, so the list never holds overlapping duplicates. An
+ * empty box, or one an entry already covers, leaves the list unchanged.
+ *
+ * \param[in,out] list The list of boxes, with room for "max" entries.
+ * \param[in,out] n    The number of entries in use.
+ * \param[in]     max  The capacity of the list.
+ * \param[in]     box  The box to add.
+ * \return Non-zero if the list was full and two boxes were unioned (the pair
+ *         adding the least area), which then over-approximates the area.
+ */
+int box_list_add(box_t *list, int *n, int max, const box_t *box);
+
+/**
  * Affirms if the specified box is empty.
  *
  * \param[in] b The box to test.

@@ -57,11 +57,11 @@ static int colourset_button_spec(const wuss_t     *wuss,
                                  wuss_icon_spec_t *spec)
 {
   const bitmap_t *bm;
-  int             idx, pidx;
+  int             idx;
   int             w, h;
 
-  idx = wuss_icons_lookup(wuss, "grightc");
-  bm  = (idx >= 0) ? wuss_icons_bitmap(wuss, idx) : NULL;
+  idx = wuss_iconpool_lookup(wuss, "grightc");
+  bm  = (idx >= 0) ? wuss_iconpool_bitmap(wuss, idx) : NULL;
   if (bm == NULL)
   {
     /* no icon set: a square button the height of the gadget */
@@ -72,9 +72,8 @@ static int colourset_button_spec(const wuss_t     *wuss,
     return h;
   }
 
-  w    = bm->size.w;
-  h    = bm->size.h;
-  pidx = wuss_icons_lookup(wuss, "grightc-p");
+  w = bm->size.w;
+  h = bm->size.h;
 
   memset(spec, 0, sizeof(*spec));
   spec->bbox  = (box_t) BOX_POS_SIZE(bbox.x1 - w,
@@ -82,8 +81,8 @@ static int colourset_button_spec(const wuss_t     *wuss,
                                      w, h);
   spec->type  = wuss_ICON_TYPE_BITMAP;
   spec->flags = wuss_ICON_FLAGS_INTERACTIVE;
-  spec->u.bitmap.set         = wuss_ICON_SET(idx);
-  spec->u.bitmap.pressed_set = (pidx >= 0) ? wuss_ICON_SET(pidx) : 0;
+  spec->u.bitmap.name         = "grightc";
+  spec->u.bitmap.pressed_name = "grightc-p";
   return w;
 }
 

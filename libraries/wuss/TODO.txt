@@ -4,6 +4,49 @@ Ordered by dependency. Each layer builds on the ones above it.
 Items marked (blocks: X) are prerequisites for X.
 
 
+Filer
+- DataOpen
+- Adjust click on close icon
+- Adjust launching
+- Draw some icons - 'open' directory icon variant
+- Allow multiple selections?
+- Drags within the filer
+- File menu (including options)
+- FilerAction...
+
+
+General window positioning issues
+
+Message monitoring app? Filters?
+
+Icon internal layout. e.g. bbox+alignment possibilities.
+Icon bar: Sort out icon alignment.
+
+FontMenu: Add ability to select by font family.
+
+Icon Sprite Pools: Implement.
+
+PostScript style renderer.
+
+Chars: Clicking on a character inserts it into the keyboard buffer. Smaller numeric font?
+
+Wussmoji. Would need colour fonts.
+
+Mouse clamping when software mouse pointer is enabled.
+Custom pointers too.
+
+Triangle/quad plotter for Magnetoid style rendering.
+
+Tiled backdrop generation.
+
+Configure: CRT shader params.
+
+Task dirs
+
+
+
+
+
 LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)
 
 - Hierarchical fonts: directory layout, bmfontfamily selection primitives
@@ -44,22 +87,21 @@ LAYER 5 - DRAG & TEMPLATES (needs sprites, config-after-the-fact)
 - Drag & Drop -- done (DataSave/DataSaveAck/DataLoad/DataLoadAck, Save As
   component, Filer drop target; see docs/windowing/drag-save-plan.md).
   Deferred: load from the Filer, task-to-task transfer, RAM transfer
+- Clipboard
+- Drag & Drop protocol
 
 
 LAYER 6 - MULTI-TASK (needs stable windows, templates)
 
-- Messaging between tasks -- done (point-to-point and broadcast, plain/
-  recorded send, acknowledge/bounce; see docs/windowing/drag-save-plan.md)
 - Pop-to-front of 'running' apps
 - Backdrop: register events, or a task that covers it like Pinboard
-- Icon bar - a separate task or module? -- has a task (Filer); icon bar
-  itself still core
 
 
 LAYER 7 - APPS & POLISH (needs most of the above)
 
 - Post-Its app with explanatory text for newbies
-  (Markdown rendering done in the Text task sample; reuse from there)
+  (Markdown rendering done in the Reading task sample; reuse from there)
+  Part of Pinboard?
 - Have a Paint app as a target
 - Desktop cohort: Filer, Task Manager, Palette Util
 - Desktop palette editor (needs named colours; see Palette Util)
@@ -69,13 +111,10 @@ LAYER 7 - APPS & POLISH (needs most of the above)
 - Greebling symmetry
 - Spheroid: bump textures, arrays of spheres, saved presets
 - 8x8 icon libraries - share the greeble code with other parts of wuss
-- Tiled fills (tile_1)
 - Rounded corner windows
-- Constraints, or some sort of layout technique for getting aligned columns when laying out
-- Procedural noise app. Dithering app.
-- More tasks: TGE/CHQ/...
+- Procedural noise app
 - Configure: System font changing
-- Filer style window (drags first)
+- magic: joining up tasks like unix pipes so we can CHQ-with-dither
 
 
 NO STRONG DEPS (do any time)
@@ -88,10 +127,11 @@ NO STRONG DEPS (do any time)
 - Hidden windows keep their slot in their stack (wuss_WINDOW_HIDDEN). Revisit
   if nesting needs them out of the stacks, RISC OS style ("behind the
   backwindow").
-- Automatic pane handling?
+- Automatic pane/toolbar handling?
 - Stress test: moving windows in a circle a-la nested Wimp [worth it?]
 
 
 NOTES
 
-- Inspiration: Kai's Power Tools
+- Inspirations: RISC OS, Compo/PCA, Classic Mac OS, Kai's Power Tools, Asprite, Reason racks, Blender, Infinity Textures, p5.js & co.
+

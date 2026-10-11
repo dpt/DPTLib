@@ -26,19 +26,13 @@ static void resize_one_window(wuss_window_t *window)
   size2d_t size, max;
   int      scr_width, scr_height;
 
+  /* Move first: wuss_window_resize caps the size from the window's
+   * top-left, so that must already be on screen. */
   wuss_window_get_content_bounds(window, &content);
   origin.x = content.x0;
   origin.y = content.y0;
   size.w   = content.x1 - content.x0;
   size.h   = content.y1 - content.y0;
-
-  wuss__max_content_anywhere_on_screen(window, &max);
-  if (size.w > max.w || size.h > max.h)
-  {
-    size.w = MIN(size.w, max.w);
-    size.h = MIN(size.h, max.h);
-    wuss_window_resize(window, size);
-  }
 
   scr_width  = window->wuss->scr->size.w;
   scr_height = window->wuss->scr->size.h;
@@ -55,6 +49,14 @@ static void resize_one_window(wuss_window_t *window)
     origin.y -= MIN(content.y0, content.y1 - scr_height);
 
   wuss_window_move(window, origin);
+
+  wuss__max_content_anywhere_on_screen(window, &max);
+  if (size.w > max.w || size.h > max.h)
+  {
+    size.w = MIN(size.w, max.w);
+    size.h = MIN(size.h, max.h);
+    wuss_window_resize(window, size);
+  }
 }
 
 /* A pinned window (the icon bar) is never nudged/shrunk like an ordinary
@@ -101,7 +103,7 @@ result_t wuss_resize(wuss_t *wuss, screen_t *scr)
   {
     result_t rc;
 
-    rc = wuss__icons_match_screen(wuss);
+    rc = wuss__iconpool_match_screen(wuss);
     if (rc != result_OK)
       return rc;
   }
@@ -121,5 +123,5 @@ result_t wuss_resize(wuss_t *wuss, screen_t *scr)
   screen.y1 = scr->size.h;
   wuss_invalidate(wuss, &screen);
 
-  return result_OK;
+  return wuss__relayout_all(wuss);
 }

@@ -8,10 +8,13 @@
  * drawn live. */
 
 #include <assert.h>
+#include <limits.h>
 #include <string.h>
 
 #include "base/utils.h"
 #include "geom/point.h"
+
+#include <limits.h>
 
 #include "../core/impl.h"
 
@@ -144,7 +147,18 @@ static void draw_title(wuss_t        *wuss,
    * icon_text_baseline_y in icon/draw.c -- a fixed "+2" here measured the
    * gap for one specific font's ascent, and drifted off by a pixel for
    * others. */
-  pos.x = (split_point < titlelen) ? text_x0 : text_x0 + MAX(0, ((text_x1 - text_x0) - width) / 2);
+  if (split_point < titlelen)
+  {
+    /* doesn't fit: right justify, so the end of the title (the leaf of a
+     * path) stays visible and the start is clipped away */
+    wuss__text_measure(titlefont, window->title, titlelen, INT_MAX / 2,
+                       &split_point, &width);
+    pos.x = text_x1 - (int) width;
+  }
+  else
+  {
+    pos.x = text_x0 + MAX(0, ((text_x1 - text_x0) - width) / 2);
+  }
   pos.y = titlebar->y0 + (titlebar->y1 - titlebar->y0 - ascent) / 2 + ascent;
   wuss->scr->clip = text_clip;
 
@@ -160,7 +174,7 @@ static void draw_title(wuss_t        *wuss,
 
   bmfont_draw_relief(titlefont, wuss->scr, window->title, titlelen,
                      wuss->palette[wuss->furniture_colours.title.fg],
-                     wuss->palette[wuss->bevel_dark],
+                     wuss->palette[wuss->bevel.dark],
                      NULL, &pos, &WUSS_TITLE_SHADOW_OFFSET, NULL);
 }
 

@@ -7,7 +7,7 @@ void wuss__icon_set_flag(wuss_window_t    *window,
                          wuss_icon_flags_t flag,
                          int               on)
 {
-  if (on && window->wuss->caret_icon == icon)
+  if (on && window->wuss->caret.icon == icon)
     wuss__caret_clear(window->wuss);
 
   if (on)

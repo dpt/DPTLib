@@ -236,6 +236,27 @@ result_t wuss_menu_open_at_pointer(wuss_task_t        *task,
                                    wuss_menu_handle_t *out);
 
 /**
+ * As wuss_menu_open, but placed with its bottom edge \p gap pixels above the
+ * bottom of the screen and horizontally centred on \p x, for a menu opened
+ * from the icon bar. Unlike wuss_menu_open it does not swallow the next
+ * MOUSE_UP, as an icon bar click is delivered on release.
+ *
+ * \param[in]  task Task that receives the menu's events.
+ * \param[in]  menu Menu to show; borrowed, must outlive the open chain.
+ * \param[in]  x    Pointer x; the menu is centred on it, nudged onto the
+ *                  screen if need be.
+ * \param[in]  gap  Distance from the screen's bottom edge to the menu's, >
+ *                  0.
+ * \param[out] out  Filled with the chain handle, or NULL if not wanted.
+ * \return \ref result_OK, \ref result_OOM, or a wuss_window_create code.
+ */
+result_t wuss_menu_open_above(wuss_task_t        *task,
+                              const wuss_menu_t  *menu,
+                              int                 x,
+                              int                 gap,
+                              wuss_menu_handle_t *out);
+
+/**
  * Open the caller's own \p window as a menu chain of its own, as if it were
  * a wuss_menu_item_t::window leaf with no menu above it: moved to \p at
  * (nudged to stay on screen), shown on the top window layer and dismissed by

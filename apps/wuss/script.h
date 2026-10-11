@@ -24,9 +24,15 @@
  *   key [MOD+...]KEY            KEY is a printable or return, escape, tab,
  *                               backspace, delete, insert, up, down, left,
  *                               right, home, end, pageup, pagedown, f1..f12;
- *                               MOD is shift, ctrl or alt
+ *                               MOD is shift, ctrl or alt. Sends the
+ *                               press only
+ *   keyup [MOD+...]KEY          send a key's release
  *   type TEXT                   a key per character (quote to keep spaces)
- *   wait N                      let N frames pass
+ *   wait N                      let N frames pass. A menu pick flashes
+ *                               for 12 frames before its menu closes, so
+ *                               wait at least that long after one
+ *   sleep SECS                  let SECS of wall-clock time pass, for timed
+ *                               runs such as profiling
  *   dump                        print every window, front to back, to stdout
  *   png FILE                    save the whole framebuffer as a PNG
  *   quit                        exit (also at end of file)

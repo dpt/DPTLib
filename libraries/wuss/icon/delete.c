@@ -16,22 +16,24 @@ void wuss_icon_delete(wuss_window_t *window, wuss_icon_t *icon)
   if (icon == NULL)
     return;
 
-  if (window->wuss->pressed_icon == icon)
+  if (window->wuss->pressed.icon == icon)
   {
-    window->wuss->pressed_icon   = NULL;
-    window->wuss->pressed_window = NULL;
+    window->wuss->pressed.icon   = NULL;
+    window->wuss->pressed.window = NULL;
   }
-  if (window->wuss->hover_icon == icon)
+  if (window->wuss->hover.icon == icon)
   {
-    window->wuss->hover_icon   = NULL;
-    window->wuss->hover_window = NULL;
+    window->wuss->hover.icon   = NULL;
+    window->wuss->hover.window = NULL;
   }
 
-  if (window->wuss->caret_icon == icon)
+  if (window->wuss->caret.icon == icon)
   {
-    window->wuss->caret_icon   = NULL;
-    window->wuss->caret_window = NULL;
+    window->wuss->caret.icon   = NULL;
+    window->wuss->caret.window = NULL;
   }
+
+  wuss__message_purge_icon(window->wuss, icon);
 
   wuss__icon_invalidate(window, icon);
 

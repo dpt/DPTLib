@@ -26,7 +26,7 @@ void screen_init(screen_t  *scr,
   scr->size     = size;
   scr->format   = fmt;
   scr->rowbytes = rowbytes;
-  scr->palette  = palette; // FIXME: This doesn't clone the palette, whereas bitmap_init()'s equivalent does.
+  scr->palette  = palette; /* borrowed, see screen_init */
   scr->span     = spanregistry_get(fmt);
   scr->base     = base;
   box_reset(&scr->clip);

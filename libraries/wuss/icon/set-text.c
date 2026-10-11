@@ -20,7 +20,7 @@ result_t wuss_icon_set_text(wuss_window_t *window,
     wuss__writable_copy((char *) icon->spec.text, icon->spec.u.writable.size,
                         text != NULL ? text : "");
     icon->text_scroll = 0;
-    if (w->caret_icon == icon)
+    if (w->caret.icon == icon)
       wuss__writable_place_caret(window, icon, -1);
     wuss__icon_invalidate(window, icon);
     return result_OK;

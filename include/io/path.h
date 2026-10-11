@@ -7,6 +7,14 @@
 
 #define DPTLIB_MAXPATH 256 /* not ideal */
 
+/* Prefix for scratch files written by tests: /tmp on POSIX, the current
+ * directory elsewhere. */
+#if defined(__riscos) || defined(_WIN32)
+#define DPTLIB_TMPPREFIX ""
+#else
+#define DPTLIB_TMPPREFIX "/tmp/"
+#endif
+
 /**
  * Build a path from a printf-like format string, substituting `%s` from the
  * varargs exactly as printf would, then rewriting the result for the host
@@ -30,7 +38,8 @@ const char *pathf(const char *fmt, ...);
  *
  * On RISC OS a leafname carries no extension in the string at all -- file
  * type is separate filesystem metadata, not a suffix -- so every leaf
- * matches unchanged (a straight copy into 'name').
+ * matches unchanged (a straight copy into 'name'), except one still holding
+ * a foreign "/ext" suffix (e.g. "Bold/map"), which never matches.
  *
  * \return Nonzero on a match, zero if "leaf" lacks 'ext' or does not fit
  *         'cap'.

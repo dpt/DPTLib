@@ -24,9 +24,9 @@ static void invalidate_edges(wuss_t *wuss, const box_t *box)
 
 static void box_for_pointer(const wuss_t *wuss, point_t p, box_t *out)
 {
-  *out = (box_t) BOX_POS_SIZE(p.x - wuss->drag_hotspot.x,
-                              p.y - wuss->drag_hotspot.y,
-                              wuss->drag_size.w, wuss->drag_size.h);
+  *out = (box_t) BOX_POS_SIZE(p.x - wuss->drag.hotspot.x,
+                              p.y - wuss->drag.hotspot.y,
+                              wuss->drag.size.w, wuss->drag.size.h);
 }
 
 result_t wuss_drag_start(wuss_t        *wuss,
@@ -40,14 +40,18 @@ result_t wuss_drag_start(wuss_t        *wuss,
       size.w <= 0 || size.h <= 0)
     return result_BAD_ARG;
 
-  wuss->drag_window  = window;
-  wuss->drag_button  = wuss_BUTTON_NONE; /* set by the icon drag caller */
-  wuss->drag_size    = size;
-  wuss->drag_hotspot = hotspot;
-  wuss->drag_frame   = 0;
-  box_for_pointer(wuss, wuss->pointer, &wuss->drag_box);
-  wuss->drag_drawn = wuss->drag_box;
-  invalidate_edges(wuss, &wuss->drag_drawn);
+  /* the drag owns the pointer from here: a press that was captured by the
+   * window starting the drag must not keep intercepting moves and the release */
+  wuss->capture = NULL;
+
+  wuss->drag.window  = window;
+  wuss->drag.button  = wuss_BUTTON_NONE; /* set by the icon drag caller */
+  wuss->drag.size    = size;
+  wuss->drag.hotspot = hotspot;
+  wuss->drag.frame   = 0;
+  box_for_pointer(wuss, wuss->pointer, &wuss->drag.box);
+  wuss->drag.drawn = wuss->drag.box;
+  invalidate_edges(wuss, &wuss->drag.drawn);
 
   return result_OK;
 }
@@ -59,7 +63,7 @@ result_t wuss_drag_start(wuss_t        *wuss,
  * wuss__drag_tick catches the painted box up instead. */
 void wuss__drag_move(wuss_t *wuss, point_t p)
 {
-  box_for_pointer(wuss, p, &wuss->drag_box);
+  box_for_pointer(wuss, p, &wuss->drag.box);
 }
 
 /* Called from idle.c once a frame while a drag is active: step the ants one
@@ -68,10 +72,10 @@ void wuss__drag_move(wuss_t *wuss, point_t p)
  * moved -- wuss_invalidate drops the repeats). */
 void wuss__drag_tick(wuss_t *wuss)
 {
-  wuss->drag_frame++;
-  invalidate_edges(wuss, &wuss->drag_drawn);
-  wuss->drag_drawn = wuss->drag_box;
-  invalidate_edges(wuss, &wuss->drag_drawn);
+  wuss->drag.frame++;
+  invalidate_edges(wuss, &wuss->drag.drawn);
+  wuss->drag.drawn = wuss->drag.box;
+  invalidate_edges(wuss, &wuss->drag.drawn);
 }
 
 /* Called from mouse-click.c (a MOUSE_UP) and key.c (Escape) to end an active
@@ -86,10 +90,16 @@ void wuss__drag_end(wuss_t        *wuss,
   wuss_window_t *window;
   wuss_event_t   event;
 
-  window = wuss->drag_window;
+  window = wuss->drag.window;
 
-  invalidate_edges(wuss, &wuss->drag_drawn);
-  wuss->drag_window = NULL;
+  event.data.drag_end.drop_icon = NULL;
+#ifdef WUSS_ICONBAR
+  if (!cancelled && drop != NULL && drop == wuss->iconbar.window)
+    event.data.drag_end.drop_icon = wuss__iconbar_hit_test(wuss, p);
+#endif
+
+  invalidate_edges(wuss, &wuss->drag.drawn);
+  wuss->drag.window = NULL;
 
   wuss__pointer_set_window(wuss, cancelled ? NULL : drop);
 
@@ -97,7 +107,7 @@ void wuss__drag_end(wuss_t        *wuss,
   event.data.drag_end.drop    = cancelled ? NULL : drop;
   event.data.drag_end.point   = p;
   event.data.drag_end.cancelled = cancelled;
-  event.data.drag_end.button  = wuss->drag_button;
+  event.data.drag_end.button  = wuss->drag.button;
   (void) wuss__deliver(window->task, window, &event);
 }
 
@@ -106,11 +116,11 @@ void wuss__drag_end(wuss_t        *wuss,
  * going through PRE_CLOSE/CLOSE, and may already have been sent QUIT. */
 void wuss__drag_forget_window(wuss_t *wuss, wuss_window_t *window)
 {
-  if (wuss->drag_window != window)
+  if (wuss->drag.window != window)
     return;
 
-  invalidate_edges(wuss, &wuss->drag_drawn);
-  wuss->drag_window = NULL;
+  invalidate_edges(wuss, &wuss->drag.drawn);
+  wuss->drag.window = NULL;
 }
 
 /* Called from redraw.c, painted last so the ants sit over every window.
@@ -123,13 +133,13 @@ void wuss__drag_draw(wuss_t *wuss)
   box_t    box, saved_clip, clipped;
   int      period, phase;
 
-  if (wuss->drag_window == NULL)
+  if (wuss->drag.window == NULL)
     return;
 
   black  = wuss->palette[wuss__resolve_colour(wuss, wuss_COLOUR_BLACK)];
-  box    = wuss->drag_drawn;
+  box    = wuss->drag.drawn;
   period = WUSS_DRAG_ANTS_ON + WUSS_DRAG_ANTS_OFF;
-  phase  = wuss->drag_frame % period;
+  phase  = wuss->drag.frame % period;
 
   /* Each dash pattern is anchored outside "box" (box.x0 - phase, etc.) so it
    * marches continuously; screen_draw_dashed_line only clips to the screen

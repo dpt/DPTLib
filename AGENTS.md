@@ -96,7 +96,7 @@ New source/header files must be added by hand to the relevant `set(..._SOURCES .
 
 **Test structure.** There is a single test binary (`DPTLibTest`, from `apps/test/main.c`) that dispatches to per-module `<module>_test(resources)` functions declared centrally in `include/test/all-tests.h`. Tests return `result_TEST_PASSED`/`result_TEST_FAILED` (`result_BASE_TEST`).
 
-**Notable sub-libraries with their own docs** (`docs/<area>/*.md`): `io/stream` (chainable byte-stream sources/transforms, PackBits and move-to-front compression), `framebuf/bmfont` (proportional bitmap fonts loaded from specially-formatted PNGs), `framebuf/composite` (Porter-Duff compositing on RGBA/BGRA bitmaps), `framebuf/pixelmap` (cached deep-to-paletted colour conversion tables for blit inner loops), `framebuf/drawing`, `framebuf/rle-bitmap`, `datastruct/cache`, `databases/pickle`, `databases/tag-db`, `geom/packer`, `windowing/wuss` (minimal window manager: creation, z-ordering, mouse routing, dirty-region redraw, client-delegated content; layered as core, furniture, icons, menus, gadgets and components under `libraries/wuss/`).
+**Notable sub-libraries with their own docs** (`docs/<area>/*.md`): `io/stream` (chainable byte-stream sources/transforms, PackBits and move-to-front compression), `framebuf/bmfont` (proportional bitmap fonts loaded from specially-formatted PNGs), `framebuf/composite` (Porter-Duff compositing on RGBA/BGRA bitmaps), `framebuf/pixelmap` (cached deep-to-paletted colour conversion tables for blit inner loops), `framebuf/dither` (error-diffusion dithering to a palette), `framebuf/octree` (octree colour quantiser for optimised palettes), `framebuf/drawing`, `framebuf/rle-bitmap`, `datastruct/cache`, `databases/pickle`, `databases/tag-db`, `geom/packer`, `windowing/wuss` (minimal window manager: creation, z-ordering, mouse routing, dirty-region redraw, client-delegated content; layered as core, furniture, icons, menus, gadgets and components under `libraries/wuss/`).
 
 **RISC OS.** `TARGET_RISCOS` (set by an external toolchain file) switches CMake to fetch/build zlib+libpng from source, link OSLib from `$GCCSDK_INSTALL_ENV`, and applies `riscos_set_flags()`. `pngusr-ro.dfa`/`pngusr-rw.dfa` select libpng's build config depending on `DPTLIB_IMAGES_READ_ONLY`.
 
@@ -110,6 +110,21 @@ New source/header files must be added by hand to the relevant `set(..._SOURCES .
 - Edit `.c`/`.h` files with the Edit tool, never `sed -i` line-range splices — they corrupt the Allman/2-space layout and can't be verified without re-reading. To inspect exact bytes or indentation, Read the file; don't shell out to `cat -A`/`cat -v`.
 - After editing any `.c`/`.h` function prototype or definition, run `python3 tools/fmt/wrap_protos.py <file>`; after editing a header's Doxygen, run `python3 tools/fmt/wrap_doxygen.py <file>` (skip vendored headers).
 - Before committing any `.c`/`.h` changes, run `python3 tools/fmt/realign_decls.py <file>` (declaration-block alignment) and `python3 tools/fmt/balance_braces.py <file>` (if one branch of an `if`/`else` chain is braced, brace them all) alongside `wrap_protos.py`/`wrap_doxygen.py` on the same files.
+
+## Reuse library intrinsics
+
+Before hand-rolling, grep `include/` for an existing helper. Do not re-implement these:
+
+- Growable arrays: `array_grow` / `array_shrink` / `array_delete_element(s)` (`utils/array.h`), never a bare `realloc` doubling block. Also `datastruct/vector.h`, `list.h`, `hash.h`, `bitvec.h` before writing new containers.
+- `MIN` / `MAX` / `CLAMP` / `SWAP` / `NELEMS` / `NOT_USED` / `DIVIDE_ROUNDING_UP` (`base/utils.h`).
+- Sorted lookup: `utils/bsearch.h`. Maths and fixed point: `utils/maths.h`, `utils/fxp.h`.
+- Rectangles: `box_t` helpers in `geom/box.h` (`box_intersection`, `box_is_empty`, `box_list_add`, `BOX_INIT`...), `geom/line.h` for line clipping.
+- Pixel sets and polygons: `geom/region.h` (sparse per-row runs; box and even-odd polygon fill, contains, outline). Do not use dense per-pixel masks or write scanline fills.
+- Bitmap compression: `bitmap_compress` / `bitmap_decompress` (`framebuf/bitmap.h`); drawing primitives in `framebuf/screen.h`.
+- File paths: build them with `pathf` (`io/path.h`) from `/`-separated pieces, never a raw `snprintf("%s/%s")`; RISC OS needs `.` separators and no extension. `pathf` returns one shared static buffer, so copy the result before the next call. Use `path_leaf`, `path_leaf_valid`, `path_leaf_strip_ext` and `path_is_full` rather than `strrchr(path, '/')`. When joining a directory and a leaf that may contain `.` (a listing's entries), `pathf` would mangle it: join with the host separator instead (see `filer_join` in `filer.c`).
+- Errors: `result_t` codes and `check` / `sentinel` (`base/result.h`, `base/debug.h`).
+
+If a new helper is generic (no dependence on the calling module), put it in the matching library area with a test, not in a demo or task.
 
 ## Commit messages
 

@@ -16,26 +16,33 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   result_t             rc;
   volatile pixelfmt_t  fmt;
   volatile size_t      bytespp;
-  volatile int paletted;
-  volatile int bitdepth;
-  FILE        *fp;
-  png_structp  png_ptr  = NULL;
+  volatile unsigned int shr, shg, shb, sha; /* channel bit positions */
+  volatile int          paletted;
+  volatile int          bitdepth;
+  FILE                 *fp;
+  png_structp           png_ptr  = NULL;
   png_infop volatile   info_ptr = NULL;
   png_bytep volatile   outrow   = NULL;
   png_colorp volatile  png_plte = NULL;
-  pixelfmt_xxxa8888_t *inrow; // more like xxxx8888
-  int                  x,y;
+  const pixelfmt_xxxa8888_t *inrow; /* more like xxxx8888 */
+  int                        x,y;
 
   paletted = 0;
   bitdepth = 8;
 
   switch (bm->format)
   {
+  case pixelfmt_rgbx8888:
   case pixelfmt_bgrx8888:
+  case pixelfmt_xbgr8888:
+  case pixelfmt_xrgb8888:
     fmt     = PNG_COLOR_TYPE_RGB;
     bytespp = 3;
     break;
+  case pixelfmt_rgba8888:
   case pixelfmt_bgra8888:
+  case pixelfmt_abgr8888:
+  case pixelfmt_argb8888:
     fmt     = PNG_COLOR_TYPE_RGBA;
     bytespp = 4;
     break;
@@ -52,6 +59,29 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
     break;
   default:
     return result_NOT_SUPPORTED;
+  }
+
+  switch (bm->format)
+  {
+  case pixelfmt_rgbx8888:
+  case pixelfmt_rgba8888:
+    shr = 0;  shg = 8;  shb = 16; sha = 24;
+    break;
+  case pixelfmt_bgrx8888:
+  case pixelfmt_bgra8888:
+    shr = 16; shg = 8;  shb = 0;  sha = 24;
+    break;
+  case pixelfmt_xbgr8888:
+  case pixelfmt_abgr8888:
+    shr = 24; shg = 16; shb = 8;  sha = 0;
+    break;
+  case pixelfmt_xrgb8888:
+  case pixelfmt_argb8888:
+    shr = 8;  shg = 16; shb = 24; sha = 0;
+    break;
+  default: /* paletted */
+    shr = shg = shb = sha = 0;
+    break;
   }
 
   fp = fopen(filename, "wb");
@@ -139,15 +169,13 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
     goto cleanup;
   }
 
-  inrow = bm->base;
-
   if (paletted)
   {
     const unsigned char *srcrow = bm->base;
 
-    /* sub-byte pixels are packed leftmost-in-low-bits, PNG wants them in
-     * the high bits */
-    if (bitdepth < 8)
+    /* p4 packs the leftmost pixel in the low nibble, PNG wants it in the
+     * high one. p1 and p2 already put it in the high bits, as PNG does. */
+    if (bitdepth == 4)
       png_set_packswap(png_ptr);
 
     for (y = 0; y < bm->size.h; y++)
@@ -165,35 +193,21 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   {
     png_bytep pout = &outrow[0];
 
-    switch (bm->format)
+    inrow = (const pixelfmt_xxxa8888_t *) ((const char *) bm->base +
+                                           (size_t) y * bm->rowbytes);
+
+    for (x = 0; x < bm->size.w; x++)
     {
-    case pixelfmt_bgrx8888:
-      for (x = 0; x < bm->size.w; x++)
-      {
-        pixelfmt_xxxa8888_t in = *inrow++;
-        *pout++ = PIXELFMT_xxRx8888(in);
-        *pout++ = PIXELFMT_xGxx8888(in);
-        *pout++ = PIXELFMT_Bxxx8888(in);
-      }
-      break;
+      pixelfmt_xxxa8888_t in = *inrow++;
 
-    case pixelfmt_bgra8888:
-      for (x = 0; x < bm->size.w; x++)
-      {
-        pixelfmt_xxxa8888_t in = *inrow++;
-        *pout++ = PIXELFMT_xxRx8888(in);
-        *pout++ = PIXELFMT_xGxx8888(in);
-        *pout++ = PIXELFMT_Bxxx8888(in);
-        *pout++ = PIXELFMT_xxxA8888(in);
-      }
-      break;
-
-    default:
-      assert(0);
+      *pout++ = (png_byte) (in >> shr);
+      *pout++ = (png_byte) (in >> shg);
+      *pout++ = (png_byte) (in >> shb);
+      if (bytespp == 4)
+        *pout++ = (png_byte) (in >> sha);
     }
 
     png_write_row(png_ptr, outrow);
-    //inrow += bm->rowbytes / 4;
   }
 
   png_write_end(png_ptr, NULL);

@@ -55,6 +55,13 @@ static int writable_caret_x(const wuss_t      *wuss,
   return (int) bmfont_caret_x(font, icon->spec.text, index, NULL);
 }
 
+/* Width of the text area inside the outline and gap; at least 1. */
+static int writable_visible(const wuss_icon_t *icon)
+{
+  return MAX((icon->spec.bbox.x1 - icon->spec.bbox.x0) -
+             2 * WUSS_WRITABLE_INSET, 1);
+}
+
 /* Can "icon" take the caret? */
 static int writable_is_live(const wuss_icon_t *icon)
 {
@@ -137,24 +144,24 @@ static result_t writable_changed(wuss_t *wuss)
   wuss_event_t event;
 
   event.kind             = wuss_EVENT_ICON;
-  event.data.icon.icon   = wuss->caret_icon;
+  event.data.icon.icon   = wuss->caret.icon;
   event.data.icon.action = wuss_MOUSE_UP;
   event.data.icon.button = wuss_BUTTON_NONE;
-  event.data.icon.value  = wuss->caret_icon->value;
-  return wuss__deliver(wuss->caret_window->task, wuss->caret_window, &event);
+  event.data.icon.value  = wuss->caret.icon->value;
+  return wuss__deliver(wuss->caret.window->task, wuss->caret.window, &event);
 }
 
 /* ----------------------------------------------------------------------- */
 
 void wuss__caret_clear(wuss_t *wuss)
 {
-  if (wuss->caret_icon == NULL)
+  if (wuss->caret.icon == NULL)
     return;
 
-  wuss__icon_invalidate(wuss->caret_window, wuss->caret_icon);
-  wuss->caret_icon   = NULL;
-  wuss->caret_window = NULL;
-  wuss->caret_index  = 0;
+  wuss__icon_invalidate(wuss->caret.window, wuss->caret.icon);
+  wuss->caret.icon   = NULL;
+  wuss->caret.window = NULL;
+  wuss->caret.index  = 0;
 }
 
 void wuss__writable_place_caret(wuss_window_t *window,
@@ -168,7 +175,7 @@ void wuss__writable_place_caret(wuss_window_t *window,
 
   wuss = window->wuss;
 
-  if (wuss->caret_icon != icon)
+  if (wuss->caret.icon != icon)
     wuss__caret_clear(wuss);
 
   len   = (int) strlen(icon->spec.text);
@@ -178,22 +185,39 @@ void wuss__writable_place_caret(wuss_window_t *window,
     index = writable_rune_start(icon->spec.text, len, index);
 
   /* keep the caret in view, jumping a third of the field at a time so typing
-   * at an edge doesn't scroll on every key */
-  visible = MAX((icon->spec.bbox.x1 - icon->spec.bbox.x0) -
-                2 * WUSS_WRITABLE_INSET, 1);
+   * at an edge doesn't scroll on every key; text that fits never scrolls, so
+   * its justification holds */
+  visible = writable_visible(icon);
   x       = writable_caret_x(wuss, icon, index);
-  if (index == 0)
+  if (index == 0 || writable_caret_x(wuss, icon, len) <= visible)
     icon->text_scroll = 0;
   else if (x < icon->text_scroll)
     icon->text_scroll = MAX(x - visible / 3, 0);
   else if (x > icon->text_scroll + visible)
     icon->text_scroll = x - visible + visible / 3;
 
-  wuss->caret_icon   = icon;
-  wuss->caret_window = window;
-  wuss->caret_index  = index;
+  wuss->caret.icon   = icon;
+  wuss->caret.window = window;
+  wuss->caret.index  = index;
 
   wuss__icon_invalidate(window, icon);
+}
+
+int wuss__writable_text_x(const wuss_t *wuss, const wuss_icon_t *icon)
+{
+  int slack;
+
+  slack = writable_visible(icon) -
+          writable_caret_x(wuss, icon, (int) strlen(icon->spec.text));
+  if (slack < 0)
+    return WUSS_WRITABLE_INSET - icon->text_scroll;
+
+  if (icon->spec.flags & wuss_ICON_FLAGS_JUSTIFY_CENTRE)
+    return WUSS_WRITABLE_INSET + slack / 2;
+  else if (icon->spec.flags & wuss_ICON_FLAGS_JUSTIFY_RIGHT)
+    return WUSS_WRITABLE_INSET + slack;
+  else
+    return WUSS_WRITABLE_INSET;
 }
 
 int wuss__writable_index_for_x(const wuss_t      *wuss,
@@ -210,8 +234,8 @@ int wuss__writable_index_for_x(const wuss_t      *wuss,
     return len;
 
   bmfont_find_caret(font, icon->spec.text, len, NULL,
-                    doc_x - (icon->spec.bbox.x0 + WUSS_WRITABLE_INSET) +
-                    icon->text_scroll,
+                    doc_x - (icon->spec.bbox.x0 +
+                             wuss__writable_text_x(wuss, icon)),
                     &index, NULL);
   return index;
 }
@@ -233,14 +257,14 @@ result_t wuss__writable_key(wuss_t              *wuss,
 
   *claimed = 0;
 
-  window = wuss->caret_window;
-  icon   = wuss->caret_icon;
+  window = wuss->caret.window;
+  icon   = wuss->caret.icon;
   if (icon == NULL || (modifiers & wuss_KEY_MOD_ALT))
     return result_OK;
 
   text  = (char *) icon->spec.text; /* owned buffer of spec.u.writable.size */
   len   = (int) strlen(text);
-  index = wuss->caret_index;
+  index = wuss->caret.index;
 
   if (modifiers & wuss_KEY_MOD_CTRL)
   {
@@ -362,7 +386,7 @@ result_t wuss_icon_set_caret(wuss_window_t *window,
 
   if (icon == NULL)
   {
-    if (window->wuss->caret_window == window)
+    if (window->wuss->caret.window == window)
       wuss__caret_clear(window->wuss);
     return result_OK;
   }

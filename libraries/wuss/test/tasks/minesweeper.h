@@ -11,10 +11,11 @@
 #include "framebuf/bitmap.h"
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
+
+#include "fireball.h"
 
 #define MINESWEEPER_CELL 22 /* pixels per cell; matches mine.png/flag.png */
 
@@ -64,7 +65,7 @@ minesweeper_cell_state_t;
  * resets it with more or fewer mines; "Give Up" ends a game in progress
  * and shows every mine. With the input focus, the arrow keys move a cursor
  * cell, Return reveals it, Space toggles its flag and N starts a new
- * game. */
+ * game. Hitting a mine sets off a particle explosion at the clicked cell. */
 typedef struct minesweeper_task
 {
   wuss_t                  *wuss;
@@ -75,7 +76,7 @@ typedef struct minesweeper_task
   wuss_menu_t              size_menu;
   wuss_menu_item_t         difficulty_items[minesweeper_NDIFFICULTIES];
   wuss_menu_t              difficulty_menu;
-  wuss_menu_item_t         menu_items[5]; /* per-instance: a shared static
+  wuss_menu_item_t         menu_items[4]; /* per-instance: a shared static
                                             * would leak one instance's
                                             * .window pointer into another's
                                             * menu */
@@ -85,9 +86,10 @@ typedef struct minesweeper_task
   int                      hud_font_h; /* hud_font's glyph cell height */
   int                      hud_field_w; /* pixel width of a "999" field in
                                          * hud_font, plus a small margin */
-  bitmap_t                 mine_bm; /* owned; drawn on a revealed mine
+  const bitmap_t          *mine_bm; /* private pool "mine"; drawn on a revealed
+                                     * mine cell */
+  const bitmap_t          *flag_bm; /* private pool "flag"; drawn on a flagged
                                      * cell */
-  bitmap_t                 flag_bm; /* owned; drawn on a flagged cell */
   minesweeper_size_t       size;
   minesweeper_difficulty_t difficulty;
   int                      rows, cols, mines;
@@ -118,6 +120,8 @@ typedef struct minesweeper_task
     colour_t banner_fg;
     colour_t cursor;        /* keyboard cursor outline */
   }                          colours;
+
+  fireball_t               boom; /* death explosion over the board */
 }
 minesweeper_task_t;
 
@@ -127,6 +131,9 @@ wuss_window_fn_t minesweeper_handle;
  * neighbour counts with wuss's own bold font (wuss_get_font_n(wuss, 1)).
  * if out is non-NULL, the task block is also returned through it */
 result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out);
+
+/* install the icon bar app that opens minesweeper windows on demand */
+result_t minesweeper_app_create(wuss_t *wuss);
 
 /* free a task block allocated by minesweeper_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */

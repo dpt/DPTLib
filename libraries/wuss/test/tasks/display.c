@@ -19,18 +19,12 @@
 #include "tasks.h" /* app_set_mode, app_get_depth */
 
 #include "display.h"
+#include "taskapp.h"
 #include "common.h"
-
-enum { DISPLAY_MENU_INFO };
 
 #define DISPLAY_G_LABEL      1 /* size group, see stack_item_t::group */
 #define DISPLAY_SET_W        120
 #define DISPLAY_ROW_H        18
-#define DISPLAY_CHAR_W       6 /* ponytail: assumes the 6px system font */
-#define DISPLAY_ACTION_W(W)  (((W) + 2) * DISPLAY_CHAR_W + \
-                              2 * wuss_STD_SECONDARY_BUTTON_BORDER)
-#define DISPLAY_DEFAULT_W(W) (((W) + 2) * DISPLAY_CHAR_W + \
-                              2 * wuss_STD_PRIMARY_BUTTON_BORDER)
 
 enum
 {
@@ -63,8 +57,8 @@ static const stack_item_t g_display_stack[DISPLAY_ST__LIMIT] =
 
   [DISPLAY_ST_BUTTONS]          = STACK_HBOX(DISPLAY_ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_END),
   [DISPLAY_ST_BUTTONS_SPACER]   = STACK_SPACER(DISPLAY_ST_BUTTONS, 1), /* push the buttons right */
-  [DISPLAY_ST_CANCEL]           = STACK_LEAF(DISPLAY_ST_BUTTONS, DISPLAY_ACTION_W(6), wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
-  [DISPLAY_ST_CHANGE]           = STACK_LEAF(DISPLAY_ST_BUTTONS, DISPLAY_DEFAULT_W(6), wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+  [DISPLAY_ST_CANCEL]           = STACK_LEAF(DISPLAY_ST_BUTTONS, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+  [DISPLAY_ST_CHANGE]           = STACK_LEAF(DISPLAY_ST_BUTTONS, 0, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
 };
 
 enum
@@ -200,6 +194,10 @@ static result_t display_create_window(display_task_t *task,
     task_text_width(task->wuss, "Colours");
   items[DISPLAY_ST_RESOLUTION_LABEL].axis_size =
     task_text_width(task->wuss, "Resolution");
+  items[DISPLAY_ST_CANCEL].axis_size =
+    task_button_width(task->wuss, "Cancel", wuss_STD_SECONDARY_BUTTON_BORDER);
+  items[DISPLAY_ST_CHANGE].axis_size =
+    task_button_width(task->wuss, "Change", wuss_STD_PRIMARY_BUTTON_BORDER);
 
   rc = stack_smallest(items, NELEMS(items), &size);
   if (rc != result_OK)
@@ -292,19 +290,22 @@ result_t display_create(wuss_t *wuss, display_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, DISPLAY_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in
-                                * display_mouse */
-
-  WUSS_MENU_TITLE(task->menu, "Display", task->menu_items,
-                 NELEMS(task->menu_items));
-
   if (out)
     *out = task;
 
   return result_OK;
+}
+
+result_t display_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Display",
+    "Set colours and resolution",
+    (taskapp_create_fn_t) display_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void display_destroy(display_task_t *task)
@@ -312,22 +313,6 @@ void display_destroy(display_task_t *task)
   wuss_stringset_destroy(task->colours);
   wuss_stringset_destroy(task->resolution);
   free(task);
-}
-
-static result_t display_mouse(display_task_t *dc, wuss_button_t button)
-{
-  if (!(button & wuss_BUTTON_MENU))
-    return result_OK;
-
-  {
-    static const wuss_proginfo_desc_t desc =
-      TASK_PROGINFO_DESC("Display",
-                         "Change the desktop colours and resolution");
-    wuss_proginfo_set_desc(&desc);
-    dc->menu_items[DISPLAY_MENU_INFO].window = wuss_proginfo_window(dc->delegate);
-  }
-
-  return wuss_menu_open_at_pointer(dc->delegate, &dc->menu, &dc->menu_handle);
 }
 
 /* offer an event to both string sets; 1 if one consumed it, its outcome in
@@ -377,38 +362,17 @@ result_t display_handle(wuss_window_t      *window,
     }
     return result_OK;
 
-  case wuss_EVENT_MOUSE:
-    if (window != dc->window)
-      return result_OK; /* the proginfo dialogue has no click behaviour of
-                         * its own */
-    if (event->data.mouse.action != wuss_MOUSE_DOWN)
-      return result_OK;
-    return display_mouse(dc, event->data.mouse.button);
-
   case wuss_EVENT_MENU_SELECT:
     if (display_offer(dc, event, &rc))
       return rc;
 
-    return result_OK; /* Info is a submenu only; nothing to act on */
+    return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
     /* both sets must see it, and neither consumes it */
     (void) wuss_stringset_handle_event(dc->colours, event, &rc);
     (void) wuss_stringset_handle_event(dc->resolution, event, &rc);
-    dc->menu_handle = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-    if (window == dc->menu_items[DISPLAY_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
 
   case wuss_EVENT_CLOSE:
     if (window == dc->window)
@@ -418,6 +382,9 @@ result_t display_handle(wuss_window_t      *window,
   case wuss_EVENT_QUIT:
     display_destroy(dc);
     return result_OK;
+
+  case wuss_EVENT_KEY:
+    return result_WUSS_KEY_UNCLAIMED;
 
   default:
     return result_OK;

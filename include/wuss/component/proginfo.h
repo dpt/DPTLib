@@ -95,6 +95,16 @@ wuss_window_t *wuss_proginfo_window(wuss_task_t *task);
 void wuss_proginfo_set_desc(const wuss_proginfo_desc_t *desc);
 
 /**
+ * Drop the singleton dialogue if \p task is its home task, so it is not left
+ * pointing at a task that is going away. Call from the home task's
+ * wuss_EVENT_QUIT handler, while its windows are still alive. No-op for any
+ * other task.
+ *
+ * \param[in] task Task shutting down.
+ */
+void wuss_proginfo_release(wuss_task_t *task);
+
+/**
  * Handle a wuss_EVENT_PRE_SHOW for wuss_proginfo_window() from the current
  * home task's own handler: applies the desc last passed to
  * wuss_proginfo_set_desc, as wuss_dialogue_handle_pre_show.

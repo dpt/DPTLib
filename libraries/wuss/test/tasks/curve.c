@@ -22,6 +22,7 @@
 #include "wuss/wuss.h"
 
 #include "curve.h"
+#include "taskapp.h"
 #include "common.h"
 #include "snapshot.h"
 
@@ -31,9 +32,9 @@
  * just before wuss_menu_open */
 enum
 {
-  CURVE_MENU_INFO = 0,
-  CURVE_MENU_BACKGROUND,
+  CURVE_MENU_BACKGROUND = 0,
   CURVE_MENU_TYPE,
+  CURVE_MENU_WIDTH,
   CURVE_MENU_HULL,
   CURVE_MENU_RESET,
   CURVE_MENU_SAVE
@@ -46,6 +47,14 @@ enum
 static const char *const curve_kind_names[CURVE_NKINDS] =
 {
   "Line", "Quadratic", "Cubic", "Quartic", "Quintic"
+};
+
+/* Line width in pixels for each Menu > Width row. */
+static const int curve_widths[CURVE_NWIDTHS] = { 1, 2, 3, 4, 6, 8 };
+
+static const char *const curve_width_names[CURVE_NWIDTHS] =
+{
+  "1 px", "2 px", "3 px", "4 px", "6 px", "8 px"
 };
 
 #define CURVE_BLOBSZ           8  /* side length of a control-point marker, matches curve-test.c */
@@ -141,12 +150,13 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
 
   task->bg        = colour_rgb(0xFF, 0xFF, 0xFF);
   task->line      = colour_rgb(0x00, 0x00, 0x00);
-  task->blob      = colour_rgb(0xFF, 0x00, 0x00);
+  task->blob      = colour_rgb(0x66, 0xCC, 0xFF); /* light blue */
   task->wuss      = wuss;
   task->nsegments = CURVE_SEGMENTS_DEFAULT;
+  task->width     = curve_widths[0];
   task->npoints   = 4; /* cubic, matching the original task */
   task->dragging  = -1;
-  task->hull      = 1;
+  task->hull      = 0;
   curve_reset_points(task);
 
   /* curve_redraw paints its own background */
@@ -178,11 +188,6 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, CURVE_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in curve_mouse */
-
   WUSS_MENU_ITEM_MENU(task->menu_items, CURVE_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
@@ -195,6 +200,16 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
 
   WUSS_MENU_ITEM_MENU(task->menu_items, CURVE_MENU_TYPE, "Type",
                       wuss_MENU_ITEM_NONE, &task->type_menu);
+
+  for (i = 0; i < CURVE_NWIDTHS; i++)
+    WUSS_MENU_ITEM(task->width_items, i, curve_width_names[i],
+                   wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->width_menu, "Width", task->width_items,
+                  NELEMS(task->width_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, CURVE_MENU_WIDTH, "Width",
+                      wuss_MENU_ITEM_NONE, &task->width_menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CURVE_MENU_HULL, "Hull",
                           wuss_MENU_ITEM_NONE, "H");
@@ -216,6 +231,18 @@ result_t curve_create(wuss_t *wuss, curve_task_t **out)
   return result_OK;
 }
 
+result_t curve_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Curve",
+    "Draggable Bezier curve",
+    (taskapp_create_fn_t) curve_create
+  };
+
+  return taskapp_install(wuss, &desc);
+}
+
 void curve_destroy(curve_task_t *task)
 {
   wuss_saveas_destroy(task->saveas);
@@ -230,10 +257,11 @@ static int blob_hit(const point_t *p, int x, int y)
          y >= p->y - half && y < p->y + half;
 }
 
-/* Marker colour for control point i of a curve with npoints points: the two
- * end points (0 and npoints - 1) draw in task->blob (red); the interior
- * control points cycle through a set of other bright hues so each is
- * distinct. */
+/* Marker colour for point i of a curve with npoints points: the two end
+ * points (0 and npoints - 1) draw in task->blob (light blue); the first and
+ * last control points (1 and npoints - 2) draw orange; any remaining interior
+ * control points each get their own hue from a set of four, which covers the
+ * most a quintic has (two). */
 static colour_t blob_colour(const curve_task_t *task, int i)
 {
   colour_t control[4];
@@ -241,12 +269,27 @@ static colour_t blob_colour(const curve_task_t *task, int i)
   if (i == 0 || i == task->npoints - 1)
     return task->blob;
 
-  control[0] = colour_rgb(0x00, 0xC0, 0x00); /* green  */
-  control[1] = colour_rgb(0x00, 0x80, 0xFF); /* blue   */
-  control[2] = colour_rgb(0xFF, 0xA0, 0x00); /* orange */
-  control[3] = colour_rgb(0xC0, 0x00, 0xFF); /* purple */
+  if (i == 1 || i == task->npoints - 2)
+    return colour_rgb(0xFF, 0xA0, 0x00); /* orange */
 
-  return control[(i - 1) % NELEMS(control)];
+  control[0] = colour_rgb(0x00, 0xC0, 0x00); /* green  */
+  control[1] = colour_rgb(0xC0, 0x00, 0xFF); /* purple */
+  control[2] = colour_rgb(0xFF, 0xE0, 0x00); /* yellow */
+  control[3] = colour_rgb(0xFF, 0x60, 0xB0); /* pink   */
+
+  return control[(i - 2) % NELEMS(control)];
+}
+
+/* index of task->width in curve_widths, for the Menu > Width tick */
+static int curve_width_index(const curve_task_t *task)
+{
+  int i;
+
+  for (i = 0; i < CURVE_NWIDTHS - 1; i++)
+    if (curve_widths[i] >= task->width)
+      break;
+
+  return i;
 }
 
 static const char *curve_kind_name(int npoints)
@@ -303,7 +346,29 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
       hull[k].x += bounds->x0 - sx;
       hull[k].y += bounds->y0 - sy;
     }
-    screen_draw_lines(scr, hull, nhull, colour_rgb(0xC0, 0xC0, 0xC0));
+    screen_draw_lines(scr, hull, nhull, colour_rgb(0xFF, 0x00, 0x00));
+  }
+
+  /* tangent lines: each end point to its adjacent control point, faint so
+   * they sit behind the curve. A straight line has no control points. */
+  if (task->npoints > 2)
+  {
+    point_t tangent[2];
+    int     e;
+
+    for (e = 0; e < 2; e++)
+    {
+      tangent[0] = task->points[e ? task->npoints - 1 : 0];
+      tangent[1] = task->points[e ? task->npoints - 2 : 1];
+      for (i = 0; i < 2; i++)
+      {
+        tangent[i].x += bounds->x0 - sx;
+        tangent[i].y += bounds->y0 - sy;
+      }
+      screen_draw_line(scr, tangent[0].x, tangent[0].y,
+                       tangent[1].x, tangent[1].y,
+                       colour_rgb(0xC0, 0xC0, 0xC0));
+    }
   }
 
   prev = task->points[0];
@@ -315,7 +380,12 @@ static result_t curve_redraw(const wuss_event_t *event, curve_task_t *task)
     cur = curve_point(task, t);
     cur.x += bounds->x0 - sx; cur.y += bounds->y0 - sy;
 
-    screen_draw_line(scr, prev.x, prev.y, cur.x, cur.y, task->line);
+    screen_draw_thick_line(scr, prev.x, prev.y, cur.x, cur.y, task->width,
+                           task->line);
+    /* round the joint: butt-ended segments leave a notch on the outside of
+     * each bend */
+    if (task->width > 2)
+      screen_fill_circle(scr, cur.x, cur.y, task->width / 2, task->line);
 
     prev = cur;
   }
@@ -369,14 +439,9 @@ static result_t curve_mouse(curve_task_t       *task,
   case wuss_MOUSE_DOWN:
     if (button & wuss_BUTTON_MENU)
     {
-      static const wuss_proginfo_desc_t desc =
-        TASK_PROGINFO_DESC("Curve", "Draggable Bezier curve");
-      wuss_proginfo_set_desc(&desc);
-      task->menu_items[CURVE_MENU_INFO].window =
-        wuss_proginfo_window(task->delegate);
-
       wuss_menu_tick_exclusive(&task->type_menu,
                                task->npoints - CURVE_MINCONTROLPTS);
+      wuss_menu_tick_exclusive(&task->width_menu, curve_width_index(task));
       wuss_menu_tick_item(&task->menu, CURVE_MENU_HULL, task->hull);
 
       return wuss_menu_open_at_pointer(task->delegate, &task->menu,
@@ -497,6 +562,15 @@ static result_t curve_menu_select(curve_task_t       *task,
     return result_OK;
   }
 
+  if (event->data.menu_select.menu == &task->width_menu)
+  {
+    task->width = curve_widths[event->data.menu_select.index];
+    wuss_menu_tick_exclusive_live(task->menu_handle, &task->width_menu,
+                                  event->data.menu_select.index);
+    wuss_window_invalidate_visible(task->window);
+    return result_OK;
+  }
+
   if (wuss_colourmenu_selected_rgb(event, &task->bg))
     wuss_window_invalidate_visible(task->window);
 
@@ -550,22 +624,6 @@ result_t curve_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == task->menu_items[CURVE_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_QUIT:
     curve_destroy(task);

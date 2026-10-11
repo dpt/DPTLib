@@ -60,18 +60,28 @@ static result_t mouse_click(wuss_t             *wuss,
    * started it (any button, if unknown) ends it, dropping on whatever's under
    * the pointer; any other click is swallowed rather than reaching a window
    * underneath the ants. */
-  if (wuss->drag_window != NULL)
+  if (wuss->drag.window != NULL)
   {
     win = wuss__window_at(wuss, p);
     if (hit != NULL)
       *hit = win;
 
     if (action == wuss_MOUSE_UP &&
-        (wuss->drag_button == wuss_BUTTON_NONE ||
-         (button & wuss->drag_button) != 0))
+        (wuss->drag.button == wuss_BUTTON_NONE ||
+         (button & wuss->drag.button) != 0))
       wuss__drag_end(wuss, p, win, 0);
 
     return result_OK;
+  }
+
+  /* A captured press owns the pointer until released: a further press or the
+   * release goes to the capturing window, wherever it lands. */
+  if (wuss->capture != NULL)
+  {
+    if (hit != NULL)
+      *hit = wuss->capture;
+
+    return wuss__capture_deliver(wuss, p, button, action);
   }
 
   if (action == wuss_MOUSE_DOWN)
@@ -84,33 +94,33 @@ static result_t mouse_click(wuss_t             *wuss,
      * otherwise, the real hit test still runs its own course further down. */
     hit_now = wuss__window_at(wuss, p);
 
-    dx = x - wuss->last_down_point.x;
-    dy = y - wuss->last_down_point.y;
+    dx = x - wuss->last_down.point.x;
+    dy = y - wuss->last_down.point.y;
     if (dx < 0)
       dx = -dx;
     if (dy < 0)
       dy = -dy;
 
-    if (wuss->last_down_window == hit_now &&
-        wuss->last_down_button == button &&
-        (wuss->now_ms - wuss->last_down_ms) <=
-          (unsigned int) wuss->double_click_ms &&
-        dx <= wuss->double_click_px &&
-        dy <= wuss->double_click_px)
+    if (wuss->last_down.window == hit_now &&
+        wuss->last_down.button == button &&
+        (wuss->now_ms - wuss->last_down.ms) <=
+          (unsigned int) wuss->input.double_click_ms &&
+        dx <= wuss->input.double_click_px &&
+        dy <= wuss->input.double_click_px)
     {
       button |= wuss_BUTTON_DOUBLE;
 
       /* Consumed: a third press starts a fresh pair, it does not chain into
        * another double. Reset the button, not the window: NULL is also the
        * backdrop's hit, so a backdrop press would still match. */
-      wuss->last_down_button = wuss_BUTTON_NONE;
+      wuss->last_down.button = wuss_BUTTON_NONE;
     }
     else
     {
-      wuss->last_down_window = hit_now;
-      wuss->last_down_button = button;
-      wuss->last_down_point  = p;
-      wuss->last_down_ms     = wuss->now_ms;
+      wuss->last_down.window = hit_now;
+      wuss->last_down.button = button;
+      wuss->last_down.point  = p;
+      wuss->last_down.ms     = wuss->now_ms;
     }
   }
 
@@ -120,10 +130,10 @@ static result_t mouse_click(wuss_t             *wuss,
    * icon's owner on MOUSE_DOWN. When the up does land back on the pressed icon,
    * leave it held so the icon-hit path below completes the click (latch
    * radio/option state, toggle a menu tick). */
-  if (action == wuss_MOUSE_UP && wuss->pressed_icon != NULL)
+  if (action == wuss_MOUSE_UP && wuss->pressed.icon != NULL)
   {
-    wuss_icon_t   *pressed  = wuss->pressed_icon;
-    wuss_window_t *presswin = wuss->pressed_window;
+    wuss_icon_t   *pressed  = wuss->pressed.icon;
+    wuss_window_t *presswin = wuss->pressed.window;
     box_t          content;
     point_t        doc_point;
     int            still_over;
@@ -137,8 +147,8 @@ static result_t mouse_click(wuss_t             *wuss,
 
     if (!still_over)
     {
-      wuss->pressed_icon   = NULL;
-      wuss->pressed_window = NULL;
+      wuss->pressed.icon   = NULL;
+      wuss->pressed.window = NULL;
       if (wuss__icon_pressed(pressed))
       {
         wuss__icon_set_state(pressed, wuss_ICON_STATE_PRESSED, 0);
@@ -175,16 +185,16 @@ static result_t mouse_click(wuss_t             *wuss,
 #ifdef WUSS_MENUS
   /* The MOUSE_UP that follows the MENU press which opened the chain is spent:
    * without this it would land on the new menu's row 0 and pick it. */
-  if (action == wuss_MOUSE_UP && wuss->menu_eat_up)
+  if (action == wuss_MOUSE_UP && wuss->menu.eat_up)
   {
-    wuss->menu_eat_up = 0;
+    wuss->menu.eat_up = 0;
     return result_OK;
   }
 
   /* Any fresh press ends the eat-up window: the release it pairs with is a
    * real click, not the tail of the menu-opening press. */
   if (action == wuss_MOUSE_DOWN)
-    wuss->menu_eat_up = 0;
+    wuss->menu.eat_up = 0;
 
   /* A press outside every window in the open menu chain dismisses the chain.
    * Presses inside the chain fall through to the menu window's own delegate.
@@ -412,7 +422,7 @@ static result_t mouse_click(wuss_t             *wuss,
     (void) wuss_set_focus(wuss, win);
 
 #ifdef WUSS_ICONBAR
-  if (win == wuss->iconbar_window)
+  if (win == wuss->iconbar.window)
   {
     (void) wuss__iconbar_icon_click(wuss, p, button, action);
     return result_OK;
@@ -444,10 +454,10 @@ static result_t mouse_click(wuss_t             *wuss,
             (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
         {
           wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 1);
-          wuss->pressed_icon   = icon;
-          wuss->pressed_window = win;
-          wuss->pressed_point  = POINT(x, y);
-          wuss->pressed_button = button;
+          wuss->pressed.icon   = icon;
+          wuss->pressed.window = win;
+          wuss->pressed.point  = POINT(x, y);
+          wuss->pressed.button = button;
           wuss__icon_invalidate(win, icon);
 
           /* a slider jumps straight to the click point rather than waiting
@@ -468,18 +478,25 @@ static result_t mouse_click(wuss_t             *wuss,
         else if (action == wuss_MOUSE_UP && wuss__icon_pressed(icon))
         {
           wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 0);
-          wuss->pressed_icon   = NULL;
-          wuss->pressed_window = NULL;
+          wuss->pressed.icon   = NULL;
+          wuss->pressed.window = NULL;
           wuss__icon_invalidate(win, icon);
 
           /* a completed click latches radio/option state before the task is
            * told, so the wuss_EVENT_ICON handler sees the new value */
           if (icon->spec.type == wuss_ICON_TYPE_OPTION)
             wuss__icon_select(win, icon, !wuss__icon_selected(icon));
+          else if (icon->spec.type == wuss_ICON_TYPE_BITMAP &&
+                   icon->spec.u.bitmap.group != 0)
+            wuss__icon_select(win, icon, 1);
           else if (icon->spec.type == wuss_ICON_TYPE_RADIO)
+            /* ADJUST toggles a lone radio; a grouped one always keeps one
+             * member selected */
             wuss__icon_select(win, icon,
-                              (button & wuss_BUTTON_ADJUST) ? !wuss__icon_selected(icon)
-                                                            : 1);
+                              ((button & wuss_BUTTON_ADJUST) &&
+                               icon->spec.u.radio.group == 0)
+                                ? !wuss__icon_selected(icon)
+                                : 1);
         }
 
         event.kind             = wuss_EVENT_ICON;
@@ -491,6 +508,11 @@ static result_t mouse_click(wuss_t             *wuss,
       }
     }
 #endif
+
+    /* Set before delivery: closing the window in the handler clears it. */
+    if (action == wuss_MOUSE_DOWN &&
+        (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+      wuss->capture = win;
 
     event.kind              = wuss_EVENT_MOUSE;
     event.data.mouse.action = action;

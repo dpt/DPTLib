@@ -33,12 +33,13 @@ static void invalidate_grown_or_shrunk(wuss_window_t *window,
 
 result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
 {
-  int     outline_px, titlebar_height;
-  box_t   before;
-  point_t old_scroll;
-  box_t   before_content;
-  point_t carve;
-  point_t clamped;
+  int      outline_px, titlebar_height;
+  box_t    before;
+  point_t  old_scroll;
+  box_t    before_content;
+  point_t  carve;
+  point_t  clamped;
+  size2d_t max;
 
   if (!wuss__size_ok(size.w, size.h))
     return result_WUSS_TOO_SMALL;
@@ -46,10 +47,12 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
   if (window->flags & wuss_WINDOW_PINNED)
     return result_WUSS_PINNED;
 
-  /* The requested content size is honoured verbatim: a window may end up
-   * overhanging the screen edge (same as one dragged there, or one whose
-   * far corner is off-screen when toggle-size floors it at WUSS_MIN_CONTENT).
-   * Only wuss_window_create still caps at the screen. */
+  /* Cap at what fits the screen from the window's top-left, as
+   * wuss_window_create does (floored at WUSS_MIN_CONTENT, so a window jammed
+   * against the far edge may still overhang). */
+  wuss__max_content_on_screen(window, &max);
+  size.w = MIN(size.w, max.w);
+  size.h = MIN(size.h, max.h);
 
   outline_px      = wuss__outline_px(window);
   titlebar_height = wuss__titlebar_height(window);
@@ -103,13 +106,13 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
 
     /* A resize drag delivers several calls per frame, same as a fast wheel
      * spin (see wuss_window_set_scroll): an earlier call this frame may have
-     * queued part of "before_content" in wuss->dirty[] without a redraw
+     * queued part of "before_content" in wuss->dirty.box[] without a redraw
      * having painted it yet. Sliding that stale ground would smear garbage
      * into the window instead of this window's own settled pixels. */
     nstale = 0;
-    for (i = 0; i < window->wuss->ndirty; i++)
-      if (box_intersects(&window->wuss->dirty[i], &before_content))
-        stale[nstale++] = window->wuss->dirty[i];
+    for (i = 0; i < window->wuss->dirty.n; i++)
+      if (box_intersects(&window->wuss->dirty.box[i], &before_content))
+        stale[nstale++] = window->wuss->dirty.box[i];
 
     /* Each subtract can split a piece into up to four bands, so this can
      * overflow the piece budget on a badly fragmented window -- treat that

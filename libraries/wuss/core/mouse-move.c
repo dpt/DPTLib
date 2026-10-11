@@ -52,7 +52,17 @@ static result_t mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
 
   wuss->pointer = p;
 
-  if (wuss->drag_window != NULL)
+  /* A captured press owns the pointer until released: no hit test, hover or
+   * enter/exit tracking, just the move to the capturing window. */
+  if (wuss->capture != NULL)
+  {
+    if (hit != NULL)
+      *hit = wuss->capture;
+
+    return wuss__capture_deliver(wuss, p, wuss_BUTTON_SELECT, wuss_MOUSE_MOVE);
+  }
+
+  if (wuss->drag.window != NULL)
   {
     win = wuss__window_at(wuss, p);
     if (hit != NULL)
@@ -154,17 +164,17 @@ static result_t mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
      * drag_threshold_px from the DOWN that pressed it; a plain click (no
      * movement past the threshold) leaves it as an ordinary icon press,
      * released and delivered as wuss_EVENT_ICON on MOUSE_UP as usual */
-    if (wuss->pressed_icon != NULL && wuss->pressed_window == win &&
-        wuss->pressed_icon->spec.type == wuss_ICON_TYPE_DRAGGABLE)
+    if (wuss->pressed.icon != NULL && wuss->pressed.window == win &&
+        wuss->pressed.icon->spec.type == wuss_ICON_TYPE_DRAGGABLE)
     {
       wuss_icon_t *icon;
       int          dx, dy;
 
-      icon = wuss->pressed_icon;
-      dx   = x - wuss->pressed_point.x;
-      dy   = y - wuss->pressed_point.y;
+      icon = wuss->pressed.icon;
+      dx   = x - wuss->pressed.point.x;
+      dy   = y - wuss->pressed.point.y;
 
-      if (dx * dx + dy * dy >= wuss->drag_threshold_px * wuss->drag_threshold_px)
+      if (dx * dx + dy * dy >= wuss->input.drag_threshold_px * wuss->input.drag_threshold_px)
       {
         box_t    box;
         size2d_t size;
@@ -173,16 +183,16 @@ static result_t mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
         box     = icon->spec.bbox;
         size.w  = box.x1 - box.x0;
         size.h  = box.y1 - box.y0;
-        hotspot = POINT(wuss->pressed_point.x - (content.x0 - win->scroll.x + box.x0),
-                        wuss->pressed_point.y - (content.y0 - win->scroll.y + box.y0));
+        hotspot = POINT(wuss->pressed.point.x - (content.x0 - win->scroll.x + box.x0),
+                        wuss->pressed.point.y - (content.y0 - win->scroll.y + box.y0));
 
         wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 0);
         wuss__icon_invalidate(win, icon);
-        wuss->pressed_icon   = NULL;
-        wuss->pressed_window = NULL;
+        wuss->pressed.icon   = NULL;
+        wuss->pressed.window = NULL;
 
         (void) wuss_drag_start(wuss, win, size, hotspot);
-        wuss->drag_button = wuss->pressed_button;
+        wuss->drag.button = wuss->pressed.button;
       }
 
       if (hit != NULL)
@@ -192,12 +202,12 @@ static result_t mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
 
     /* a slider drag keeps tracking the pointer even once it strays outside
      * the icon's own bbox, matching a furniture sausage drag */
-    if (wuss->pressed_icon != NULL && wuss->pressed_window == win &&
-        wuss->pressed_icon->spec.type == wuss_ICON_TYPE_SLIDER)
+    if (wuss->pressed.icon != NULL && wuss->pressed.window == win &&
+        wuss->pressed.icon->spec.type == wuss_ICON_TYPE_SLIDER)
     {
       wuss_icon_t *icon;
 
-      icon = wuss->pressed_icon;
+      icon = wuss->pressed.icon;
 
       wuss__icon_set_value(win, icon,
                            wuss__slider_value_for_point(win, icon,
@@ -232,10 +242,10 @@ static result_t mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
         if (wuss__icon_pressed(it) && it != icon)
         {
           wuss__icon_set_state(it, wuss_ICON_STATE_PRESSED, 0);
-          if (wuss->pressed_icon == it)
+          if (wuss->pressed.icon == it)
           {
-            wuss->pressed_icon   = NULL;
-            wuss->pressed_window = NULL;
+            wuss->pressed.icon   = NULL;
+            wuss->pressed.window = NULL;
           }
           wuss__icon_invalidate(win, it);
         }
@@ -246,7 +256,7 @@ static result_t mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
        * actually held. Other icon types (menu rows, buttons) rely on this
        * hover MOVE to light up/open on mouse-over, so keep it for them. */
       if (icon != NULL &&
-          (icon->spec.type != wuss_ICON_TYPE_SLIDER || icon == wuss->pressed_icon))
+          (icon->spec.type != wuss_ICON_TYPE_SLIDER || icon == wuss->pressed.icon))
       {
         event.kind             = wuss_EVENT_ICON;
         event.data.icon.icon   = icon;

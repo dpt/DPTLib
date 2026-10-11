@@ -15,6 +15,7 @@
 #include "io/filetype.h"
 
 #include "lissajous.h"
+#include "taskapp.h"
 #include "common.h"
 #include "snapshot.h"
 
@@ -24,8 +25,7 @@
  * singleton, retargeted just before wuss_menu_open */
 enum
 {
-  LISSAJOUS_MENU_INFO = 0,
-  LISSAJOUS_MENU_BACKGROUND,
+  LISSAJOUS_MENU_BACKGROUND = 0,
   LISSAJOUS_MENU_FOREGROUND,
   LISSAJOUS_MENU_PAUSE,
   LISSAJOUS_MENU_RATIO,
@@ -112,12 +112,6 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, LISSAJOUS_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in
-                                * lissajous_mouse */
-
   WUSS_MENU_ITEM_MENU(task->menu_items, LISSAJOUS_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
@@ -150,6 +144,18 @@ result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out)
     *out = task;
 
   return result_OK;
+}
+
+result_t lissajous_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Lissajous",
+    "Drifting Lissajous figure",
+    (taskapp_create_fn_t) lissajous_create
+  };
+
+  return taskapp_install(wuss, &desc);
 }
 
 void lissajous_destroy(lissajous_task_t *task)
@@ -230,12 +236,6 @@ static result_t lissajous_mouse(wuss_window_t      *window,
 
   if (button & wuss_BUTTON_MENU)
   {
-    static const wuss_proginfo_desc_t desc =
-      TASK_PROGINFO_DESC("Lissajous", "Lissajous figure, drifting frequencies");
-    wuss_proginfo_set_desc(&desc);
-    lc->menu_items[LISSAJOUS_MENU_INFO].window =
-      wuss_proginfo_window(lc->delegate);
-
     wuss_menu_tick_item(&lc->menu, LISSAJOUS_MENU_PAUSE, lc->paused);
     wuss_menu_tick_exclusive(&lc->ratio_menu, lc->freq_index);
 
@@ -413,22 +413,6 @@ result_t lissajous_handle(wuss_window_t      *window,
     if (window == lc->window)
       lc->window = NULL;
     return result_OK;
-
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == lc->menu_items[LISSAJOUS_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
 
   case wuss_EVENT_QUIT:
     lissajous_destroy(lc);

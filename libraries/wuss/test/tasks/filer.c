@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
@@ -25,8 +29,6 @@
 #define FILER_COLUMNS     4  /* initial window width, in cells */
 #define FILER_MAX_ROWS    4  /* initial window height cap, in cells */
 
-enum { FILER_MENU_INFO };
-
 static char g_filer_root[DPTLIB_MAXPATH] = "";
 
 void filer_set_root(const char *root)
@@ -44,8 +46,24 @@ static const char *filer_default_root(void)
 {
 #ifdef __EMSCRIPTEN__
   return "/";
+#elif defined(__riscos)
+  return "@"; /* the current directory */
 #else
   return ".";
+#endif
+}
+
+/* native "dir<sep>leaf" (RISC OS joins with '.'). Returns the snprintf
+ * length, so >= cap means truncated. */
+static int filer_join(char       *out,
+                      size_t      cap,
+                      const char *dir,
+                      const char *leaf)
+{
+#ifdef __riscos
+  return snprintf(out, cap, "%s.%s", dir, leaf);
+#else
+  return snprintf(out, cap, "%s/%s", dir, leaf);
 #endif
 }
 
@@ -75,7 +93,7 @@ static filer_window_t *filer_find_by_window(filer_task_t        *task,
   int i;
 
   for (i = 0; i < task->nwindows; i++)
-    if (task->windows[i].window == window)
+    if (window != NULL && task->windows[i].window == window)
       return &task->windows[i];
 
   return NULL;
@@ -100,12 +118,12 @@ static const bitmap_t *filer_glyph_for(filer_task_t          *task,
                                        const dirlist_entry_t *entry)
 {
   if (entry->is_dir)
-    return task->have_glyph_directory ? &task->glyph_directory : NULL;
+    return task->glyph_directory;
 
   if (entry->type.ext != NULL && strcmp(entry->type.ext, ".png") == 0)
-    return task->have_glyph_png ? &task->glyph_png : NULL;
+    return task->glyph_png;
 
-  return task->have_glyph_file ? &task->glyph_file : NULL;
+  return task->glyph_file;
 }
 
 static void filer_item(int index, void *opaque, wuss_gridview_item_t *out)
@@ -143,7 +161,7 @@ static void filer_activate(wuss_gridview_t *gridview,
   if (entry == NULL || !entry->is_dir)
     return;
 
-  if (snprintf(child, sizeof(child), "%s/%s", fw->path, entry->leaf) >=
+  if (filer_join(child, sizeof(child), fw->path, entry->leaf) >=
       (int) sizeof(child))
     return;
 
@@ -152,13 +170,74 @@ static void filer_activate(wuss_gridview_t *gridview,
 
 /* ----------------------------------------------------------------------- */
 
+/* wuss_gridview_drag_fn_t: a file pressed and moved past the drag threshold
+ * starts a core drag, and its path is remembered for filer_drop. Directories
+ * are not draggable. */
+static int filer_drag(wuss_gridview_t *gridview, int index, void *opaque)
+{
+  filer_window_t        *fw;
+  const dirlist_entry_t *entry;
+
+  NOT_USED(gridview);
+
+  fw    = opaque;
+  entry = dirlist_get(fw->listing, index);
+  if (entry == NULL || entry->is_dir)
+    return 0;
+
+  if (filer_join(fw->owner->drag_path, sizeof(fw->owner->drag_path),
+                 fw->path, entry->leaf) >= (int) sizeof(fw->owner->drag_path))
+  {
+    fw->owner->drag_path[0] = '\0';
+    return 0;
+  }
+
+  return 1;
+}
+
+/* The drag ended: offer the file to the window or icon bar icon it was
+ * dropped on. Drops on nothing, on a Filer window or after Escape do
+ * nothing. */
+static void filer_drop(filer_task_t *task, const wuss_event_t *event)
+{
+  char              path[DPTLIB_MAXPATH];
+  wuss_msg_target_t target = { NULL, NULL };
+
+  if (task->drag_path[0] == '\0')
+    return;
+
+  memcpy(path, task->drag_path, sizeof(path));
+  task->drag_path[0] = '\0';
+
+  if (event->data.drag_end.cancelled || event->data.drag_end.drop == NULL ||
+      filer_find_by_window(task, event->data.drag_end.drop) != NULL)
+    return;
+
+  target.window = event->data.drag_end.drop;
+  target.icon   = event->data.drag_end.drop_icon;
+
+  (void) wuss_send_recorded_to(task->wuss, task->delegate, &target,
+                               wuss_MESSAGE_DATA_LOAD, path,
+                               strlen(path) + 1, 0, NULL);
+}
+
+/* ----------------------------------------------------------------------- */
+
 static result_t filer_open_path(filer_task_t *task, const char *path)
 {
   result_t        rc;
+  char            canon[DPTLIB_MAXPATH];
   filer_window_t *fw;
   int             slot;
   dirlist_t      *listing;
   wuss_window_t  *window;
+
+#ifndef __riscos
+  /* "." or "a/../b" becomes the full path, for the title and so that the
+   * same directory reached two ways finds its existing window */
+  if (realpath(path, canon) != NULL)
+    path = canon;
+#endif
 
   fw = filer_find_window(task, path);
   if (fw != NULL)
@@ -183,62 +262,50 @@ static result_t filer_open_path(filer_task_t *task, const char *path)
   if (rc != result_OK)
     return rc;
 
-  rc = task_window_create(task->delegate, SIZE2D(320, 240), path, &window);
-  if (rc != result_OK)
-  {
-    dirlist_destroy(listing);
-    return rc;
-  }
-
-  fw = &task->windows[slot];
+  fw          = &task->windows[slot];
   fw->owner   = task;
   fw->listing = listing; /* wuss_gridview_create measures through filer_item */
   snprintf(fw->path, sizeof(fw->path), "%s", path);
 
-  rc = wuss_gridview_create(&fw->gridview, window, dirlist_count(listing),
-                            filer_item, FILER_LABEL_CHARS, filer_activate,
-                            fw);
+  rc = wuss_gridview_window_create(&fw->gridview, task->delegate, path,
+                                   dirlist_count(listing), filer_item,
+                                   FILER_LABEL_CHARS, filer_activate, fw,
+                                   &window);
   if (rc != result_OK)
   {
-    wuss_window_close(window);
     dirlist_destroy(listing);
     fw->listing = NULL;
     return rc;
   }
 
+  wuss_gridview_set_drag(fw->gridview, filer_drag);
+
   fw->window = window;
   if (slot == task->nwindows)
     task->nwindows++;
 
-  {
-    size2d_t cell, fit;
-    int      rows;
-
-    /* filer_find_by_window must find this slot before this call: it fires
-     * wuss_EVENT_OPEN synchronously, and filer_handle's OPEN case looks the
-     * window up to forward the event to wuss_gridview_handle_event, which is
-     * what actually reflows the grid to the new width. */
-    cell = wuss_gridview_get_cell_size(fw->gridview);
-    rows = (dirlist_count(listing) + FILER_COLUMNS - 1) / FILER_COLUMNS;
-    rows = MIN(MAX(rows, 1), FILER_MAX_ROWS);
-    fit  = SIZE2D(FILER_COLUMNS * cell.w, rows * cell.h);
-    (void) wuss_window_resize(window, fit);
-  }
+  /* filer_find_by_window must find this slot before this call: it fires
+   * wuss_EVENT_OPEN synchronously, and filer_handle's OPEN case looks the
+   * window up to forward the event to wuss_gridview_handle_event, which is
+   * what actually reflows the grid to the new width. */
+  wuss_gridview_fit_window(fw->gridview, FILER_COLUMNS, FILER_MAX_ROWS);
 
   return result_OK;
 }
 
 /* ----------------------------------------------------------------------- */
 
-static void filer_load_glyph(const char *resources,
-                             const char *leaf,
-                             bitmap_t   *bm,
-                             int        *have)
+static const bitmap_t *filer_find_glyph(const wuss_task_t *task,
+                                        const char        *name)
 {
-  const char *path;
+  const bitmap_t *bm;
 
-  path  = pathf("%s/resources/wuss/%s.png", resources, leaf);
-  *have = bitmap_load_png(bm, path) == result_OK;
+  bm = wuss_task_iconpool_find(task, name);
+  if (bm == NULL)
+    logf_warning("filer: glyph '%s' unavailable; cells show label only",
+                 name);
+
+  return bm;
 }
 
 result_t filer_create(wuss_t *wuss, filer_task_t **out)
@@ -247,7 +314,6 @@ result_t filer_create(wuss_t *wuss, filer_task_t **out)
   filer_task_t            *task;
   wuss_task_desc_t         delegate_desc;
   wuss_iconbar_icon_spec_t spec;
-  const char              *resources;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -256,19 +322,16 @@ result_t filer_create(wuss_t *wuss, filer_task_t **out)
   task->wuss     = wuss;
   task->nwindows = 0;
 
-  resources = wuss_get_resources(wuss);
-  filer_load_glyph(resources, "filer-file", &task->glyph_file,
-                   &task->have_glyph_file);
-  filer_load_glyph(resources, "filer-directory", &task->glyph_directory,
-                   &task->have_glyph_directory);
-  filer_load_glyph(resources, "filer-png", &task->glyph_png,
-                   &task->have_glyph_png);
-
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, FILER_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo
-                                * singleton just before open, in
-                                * filer_menu_open */
+  WUSS_MENU_ITEM(task->menu_items, FILER_MENU_SELECT_ALL, "Select all",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->menu_items, FILER_MENU_CLEAR_SELECTION,
+                 "Clear selection", wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->menu_items, FILER_MENU_OPEN_PARENT, "Open parent",
+                 wuss_MENU_ITEM_NONE);
+#ifdef __EMSCRIPTEN__
+  WUSS_MENU_ITEM(task->menu_items, FILER_MENU_DOWNLOAD, "Download",
+                 wuss_MENU_ITEM_NONE);
+#endif
   WUSS_MENU_TITLE(task->menu, "Filer", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -282,8 +345,13 @@ result_t filer_create(wuss_t *wuss, filer_task_t **out)
     return rc;
   }
 
+  task->glyph_file      = filer_find_glyph(task->delegate, "file_unk");
+  task->glyph_directory = filer_find_glyph(task->delegate, "file_dir");
+  task->glyph_png       = filer_find_glyph(task->delegate, "file_b60");
+
   spec.text  = "Filer";
-  spec.image = task->have_glyph_directory ? &task->glyph_directory : NULL;
+  spec.side  = wuss_ICONBAR_LEFT;
+  spec.image = task->glyph_directory;
   rc = wuss_iconbar_icon_create(wuss, task->delegate, &spec,
                                 &task->iconbar_icon);
   if (rc != result_OK)
@@ -299,6 +367,11 @@ result_t filer_create(wuss_t *wuss, filer_task_t **out)
   return result_OK;
 }
 
+result_t filer_app_create(wuss_t *wuss)
+{
+  return filer_create(wuss, NULL);
+}
+
 void filer_destroy(filer_task_t *task)
 {
   int i;
@@ -309,26 +382,138 @@ void filer_destroy(filer_task_t *task)
     dirlist_destroy(task->windows[i].listing);
   }
 
-  if (task->have_glyph_file)
-    free(task->glyph_file.base);
-  if (task->have_glyph_directory)
-    free(task->glyph_directory.base);
-  if (task->have_glyph_png)
-    free(task->glyph_png.base);
-
   free(task);
 }
 
 /* ----------------------------------------------------------------------- */
 
-static result_t filer_menu_open(filer_task_t *task)
+#ifdef __EMSCRIPTEN__
+/* Hands the file at path, in Emscripten's in-memory filesystem, to the
+ * browser as a download named after its leaf. */
+EM_JS(void, filer_web_download, (const char *path),
 {
-  static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Filer", "Directory display / drag-save target");
+  var p = UTF8ToString(path);
+  var a;
 
-  wuss_proginfo_set_desc(&desc);
-  task->menu_items[FILER_MENU_INFO].window =
-    wuss_proginfo_window(task->delegate);
+  try
+  {
+    a          = document.createElement('a');
+    a.href     = URL.createObjectURL(new Blob([FS.readFile(p)],
+                                              { type: 'application/octet-stream' }));
+    a.download = p.split('/').pop();
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 0);
+  }
+  catch (e)
+  {
+    console.error('filer: cannot download ' + p + ': ' + e);
+  }
+});
+
+/* Downloads every selected file in fw, or with download zero just counts
+ * them. Directories are skipped. Returns the number of files. */
+static int filer_download_selection(const filer_window_t *fw, int download)
+{
+  const dirlist_entry_t *entry;
+  char                   path[DPTLIB_MAXPATH];
+  int                    n;
+  int                    i;
+
+  n = 0;
+  for (i = 0; i < dirlist_count(fw->listing); i++)
+  {
+    if (!wuss_gridview_is_selected(fw->gridview, i))
+      continue;
+
+    entry = dirlist_get(fw->listing, i);
+    if (entry == NULL || entry->is_dir)
+      continue;
+
+    n++;
+    if (!download)
+      continue;
+
+    if (filer_join(path, sizeof(path), fw->path, entry->leaf) >=
+        (int) sizeof(path))
+      continue;
+
+    filer_web_download(path);
+  }
+
+  return n;
+}
+#endif
+
+/* the directory holding path, in out (capacity cap). Returns zero if path is
+ * the root or has no parent to give. */
+static int filer_parent_path(const char *path, char *out, size_t cap)
+{
+  const char *slash;
+#ifndef __riscos
+  size_t      len;
+#endif
+
+#ifdef __riscos
+  /* "adfs::Disc.$.Dir" -> "adfs::Disc.$"; stop at the root or a bare name */
+  slash = strrchr(path, '.');
+  if (slash == NULL || slash == path)
+    return 0;
+
+  return snprintf(out, cap, "%.*s", (int) (slash - path), path) < (int) cap;
+#else
+  slash = strrchr(path, '/');
+  if (slash == NULL || (slash == path && path[1] == '\0'))
+    return 0;
+
+  len = (size_t) (slash - path);
+  if (len == 0)
+    len = 1; /* the parent of "/a" is "/" */
+
+  return snprintf(out, cap, "%.*s", (int) len, path) < (int) cap;
+#endif
+}
+
+/* shade or unshade a menu row, on screen too if the menu is open */
+static void filer_menu_enable(filer_task_t *task, int row, int enabled)
+{
+  if (enabled)
+    task->menu_items[row].flags &= ~wuss_MENU_ITEM_DISABLED;
+  else
+    task->menu_items[row].flags |= wuss_MENU_ITEM_DISABLED;
+
+  if (task->menu_handle != NULL)
+    wuss_menu_disable_item_live(task->menu_handle, &task->menu, row, !enabled);
+}
+
+/* set which rows apply to the window the menu was opened over, from its
+ * listing and selection. Called as the menu opens and again after a pick that
+ * leaves it open (ADJUST) and changes the selection. */
+static void filer_menu_update(filer_task_t *task)
+{
+  filer_window_t *fw;
+  char            parent[DPTLIB_MAXPATH];
+  int             count;
+  int             selected;
+
+  fw       = filer_find_by_window(task, task->menu_window);
+  count    = fw != NULL ? dirlist_count(fw->listing) : 0;
+  selected = fw != NULL ? wuss_gridview_selected_count(fw->gridview) : 0;
+
+  filer_menu_enable(task, FILER_MENU_SELECT_ALL, selected < count);
+  filer_menu_enable(task, FILER_MENU_CLEAR_SELECTION, selected > 0);
+  filer_menu_enable(task, FILER_MENU_OPEN_PARENT,
+                    fw != NULL &&
+                    filer_parent_path(fw->path, parent, sizeof(parent)));
+#ifdef __EMSCRIPTEN__
+  filer_menu_enable(task, FILER_MENU_DOWNLOAD,
+                    fw != NULL && filer_download_selection(fw, 0) > 0);
+#endif
+}
+
+static result_t filer_menu_open(filer_task_t *task, wuss_window_t *window)
+{
+  task->menu_window = window;
+  filer_menu_update(task);
 
   return wuss_menu_open_at_pointer(task->delegate, &task->menu,
                                    &task->menu_handle);
@@ -347,7 +532,7 @@ static result_t filer_build_save_path(const filer_window_t *fw,
   if (!path_leaf_valid(leaf))
     return result_BAD_ARG;
 
-  if (snprintf(path, cap, "%s/%s", fw->path, leaf) >= (int) cap)
+  if (filer_join(path, cap, fw->path, leaf) >= (int) cap)
     return result_BAD_ARG;
 
   return result_OK;
@@ -412,6 +597,9 @@ result_t filer_handle(wuss_window_t      *window,
   case wuss_EVENT_REDRAW:
   case wuss_EVENT_MOUSE:
   case wuss_EVENT_OPEN:
+  case wuss_EVENT_PALETTE:
+  case wuss_EVENT_POINTER_EXIT:
+  case wuss_EVENT_RELAYOUT:
   {
     filer_window_t *fw;
 
@@ -421,7 +609,7 @@ result_t filer_handle(wuss_window_t      *window,
     if (event->kind == wuss_EVENT_MOUSE &&
         (event->data.mouse.action == wuss_MOUSE_DOWN) &&
         (event->data.mouse.button & wuss_BUTTON_MENU))
-      return filer_menu_open(task);
+      return filer_menu_open(task, window);
     return result_OK;
   }
 
@@ -433,32 +621,59 @@ result_t filer_handle(wuss_window_t      *window,
     return filer_open_path(task, filer_root());
 
   case wuss_EVENT_MENU_SELECT:
-    if (event->data.menu_select.menu == &task->menu)
-      return filer_open_path(task, filer_root());
-    return result_OK;
+  {
+    filer_window_t *fw;
+    char            parent[DPTLIB_MAXPATH];
+
+    if (event->data.menu_select.menu != &task->menu)
+      return result_OK;
+
+    fw = filer_find_by_window(task, task->menu_window);
+    switch (event->data.menu_select.index)
+    {
+    case FILER_MENU_SELECT_ALL:
+      if (fw != NULL)
+      {
+        wuss_gridview_select_all(fw->gridview);
+        filer_menu_update(task);
+      }
+      return result_OK;
+
+    case FILER_MENU_CLEAR_SELECTION:
+      if (fw != NULL)
+      {
+        wuss_gridview_clear_selection(fw->gridview);
+        filer_menu_update(task);
+      }
+      return result_OK;
+
+    case FILER_MENU_OPEN_PARENT:
+      if (fw != NULL && filer_parent_path(fw->path, parent, sizeof(parent)))
+        return filer_open_path(task, parent);
+      return result_OK;
+
+#ifdef __EMSCRIPTEN__
+    case FILER_MENU_DOWNLOAD:
+      if (fw != NULL)
+        (void) filer_download_selection(fw, 1);
+      return result_OK;
+#endif
+
+    default:
+      return result_OK;
+    }
+  }
 
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL;
     return result_OK;
 
-  case wuss_EVENT_PRE_SHOW:
-  {
-    result_t rc;
-
-    if (window == task->menu_items[FILER_MENU_INFO].window)
-      rc = wuss_proginfo_handle_pre_show();
-    else
-      rc = result_OK;
-    if (rc != result_OK)
-      return rc;
-    if (event->data.pre_show.handle == NULL)
-      return result_OK;
-    return wuss_menu_open_window_now(event->data.pre_show.handle,
-                                     event->data.pre_show.index);
-  }
-
   case wuss_EVENT_MESSAGE:
     return filer_message(task, window, event);
+
+  case wuss_EVENT_DRAG_END:
+    filer_drop(task, event);
+    return result_OK;
 
   case wuss_EVENT_CLOSE:
   {
@@ -482,6 +697,9 @@ result_t filer_handle(wuss_window_t      *window,
   case wuss_EVENT_QUIT:
     filer_destroy(task);
     return result_OK;
+
+  case wuss_EVENT_KEY:
+    return result_WUSS_KEY_UNCLAIMED;
 
   default:
     return result_OK;

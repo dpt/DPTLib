@@ -373,7 +373,7 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
                font,
                transparent ? "-transparent" : "-filled",
                1 << pixelfmt_log2bpp(state->scr.format));
-      bitmap_save_png(&state->bm, pathf("%s.png", leafname));
+      bitmap_save_png(&state->bm, pathf("%s%s.png", DPTLIB_TMPPREFIX, leafname));
     }
   }
 
@@ -485,7 +485,7 @@ stop:
                font,
                transparent ? "-transparent" : "-filled",
                1 << pixelfmt_log2bpp(state->scr.format));
-      bitmap_save_png(&state->bm, pathf("%s.png", leafname));
+      bitmap_save_png(&state->bm, pathf("%s%s.png", DPTLIB_TMPPREFIX, leafname));
     }
   }
 

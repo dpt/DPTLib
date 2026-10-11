@@ -60,15 +60,15 @@ void wuss_window_move(wuss_window_t *window, point_t p)
 
   /* A piece can also be "clean" by occlusion yet still not show valid
    * pixels on screen: an earlier move (or any other invalidation) this same
-   * frame may have queued part of it in wuss->dirty[] without wuss_redraw_
+   * frame may have queued part of it in wuss->dirty.box[] without wuss_redraw_
    * dirty having run yet to actually repaint it -- e.g. several batched
    * pointer-move events arriving before the next redraw, which pushes a
    * window on and off the screen edge repeatedly. Sliding that stale ground
    * would just paste it, untouched, onto the window's new position. Strip
    * every pending-dirty region out of "clean" first so only pixels already
    * settled on screen are treated as a valid blit source. */
-  nclean = wuss__filter_settled(clean, nclean, window->wuss->dirty,
-                                window->wuss->ndirty);
+  nclean = wuss__filter_settled(clean, nclean, window->wuss->dirty.box,
+                                window->wuss->dirty.n);
 
   window->visible.x0 = p.x - outline_px;
   window->visible.y0 = p.y - outline_px - titlebar_height;
@@ -97,6 +97,7 @@ void wuss_window_move(wuss_window_t *window, point_t p)
    * hasn't moved, so its pixels are already correct and pasting stale ones
    * over them would just have to be repainted straight back. It also
    * repairs any piece that slid partly off-screen. */
+  ncopied = 0;
   if (nclean > 0 &&
       wuss__blit_pieces(window, clean, nclean, dx, dy, NULL, copied, &ncopied))
   {

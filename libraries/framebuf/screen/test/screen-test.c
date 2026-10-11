@@ -1,6 +1,7 @@
 /* framebuf/screen/test/screen-test.c -- test screen drawing */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "base/result.h"
@@ -285,6 +286,70 @@ static void np_make_src(bitmap_t *src, pixelfmt_rgba8888_t *buf)
 static int np_at(testscreen_t *ts, int x, int y)
 {
   return (int) ts->pixels[y * WIDTH + x];
+}
+
+static result_t test_tiled(void)
+{
+  static testscreen_t        ts;
+  static pixelfmt_bgrx8888_t srcbuf[3 * 2];
+
+  bitmap_t                   src;
+  box_t                      dst = { 5, 6, 30, 25 };
+  box_t                      saved;
+  point_t                    origin;
+  int                        x, y;
+  int                        want;
+
+  for (x = 0; x < 3 * 2; x++)
+    srcbuf[x] = 0x00000100 + x; /* each tile pixel is unique */
+  bitmap_init(&src, SIZE2D(3, 2), pixelfmt_bgrx8888,
+              3 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
+
+  /* Origin well off-screen to the top left, then inside dst, then below and
+   * right of it: every pixel in dst must show the tile pixel its phase
+   * says, and nothing outside dst may change. */
+  for (origin = POINT(-100, -50); ; origin = POINT(origin.x + 107, origin.y + 61))
+  {
+    testscreen_init(&ts);
+    saved = ts.scr.clip;
+    if (screen_copy_bitmap_tiled(&ts.scr, &dst, &src, origin) != result_OK)
+    {
+      printf("screen: tiled copy failed\n");
+      return result_TEST_FAILED;
+    }
+
+    for (y = 0; y < HEIGHT; y++)
+      for (x = 0; x < WIDTH; x++)
+      {
+        if (x >= dst.x0 && x < dst.x1 && y >= dst.y0 && y < dst.y1)
+        {
+          want = 0x00000100 + (((y - origin.y) % 2 + 2) % 2) * 3 +
+                              (((x - origin.x) % 3 + 3) % 3);
+          if ((np_at(&ts, x, y) & 0xFFFFFF) != want)
+          {
+            printf("screen: tiled phase wrong at (%d,%d), origin (%d,%d)\n",
+                   x, y, origin.x, origin.y);
+            return result_TEST_FAILED;
+          }
+        }
+        else if (np_at(&ts, x, y) != (int) (pixelfmt_bgrx8888_t) BACKGROUND)
+        {
+          printf("screen: tiled drew outside dst at (%d,%d)\n", x, y);
+          return result_TEST_FAILED;
+        }
+      }
+
+    if (memcmp(&ts.scr.clip, &saved, sizeof(saved)) != 0)
+    {
+      printf("screen: tiled did not restore the clip\n");
+      return result_TEST_FAILED;
+    }
+
+    if (origin.x > 100)
+      break;
+  }
+
+  return result_TEST_PASSED;
 }
 
 static result_t test_ninepatch(void)
@@ -575,6 +640,111 @@ static result_t test_draw_lines(void)
         printf("screen: draw_lines with <2 points drew at (%d,%d)\n", x, y);
         return result_TEST_FAILED;
       }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
+static result_t test_draw_thick_line(void)
+{
+  static testscreen_t ts;
+  static testscreen_t enc;
+
+  int                 fg, bg;
+  int                 x, y;
+  int                 lit;
+
+  fg = (int) np_encode(&enc, 255, 0, 0);
+  bg = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
+
+  /* Horizontal, width 3: rows 19..21, columns 10..30 inclusive, no more. */
+  testscreen_init(&ts);
+  screen_draw_thick_line(&ts.scr, 10, 20, 30, 20, 3, colour_rgb(255, 0, 0));
+
+  for (y = 0; y < HEIGHT; y++)
+    for (x = 0; x < WIDTH; x++)
+    {
+      int want;
+
+      want = (y >= 19 && y <= 21 && x >= 10 && x <= 30) ? fg : bg;
+      if (np_at(&ts, x, y) != want)
+      {
+        printf("screen: draw_thick_line horizontal wrong at (%d,%d)\n", x, y);
+        return result_TEST_FAILED;
+      }
+    }
+
+  /* Vertical, width 2, drawn backwards: columns 19..20, rows 5..25. */
+  testscreen_init(&ts);
+  screen_draw_thick_line(&ts.scr, 20, 25, 20, 5, 2, colour_rgb(255, 0, 0));
+
+  for (y = 0; y < HEIGHT; y++)
+    for (x = 0; x < WIDTH; x++)
+    {
+      int want;
+
+      want = (x >= 19 && x <= 20 && y >= 5 && y <= 25) ? fg : bg;
+      if (np_at(&ts, x, y) != want)
+      {
+        printf("screen: draw_thick_line vertical wrong at (%d,%d)\n", x, y);
+        return result_TEST_FAILED;
+      }
+    }
+
+  /* Diagonal, width 5: the centreline and its neighbours across the stroke
+   * are lit, pixels well off it are not. */
+  testscreen_init(&ts);
+  screen_draw_thick_line(&ts.scr, 10, 10, 50, 50, 5, colour_rgb(255, 0, 0));
+
+  for (x = 10; x <= 50; x++)
+    if (np_at(&ts, x, x) != fg ||
+        (x < 50 && (np_at(&ts, x + 1, x) != fg || np_at(&ts, x, x + 1) != fg)))
+    {
+      printf("screen: draw_thick_line diagonal gap at %d\n", x);
+      return result_TEST_FAILED;
+    }
+  if (np_at(&ts, 30, 36) != bg || np_at(&ts, 36, 30) != bg ||
+      np_at(&ts, 6, 6) != bg || np_at(&ts, 54, 54) != bg)
+  {
+    printf("screen: draw_thick_line diagonal too fat\n");
+    return result_TEST_FAILED;
+  }
+
+  /* Width 1 is a plain line; width 0 draws nothing. */
+  testscreen_init(&ts);
+  screen_draw_thick_line(&ts.scr, 4, 4, 40, 20, 0, colour_rgb(255, 0, 0));
+  lit = 0;
+  for (y = 0; y < HEIGHT; y++)
+    for (x = 0; x < WIDTH; x++)
+      lit += (np_at(&ts, x, y) != bg);
+  if (lit != 0)
+  {
+    printf("screen: draw_thick_line width 0 drew\n");
+    return result_TEST_FAILED;
+  }
+
+  testscreen_init(&enc);
+  testscreen_init(&ts);
+  screen_draw_line(&enc.scr, 4, 4, 40, 20, colour_rgb(255, 0, 0));
+  screen_draw_thick_line(&ts.scr, 4, 4, 40, 20, 1, colour_rgb(255, 0, 0));
+  if (memcmp(ts.pixels, enc.pixels, sizeof(ts.pixels)) != 0)
+  {
+    printf("screen: draw_thick_line width 1 differs from draw_line\n");
+    return result_TEST_FAILED;
+  }
+
+  /* Wild and wholly off-screen coordinates must not crash or draw. */
+  testscreen_init(&ts);
+  screen_draw_thick_line(&ts.scr, -100000, -100000, 100000, 100000, 7,
+                         colour_rgb(255, 0, 0));
+  screen_draw_thick_line(&ts.scr, -50, -50, -20, -10, 6,
+                         colour_rgb(255, 0, 0));
+  if (np_at(&ts, 32, 32) != fg || np_at(&ts, 0, 63) != bg)
+  {
+    printf("screen: draw_thick_line clipped line wrong\n");
+    return result_TEST_FAILED;
+  }
 
   return result_TEST_PASSED;
 }
@@ -1030,6 +1200,203 @@ static result_t test_copy_bitmap_p2(void)
   return result_TEST_PASSED;
 }
 
+#define RLE_SRC_W 24
+#define RLE_SRC_H 8
+
+/* Blit an RLE-compressed rgba8888 source and its raw twin onto a screen of
+ * the given format at a spread of offsets, some clipped by every edge, over a
+ * non-zero background. The two screens must match bit for bit: that covers
+ * the pixel packing, neighbour pixels staying untouched, clipping, and
+ * transparent pixels and skip runs leaving the background alone. The source
+ * is colourful (so a colour palette is exercised, not just greys) with a
+ * transparent diagonal and column band, so the codec emits skip runs as well
+ * as literal ones, and a translucent band, which a deep screen blends.
+ * "name" labels failures; "pal" is NULL for a deep screen. Returns 0 on
+ * success. */
+static int rle_blit_matches_raw(const char *name,
+                                pixelfmt_t  fmt,
+                                colour_t   *pal)
+{
+  static const int           offsets[][2] =
+  {
+    {  0,  0 }, {  1,  1 }, {  3,  2 }, {  5,  1 }, {  7,  5 },
+    { -4, -2 }, { -12, 3 }, { 2, -6 }, { WIDTH - 6, HEIGHT - 3 },
+    { WIDTH - 1, 0 }
+  };
+  static pixelfmt_rgba8888_t rawpix[RLE_SRC_W * RLE_SRC_H];
+  static unsigned char       ref[WIDTH * HEIGHT * 2];
+  static unsigned char       rle[WIDTH * HEIGHT * 2];
+
+  int                        rowbytes;
+  screen_t                   sref, srle;
+  bitmap_t                   raw, comp;
+  void                      *blob;
+  int                        x, y;
+  size_t                     o;
+  int                        changed;
+
+  rowbytes = (WIDTH << pixelfmt_log2bpp(fmt)) >> 3;
+
+  for (y = 0; y < RLE_SRC_H; y++)
+  {
+    for (x = 0; x < RLE_SRC_W; x++)
+    {
+      int r, g, b, alpha;
+
+      r = ((x / 3) * 37 + y * 91) & 0xFF;
+      g = ((x / 3) * 53 + y * 29) & 0xFF;
+      b = ((x / 3) * 11 + y * 71) & 0xFF;
+      if ((x + y) % 5 == 0 || (x >= 9 && x <= 14))
+        alpha = 0;
+      else if (x >= 18 && x <= 20)
+        alpha = 0x80;
+      else
+        alpha = 0xFF;
+      rawpix[y * RLE_SRC_W + x] = colour_rgba(r, g, b, alpha).primary;
+    }
+  }
+
+  bitmap_init(&raw, SIZE2D(RLE_SRC_W, RLE_SRC_H), pixelfmt_rgba8888,
+              RLE_SRC_W * (int) sizeof(rawpix[0]), NULL, rawpix);
+
+  blob = malloc(sizeof(rawpix));
+  if (blob == NULL)
+    return 1;
+  memcpy(blob, rawpix, sizeof(rawpix));
+  bitmap_init(&comp, SIZE2D(RLE_SRC_W, RLE_SRC_H), pixelfmt_rgba8888,
+              RLE_SRC_W * (int) sizeof(rawpix[0]), NULL, blob);
+  if (bitmap_compress(&comp) != result_OK || !bitmap_is_compressed(&comp))
+  {
+    printf("screen: rle %s: compress failed\n", name);
+    free(comp.base);
+    return 1;
+  }
+
+  screen_init(&sref, SIZE2D(WIDTH, HEIGHT), fmt, rowbytes, pal, ref);
+  screen_init(&srle, SIZE2D(WIDTH, HEIGHT), fmt, rowbytes, pal, rle);
+
+  for (o = 0; o < NELEMS(offsets); o++)
+  {
+    memset(ref, 0xA5, sizeof(ref));
+    memset(rle, 0xA5, sizeof(rle));
+
+    if (screen_copy_bitmap(&sref, offsets[o][0], offsets[o][1], &raw)
+        != result_OK ||
+        screen_copy_bitmap(&srle, offsets[o][0], offsets[o][1], &comp)
+        != result_OK)
+    {
+      printf("screen: rle %s: blit at (%d,%d) failed\n",
+             name, offsets[o][0], offsets[o][1]);
+      free(comp.base);
+      return 1;
+    }
+
+    if (memcmp(ref, rle, sizeof(ref)) != 0)
+    {
+      printf("screen: rle %s: blit at (%d,%d) differs from raw\n",
+             name, offsets[o][0], offsets[o][1]);
+      free(comp.base);
+      return 1;
+    }
+
+    /* Guard against a vacuous pass: every offset shows part of the source,
+     * so the screen must have changed from its background. */
+    changed = 0;
+    for (x = 0; x < (int) sizeof(rle); x++)
+      changed |= rle[x] != 0xA5;
+    if (!changed)
+    {
+      printf("screen: rle %s: blit at (%d,%d) drew nothing\n",
+             name, offsets[o][0], offsets[o][1]);
+      free(comp.base);
+      return 1;
+    }
+  }
+
+  free(comp.base);
+
+  return 0;
+}
+
+/* RLE source onto 1bpp screens: black on white, then inverted, so index 0
+ * is the light colour. */
+static result_t test_copy_bitmap_rle_p1(void)
+{
+  colour_t pal[2];
+  int      bad;
+
+  pal[0] = colour_rgb(0x00, 0x00, 0x00);
+  pal[1] = colour_rgb(0xFF, 0xFF, 0xFF);
+  bad    = rle_blit_matches_raw("p1", pixelfmt_p1, pal);
+
+  pal[0] = colour_rgb(0xFF, 0xFF, 0xFF);
+  pal[1] = colour_rgb(0x00, 0x00, 0x00);
+  bad   |= rle_blit_matches_raw("p1 inverted", pixelfmt_p1, pal);
+
+  return bad == 0 ? result_TEST_PASSED : result_TEST_FAILED;
+}
+
+/* RLE source onto 2bpp screens: a grey ramp, then four colours. */
+static result_t test_copy_bitmap_rle_p2(void)
+{
+  colour_t pal[4];
+  int      bad;
+
+  pal[0] = colour_rgb(0x00, 0x00, 0x00);
+  pal[1] = colour_rgb(0x55, 0x55, 0x55);
+  pal[2] = colour_rgb(0xAA, 0xAA, 0xAA);
+  pal[3] = colour_rgb(0xFF, 0xFF, 0xFF);
+  bad    = rle_blit_matches_raw("p2", pixelfmt_p2, pal);
+
+  pal[0] = colour_rgb(0xFF, 0x00, 0x00);
+  pal[1] = colour_rgb(0x00, 0xFF, 0x00);
+  pal[2] = colour_rgb(0x00, 0x00, 0xFF);
+  pal[3] = colour_rgb(0xFF, 0xFF, 0x00);
+  bad   |= rle_blit_matches_raw("p2 colour", pixelfmt_p2, pal);
+
+  return bad == 0 ? result_TEST_PASSED : result_TEST_FAILED;
+}
+
+/* RLE source onto a 4bpp screen: sixteen greys. */
+static result_t test_copy_bitmap_rle_p4(void)
+{
+  colour_t pal[16];
+  int      i;
+
+  for (i = 0; i < 16; i++)
+    pal[i] = colour_rgb(i * 17, i * 17, i * 17);
+
+  return rle_blit_matches_raw("p4", pixelfmt_p4, pal) == 0
+         ? result_TEST_PASSED : result_TEST_FAILED;
+}
+
+/* RLE source onto an 8bpp screen: a 3-3-2 colour cube. */
+static result_t test_copy_bitmap_rle_p8(void)
+{
+  colour_t pal[256];
+  int      i;
+
+  for (i = 0; i < 256; i++)
+    pal[i] = colour_rgb(((i >> 5) & 7) * 255 / 7,
+                        ((i >> 2) & 7) * 255 / 7,
+                        (i & 3) * 255 / 3);
+
+  return rle_blit_matches_raw("p8", pixelfmt_p8, pal) == 0
+         ? result_TEST_PASSED : result_TEST_FAILED;
+}
+
+/* RLE source onto the two 16bpp deep screens, where the translucent band is
+ * blended rather than alpha-tested. */
+static result_t test_copy_bitmap_rle_16(void)
+{
+  int bad;
+
+  bad  = rle_blit_matches_raw("rgb565", pixelfmt_rgb565, NULL);
+  bad |= rle_blit_matches_raw("rgbx5551", pixelfmt_rgbx5551, NULL);
+
+  return bad == 0 ? result_TEST_PASSED : result_TEST_FAILED;
+}
+
 /* Blit an rgba8888 source onto an 8bpp paletted screen: each pixel quantises
  * to the nearest palette entry and is stored as one plain byte. Also covers
  * set_pixel / fill_hline / fill_pattern / blend_pixel on the p8 path. */
@@ -1326,6 +1693,102 @@ static result_t test_copy_bitmap_paletted_source(void)
 #undef P4_SRC_ROWBYTES
 }
 
+/* screen_copy_bitmap of a p4 source onto a p4 screen takes a remap fast
+ * path. It must land exactly what the same image as an rgba8888 source
+ * does through the general path: same nearest matches, same transparency,
+ * same clipping, at even and odd destination x. */
+static result_t test_copy_bitmap_p4_to_p4(void)
+{
+#define P4P4_W 7
+#define P4P4_H 3
+  static const int xs[] = { 3, 4, -2, -3, WIDTH - 4, WIDTH - 5 };
+
+  static unsigned char       p4buf[(P4P4_W + 1) / 2 * P4P4_H];
+  static pixelfmt_rgba8888_t deepbuf[P4P4_W * P4P4_H];
+  static unsigned char       want[WIDTH / 2 * HEIGHT];
+  static unsigned char       got[WIDTH / 2 * HEIGHT];
+
+  colour_t                   srcpal[16];
+  colour_t                   scrpal[16];
+  bitmap_t                   p4src;
+  bitmap_t                   deepsrc;
+  int                        i, x, y;
+  int                        pass;
+  size_t                     xi;
+  screen_t                   wantscr;
+  screen_t                   gotscr;
+
+  for (i = 0; i < 16; i++)
+  {
+    srcpal[i] = colour_rgb((unsigned char) (i * 37),
+                           (unsigned char) (255 - i * 13),
+                           (unsigned char) (i * 91));
+    scrpal[i] = colour_rgb((unsigned char) ((i & 1) ? 255 : 0),
+                           (unsigned char) ((i & 2) ? 255 : 0),
+                           (unsigned char) ((i & 4) ? ((i & 8) ? 255 : 128) : 0));
+  }
+  memset(p4buf, 0, sizeof(p4buf));
+  for (y = 0; y < P4P4_H; y++)
+    for (x = 0; x < P4P4_W; x++)
+    {
+      i = (x + y * P4P4_W) & 15;
+      p4buf[y * ((P4P4_W + 1) / 2) + (x >> 1)] |=
+        (unsigned char) (i << ((x & 1) * 4));
+      deepbuf[y * P4P4_W + x] = srcpal[i].primary;
+    }
+
+  bitmap_init(&p4src, SIZE2D(P4P4_W, P4P4_H), pixelfmt_p4,
+              (P4P4_W + 1) / 2, srcpal, p4buf);
+  bitmap_init(&deepsrc, SIZE2D(P4P4_W, P4P4_H), pixelfmt_rgba8888,
+              P4P4_W * 4, NULL, deepbuf);
+
+  /* opaque first, then with a fully transparent entry */
+  for (pass = 0; pass < 2; pass++)
+  {
+    for (xi = 0; xi < NELEMS(xs); xi++)
+    {
+      if (pass == 1 && xi == 0)
+      {
+        srcpal[5] = colour_rgba(0x00, 0xFF, 0x00, 0x00);
+        for (i = 0; i < P4P4_W * P4P4_H; i++)
+          if ((i & 15) == 5)
+            deepbuf[i] = srcpal[5].primary;
+        bitmap_set_palette(&p4src, srcpal);
+      }
+
+      memset(want, 0x9A, sizeof(want));
+      memset(got, 0x9A, sizeof(got));
+      screen_init(&wantscr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p4, WIDTH / 2,
+                  scrpal, want);
+      screen_init(&gotscr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p4, WIDTH / 2,
+                  scrpal, got);
+
+      if (screen_copy_bitmap(&wantscr, xs[xi], 1, &deepsrc) != result_OK ||
+          screen_copy_bitmap(&gotscr, xs[xi], 1, &p4src) != result_OK)
+      {
+        printf("screen: p4 to p4 copy_bitmap failed at x=%d pass %d\n",
+               xs[xi], pass);
+        bitmap_set_palette(&p4src, NULL);
+        return result_TEST_FAILED;
+      }
+
+      if (memcmp(want, got, sizeof(want)) != 0)
+      {
+        printf("screen: p4 to p4 copy_bitmap differs from rgba8888 at x=%d "
+               "pass %d\n", xs[xi], pass);
+        bitmap_set_palette(&p4src, NULL);
+        return result_TEST_FAILED;
+      }
+    }
+  }
+
+  bitmap_set_palette(&p4src, NULL);
+
+  return result_TEST_PASSED;
+#undef P4P4_H
+#undef P4P4_W
+}
+
 /* Unpack the p2 pixel at column "px" of a row's byte buffer (bits 7..6 are
  * column 0, MSB-first, four to the byte). */
 static int p2_pixel_at(const unsigned char *rowbuf, int px)
@@ -1545,6 +2008,104 @@ static result_t test_copy_rect_packed(void)
                cases[ci].bits);
         return result_TEST_FAILED;
       }
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* screen_copy_rect on 1/2/4bpp against a pixel-by-pixel reference: random
+ * contents, random source boxes and shifts (every phase, overlapping or not,
+ * byte-aligned or not), compared over the whole screen so any stray write
+ * outside the destination shows up too. */
+static result_t test_copy_rect_packed_random(void)
+{
+  static const struct { pixelfmt_t fmt; int bits; } cases[] =
+  {
+    { pixelfmt_p1, 1 },
+    { pixelfmt_p2, 2 },
+    { pixelfmt_p4, 4 },
+  };
+
+  static unsigned char buf[WIDTH / 2 * HEIGHT];
+  static unsigned char want[WIDTH * HEIGHT];
+  static unsigned char before[WIDTH * HEIGHT];
+
+  colour_t             pal[16];
+  size_t               ci;
+  int                  i, trial;
+  unsigned int         seed;
+
+  for (i = 0; i < 16; i++)
+    pal[i] = colour_rgb((unsigned char) (i * 17),
+                        (unsigned char) (i * 17),
+                        (unsigned char) (i * 17));
+
+  seed = 12345;
+  for (ci = 0; ci < NELEMS(cases); ci++)
+  {
+    int bits, rowbytes;
+
+    bits     = cases[ci].bits;
+    rowbytes = WIDTH * bits / 8;
+
+    for (trial = 0; trial < 400; trial++)
+    {
+      screen_t scr;
+      box_t    src, got;
+      int      w, h, dx, dy, x, y, nx, ny;
+
+      for (i = 0; i < rowbytes * HEIGHT; i++)
+      {
+        seed   = seed * 1664525u + 1013904223u;
+        buf[i] = (unsigned char) (seed >> 24);
+      }
+      screen_init(&scr, SIZE2D(WIDTH, HEIGHT), cases[ci].fmt, rowbytes, pal,
+                  buf);
+
+      for (y = 0; y < HEIGHT; y++)
+        for (x = 0; x < WIDTH; x++)
+          before[y * WIDTH + x] = want[y * WIDTH + x] =
+            (unsigned char) house_pixel_at(buf + (size_t) y * rowbytes, x,
+                                           bits);
+
+      seed = seed * 1664525u + 1013904223u;
+      w    = 1 + (int) ((seed >> 16) % 40);
+      seed = seed * 1664525u + 1013904223u;
+      h    = 1 + (int) ((seed >> 16) % 6);
+      seed = seed * 1664525u + 1013904223u;
+      src.x0 = (int) ((seed >> 16) % (unsigned) (WIDTH - w + 1));
+      seed = seed * 1664525u + 1013904223u;
+      src.y0 = (int) ((seed >> 16) % (unsigned) (HEIGHT - h + 1));
+      src.x1 = src.x0 + w;
+      src.y1 = src.y0 + h;
+      seed = seed * 1664525u + 1013904223u;
+      nx   = (int) ((seed >> 16) % (unsigned) (WIDTH - w + 1));
+      seed = seed * 1664525u + 1013904223u;
+      ny   = (int) ((seed >> 16) % (unsigned) (HEIGHT - h + 1));
+      dx   = nx - src.x0;
+      dy   = ny - src.y0;
+
+      for (y = 0; y < h; y++)
+        for (x = 0; x < w; x++)
+          want[(ny + y) * WIDTH + nx + x] =
+            before[(src.y0 + y) * WIDTH + src.x0 + x];
+
+      if (screen_copy_rect(&scr, &src, POINT(nx, ny), &got) != result_OK)
+      {
+        printf("screen: copy_rect declined a p%d screen\n", bits);
+        return result_TEST_FAILED;
+      }
+
+      for (y = 0; y < HEIGHT; y++)
+        for (x = 0; x < WIDTH; x++)
+          if (house_pixel_at(buf + (size_t) y * rowbytes, x, bits) !=
+              want[y * WIDTH + x])
+          {
+            printf("screen: copy_rect p%d (%d,%d)+%dx%d by (%d,%d) wrong "
+                   "at (%d,%d)\n", bits, src.x0, src.y0, w, h, dx, dy, x, y);
+            return result_TEST_FAILED;
+          }
+    }
   }
 
   return result_TEST_PASSED;
@@ -1837,20 +2398,29 @@ result_t screen_test(const char *resources)
     test_clipping_still_happens,
     test_wu_fix8_extreme_coords,
     test_ninepatch,
+    test_tiled,
     test_fill_pattern,
     test_dashed_line,
     test_draw_lines,
+    test_draw_thick_line,
     test_draw_rect,
     test_draw_circle,
     test_fill_circle,
     test_rounded_rect,
     test_copy_bitmap_p1,
     test_copy_bitmap_p2,
+    test_copy_bitmap_rle_p1,
+    test_copy_bitmap_rle_p2,
+    test_copy_bitmap_rle_p4,
+    test_copy_bitmap_rle_p8,
+    test_copy_bitmap_rle_16,
     test_copy_bitmap_p8,
     test_copy_bitmap_paletted_source,
+    test_copy_bitmap_p4_to_p4,
     test_copy_bitmap_bgr_source,
     test_copy_bitmap_dithered,
     test_copy_rect_packed,
+    test_copy_rect_packed_random,
     test_fill_span_p4,
     test_set_pixel_clip,
     test_rgb565,

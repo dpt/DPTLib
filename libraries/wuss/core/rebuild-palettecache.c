@@ -48,22 +48,22 @@ void wuss__rebuild_palettecache(wuss_t *wuss)
     wuss->furniture_colours.title.fg;
 #endif
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
-  cache[wuss_COLOUR_BUTTON_HILIGHT - wuss_COLOUR_SYMBOLIC] = wuss->bevel_light;
-  cache[wuss_COLOUR_BUTTON_SHADOW  - wuss_COLOUR_SYMBOLIC] = wuss->bevel_dark;
-  cache[wuss_COLOUR_BORDER_DIVIDER - wuss_COLOUR_SYMBOLIC] = wuss->bevel_divider;
-  cache[wuss_COLOUR_BUTTON_BG      - wuss_COLOUR_SYMBOLIC] = wuss->button_bg;
-  cache[wuss_COLOUR_BUTTON_FG      - wuss_COLOUR_SYMBOLIC] = wuss->button_fg;
-  cache[wuss_COLOUR_BUTTON_PRESSED - wuss_COLOUR_SYMBOLIC] = wuss->button_pressed;
+  cache[wuss_COLOUR_BUTTON_HILIGHT - wuss_COLOUR_SYMBOLIC] = wuss->bevel.light;
+  cache[wuss_COLOUR_BUTTON_SHADOW  - wuss_COLOUR_SYMBOLIC] = wuss->bevel.dark;
+  cache[wuss_COLOUR_BORDER_DIVIDER - wuss_COLOUR_SYMBOLIC] = wuss->bevel.divider;
+  cache[wuss_COLOUR_BUTTON_BG      - wuss_COLOUR_SYMBOLIC] = wuss->button.bg;
+  cache[wuss_COLOUR_BUTTON_FG      - wuss_COLOUR_SYMBOLIC] = wuss->button.fg;
+  cache[wuss_COLOUR_BUTTON_PRESSED - wuss_COLOUR_SYMBOLIC] = wuss->button.pressed;
   cache[wuss_COLOUR_ACCENT         - wuss_COLOUR_SYMBOLIC] = wuss->accent;
 #endif
 #ifdef WUSS_ICONS
-  cache[wuss_COLOUR_SLIDER_TRACK    - wuss_COLOUR_SYMBOLIC] = wuss->slider_track;
-  cache[wuss_COLOUR_SLIDER_VALUE    - wuss_COLOUR_SYMBOLIC] = wuss->slider_value;
-  cache[wuss_COLOUR_SLIDER_SURROUND - wuss_COLOUR_SYMBOLIC] = wuss->slider_surround;
+  cache[wuss_COLOUR_SLIDER_TRACK    - wuss_COLOUR_SYMBOLIC] = wuss->slider.track;
+  cache[wuss_COLOUR_SLIDER_VALUE    - wuss_COLOUR_SYMBOLIC] = wuss->slider.value;
+  cache[wuss_COLOUR_SLIDER_SURROUND - wuss_COLOUR_SYMBOLIC] = wuss->slider.surround;
 #endif
   if (wuss->backdrop.colour != wuss_NO_BACKGROUND)
     cache[wuss_COLOUR_BACKDROP - wuss_COLOUR_SYMBOLIC] = wuss->backdrop.colour;
 
-  cache[wuss_COLOUR_WINDOW - wuss_COLOUR_SYMBOLIC] = wuss->window_bg;
-  cache[wuss_COLOUR_MENU   - wuss_COLOUR_SYMBOLIC] = wuss->menu_bg;
+  cache[wuss_COLOUR_WINDOW - wuss_COLOUR_SYMBOLIC] = wuss->body.window;
+  cache[wuss_COLOUR_MENU   - wuss_COLOUR_SYMBOLIC] = wuss->body.menu;
 }

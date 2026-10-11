@@ -24,7 +24,7 @@ extern struct wuss_app_tasks
   wuss_t          *wuss;
   wuss_task_t     *menu_task; /* owns the task launcher menus; also the home
                                * task for the shared proginfo singleton, see
-                               * tasks_open_launcher's "Info" row */
+                               * tasks_open_menu's "Info" row */
   bool             quit; /* set by the "Quit Wuss" task-menu entry */
   wuss_frontend_t *frontend; /* pushed to on wuss_EVENT_PALETTE; see
                               * task_handle_event */
@@ -68,7 +68,7 @@ result_t app_set_mode(size2d_t size, int depth);
 int app_get_depth(void);
 
 /* Turn the software pointer on or off, hiding or showing the OS pointer to
- * match. Returns whether it is now on: false if resources/wuss/pointer.png
+ * match. Returns whether it is now on: false if the "pointer" icon pool entry
  * failed to load or the frontend keeps its own pointer (RISC OS). */
 bool app_set_pointer(bool on);
 
@@ -79,14 +79,20 @@ result_t task_handle_event(wuss_window_t      *window,
                            const wuss_event_t *event,
                            void               *task_data);
 
-/* open the top-level task launcher (Launch / Quit Wuss) at pos; called on a
- * MENU click over bare backdrop */
-result_t tasks_open_launcher(point_t pos);
+#ifdef WUSS_ICONBAR
+/* open the Wuss menu (Info / Zoom / CRT / Pointer / Debug / Quit Wuss) above
+ * the icon bar; called on a MENU click on the TaskManager icon */
+result_t tasks_open_menu(void);
+#endif
 
 /* offer a key the focused window passed on to the task launcher's menu
  * shortcuts (e.g. F4 for Quit Wuss); result_WUSS_KEY_UNCLAIMED if none
  * matches */
 result_t tasks_launcher_key(int code, wuss_key_modifiers_t modifiers);
+
+/* Destroy every app whose Quit was picked, with all its instances. Call once
+ * per frame, after wuss_idle. */
+void tasks_reap_apps(void);
 
 /* Switch the frontend's CRT post-effect on or off, recording the outcome in
  * g_tasks.crt and the Debug menu's tick. Needs g_tasks.frontend set. */
@@ -96,13 +102,26 @@ void tasks_set_crt(bool on);
  * outcome in g_tasks.pointer and the Debug menu's tick. */
 void tasks_set_pointer(bool on);
 
-/* Spawn the tasks named in names, a comma-separated list of launcher-menu
- * task names (e.g. "Saturn,Clock"), or "all" to spawn every task in every
- * category (games, tests, system, utilities, visuals), in table order; an
- * empty string spawns nothing. Logs and continues past any individual
- * create failure or unknown name rather than aborting the rest. Called
- * once at startup, after g_tasks.wuss is set. */
+/* Install the apps named in names, a comma-separated list of launcher-menu
+ * task names (e.g. "Saturn,Clock"), or "all" to install every task in every
+ * category (games, image, tests, toys, system, text, utilities, visuals), in table
+ * order; an empty string installs nothing. Installing puts the app's icon on
+ * the icon bar but opens no window: that waits for a SELECT click on the icon.
+ * Logs and continues past any individual failure or unknown name rather
+ * than aborting the rest. Called once at startup, after g_tasks.wuss is
+ * set. */
 void tasks_spawn(const char *names);
+
+/* The launchable tasks, grouped into categories (the folders AppsFiler
+ * shows). Indices are valid below the matching count; names are static. */
+int tasks_category_count(void);
+const char *tasks_category_name(int category);
+int tasks_entry_count(int category);
+const char *tasks_entry_name(int category, int index);
+
+/* Install task index of category, as tasks_spawn does, logging any
+ * failure. Does nothing if it is already installed. */
+result_t tasks_entry_spawn(int category, int index);
 
 /* Fill out[0..nout-1]: ui[0..nui-1] copied in, then as much of the web-safe
  * 216 (6x6x6 cube, steps of 0x33) as fits, then black for whatever is left.

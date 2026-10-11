@@ -37,7 +37,7 @@ extern "C"
  * colour).
  */
 #define result_WUSS_BAD_ICON   (result_BASE_WUSS + 2)
-/** An icon-set index (see wuss_icons_load) was out of range. */
+/** An icon-set index (see wuss_iconpool_load) was out of range. */
 #define result_WUSS_BAD_INDEX  (result_BASE_WUSS + 3)
 /**
  * Returned by a task's handle from wuss_EVENT_KEY to decline the key; see
@@ -50,6 +50,8 @@ extern "C"
  * caller-driven change to its box.
  */
 #define result_WUSS_PINNED       (result_BASE_WUSS + 5)
+/** A palette file was malformed or the wrong length. */
+#define result_WUSS_BAD_PALETTE  (result_BASE_WUSS + 7)
 
 /* ----------------------------------------------------------------------- */
 
@@ -571,24 +573,34 @@ typedef struct wuss_config
   wuss_backdrop_t backdrop;
 
   /**
-   * Maximum interval in milliseconds between two same-button, same-window
-   * presses for the second to carry wuss_BUTTON_DOUBLE, or 0 for the default
-   * (400). Measured against the clock set by wuss_set_time; see
-   * wuss_mouse_click.
+   * Mouse interaction parameters: double-click and drag thresholds. When
+   * config is NULL, double_click_ms defaults to 400, double_click_px and
+   * drag_threshold_px to 4.
    */
-  int            double_click_ms;
+  struct
+  {
+    /**
+     * Maximum interval in milliseconds between two same-button, same-window
+     * presses for the second to carry wuss_BUTTON_DOUBLE, or 0 for the
+     * default (400). Measured against the clock set by wuss_set_time; see
+     * wuss_mouse_click.
+     */
+    int double_click_ms;
 
-  /**
-   * Maximum distance in pixels between two same-button, same-window presses
-   * for the second to carry wuss_BUTTON_DOUBLE, or 0 for the default (4).
-   */
-  int            double_click_px;
+    /**
+     * Maximum distance in pixels between two same-button, same-window
+     * presses for the second to carry wuss_BUTTON_DOUBLE, or 0 for the
+     * default (4).
+     */
+    int double_click_px;
 
-  /**
-   * Minimum distance in pixels a press must move before it starts a drag
-   * rather than a plain click, or 0 for the default (4).
-   */
-  int            drag_threshold_px;
+    /**
+     * Minimum distance in pixels a press must move before it starts a drag
+     * rather than a plain click, or 0 for the default (4).
+     */
+    int drag_threshold_px;
+  }
+  mouse;
 }
 wuss_config_t;
 
@@ -1155,7 +1167,7 @@ wuss_window_t *wuss_get_focus(const wuss_t *wuss);
 
 /**
  * Deliver a keypress (including autorepeats) to the focused window as
- * wuss_EVENT_KEY. Key releases are not reported.
+ * wuss_EVENT_KEY. Releases are reported separately, by wuss_key_up.
  *
  * \param[in]  wuss      Window manager.
  * \param[in]  code      Unicode codepoint or wuss_KEY_* constant.
@@ -1173,6 +1185,21 @@ result_t wuss_key(wuss_t              *wuss,
                   int                 *claimed);
 
 /**
+ * Deliver a key release to the focused window as wuss_EVENT_KEY_UP, for
+ * tasks that track held keys (e.g. games). Releases bypass writables, menus
+ * and drags, which act on presses only.
+ *
+ * \param[in] wuss      Window manager.
+ * \param[in] code      Unicode codepoint (unshifted) or wuss_KEY_* constant.
+ * \param[in] modifiers Modifier keys held.
+ * \return \ref result_OK, or another result code returned by the task's
+ *         handle.
+ */
+result_t wuss_key_up(wuss_t              *wuss,
+                     int                  code,
+                     wuss_key_modifiers_t modifiers);
+
+/**
  * Start a core drag session: from the next wuss_mouse_move onward, wuss
  * takes over input and draws a marching-ants box of the given size, its
  * hotspot held under the pointer, painted last in wuss_redraw_dirty.
@@ -1185,6 +1212,9 @@ result_t wuss_key(wuss_t              *wuss,
  * Ends with a wuss_EVENT_DRAG_END delivered to "window" -- on a MOUSE_UP,
  * data.drag_end.drop is the window under the pointer (NULL over bare
  * backdrop) and cancelled is 0; on Escape, drop is NULL and cancelled is 1.
+ * Over an icon bar icon, drop is the bar's window and
+ * data.drag_end.drop_icon is the icon (address both with wuss_msg_target_t);
+ * otherwise drop_icon is NULL.
  *
  * \param[in] wuss    Window manager.
  * \param[in] window  Window the drag is considered to originate from; also
@@ -1209,6 +1239,17 @@ result_t wuss_drag_start(wuss_t        *wuss,
  * \return Non-zero while a drag is running.
  */
 int wuss_is_dragging(const wuss_t *wuss);
+
+/**
+ * Whether a window holds the mouse capture. A Select or Adjust press on a
+ * window's plain content (not on an icon or furniture) captures the mouse:
+ * that window then receives every \ref wuss_EVENT_MOUSE, with points that
+ * may lie outside its content box, until the button is released.
+ *
+ * \param[in] wuss Window manager.
+ * \return Non-zero while a window holds the capture.
+ */
+int wuss_is_capturing(const wuss_t *wuss);
 
 #ifdef __cplusplus
 }

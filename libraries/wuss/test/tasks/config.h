@@ -12,7 +12,6 @@
 
 #include "framebuf/pattern.h"
 #include "geom/box.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/icon.h"
 #include "wuss/menu.h"
 #include "wuss/task.h"
@@ -62,11 +61,6 @@ typedef struct config_task
   screen_pattern_t     pattern; /* selected pattern swatch; also the
                                  * result's tile */
   wuss_icon_t         *set_backdrop_icon;
-  wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[1]; /* per-instance: a shared static would
-                                       * leak one instance's Info row .window
-                                       * into another's menu */
-  wuss_menu_t         menu;
 }
 config_task_t;
 
@@ -75,6 +69,9 @@ wuss_window_fn_t config_handle;
 /* create the startup settings window against the given wuss instance; if out
  * is non-NULL, the task block is also returned through it */
 result_t config_create(wuss_t *wuss, config_task_t **out);
+
+/* install the icon bar app that opens config windows on demand */
+result_t config_app_create(wuss_t *wuss);
 
 /* free a task block allocated by config_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */

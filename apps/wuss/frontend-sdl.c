@@ -268,6 +268,11 @@ result_t wuss_frontend_open(int               width,
     }
   }
 
+#ifdef SDL_HINT_MAC_PRESS_AND_HOLD /* SDL 3.4+ */
+  /* holding a key repeats it rather than opening macOS's accents menu */
+  SDL_SetHint(SDL_HINT_MAC_PRESS_AND_HOLD, "0");
+#endif
+
   if (!SDL_Init(SDL_INIT_VIDEO))
   {
     fprintf(stderr, "Error: SDL_Init: %s\n", SDL_GetError());
@@ -448,6 +453,24 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
         event->kind = wuss_INPUT_KEY;
         event->key  = key;
         event->mods = mods;
+      }
+      return true;
+
+    case SDL_EVENT_KEY_UP:
+      {
+        int key;
+
+        /* no TEXT_INPUT counterpart to a release, so a printable is its
+         * unshifted keycode */
+        key = sdl_special_key(ev.key.key);
+        if (key == 0 && !(ev.key.key & SDLK_SCANCODE_MASK))
+          key = (int) ev.key.key;
+        if (key == 0)
+          continue;
+
+        event->kind = wuss_INPUT_KEY_UP;
+        event->key  = key;
+        event->mods = sdl_mods_to_wuss(ev.key.mod);
       }
       return true;
 

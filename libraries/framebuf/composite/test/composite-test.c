@@ -244,7 +244,7 @@ result_t composite_test(const char *resources)
     }
   }
 
-  rc = bitmap_save_png(&bigbitmap, pathf("composite-1.png"));
+  rc = bitmap_save_png(&bigbitmap, pathf("%scomposite-1.png", DPTLIB_TMPPREFIX));
   if (rc)
     goto Failure;
 

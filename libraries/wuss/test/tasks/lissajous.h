@@ -7,7 +7,6 @@
 
 #include "framebuf/colour.h"
 #include "wuss/component/colourmenu.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/component/saveas.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
@@ -30,7 +29,7 @@ typedef struct lissajous_task
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_saveas_t       *saveas;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[6]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[5]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer
                                        * into another's menu */
   wuss_menu_t         menu;
@@ -54,6 +53,9 @@ wuss_window_fn_t lissajous_handle;
  * per-instance block owned by the window and freed when it closes. if out is
  * non-NULL, the task block is also returned through it */
 result_t lissajous_create(wuss_t *wuss, lissajous_task_t **out);
+
+/* install the icon bar app that opens lissajous windows on demand */
+result_t lissajous_app_create(wuss_t *wuss);
 
 /* free a task block allocated by lissajous_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */

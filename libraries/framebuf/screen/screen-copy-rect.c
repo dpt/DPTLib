@@ -2,22 +2,84 @@
 
 #include <string.h>
 
+#include "base/utils.h"
+
 #include "framebuf/screen.h"
 
 /* Sub-byte paletted screens (1/2/4bpp) pack several pixels per byte, so a
  * moving window's source and destination pixels don't line up on byte
- * boundaries in general. Copied in place, pixel by pixel, masking each one
- * out and rolling it into place: safe under self-overlap by walking rows in
- * the direction "dy" dictates (as the byte path already does) and, since a
- * pixel's byte-mates are its immediate horizontal neighbours, walking columns
- * within each row by the same rule applied to "dx" -- the standard two-axis
- * blit-direction trick, so every pixel is read before anything that could
+ * boundaries in general. Each row is copied a destination byte at a time:
+ * the byte's pixels come from a shifted two-byte window of the source row,
+ * so a big window costs a few operations per byte rather than per pixel.
+ * Rows (and bytes within a row) are walked in the direction the shift
+ * dictates, so every source byte is read before anything that could
  * overwrite it is written. "bpp_bits" is 1, 2 or 4.
  *
  * The within-byte pixel order must match the rest of the screen code, which
  * is not uniform: p1 and p2 are MSB-first (bit 7 / bits 7..6 are the leftmost
  * pixel -- see screen_set_pixel_p1/p2 and screen_copy_bitmap_p1/p2) while p4
  * is LSB-first (see screen_set_pixel_p4). "msb_first" carries that. */
+
+/* One destination byte of a row: dest pixel x takes source pixel x - "dx".
+ * Only the pixels in [x0, x1) are written; the rest of the byte is kept. */
+static void screen_copy_rect_packed_byte(unsigned char       *drow,
+                                         const unsigned char *srow,
+                                         int                  rowbytes,
+                                         int                  byte,
+                                         int                  x0,
+                                         int                  x1,
+                                         int                  dx,
+                                         int                  bpp_bits)
+{
+  int           ppb, xshift, xmask, msb_first;
+  int           s0, sb, phase, lo, hi, i, shift;
+  unsigned int  w, b0, b1;
+  unsigned char mask, v;
+
+  ppb       = 8 / bpp_bits;
+  xshift    = (bpp_bits == 1) ? 3 : (bpp_bits == 2) ? 2 : 1;
+  xmask     = ppb - 1;
+  msb_first = (bpp_bits != 4);
+
+  /* the source pixel under this byte's first pixel, and the byte holding it */
+  s0    = byte * ppb - dx;
+  sb    = (s0 >= 0) ? (s0 >> xshift) : -((-s0 + xmask) >> xshift);
+  phase = s0 - sb * ppb;
+
+  b0 = (sb >= 0 && sb < rowbytes) ? srow[sb] : 0;
+  b1 = (phase != 0 && sb + 1 >= 0 && sb + 1 < rowbytes) ? srow[sb + 1] : 0;
+
+  if (msb_first)
+  {
+    w = (b0 << 8) | b1;
+    v = (unsigned char) (w >> (8 - phase * bpp_bits));
+  }
+  else
+  {
+    w = b0 | (b1 << 8);
+    v = (unsigned char) (w >> (phase * bpp_bits));
+  }
+
+  lo = MAX(x0, byte * ppb);
+  hi = MIN(x1, (byte + 1) * ppb);
+  if (hi - lo == ppb)
+  {
+    drow[byte] = v;
+    return;
+  }
+
+  mask = 0;
+  for (i = lo; i < hi; i++)
+  {
+    shift = (i & xmask) * bpp_bits;
+    if (msb_first)
+      shift = 8 - bpp_bits - shift;
+    mask = (unsigned char) (mask | (((1u << bpp_bits) - 1) << shift));
+  }
+
+  drow[byte] = (unsigned char) ((drow[byte] & ~mask) | (v & mask));
+}
+
 static result_t screen_copy_rect_packed(screen_t    *scr,
                                         const box_t *s,
                                         const box_t *d,
@@ -29,53 +91,65 @@ static result_t screen_copy_rect_packed(screen_t    *scr,
 {
   unsigned char *base;
   int            rowbytes;
-  int            ppb, xshift, xmask, msb_first;
-  unsigned char  pmask;
+  int            xshift, ppb;
+  int            first, last, step, byte;
   int            row_first, row_last, row_step;
-  int            col_first, col_last, col_step;
-  int            row, col;
+  int            row;
 
   base     = scr->base;
   rowbytes = scr->rowbytes;
 
-  ppb       = 8 / bpp_bits;        /* pixels per byte: 8, 4 or 2 */
-  xshift    = (bpp_bits == 1) ? 3 : (bpp_bits == 2) ? 2 : 1;
-  xmask     = ppb - 1;
-  pmask     = (unsigned char) ((1u << bpp_bits) - 1);
-  msb_first = (bpp_bits != 4);
+  xshift = (bpp_bits == 1) ? 3 : (bpp_bits == 2) ? 2 : 1;
+  ppb    = 8 / bpp_bits;
+
+  first = d->x0 >> xshift;
+  last  = (d->x0 + width - 1) >> xshift;
+
+  /* a move right reads from lower bytes than it writes, so go high to low */
+  if (dx > 0) { byte = last;  step = -1; }
+  else        { byte = first; step =  1; }
 
   if (dy > 0) { row_first = height - 1; row_last = -1;     row_step = -1; }
   else        { row_first = 0;          row_last = height; row_step =  1; }
 
-  if (dx > 0) { col_first = width - 1;  col_last = -1;      col_step = -1; }
-  else        { col_first = 0;          col_last = width;   col_step =  1; }
-
   for (row = row_first; row != row_last; row += row_step)
   {
-    for (col = col_first; col != col_last; col += col_step)
+    unsigned char       *drow;
+    const unsigned char *srow;
+    int                  b, shift_bytes;
+
+    drow = base + (size_t) (d->y0 + row) * rowbytes;
+    srow = base + (size_t) (s->y0 + row) * rowbytes;
+
+    if (dx != 0 && dx % ppb == 0 && last - first >= 2)
     {
-      int                  sx, sy, dxp, dyp;
-      const unsigned char *scrp_s;
-      unsigned char       *scrp_d;
-      int                  shift_s, shift_d;
-      unsigned char        pix;
+      /* byte-aligned shift: every whole byte in the middle is a straight
+       * copy; only the two partial end bytes need the masked path. Order the
+       * ends so neither reads source bytes the middle copy has overwritten */
+      shift_bytes = dx / ppb;
 
-      sx  = s->x0 + col; sy  = s->y0 + row;
-      dxp = d->x0 + col; dyp = d->y0 + row;
+      if (dx > 0)
+        screen_copy_rect_packed_byte(drow, srow, rowbytes, last, d->x0,
+                                     d->x0 + width, dx, bpp_bits);
+      else
+        screen_copy_rect_packed_byte(drow, srow, rowbytes, first, d->x0,
+                                     d->x0 + width, dx, bpp_bits);
 
-      scrp_s  = base + (size_t) sy * rowbytes + (sx >> xshift);
-      shift_s = (sx & xmask) * bpp_bits;
-      if (msb_first)
-        shift_s = 8 - bpp_bits - shift_s;
-      pix     = (unsigned char) ((*scrp_s >> shift_s) & pmask);
+      memmove(drow + first + 1, srow + first + 1 - shift_bytes,
+              (size_t) (last - first - 1));
 
-      scrp_d  = base + (size_t) dyp * rowbytes + (dxp >> xshift);
-      shift_d = (dxp & xmask) * bpp_bits;
-      if (msb_first)
-        shift_d = 8 - bpp_bits - shift_d;
-      *scrp_d = (unsigned char) ((*scrp_d & ~(pmask << shift_d))
-                                 | (pix << shift_d));
+      if (dx > 0)
+        screen_copy_rect_packed_byte(drow, srow, rowbytes, first, d->x0,
+                                     d->x0 + width, dx, bpp_bits);
+      else
+        screen_copy_rect_packed_byte(drow, srow, rowbytes, last, d->x0,
+                                     d->x0 + width, dx, bpp_bits);
+      continue;
     }
+
+    for (b = byte; b >= first && b <= last; b += step)
+      screen_copy_rect_packed_byte(drow, srow, rowbytes, b, d->x0,
+                                   d->x0 + width, dx, bpp_bits);
   }
 
   return result_OK;

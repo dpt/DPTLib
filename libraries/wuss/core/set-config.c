@@ -63,19 +63,19 @@ result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config)
     w->backdrop            = config->backdrop;
     w->backdrop.colour     = wuss__resolve_colour(w, w->backdrop.colour);
     w->backdrop.pattern_bg = wuss__resolve_colour(w, w->backdrop.pattern_bg);
-    w->window_bg           = wuss__resolve_colour(w, config->body.window);
-    w->menu_bg             = wuss__resolve_colour(w, config->body.menu);
+    w->body.window           = wuss__resolve_colour(w, config->body.window);
+    w->body.menu             = wuss__resolve_colour(w, config->body.menu);
   }
   else
   {
     w->backdrop.colour     = wuss_NO_BACKGROUND;
     w->backdrop.pattern    = screen_PATTERN_SOLID;
     w->backdrop.pattern_bg = wuss_NO_BACKGROUND;
-    w->window_bg           = wuss__resolve_colour(w, wuss_COLOUR_GREY);
-    w->menu_bg             = wuss__resolve_colour(w, wuss_COLOUR_WHITE);
+    w->body.window           = wuss__resolve_colour(w, wuss_COLOUR_GREY);
+    w->body.menu             = wuss__resolve_colour(w, wuss_COLOUR_WHITE);
   }
 
-  if (w->window_bg >= w->npalette || w->menu_bg >= w->npalette)
+  if (w->body.window >= w->npalette || w->body.menu >= w->npalette)
     return result_WUSS_BAD_COLOUR;
 
 #ifdef WUSS_FURNITURE
@@ -155,12 +155,12 @@ result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config)
     return result_WUSS_BAD_COLOUR;
 
   w->furniture_colours = pal;
-  w->bevel_light       = blight;
-  w->bevel_dark        = bdark;
-  w->bevel_divider     = bdivider;
-  w->button_bg         = btnbg;
-  w->button_fg         = btnfg;
-  w->button_pressed    = btnpressed;
+  w->bevel.light       = blight;
+  w->bevel.dark        = bdark;
+  w->bevel.divider     = bdivider;
+  w->button.bg         = btnbg;
+  w->button.fg         = btnfg;
+  w->button.pressed    = btnpressed;
   w->accent            = accent;
 
   if (config != NULL && config->titlebar_height > 0)
@@ -208,12 +208,12 @@ result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config)
   if (validate_bevel_backdrop(w, blight, bdark, bdivider,
                               btnbg, btnfg, btnpressed, accent) != result_OK)
     return result_WUSS_BAD_COLOUR;
-  w->bevel_light    = blight;
-  w->bevel_dark     = bdark;
-  w->bevel_divider  = bdivider;
-  w->button_bg      = btnbg;
-  w->button_fg      = btnfg;
-  w->button_pressed = btnpressed;
+  w->bevel.light    = blight;
+  w->bevel.dark     = bdark;
+  w->bevel.divider  = bdivider;
+  w->button.bg      = btnbg;
+  w->button.fg      = btnfg;
+  w->button.pressed = btnpressed;
   w->accent         = accent;
 #else
   if (wuss__validate_backdrop(w, &w->backdrop) != result_OK)
@@ -221,20 +221,20 @@ result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config)
 #endif
 #endif /* WUSS_FURNITURE */
 
-  if (config != NULL && config->double_click_ms > 0)
-    w->double_click_ms = config->double_click_ms;
+  if (config != NULL && config->mouse.double_click_ms > 0)
+    w->input.double_click_ms = config->mouse.double_click_ms;
   else
-    w->double_click_ms = WUSS_DEFAULT_DOUBLE_CLICK_MS;
+    w->input.double_click_ms = WUSS_DEFAULT_DOUBLE_CLICK_MS;
 
-  if (config != NULL && config->double_click_px > 0)
-    w->double_click_px = config->double_click_px;
+  if (config != NULL && config->mouse.double_click_px > 0)
+    w->input.double_click_px = config->mouse.double_click_px;
   else
-    w->double_click_px = WUSS_DEFAULT_DOUBLE_CLICK_PX;
+    w->input.double_click_px = WUSS_DEFAULT_DOUBLE_CLICK_PX;
 
-  if (config != NULL && config->drag_threshold_px > 0)
-    w->drag_threshold_px = config->drag_threshold_px;
+  if (config != NULL && config->mouse.drag_threshold_px > 0)
+    w->input.drag_threshold_px = config->mouse.drag_threshold_px;
   else
-    w->drag_threshold_px = WUSS_DEFAULT_DRAG_THRESHOLD_PX;
+    w->input.drag_threshold_px = WUSS_DEFAULT_DRAG_THRESHOLD_PX;
 
 #ifdef WUSS_ICONS
   {
@@ -243,28 +243,28 @@ result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config)
     if (config != NULL)
     {
       track = (config->slider.track == wuss_NO_BACKGROUND)
-            ? w->window_bg
+            ? w->body.window
             : wuss__resolve_colour(w, config->slider.track);
       value = (config->slider.value == wuss_NO_BACKGROUND)
-            ? w->button_bg
+            ? w->button.bg
             : wuss__resolve_colour(w, config->slider.value);
       surround = (config->slider.surround == wuss_NO_BACKGROUND)
-               ? w->button_bg
+               ? w->button.bg
                : wuss__resolve_colour(w, config->slider.surround);
     }
     else
     {
-      track    = w->window_bg;
-      value    = w->button_bg;
-      surround = w->button_bg;
+      track    = w->body.window;
+      value    = w->button.bg;
+      surround = w->button.bg;
     }
 
     if (track >= w->npalette || value >= w->npalette || surround >= w->npalette)
       return result_WUSS_BAD_COLOUR;
 
-    w->slider_track    = track;
-    w->slider_value    = value;
-    w->slider_surround = surround;
+    w->slider.track    = track;
+    w->slider.value    = value;
+    w->slider.surround = surround;
   }
 #endif
 
@@ -328,6 +328,14 @@ result_t wuss_set_config(wuss_t *wuss, const wuss_config_t *config)
   screen.x1 = wuss->scr->size.w;
   screen.y1 = wuss->scr->size.h;
   wuss_invalidate(wuss, &screen);
+
+  {
+    result_t lrc;
+
+    lrc = wuss__relayout_all(wuss);
+    if (lrc != result_OK && rc == result_OK)
+      rc = lrc;
+  }
 
   return rc;
 }

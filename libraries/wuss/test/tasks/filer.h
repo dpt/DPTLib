@@ -8,7 +8,6 @@
 #include "framebuf/bitmap.h"
 #include "io/dirlist.h"
 #include "io/path.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/gadget/gridview.h"
 #include "wuss/iconbar.h"
 #include "wuss/menu.h"
@@ -18,6 +17,20 @@
  * filer_task_t can hold them inline with no malloc bookkeeping. Raise it if
  * this ever feels cramped. */
 #define FILER_MAX_WINDOWS 16
+
+/* Filer menu rows, which act on the window the menu was opened over.
+ * Download only exists in the browser build, where saved files
+ * otherwise stay trapped in Emscripten's in-memory filesystem. */
+enum
+{
+  FILER_MENU_SELECT_ALL,
+  FILER_MENU_CLEAR_SELECTION,
+  FILER_MENU_OPEN_PARENT,
+#ifdef __EMSCRIPTEN__
+  FILER_MENU_DOWNLOAD,
+#endif
+  FILER_MENU__LIMIT
+};
 
 /* Set the directory a Filer's icon bar icon/System menu row opens, applied
  * the next time a Filer task is created (see filer_create). Not retroactive:
@@ -32,8 +45,10 @@ void filer_set_root(const char *root);
  * icon both open (or, if already open, bring to the front) a window on the
  * root directory (see filer_set_root); each subsequent window is opened by
  * double-clicking a directory entry in an existing window, one window per
- * path, never duplicated. Double-clicking a file does nothing (v1 has no
- * load side).
+ * path, never duplicated. Double-clicking a file does nothing. Dragging a
+ * file out of a window starts a core drag; when it ends over a window of
+ * another task, the Filer sends that window a wuss_MESSAGE_DATA_LOAD whose
+ * payload is the file's full path as a NUL-terminated string.
  *
  * Every window is a wuss_gridview_t over an io/dirlist listing of its
  * directory, titled with the directory's full path. As a DataSave drop
@@ -66,15 +81,17 @@ struct filer_task
   int                    nwindows; /* slots used so far; a closed window's
                                     * slot stays, window NULL, for reuse */
 
-  bitmap_t               glyph_file;
-  bitmap_t               glyph_directory;
-  bitmap_t               glyph_png;
-  int                    have_glyph_file;
-  int                    have_glyph_directory;
-  int                    have_glyph_png;
+  const bitmap_t        *glyph_file; /* borrowed from the icon pool */
+  const bitmap_t        *glyph_directory;
+  const bitmap_t        *glyph_png;
+
+  char                   drag_path[DPTLIB_MAXPATH]; /* file being dragged,
+                                       * or "" */
 
   wuss_menu_handle_t     menu_handle;
-  wuss_menu_item_t       menu_items[1]; /* Info */
+  wuss_window_t         *menu_window; /* Filer window the menu was opened
+                                       * over, or NULL */
+  wuss_menu_item_t       menu_items[FILER_MENU__LIMIT];
   wuss_menu_t            menu;
 };
 
@@ -85,6 +102,10 @@ wuss_window_fn_t filer_handle;
  * for where the first window, opened on demand, points). if out is non-NULL,
  * the task block is also returned through it. */
 result_t filer_create(wuss_t *wuss, filer_task_t **out);
+
+/* create the Filer: it keeps its own icon bar icon, so there is nothing to
+ * wrap and no window opens until the icon is clicked */
+result_t filer_app_create(wuss_t *wuss);
 
 /* free a task block allocated by filer_create; normally called by the
  * task's wuss_EVENT_QUIT handler, not by callers directly */

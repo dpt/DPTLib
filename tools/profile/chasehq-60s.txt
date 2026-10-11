@@ -1,0 +1,78 @@
+# chasehq-60s.txt -- wuss script for a timed 60 s run of the Chase H.Q. task
+#
+# Picks Kempston controls, starts a game, skips the briefing and holds
+# accelerate, then lets 60 s of driving pass. On quit the task logs its
+# counters:
+#
+#   (info) chasehq: N s: game busy N s (N%), N sleeps, N lag drops,
+#          N draw calls/s; N redraws, N ms each
+#
+# Use a build without ASan for meaningful numbers, e.g.:
+#
+#   cmake -B build-profile -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+#         -DBUILD_APPS=ON -DBUILD_TESTS=OFF
+#   cmake --build build-profile --target wuss
+#
+# then, from the repo root, either just the counters:
+#
+#   SDL_VIDEODRIVER=dummy ./build-profile/wuss-relwithdebinfo \
+#     -t "Chase H.Q." --script tools/profile/chasehq-60s.txt
+#
+# or a sampled profile as well (macOS):
+#
+#   xcrun xctrace record --template "Time Profiler" --output chasehq.trace \
+#     --env SDL_VIDEODRIVER=dummy \
+#     --launch -- ./build-profile/wuss-relwithdebinfo \
+#     -t "Chase H.Q." --script tools/profile/chasehq-60s.txt
+#
+# The build makes no dSYM, so many of the trace's own frames stay as
+# addresses. Make one, symbolicate, and resolve any static functions still
+# left with atos (-l is the binary's load address, as the trace shows it):
+#
+#   dsymutil build-profile/wuss-relwithdebinfo -o wuss.dSYM
+#   xcrun xctrace symbolicate --input chasehq.trace --dsym wuss.dSYM
+#   atos -o wuss.dSYM/Contents/Resources/DWARF/wuss-relwithdebinfo \
+#     -l LOADADDR ADDR...
+#
+# LOADADDR is a symbolicated frame's address in the trace less its address
+# in the dSYM, which `dwarfdump --name=FUNC wuss.dSYM` gives.
+#
+# Under the dummy video driver SDL presents through its software renderer,
+# whose scaled blit dominates; profile with a real display to see past it.
+# For scale, at Double size (chasehq-60s-zoom.txt) the scaled blit took 81%
+# of samples, the frontend's p4 to bgrx8888 conversion about 10% and the
+# task's own redraw 0.3%, three-quarters of that in screen_copy_bitmap_p4.
+# Static functions are often inlined: zxtask_redraw shows as
+# zxtask_handle.
+#
+# The sleeps are tuned to the title sequence: Enter is only read once the
+# intro has played, and fire once the title has redrawn after the options.
+
+wait 50
+click select "Chase H.Q." 10 10
+
+# options: 3 = Kempston. The menu waits for every key to be released
+sleep 8
+key return
+sleep 0.5
+keyup return
+sleep 1
+key 3
+sleep 0.5
+keyup 3
+
+# fire starts a game, then fire again skips the 15 s or so of briefing;
+# up (Kempston up) then holds accelerate
+sleep 8
+key .
+sleep 0.5
+keyup .
+sleep 2
+key .
+sleep 0.5
+keyup .
+sleep 1
+key up
+
+sleep 60
+quit

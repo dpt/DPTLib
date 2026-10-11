@@ -18,7 +18,7 @@ static result_t key(wuss_t              *wuss,
   if (claimed != NULL)
     *claimed = 0;
 
-  if (wuss->drag_window != NULL)
+  if (wuss->drag.window != NULL)
   {
     if (code == wuss_KEY_ESCAPE)
     {
@@ -32,7 +32,7 @@ static result_t key(wuss_t              *wuss,
 #ifdef WUSS_MENUS
   /* Escape dismisses an open menu chain, as a click outside it does: menus
    * never take the input focus, so no menu window would ever see the key */
-  if (code == wuss_KEY_ESCAPE && wuss->menu_chain != NULL)
+  if (code == wuss_KEY_ESCAPE && wuss->menu.chain != NULL)
   {
     wuss__menu_abandon(wuss);
     if (claimed != NULL)
@@ -82,4 +82,27 @@ result_t wuss_key(wuss_t              *wuss,
   wuss__message_leave(wuss);
 
   return rc;
+}
+
+result_t wuss_key_up(wuss_t              *wuss,
+                     int                  code,
+                     wuss_key_modifiers_t modifiers)
+{
+  result_t     rc;
+  wuss_event_t event;
+
+  assert(wuss != NULL);
+
+  if (wuss->focus == NULL || wuss->focus->task->handle == NULL)
+    return result_OK;
+
+  event.kind               = wuss_EVENT_KEY_UP;
+  event.data.key.code      = code;
+  event.data.key.modifiers = modifiers;
+
+  wuss__message_enter(wuss);
+  rc = wuss__deliver(wuss->focus->task, wuss->focus, &event);
+  wuss__message_leave(wuss);
+
+  return rc == result_WUSS_KEY_UNCLAIMED ? result_OK : rc;
 }

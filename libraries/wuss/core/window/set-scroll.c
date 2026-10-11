@@ -29,9 +29,9 @@ void wuss_window_set_scroll(wuss_window_t *window, point_t p)
    * regions now, before the furniture invalidate adds its own unrelated
    * rects, and exclude them from the blit source further down. */
   nstale = 0;
-  for (i = 0; i < window->wuss->ndirty; i++)
-    if (box_intersects(&window->wuss->dirty[i], &content))
-      stale[nstale++] = window->wuss->dirty[i];
+  for (i = 0; i < window->wuss->dirty.n; i++)
+    if (box_intersects(&window->wuss->dirty.box[i], &content))
+      stale[nstale++] = window->wuss->dirty.box[i];
 
   /* the scrollbar sausage position depends on scroll, so its well needs
    * redrawing too -- content invalidation alone never touches it */

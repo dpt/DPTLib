@@ -145,7 +145,7 @@ void wuss__icon_set_value(wuss_window_t *window,
                           int            value);
 
 /* Make "icon" (an icon of "window", or NULL) the hovered icon: clears the
- * hovered flag on the previous wuss->hover_icon and sets it on the new one,
+ * hovered flag on the previous wuss->hover.icon and sets it on the new one,
  * invalidating whichever of the two changed. "window" is ignored when "icon"
  * is NULL. A no-op if nothing changed. */
 void wuss__icon_set_hover(wuss_t        *wuss,
@@ -223,6 +223,7 @@ void wuss__icon_set_flag(wuss_window_t    *window,
  * result_WUSS_BAD_ICON / result_WUSS_BAD_COLOUR as wuss_icon_create
  * documents, else result_OK. */
 result_t wuss__icon_from_spec(const wuss_t           *wuss,
+                              const wuss_task_t      *task,
                               const wuss_icon_spec_t *spec,
                               wuss_icon_t            *out);
 
@@ -265,6 +266,10 @@ void wuss__writable_place_caret(wuss_window_t *window,
                                 wuss_icon_t   *icon,
                                 int            index);
 
+/* X of writable "icon"'s text start relative to its bbox: justified per its
+ * flags while the text fits, else left-aligned and scrolled by text_scroll. */
+int wuss__writable_text_x(const wuss_t *wuss, const wuss_icon_t *icon);
+
 /* The caret index nearest document-space x "doc_x" in writable "icon". */
 int wuss__writable_index_for_x(const wuss_t      *wuss,
                                const wuss_icon_t *icon,
@@ -287,15 +292,25 @@ result_t wuss__writable_key(wuss_t              *wuss,
  * not invalidate or swap-remove. */
 void wuss__icons_free(wuss_window_t *window);
 
-/* Free the wuss-wide icon set loaded by wuss_icons_load (the atom_set and the
- * compressed bitmaps), leaving the fields NULL / 0. Safe on an unloaded set.
- * Called by wuss_icons_load before a reload and by wuss_destroy. */
-void wuss__icons_registry_free(wuss_t *wuss);
+struct wuss_iconpool; /* core/impl.h */
 
-/* Byte-swap the loaded icon set, in place, into the channel order the
+/* Free an icon pool -- the shared one (wuss::icon) or a task's private one
+ * (wuss_task::iconpool): the atom_set and the compressed bitmaps, leaving the
+ * fields NULL / 0. Safe on an unloaded pool. Called before a reload, by
+ * wuss_destroy for the shared pool and by wuss_task_destroy for a task's. */
+void wuss__iconpool_clear(wuss_t *wuss, struct wuss_iconpool *pool);
+
+/* The pool bitmap called "name": "task"'s private pool first, then the shared
+ * pool. "task" may be NULL for the shared pool alone. NULL if neither has it.
+ * Valid until the pool holding it is reloaded or freed. */
+const bitmap_t *wuss__iconpool_find(const wuss_t      *wuss,
+                                    const wuss_task_t *task,
+                                    const char        *name);
+
+/* Byte-swap every loaded icon pool (shared and per-task), in place, into the channel order the
  * current screen format blits (see icons_order_for). Called by wuss_resize
  * so a screen depth change keeps icon colours right; bitmap_t addresses are
  * unchanged, so icons holding them stay valid. */
-result_t wuss__icons_match_screen(wuss_t *wuss);
+result_t wuss__iconpool_match_screen(wuss_t *wuss);
 
 #endif /* WUSS_ICON_IMPL_H */

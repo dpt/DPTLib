@@ -20,7 +20,7 @@ result_t wuss_icon_plot(wuss_window_t          *window,
   assert(spec    != NULL);
   assert(content != NULL);
 
-  rc = wuss__icon_from_spec(window->wuss, spec, &scratch);
+  rc = wuss__icon_from_spec(window->wuss, window->task, spec, &scratch);
   if (rc != result_OK)
     return rc;
 

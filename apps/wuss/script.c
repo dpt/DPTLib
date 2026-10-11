@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -38,6 +39,7 @@ static struct
   char          text[256]; /* a type command's characters */
   const char   *text_pos;
   int           wait;      /* frames left to let pass */
+  double        until;     /* sleep's wall-clock deadline, or 0 */
   bool          emitted;   /* input sent since the last frame boundary */
   bool          failed;
 }
@@ -332,6 +334,15 @@ result_t script_close(void)
   return g_script.failed ? result_BAD_ARG : result_OK;
 }
 
+static double script_now(void)
+{
+  struct timespec ts;
+
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+
+  return ts.tv_sec + ts.tv_nsec / 1e9;
+}
+
 /* Ends the script's part of the current frame. */
 static bool end_frame(void)
 {
@@ -385,6 +396,14 @@ bool script_poll(wuss_t *wuss, const bitmap_t *bm, wuss_input_t *ev)
     {
       g_script.wait--;
       return end_frame();
+    }
+
+    if (g_script.until > 0.0)
+    {
+      if (script_now() < g_script.until)
+        return end_frame();
+
+      g_script.until = 0.0;
     }
 
     if (g_script.f == NULL)
@@ -456,7 +475,7 @@ bool script_poll(wuss_t *wuss, const bitmap_t *bm, wuss_input_t *ev)
           queue_input(wuss_INPUT_MOUSE_UP, pos, button);
       }
     }
-    else if (strcmp(cmd, "key") == 0)
+    else if (strcmp(cmd, "key") == 0 || strcmp(cmd, "keyup") == 0)
     {
       arg = next_token(&p);
       if (!parse_key(arg, &key, &mods))
@@ -466,7 +485,8 @@ bool script_poll(wuss_t *wuss, const bitmap_t *bm, wuss_input_t *ev)
       else
       {
         memset(ev, 0, sizeof(*ev));
-        ev->kind = wuss_INPUT_KEY;
+        ev->kind = strcmp(cmd, "key") == 0 ? wuss_INPUT_KEY
+                                             : wuss_INPUT_KEY_UP;
         ev->key  = key;
         ev->mods = mods;
         g_script.emitted = true;
@@ -490,6 +510,11 @@ bool script_poll(wuss_t *wuss, const bitmap_t *bm, wuss_input_t *ev)
     {
       arg = next_token(&p);
       g_script.wait = arg ? atoi(arg) : 1;
+    }
+    else if (strcmp(cmd, "sleep") == 0)
+    {
+      arg = next_token(&p);
+      g_script.until = script_now() + (arg ? atof(arg) : 1.0);
     }
     else if (strcmp(cmd, "quit") == 0)
     {

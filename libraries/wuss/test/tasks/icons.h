@@ -8,7 +8,6 @@
 #include "framebuf/bitmap.h"
 #include "framebuf/bmfont.h"
 #include "framebuf/colour.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/gadget/colourset.h"
 #include "wuss/gadget/stringset.h"
 #include "wuss/icon.h"
@@ -23,12 +22,7 @@
 typedef struct icons_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
-  wuss_task_t        *delegate; /* the task that owns the menu */
-  wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[1]; /* per-instance: a shared static would
-                                       * leak one instance's .window pointer
-                                       * into another's menu */
-  wuss_menu_t         menu;
+  wuss_task_t        *delegate; /* the task that owns the window */
   wuss_window_t *window;
   bmfont_t      *font;
   colour_t       label;  /* axis coordinate text */
@@ -50,6 +44,7 @@ typedef struct icons_task
   wuss_icon_t   *sset_echo;    /* label echoing the string set's pick */
   wuss_colourset_t *cset;      /* gadget; its icons belong to the window */
   wuss_icon_t   *cset_echo;    /* label echoing the colour set's pick */
+  wuss_icon_t   *drag_echo;    /* label echoing where the last drag ended */
 }
 icons_task_t;
 
@@ -61,6 +56,9 @@ wuss_window_fn_t icons_handle;
  * wuss_get_resources(wuss)/resources/wuss/. if out is non-NULL, the task
  * block is also returned through it */
 result_t icons_create(wuss_t *wuss, icons_task_t **out);
+
+/* install the icon bar app that opens icons windows on demand */
+result_t icons_app_create(wuss_t *wuss);
 
 /* free a task block allocated by icons_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */

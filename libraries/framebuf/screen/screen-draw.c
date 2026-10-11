@@ -586,6 +586,115 @@ static const pixelmap_t *src_pixelmap_for(const bitmap_t *src)
                       pixelfmt_paletted_nentries(src->format));
 }
 
+/* Write the p4 pixel "pxl" at "x" in the screen row "drow". */
+static void put_p4(unsigned char *drow, int x, int pxl)
+{
+  unsigned char *scrp;
+  int            shift;
+
+  scrp  = drow + (x >> 1);
+  shift = (x & 1) * 4;
+  *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | (pxl << shift));
+}
+
+/* screen_copy_bitmap_p4's undithered p4-source case: each of the source's 16
+ * palette entries is matched to a screen index once, up front, leaving the
+ * inner loop a nibble remap. A source with no transparent entries is copied
+ * a whole screen byte, two pixels, per lookup. "pm" is the rgba8888->screen
+ * pixelmap and "srcpm" the source's p4->rgba8888 one. */
+static result_t screen_copy_bitmap_p4_from_p4(screen_t         *scr,
+                                              int               x,
+                                              int               y,
+                                              const bitmap_t   *src,
+                                              const box_t      *draw_box,
+                                              int               has_alpha,
+                                              const pixelmap_t *pm,
+                                              const pixelmap_t *srcpm)
+{
+  int           remap[16]; /* source index -> screen index, or -1 if
+                            * transparent */
+  int           opaque;
+  int           i;
+  unsigned char pairs[256]; /* source pixel pair -> screen pixel pair */
+  int           yy;
+
+  opaque = 1;
+
+  for (i = 0; i < 16; i++)
+  {
+    colour_t     c;
+    unsigned int r, g, b, idx;
+
+    c.primary = ((const pixelfmt_rgba8888_t *) srcpm->entries)[i];
+    if (has_alpha && colour_get_alpha(&c) == 0)
+    {
+      remap[i] = -1;
+      opaque   = 0;
+      continue;
+    }
+
+    pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
+    idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
+        | ((g >> (8 - pm->gbits)) << pm->bbits)
+        | ( b >> (8 - pm->bbits));
+    remap[i] = (pm->entries[idx >> 1] >> ((idx & 1) << 2)) & 0xF;
+  }
+
+  if (opaque)
+    for (i = 0; i < 256; i++)
+      pairs[i] = (unsigned char) (remap[i & 0xF] | (remap[i >> 4] << 4));
+
+  for (yy = draw_box->y0; yy < draw_box->y1; yy++)
+  {
+    const unsigned char *srow;
+    unsigned char       *drow;
+    int                  dstx;
+
+    srow = (const unsigned char *) src->base + (yy - y) * src->rowbytes;
+    drow = (unsigned char *) scr->base + yy * scr->rowbytes;
+    dstx = draw_box->x0;
+
+    if (opaque)
+    {
+      int srcx;
+      int v;
+
+      if (dstx & 1)
+      {
+        srcx = dstx - x;
+        put_p4(drow, dstx, remap[(srow[srcx >> 1] >> ((srcx & 1) * 4)) & 0xF]);
+        dstx++;
+      }
+
+      /* whole screen bytes; an odd x straddles two source bytes */
+      for (; dstx + 1 < draw_box->x1; dstx += 2)
+      {
+        srcx = dstx - x;
+        if (srcx & 1)
+          v = (srow[srcx >> 1] >> 4) | (srow[(srcx >> 1) + 1] << 4);
+        else
+          v = srow[srcx >> 1];
+        drow[dstx >> 1] = pairs[v & 0xFF];
+      }
+    }
+
+    for (; dstx < draw_box->x1; dstx++)
+    {
+      int srcx;
+      int pxl;
+
+      srcx = dstx - x;
+      pxl  = remap[(srow[srcx >> 1] >> ((srcx & 1) * 4)) & 0xF];
+      if (pxl < 0)
+        continue; /* fully transparent: leave background alone */
+
+      put_p4(drow, dstx, pxl);
+    }
+  }
+
+  return result_OK;
+}
+
 /* Blit "src" onto the paletted screen, its top-left at (x, y), clipped to
  * "draw_box". No linear channel bits to blend, so this does an alpha-tested
  * transfer (skip fully transparent, else nearest palette match) rather than
@@ -626,6 +735,10 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
     return result_NOT_SUPPORTED;
 
   do_dither = dither_bias_build(&bias,dither_levels_for(pm), dither);
+
+  if (src->format == pixelfmt_p4 && !do_dither)
+    return screen_copy_bitmap_p4_from_p4(scr, x, y, src, draw_box, has_alpha,
+                                         pm, srcpm);
 
   for (yy = 0; yy < clipped_height; yy++)
   {

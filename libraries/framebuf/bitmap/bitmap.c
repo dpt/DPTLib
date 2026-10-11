@@ -527,6 +527,65 @@ static result_t bmconv_p2_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
   return rc;
 }
 
+/* Expand a p1, p2 or p4 bitmap to rgbx8888 by way of a temporary p8 copy, so
+ * the three narrow formats share bmconv_p8_to_rgbx8888 rather than each
+ * needing a converter of their own. p1 and p2 pack the leftmost pixel in the
+ * high bits; p4 is low nibble first. */
+static result_t bmconv_packed_to_rgbx8888(const bitmap_t *src,
+                                          bitmap_t      **pdst)
+{
+  result_t             rc;
+  bitmap_t             tmp;
+  colour_t             pal[256];
+  unsigned char       *idx;
+  unsigned char       *out;
+  const unsigned char *row;
+  int                  log2bpp;
+  int                  x, y;
+
+  log2bpp = pixelfmt_log2bpp(src->format);
+
+  idx = malloc((size_t) src->size.w * src->size.h);
+  if (idx == NULL)
+    return result_OOM;
+
+  out = idx;
+  for (y = 0; y < src->size.h; y++)
+  {
+    row = (const unsigned char *) src->base + y * src->rowbytes;
+    for (x = 0; x < src->size.w; x++)
+    {
+      switch (log2bpp)
+      {
+      case 0:
+        *out++ = (row[x >> 3] >> (7 - (x & 7))) & 1;
+        break;
+      case 1:
+        *out++ = (row[x >> 2] >> (6 - 2 * (x & 3))) & 3;
+        break;
+      default:
+        *out++ = (row[x >> 1] >> ((x & 1) * 4)) & 0xF;
+        break;
+      }
+    }
+  }
+
+  /* only 1 << (1 << log2bpp) entries are real; the rest pad out the 256 a p8
+   * bitmap expects */
+  memset(pal, 0, sizeof(pal));
+  memcpy(pal, src->palette, sizeof(pal[0]) << (1 << log2bpp));
+
+  rc = bitmap_init(&tmp, src->size, pixelfmt_p8, src->size.w, pal, idx);
+  if (rc == result_OK)
+  {
+    rc = bmconv_p8_to_rgbx8888(&tmp, pdst);
+    free(tmp.palette);
+  }
+  free(idx);
+
+  return rc;
+}
+
 result_t bitmap_convert(const bitmap_t *src,
                         pixelfmt_t      newfmt,
                         bitmap_t      **dst)
@@ -544,6 +603,9 @@ result_t bitmap_convert(const bitmap_t *src,
     case pixelfmt_bgrx8888:
       return bmconv_p1_to_bgrx8888(src, dst);
 
+    case pixelfmt_rgbx8888:
+      return bmconv_packed_to_rgbx8888(src, dst);
+
     default:
       return result_NOT_SUPPORTED;
     }
@@ -555,6 +617,9 @@ result_t bitmap_convert(const bitmap_t *src,
     case pixelfmt_bgrx8888:
       return bmconv_p2_to_bgrx8888(src, dst);
 
+    case pixelfmt_rgbx8888:
+      return bmconv_packed_to_rgbx8888(src, dst);
+
     default:
       return result_NOT_SUPPORTED;
     }
@@ -565,6 +630,9 @@ result_t bitmap_convert(const bitmap_t *src,
     {
     case pixelfmt_bgrx8888:
       return bmconv_p4_to_bgrx8888(src, dst);
+
+    case pixelfmt_rgbx8888:
+      return bmconv_packed_to_rgbx8888(src, dst);
 
     default:
       return result_NOT_SUPPORTED;

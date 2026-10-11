@@ -142,10 +142,11 @@ static result_t saveas_action_save(void *opaque, wuss_button_t button)
   result_t       rc;
   wuss_saveas_t *sa;
 
-  (void) button;
   sa = opaque;
   rc = saveas_do_save(sa);
-  if (rc == result_OK)
+
+  /* ADJUST keeps the dialogue (and any menu chain holding it) open */
+  if (rc == result_OK && !(button & wuss_BUTTON_ADJUST))
     saveas_dismiss(sa);
 
   return rc;
@@ -161,24 +162,25 @@ static void saveas_set_actions(wuss_saveas_t *sa)
   actions[1].fn   = saveas_action_save;
 
   (void) wuss_dialogue_set_actions(sa->dialogue, actions, 2);
+  wuss_dialogue_set_cancel(sa->dialogue, sa->cancel_icon);
 }
 
 /* ----------------------------------------------------------------------- */
 
 /* Icon-set entry for the file icon: "file_<type>" (RISC OS sprite naming,
  * three lowercase hex digits), else the generic "file_xxx". Returns a
- * wuss_ICON_SET-encoded value, or 0 if neither is loaded. */
+ * wuss_ICONPOOL_SET-encoded value, or 0 if neither is loaded. */
 static int saveas_file_icon(const wuss_t *wuss, filetype_t filetype)
 {
   char name[16];
   int  idx;
 
   snprintf(name, sizeof(name), "file_%03x", filetype.riscos & 0xFFFu);
-  idx = wuss_icons_lookup(wuss, name);
+  idx = wuss_iconpool_lookup(wuss, name);
   if (idx < 0)
-    idx = wuss_icons_lookup(wuss, "file_xxx");
+    idx = wuss_iconpool_lookup(wuss, "file_xxx");
 
-  return idx >= 0 ? wuss_ICON_SET(idx) : 0;
+  return idx >= 0 ? wuss_ICONPOOL_SET(idx) : 0;
 }
 
 static result_t saveas_build_icons(wuss_saveas_t *sa,
@@ -205,7 +207,7 @@ static result_t saveas_build_icons(wuss_saveas_t *sa,
   specs[0].u.bitmap.set = saveas_file_icon(sa->wuss, sa->filetype);
 
   wuss_icon_spec_writable(&specs[1], boxes[SA_LEAF], leafname,
-                          SAVEAS_LEAF_SIZE, 0);
+                          SAVEAS_LEAF_SIZE, wuss_ICON_FLAGS_JUSTIFY_CENTRE);
   wuss_icon_spec_action(&specs[2], boxes[SA_CANCEL], "Cancel", 0);
   wuss_icon_spec_action(&specs[3], boxes[SA_SAVE], "Save", 1);
 
@@ -333,7 +335,7 @@ void wuss_saveas_set_filetype(wuss_saveas_t    *saveas,
     return;
 
   icon->spec.u.bitmap.set   = set;
-  icon->spec.u.bitmap.image = wuss_icons_bitmap(saveas->wuss, set - 1);
+  icon->spec.u.bitmap.image = wuss_iconpool_bitmap(saveas->wuss, set - 1);
   wuss__icon_invalidate(wuss_dialogue_window(saveas->dialogue), icon);
 }
 
@@ -485,6 +487,9 @@ int wuss_saveas_handle_event(wuss_saveas_t      *saveas,
   {
   case wuss_EVENT_ICON:
     return wuss_dialogue_handle_icon(saveas->dialogue, event, &action_result);
+
+  case wuss_EVENT_KEY:
+    return wuss_dialogue_handle_key(saveas->dialogue, event, &action_result);
 
   case wuss_EVENT_DRAG_END:
     return saveas_handle_drag_end(saveas, event);

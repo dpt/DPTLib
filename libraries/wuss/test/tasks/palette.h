@@ -8,7 +8,6 @@
 #include <stdbool.h>
 
 #include "framebuf/colour.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
@@ -56,7 +55,7 @@ typedef struct palette_task
   wuss_menu_item_t     load_items[PALETTE_MAX_FILES]; /* one row per
                                                         * *.hex file */
   wuss_menu_t          load_menu; /* "Load" submenu, opened off menu_items */
-  wuss_menu_item_t     menu_items[4]; /* Info, Load, Invert, Greyscale */
+  wuss_menu_item_t     menu_items[3]; /* Load, Invert, Greyscale */
   wuss_menu_t          menu;
   wuss_menu_handle_t   menu_handle; /* for wuss_menu_tick_item_live on an
                                      * ADJUST pick, which keeps the chain
@@ -74,12 +73,23 @@ result_t palette_load_hex(const char *resources,
                           const char *name,
                           colour_t   *out);
 
+/* as palette_load_hex, but accepts any 1..max entries and returns the
+ * count through n (for dithering to a short palette such as CMYK) */
+result_t palette_load_hex_n(const char *resources,
+                            const char *name,
+                            colour_t   *out,
+                            int         max,
+                            int        *n);
+
 /* create the palette-swatch-grid window against the given wuss instance.
  * wuss_get_resources(wuss)/resources/palettes holds the *.hex files; it is
  * scanned once here to build the picker menu, ticking whichever file's
  * content matches wuss's current system palette (wuss_get_palette), if any.
  * if out is non-NULL, the task block is also returned through it. */
 result_t palette_create(wuss_t *wuss, palette_task_t **out);
+
+/* install the icon bar app that opens palette windows on demand */
+result_t palette_app_create(wuss_t *wuss);
 
 /* free a task block allocated by palette_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */

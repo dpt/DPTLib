@@ -56,15 +56,21 @@ static const test_t tests[] =
   { "bmfontcache", bmfontcache_test },
   { "bmfontfamily", bmfontfamily_test },
   { "composite",   composite_test   },
+  { "bitload",     bitmap_load_test },
   { "rle",         bitmap_rle_test  },
   { "curve",       curve_test       },
+  { "dither",      dither_test      },
+  { "effects",     effects_test     },
+  { "octree",      octree_test      },
   { "pattern",     pattern_test     },
   { "pixelmap",    pixelmap_test    },
   { "screen",      screen_test      },
+  { "tonemap",     tonemap_test     },
 
   { "box",        box_test        },
   { "layout",     layout_test     },
   { "packer",     packer_test     },
+  { "region",     region_test     },
   { "stack",      stack_test      },
 
   { "dirlist",    dirlist_test    },
@@ -77,6 +83,8 @@ static const test_t tests[] =
   { "bytesex",    bytesex_test    },
   { "pack",       pack_test       },
 
+  { "gridview-bench", gridview_bench_test },
+  { "paintdoc",   paintdoc_test   },
   { "wuss",       wuss_test       },
 };
 

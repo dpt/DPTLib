@@ -9,25 +9,25 @@
 
 wuss_iconbar_icon_t *wuss__iconbar_hit_test(wuss_t *wuss, point_t p)
 {
-  box_t bar;
-  int   index;
+  box_t bar, slot;
+  int   i;
 
   wuss__iconbar_box(wuss, &bar);
   if (!box_contains_point(&bar, p.x, p.y))
     return NULL;
 
-  if (p.x - bar.x0 < WUSS_ICONBAR_GAP)
-    return NULL; /* over the bar's leading gap */
+  for (i = 0; i < wuss->iconbar.n; i++)
+  {
+    wuss__iconbar_slot_box(wuss, i, &slot);
+    if (box_contains_point(&slot, p.x, p.y))
+      return wuss->iconbar.icons[i];
+  }
 
-  index = (p.x - bar.x0 - WUSS_ICONBAR_GAP) / WUSS_ICONBAR_SLOT;
-  if (index < 0 || index >= wuss->niconbar_icons)
-    return NULL;
-
-  return wuss->iconbar_icons[index];
+  return NULL; /* over the gap or bare bar */
 }
 
 /* Click/drag dispatch, called from wuss_mouse_click once the point has
- * already resolved to wuss->iconbar_window: only claims a click that lands
+ * already resolved to wuss->iconbar.window: only claims a click that lands
  * on one of its icons -- empty slot space is a no-op, same as clicking a
  * window's bare content elsewhere. Returns 1 when an icon claimed the
  * event, 0 for empty slot space. */
@@ -38,16 +38,14 @@ int wuss__iconbar_icon_click(wuss_t             *wuss,
 {
   wuss_iconbar_icon_t *icon;
   wuss_event_t         event;
-  box_t                bar;
 
-  if (action == wuss_MOUSE_UP && wuss->pressed_iconbar_icon != NULL)
+  /* the release goes to the icon pressed, wherever it lands; icon bar icons
+   * are click-only, so nothing is drawn for the press itself */
+  if (action == wuss_MOUSE_UP && wuss->iconbar.pressed != NULL)
   {
-    icon = wuss->pressed_iconbar_icon;
+    icon = wuss->iconbar.pressed;
 
-    wuss->pressed_iconbar_icon = NULL;
-    icon->state &= ~wuss_ICONBAR_ICON_STATE_PRESSED;
-    wuss__iconbar_box(wuss, &bar);
-    wuss__invalidate_clipped(wuss->iconbar_window, &bar);
+    wuss->iconbar.pressed = NULL;
 
     event.kind                     = wuss_EVENT_ICON;
     event.data.iconbar_icon.icon   = icon;
@@ -62,12 +60,7 @@ int wuss__iconbar_icon_click(wuss_t             *wuss,
     return 0; /* over empty slot space */
 
   if (action == wuss_MOUSE_DOWN)
-  {
-    wuss->pressed_iconbar_icon = icon;
-    icon->state |= wuss_ICONBAR_ICON_STATE_PRESSED;
-    wuss__iconbar_box(wuss, &bar);
-    wuss__invalidate_clipped(wuss->iconbar_window, &bar);
-  }
+    wuss->iconbar.pressed = icon;
 
   event.kind                     = wuss_EVENT_ICON;
   event.data.iconbar_icon.icon   = icon;

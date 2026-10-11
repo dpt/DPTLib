@@ -26,7 +26,11 @@ T hlist_list(void *x, ...)
   {
     *p = malloc(sizeof(**p));
     if (*p == NULL)
-      return NULL; /* FIXME: This won't unwind the mallocs in the failure case. */
+    {
+      va_end(ap);
+      hlist_free(&list); /* *p is NULL, so this ends the partial list */
+      return NULL;
+    }
 
     (*p)->first = x;
     p = &(*p)->rest;

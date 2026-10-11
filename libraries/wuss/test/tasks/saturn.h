@@ -10,7 +10,6 @@
 #include "framebuf/colour.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/dialogue.h"
-#include "wuss/component/proginfo.h"
 #include "wuss/component/saveas.h"
 #include "wuss/icon-spec.h"
 #include "wuss/icon.h"
@@ -91,7 +90,7 @@ typedef struct saturn_task
                                         * colourmenu/.window pointers into
                                         * another's menu */
   wuss_menu_t        colours_menu;
-  wuss_menu_item_t   menu_items[5];
+  wuss_menu_item_t   menu_items[4];
   wuss_menu_t        menu;
   int                animate; /* Menu > Animate: re-seed on every idle */
 }
@@ -104,6 +103,9 @@ wuss_window_fn_t saturn_handle;
  * window and freed when it closes.
  * if out is non-NULL, the task block is also returned through it */
 result_t saturn_create(wuss_t *wuss, saturn_task_t **out);
+
+/* install the icon bar app that opens saturn windows on demand */
+result_t saturn_app_create(wuss_t *wuss);
 
 /* free a task block allocated by saturn_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */

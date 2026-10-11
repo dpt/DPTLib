@@ -79,7 +79,7 @@ result_t wuss_window_create(wuss_t *wuss, const box_t *content, const char *titl
 
 `bg` is a `wuss_backdrop_t` (flat colour or 8x8 pattern, as for `config->backdrop`), filled in by wuss before each redraw event; set its `colour` to `wuss_NO_BACKGROUND` for the task to draw its own background (avoids a redundant fill behind an opaque task). Any pattern is phased to the window's scroll origin so it stays locked to the content as the window scrolls. Changeable later via `wuss_window_set_background`, which also takes a `wuss_backdrop_t`.
 
-`doc` is the virtual document extent behind the horizontal/vertical scrollbars' sausage proportion; pass `content`'s own width/height for a window with nothing to scroll. It is also the ceiling a resize-drag or toggle-size grows the content area to. Set once at creation, immutable thereafter.
+`doc` is the virtual document extent behind the horizontal/vertical scrollbars' sausage proportion; pass `content`'s own width/height for a window with nothing to scroll. It is also the ceiling a resize-drag or toggle-size grows the content area to. Set at creation; `wuss_window_set_doc` changes it later. `wuss_window_get_max_content` gives the largest content size this screen allows. `wuss_EVENT_RELAYOUT` goes to each window after a screen resize or config change.
 
 `min_doc` is the opposite end: the smallest content size a resize-drag or toggle-size will shrink to. Pass `(0, 0)` for the built-in floor. It is clamped both to that built-in floor, so a window can never be squeezed too small to grab, and to `doc`, so it can never demand a window larger than the document it shows. Also set once at creation.
 
@@ -213,7 +213,7 @@ document -> screen: screen.x = bounds.x0 - scroll.x + doc.x
 scroll clamp:       max = doc - (bounds.x1 - bounds.x0);  clamp(scroll, 0, max)
 ```
 
-In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scroll.y`, then paint the whole content normally — the framebuffer clip (`scr->clip` = `redraw.content`) discards anything outside the piece. See `libraries/wuss/test/tasks/text.c`.
+In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scroll.y`, then paint the whole content normally — the framebuffer clip (`scr->clip` = `redraw.content`) discards anything outside the piece. See `libraries/wuss/test/tasks/reading.c`.
 
 ## Redrawing
 
@@ -221,7 +221,7 @@ In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scro
 - Within a window, Wuss paints in a fixed order: the window background colour, then its icons (see "Icons" below), then the task's `wuss_EVENT_REDRAW` handler — so a task always draws over the background and any icons, never under them. A `wuss_WINDOW_NO_REDRAW` window skips that last step: background and icons are all it gets.
 - `wuss_invalidate` / `wuss_window_invalidate` mark a screen-space or window-local region dirty; window management calls these automatically for its own changes, but a task must call one of them itself whenever its content changes on its own (e.g. an animation), passing the union of the old and new areas that need repainting.
 - `wuss_redraw_dirty` repaints only the accumulated dirty region, then clears it, painting the backdrop colour into each dirty region first if one was configured. Without a configured backdrop, Wuss only repaints windows, not the background between/behind them, so a caller whose invalidation can expose background (e.g. after a window move) should clear that region itself first.
-- `wuss_get_dirty_count`/`wuss_get_dirty(wuss, index, out)` fetch the currently accumulated dirty regions (coalesced as they accumulate, up to a fixed cap after which further regions are merged into the last one) without redrawing.
+- `wuss_get_dirty_count`/`wuss_get_dirty(wuss, index, out)` fetch the currently accumulated dirty regions (coalesced as they accumulate, up to a fixed cap after which the pair of regions whose union adds the least area is merged, via `box_list_add`) without redrawing.
 - A window move or resize is clipped, piece by piece, against whatever's above it in the z-order, and any pixels a move can preserve are blitted directly rather than queued dirty; only the genuinely-changed pieces end up in the dirty region. This is an internal optimisation with no effect on a task's own redraw handling.
 
 ## Icons
@@ -248,15 +248,19 @@ Wuss draws icons in creation order (later icons paint on top); hit-testing scans
 
 The bevel's light (top/left) and dark (bottom/right) edge shades come from `config->bevel.light` / `config->bevel.dark` at `wuss_create` time, validated like the other furniture colours; both default to the titlebar fill colour when `config` is `NULL`. A held button also fills its face with `config->bevel.pressed` in place of the icon's own background; pass `wuss_NO_BACKGROUND` (or `NULL` config) to have it follow `bevel.dark`.
 
-### Loaded icon set
+### Icon pool
 
-`wuss_icons_load(wuss, dir)` scans a directory for `*.png`, loads each one and RLE-compresses it in place (`bitmap_compress`), and records its leafname sans `.png`. Entries are indexed in the order the platform's directory scan yields — unspecified, so address them by name:
+`wuss_iconpool_load(wuss, dir)` scans a directory for `*.png`, loads each one and RLE-compresses it in place (`bitmap_compress`), and records its leafname sans `.png`. Entries are sorted by name (`strcmp`) and indexed in that order, so an index is stable across platforms — but still address entries by name. `wuss_create` loads `resources/wuss/iconpool` at startup:
 
-- `wuss_icons_lookup(wuss, name)` → 0-based index, or `-1`.
-- `wuss_icons_bitmap(wuss, index)` → the compressed `bitmap_t *` (window-manager-owned), or `NULL` out of range.
-- `wuss_icons_count(wuss)`.
+- `wuss_iconpool_lookup(wuss, name)` → 0-based index, or `-1`.
+- `wuss_iconpool_bitmap(wuss, index)` → the compressed `bitmap_t *` (window-manager-owned), or `NULL` out of range.
+- `wuss_iconpool_count(wuss)`.
 
-A `wuss_ICON_TYPE_BITMAP` spec with `u.bitmap.image == NULL` and `u.bitmap.set = wuss_ICON_SET(idx)` draws the loaded entry at `idx` (the `wuss_ICON_SET` macro offsets by one so a zero-initialised spec means "no entry"). An out-of-range index is `result_WUSS_BAD_INDEX`. Calling `wuss_icons_load` again replaces the set; `wuss_destroy` frees it. A missing directory is not an error — it yields a zero-length set. `dir` is copied internally, so a `path_join_filename` result is safe to pass.
+A `wuss_ICON_TYPE_BITMAP` spec with `u.bitmap.image == NULL` and `u.bitmap.set = wuss_ICONPOOL_SET(idx)` draws the loaded entry at `idx` (the `wuss_ICONPOOL_SET` macro offsets by one so a zero-initialised spec means "no entry"). Alternatively set `u.bitmap.name` (and `pressed_name` for the held-down image) to an entry's name and let `wuss_icon_create` resolve it; an unknown name logs a warning and the icon draws the red placeholder box. `image` wins over `set`, which wins over `name`. An out-of-range index is `result_WUSS_BAD_INDEX`. Calling `wuss_iconpool_load` again replaces the set; `wuss_destroy` frees it. A missing directory is not an error — it yields a zero-length set. `dir` is copied internally, so a `path_join_filename` result is safe to pass.
+
+**Bevelled and latching bitmap icons.** `u.bitmap.border` (`wuss_ICON_BORDER_RIDGE` or `_GROOVE`; the default `_NONE` keeps the image at the top-left) draws a bevel inside the bounding box with the image centred in it. With `wuss_ICON_FLAGS_INTERACTIVE`, a non-zero `u.bitmap.group` makes the icon latch like a grouped radio: a click selects it and clears every other selected bitmap icon in the same group on that window. A latched icon swaps its bevel (RIDGE reads raised at rest, sunk when latched) and fills with its `bg` colour. Group zero is a plain button. Paint's toolbox uses this.
+
+**Private pools.** A task may also keep a private pool, searched before the shared one when its icons' names are resolved. It is opt-in: call `wuss_task_iconpool_load(task, dir)`, or `wuss_task_iconpool_load_resource(task, resources)`, which loads `resources/wuss/tasks/<task name>/iconpool` (the name from `wuss_task_desc_t::name`, so a task needs one). Both replace the task's pool and load the same way as the shared one. `wuss_task_iconpool_find(task, name)` returns the bitmap from the private pool, falling back to the shared pool, or `NULL`. The pool is freed with the task. A name that resolves is stored in the icon as a bitmap pointer (`u.bitmap.image` / `pressed_image`), not an index, so the same name may mean different bitmaps in different tasks; `set`/`pressed_set` index the shared pool only. RADIO/OPTION glyphs also come from the shared pool only. Reloading either pool frees the bitmaps it held, so reload before creating icons that name them.
 
 ## Components
 

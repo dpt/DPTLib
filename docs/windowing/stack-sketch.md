@@ -1,7 +1,8 @@
 # Box-stack layout (design sketch)
 
 Design notes for the `stack` module. **Implemented** as `include/geom/stack.h`
-/ `libraries/geom/stack/`; kept here as the design record.
+/ `libraries/geom/stack/`; kept here as the design record. The header is the
+authority: see "As built" below for where it differs from this sketch.
 
 ## Motivation
 
@@ -16,8 +17,6 @@ Without something like this, every dialog hand-codes an inset chain per icon:
 readable for three icons, a maintenance sink for thirty, and impossible to
 reflow when the window resizes or the font metrics change. A box stack turns a
 dialog into a nested description that the solver turns into boxes.
-
-Not built yet. Build it when the first real dialog needs it.
 
 ## Relationship to `geom/layout`
 
@@ -50,10 +49,7 @@ Out (add only when a real layout needs it, each its own follow-up):
 - Shared column widths across independent rows (a label column where every
   field starts at the same x). Nested stacks solve each row alone, so the
   caller pre-measures: loop over the labels, find the widest, set every label
-  leaf to that fixed `size`. It is a handful of lines at the call site and
-  needs nothing from the module. If callers keep writing that loop, the clean
-  fix is a `GRID` kind with a max-content track — real code, deferred until a
-  caller exists.
+  leaf to that fixed `size`. (Built since: size groups, see "As built".)
 - Grid with row/column spans and per-track sizing. Uniform grids are
   expressible as a stack of stacks; true 2D alignment across rows is not, and
   that is the trigger to add a real `GRID` kind.
@@ -67,6 +63,27 @@ Out (add only when a real layout needs it, each its own follow-up):
   are draw-time work for the caller. The module computes rectangles, not
   pixels — no strings, no drawing.
 - Chained cross-axis flex (a leaf's cross size driving a sibling's).
+
+## As built
+
+The shipped header differs from the sketch below in these ways:
+
+- `size` is `axis_size`. A new `cross_size` gives the cross extent for
+  `stack_ALIGN_CENTRE` and `stack_ALIGN_END`; 0 spans the container.
+- The four `pad_*` ints are one `inset_t pad` (`geom/inset.h`).
+- `group`: items sharing a non-zero group all get the largest `axis_size`
+  among them, wherever they sit in the tree. This replaces the caller-side
+  "measure the widest label" loop. Only fixed-size leaves and spacers may be
+  grouped.
+- `STACK_HUG` as a container's `axis_size` sizes it to its children. It is
+  rejected on the root, on leaves and spacers, and with non-zero `flex`.
+- `stack_smallest()` returns the smallest root size the tree can be solved
+  into, for sizing a window.
+- `STACK_MAX_ITEMS` (64) caps `n`; larger tables fail with
+  `result_STACK_BAD_TREE`. The solver uses fixed scratch arrays, not VLAs.
+- `STACK_VBOX`, `STACK_HBOX`, `STACK_LEAF`, `STACK_SPACER` (with `_EX` and
+  `_GROUP` variants) build compact static tables.
+- Layout style for wuss dialogues is in `wuss-layout.md`.
 
 ## Model
 

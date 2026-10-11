@@ -22,6 +22,25 @@ static int file_is_png(FILE *fp)
   return png_sig_cmp(&buf[0], 0, PNGSIGLEN) == 0;
 }
 
+/* Smallest paletted format holding a PNG's 1, 2, 4 or 8 bits per pixel. PNG
+ * packs the leftmost pixel in the high bits, as p1 and p2 do but p4 (low
+ * nibble first) does not, so a 4-bit PNG needs png_set_packswap. */
+static pixelfmt_t paletted_format(png_structp png_ptr, int bitdepth)
+{
+  switch (bitdepth)
+  {
+  case 1:
+    return pixelfmt_p1;
+  case 2:
+    return pixelfmt_p2;
+  case 4:
+    png_set_packswap(png_ptr);
+    return pixelfmt_p4;
+  default:
+    return pixelfmt_p8;
+  }
+}
+
 result_t bitmap_load_png(bitmap_t *bm, const char *filename)
 {
   result_t       rc;
@@ -78,10 +97,10 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
               &pngwidth, &pngheight, &pngbitdepth, &pngcolourtype,
                NULL, NULL, NULL);
 
-  /* paletted PNGs may be 1/2/4/8 bpp; png_set_packing() unpacks the
-   * sub-byte cases to one index per byte. every other colour type must
-   * already be 8-bit. */
-  if (pngbitdepth != 8 && pngcolourtype != PNG_COLOR_TYPE_PALETTE)
+  /* paletted and greyscale PNGs may be 1/2/4/8 bpp (greyscale also 16, which
+   * is stripped to 8). every other colour type must already be 8-bit. */
+  if (pngbitdepth != 8 && pngcolourtype != PNG_COLOR_TYPE_PALETTE &&
+      pngcolourtype != PNG_COLOR_TYPE_GRAY)
   {
     rc = result_INCOMPATIBLE;
     goto cleanup;
@@ -90,17 +109,14 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
   switch (pngcolourtype)
   {
   case PNG_COLOR_TYPE_PALETTE:
-    /* keep a native paletted PNG as pixelfmt_p8 (one index per byte),
-     * carrying its PLTE across as the bitmap's palette, rather than
-     * expanding to RGB */
+    /* keep a native paletted PNG paletted, at its own depth, carrying its
+     * PLTE across as the bitmap's palette, rather than expanding to RGB */
     {
       png_colorp png_palette;
       int        nplte;
       png_bytep  trns       = NULL;
       int        ntrns      = 0;
       int        i;
-
-      png_set_packing(png_ptr);
 
       if (png_get_PLTE(png_ptr, info_ptr, &png_palette, &nplte) == 0)
       {
@@ -123,7 +139,31 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
       for (; i < 256; i++)
         plte[i] = colour_rgba(0, 0, 0, 0xFF);
 
-      bm_fmt     = pixelfmt_p8;
+      bm_fmt     = paletted_format(png_ptr, pngbitdepth);
+      bm_palette = plte;
+    }
+    break;
+  case PNG_COLOR_TYPE_GRAY:
+    /* as a paletted PNG, with a ramp of greys as the palette */
+    {
+      int i;
+      int ngrey;
+      int grey;
+
+      if (pngbitdepth == 16)
+      {
+        png_set_strip_16(png_ptr);
+        pngbitdepth = 8;
+      }
+
+      bm_fmt = paletted_format(png_ptr, pngbitdepth);
+
+      ngrey = 1 << pngbitdepth;
+      for (i = 0; i < ngrey; i++)
+      {
+        grey    = i * 255 / (ngrey - 1);
+        plte[i] = colour_rgba(grey, grey, grey, 0xFF);
+      }
       bm_palette = plte;
     }
     break;
@@ -134,12 +174,17 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
   case PNG_COLOR_TYPE_RGBA:
     bm_fmt = pixelfmt_rgba8888;
     break;
+  case PNG_COLOR_TYPE_GRAY_ALPHA:
+    png_set_gray_to_rgb(png_ptr);
+    bm_fmt = pixelfmt_rgba8888;
+    break;
   default:
     rc = result_INCOMPATIBLE;
     goto cleanup;
   }
 
-  bm_rowbytes = (pngwidth << pixelfmt_log2bpp(bm_fmt)) >> 3;
+  /* rounded up: a sub-byte row ends part way through its last byte */
+  bm_rowbytes = ((pngwidth << pixelfmt_log2bpp(bm_fmt)) + 7) >> 3;
 
   pixels = malloc(bm_rowbytes * pngheight);
   if (pixels == NULL)

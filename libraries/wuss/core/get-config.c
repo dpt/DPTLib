@@ -17,25 +17,25 @@ void wuss_get_config(const wuss_t *wuss, wuss_config_t *config)
   config->furniture       = wuss->furniture_colours;
 #endif
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
-  config->bevel.light      = wuss->bevel_light;
-  config->bevel.dark       = wuss->bevel_dark;
-  config->bevel.divider    = wuss->bevel_divider;
-  config->button.bg        = wuss->button_bg;
-  config->button.fg        = wuss->button_fg;
-  config->button.pressed   = wuss->button_pressed;
+  config->bevel.light      = wuss->bevel.light;
+  config->bevel.dark       = wuss->bevel.dark;
+  config->bevel.divider    = wuss->bevel.divider;
+  config->button.bg        = wuss->button.bg;
+  config->button.fg        = wuss->button.fg;
+  config->button.pressed   = wuss->button.pressed;
   config->accent.colour    = wuss->accent;
 #endif
 #ifdef WUSS_ICONS
-  config->slider.track     = wuss->slider_track;
-  config->slider.value     = wuss->slider_value;
-  config->slider.surround  = wuss->slider_surround;
+  config->slider.track     = wuss->slider.track;
+  config->slider.value     = wuss->slider.value;
+  config->slider.surround  = wuss->slider.surround;
 #endif
 
-  config->body.window = wuss->window_bg;
-  config->body.menu   = wuss->menu_bg;
+  config->body.window = wuss->body.window;
+  config->body.menu   = wuss->body.menu;
   config->backdrop    = wuss->backdrop;
 
-  config->double_click_ms   = wuss->double_click_ms;
-  config->double_click_px   = wuss->double_click_px;
-  config->drag_threshold_px = wuss->drag_threshold_px;
+  config->mouse.double_click_ms   = wuss->input.double_click_ms;
+  config->mouse.double_click_px   = wuss->input.double_click_px;
+  config->mouse.drag_threshold_px = wuss->input.drag_threshold_px;
 }

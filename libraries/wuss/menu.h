@@ -21,7 +21,7 @@ enum
 };
 
 /* One open level of a menu chain: its window and per-item icon handles, plus a
- * link to the level it opened from. The head (root) is wuss->menu_chain; each
+ * link to the level it opened from. The head (root) is wuss->menu.chain; each
  * child points at its parent so wuss_menu_close can walk leaf-to-root. */
 struct wuss__menu
 {
@@ -41,6 +41,11 @@ struct wuss__menu
   /* stack a borrowed-window level's window was in before the chain moved it
    * to wuss_STACK_TOP; restored when the level closes. Unused otherwise. */
   wuss_stack_t           saved_stack;
+
+  /* window that held the input focus before a borrowed-window level took it
+   * for its first writable; refocused when the level closes, unless it has
+   * since gone or something else took the focus. NULL otherwise. */
+  wuss_window_t         *saved_focus;
 
   /* borrowed source description; NULL for a borrowed-window level */
   const wuss_menu_t     *menu;

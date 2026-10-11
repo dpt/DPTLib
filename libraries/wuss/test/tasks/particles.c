@@ -17,6 +17,7 @@
 
 #include "common.h"
 #include "particles.h"
+#include "taskapp.h"
 
 #define PARTICLES_WIDTH     480
 #define PARTICLES_HEIGHT    384
@@ -29,12 +30,9 @@
 #define PARTICLES_TRAIL_DAMPING 0.25f /* fraction of pointer velocity kept */
 
 /* MENU click pops this menu; the item table and wuss_menu_t live
- * per-instance in particles_task_t, not as a file-scope static, so that each
- * window's Info row can hold its own .window pointer to the shared proginfo
- * singleton, retargeted just before wuss_menu_open */
+ * per-instance in particles_task_t, not as a file-scope static */
 enum
 {
-  PARTICLES_MENU_INFO,
   PARTICLES_MENU_ADD,
   PARTICLES_MENU_BACKGROUND,
   PARTICLES_MENU_PAUSE,
@@ -342,11 +340,6 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, PARTICLES_MENU_INFO, "Info",
-                        wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
-                        NULL); /* retargeted at the shared proginfo singleton
-                                * just before wuss_menu_open, in
-                                * particles_mouse */
 
   for (i = 0; i < NELEMS(task->emitter_items); i++)
     WUSS_MENU_ITEM(task->emitter_items, i, particles_intensities[i].name,
@@ -417,6 +410,18 @@ result_t particles_create(wuss_t *wuss, particles_task_t **out)
   return result_OK;
 }
 
+result_t particles_app_create(wuss_t *wuss)
+{
+  static const taskapp_desc_t desc =
+  {
+    "Particles",
+    "Retro explosion particles",
+    (taskapp_create_fn_t) particles_create
+  };
+
+  return taskapp_install(wuss, &desc);
+}
+
 void particles_destroy(particles_task_t *task)
 {
   wuss_dialogue_destroy(task->strength_dialogue);
@@ -454,11 +459,6 @@ enum
 #define PST_G_LABEL      1 /* size groups, see stack_item_t::group */
 #define PST_G_VALUE      2
 #define PST_SLIDER_MIN_W (64)
-#define PST_CHAR_W        6 /* ponytail: assumes the 6px system font */
-#define PST_ACTION_WIDTH(W)  ((W)*PST_CHAR_W+2*wuss_STD_SECONDARY_BUTTON_BORDER)
-#define PST_DEFAULT_WIDTH(W) ((W)*PST_CHAR_W+2*wuss_STD_PRIMARY_BUTTON_BORDER)
-#define PST_CANCEL_W     PST_ACTION_WIDTH(9)
-#define PST_APPLY_W      PST_DEFAULT_WIDTH(9)
 
 static const stack_item_t g_particles_strength_stack[PARTICLES_STRENGTH_STACK__LIMIT] =
 {
@@ -475,12 +475,12 @@ static const stack_item_t g_particles_strength_stack[PARTICLES_STRENGTH_STACK__L
   [PST_SLDR2] = STACK_LEAF_EX(PST_ROW2, 0, wuss_STD_SLIDER_HEIGHT, stack_ALIGN_CENTRE, 1, PST_SLIDER_MIN_W, 0),
   [PST_VAL2]  = STACK_LEAF_GROUP(PST_ROW2, 0, 16, stack_ALIGN_CENTRE, PST_G_VALUE),
 
-  [PST_BTNS] = STACK_HBOX(PST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
+  [PST_BTNS] = STACK_HBOX(PST_ROOT, wuss_STD_SECONDARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
   [PST_BSPC] = STACK_SPACER_GROUP(PST_BTNS, 0, PST_G_LABEL),
   [PST_BBOX] = { .kind = stack_KIND_HBOX, .parent = PST_BTNS,
                .gap = wuss_STD_GAP, .flex = 1 },
-  [PST_CNCL] = STACK_LEAF_EX(PST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, PST_CANCEL_W, 0),
-  [PST_APLY] = STACK_LEAF_EX(PST_BBOX, 0, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, PST_APPLY_W, 0),
+  [PST_CNCL] = STACK_LEAF_EX(PST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, 0, 0),
+  [PST_APLY] = STACK_LEAF_EX(PST_BBOX, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, 0, 0),
 };
 
 /* Build the Strength dialogue once: a label, a slider 1..100, a label
@@ -512,6 +512,12 @@ static result_t particles_strength_dialogue_create(particles_task_t *task)
   snprintf(widest, sizeof(widest), "%d", PARTICLES_RANGE_MAX);
   items[PST_VAL2].axis_size  = task_text_width(task->wuss, widest);
 
+  /* the buttons share the widest label's width */
+  items[PST_CNCL].min = task_button_width(task->wuss, "Cancel",
+                                          wuss_STD_SECONDARY_BUTTON_BORDER);
+  items[PST_APLY].min = task_button_width(task->wuss, "Cancel",
+                                          wuss_STD_SECONDARY_BUTTON_BORDER);
+
   rc = stack_smallest(items, NELEMS(items), &min_sz);
   if (rc != result_OK)
     return rc;
@@ -520,6 +526,8 @@ static result_t particles_strength_dialogue_create(particles_task_t *task)
                             "Strength", particles_strength_fillout, task);
   if (rc != result_OK)
     return rc;
+
+  wuss_dialogue_set_focusable(task->strength_dialogue, 0); /* no writables */
 
   root = (box_t) BOX_POS_SIZE(0, 0, min_sz.w, min_sz.h);
   rc = stack_solve(items, NELEMS(items), &root, boxes);
@@ -548,7 +556,7 @@ static result_t particles_strength_dialogue_create(particles_task_t *task)
                             range_buf, sizeof(range_buf));
 
   wuss_icon_spec_action(&specs[PARTICLES_STRENGTH_ICON_CANCEL], boxes[PST_CNCL], "Cancel", 0);
-  wuss_icon_spec_action(&specs[PARTICLES_STRENGTH_ICON_APPLY], boxes[PST_APLY], "Apply", 1);
+  wuss_icon_spec_action(&specs[PARTICLES_STRENGTH_ICON_APPLY], boxes[PST_APLY], "Apply", 0);
 
   rc = wuss_icon_create_array(wuss_dialogue_window(task->strength_dialogue),
                               specs, PARTICLES_STRENGTH_NICONS, made);
@@ -815,17 +823,6 @@ static result_t particles_mouse(wuss_window_t      *window,
 
   if (button & wuss_BUTTON_MENU)
   {
-    static const wuss_proginfo_desc_t desc =
-    {
-      "Particles",
-      "Retro explosion particle system",
-      "© David Thomas",
-      "1.0 (" __DATE__ ")"
-    };
-    wuss_proginfo_set_desc(&desc);
-    pt->menu_items[PARTICLES_MENU_INFO].window =
-      wuss_proginfo_window(pt->delegate);
-
     pt->menu_x = x;
     pt->menu_y = y;
 
@@ -1057,10 +1054,6 @@ result_t particles_handle(wuss_window_t      *window,
     {
       pt->strength_which = event->data.pre_show.index;
       rc = wuss_dialogue_handle_pre_show(pt->strength_dialogue);
-    }
-    else if (window == pt->menu_items[PARTICLES_MENU_INFO].window)
-    {
-      rc = wuss_proginfo_handle_pre_show();
     }
     else
     {

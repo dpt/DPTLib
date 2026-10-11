@@ -618,17 +618,21 @@ result_t pickle_test(const char *resources)
 
   rc = pickle__test1_write();
   if (rc != result_TEST_PASSED)
-    return rc;
+    goto cleanup;
 
   printf("test: pickle test 2\n");
 
   rc = pickle__test2_write();
   if (rc != result_TEST_PASSED)
-    return rc;
+    goto cleanup;
 
   rc = pickle__test2_read();
-  if (rc != result_TEST_PASSED)
-    return rc;
 
-  return result_TEST_PASSED;
+cleanup:
+
+  /* delete the temporary pickle files */
+  remove("testpickle1");
+  remove(FILENAME);
+
+  return rc;
 }

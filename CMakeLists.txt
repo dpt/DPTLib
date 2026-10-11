@@ -87,8 +87,12 @@ set(PUBLIC_HEADERS
     include/framebuf/colour.h
     include/framebuf/composite.h
     include/framebuf/curve.h
+    include/framebuf/dither.h
+    include/framebuf/effects.h
+    include/framebuf/octree.h
     include/framebuf/palettes.h
     include/framebuf/pattern.h
+    include/framebuf/tonemap.h
     include/framebuf/pixelfmt.h
     include/framebuf/pixelmap.h
     include/framebuf/screen.h
@@ -110,6 +114,7 @@ set(PUBLIC_HEADERS
     include/geom/line.h
     include/geom/packer.h
     include/geom/point.h
+    include/geom/region.h
     include/geom/size.h
     include/geom/stack.h
     include/io/dirlist.h
@@ -123,6 +128,7 @@ set(PUBLIC_HEADERS
     include/io/stream-stdio.h
     include/io/stream.h
     include/test/all-tests.h
+    include/test/tmpdir.h
     include/test/txtscr.h
     include/text/bmtext.h
     include/text/txtfmt.h
@@ -216,6 +222,7 @@ set(DATASTRUCT_SOURCES
     libraries/datastruct/hash/create.c
     libraries/datastruct/hash/destroy.c
     libraries/datastruct/hash/impl.h
+    libraries/framebuf/effects/impl.h
     libraries/datastruct/hash/insert.c
     libraries/datastruct/hash/lookup-node.c
     libraries/datastruct/hash/lookup.c
@@ -288,8 +295,22 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/colour/colour.c
     libraries/framebuf/composite/composite.c
     libraries/framebuf/curve/curve.c
+    libraries/framebuf/dither/dither.c
+    libraries/framebuf/effects/blend.c
+    libraries/framebuf/effects/blur.c
+    libraries/framebuf/effects/clear.c
+    libraries/framebuf/effects/convolve.c
+    libraries/framebuf/effects/equalise.c
+    libraries/framebuf/effects/expand.c
+    libraries/framebuf/effects/grey.c
+    libraries/framebuf/effects/layout.c
+    libraries/framebuf/effects/remap.c
+    libraries/framebuf/effects/sharpen.c
+    libraries/framebuf/effects/tonemap.c
+    libraries/framebuf/octree/octree.c
     libraries/framebuf/palettes/palettes.c
     libraries/framebuf/pattern/pattern.c
+    libraries/framebuf/tonemap/tonemap.c
     libraries/framebuf/pixelfmt/log2bpp.c
     libraries/framebuf/pixelfmt/paletted-nentries.c
     libraries/framebuf/pixelmap/build.c
@@ -299,9 +320,11 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/screen/screen-copy-bitmap-rle.c
     libraries/framebuf/screen/screen-copy-bitmap-rle.h
     libraries/framebuf/screen/screen-copy-ninepatch.c
+    libraries/framebuf/screen/screen-copy-tiled.c
     libraries/framebuf/screen/screen-copy-rect.c
     libraries/framebuf/screen/screen-draw.c
     libraries/framebuf/screen/screen-draw-circle.c
+    libraries/framebuf/screen/screen-draw-thick-line.c
     libraries/framebuf/screen/screen-fill-hline.c
     libraries/framebuf/screen/screen-fill-pattern.c
     libraries/framebuf/span-registry/get.c
@@ -330,6 +353,7 @@ set(GEOM_SOURCES
     libraries/geom/box/intersection.c
     libraries/geom/box/intersects.c
     libraries/geom/box/is-empty.c
+    libraries/geom/box/list-add.c
     libraries/geom/box/reset.c
     libraries/geom/box/round.c
     libraries/geom/box/round4.c
@@ -340,6 +364,12 @@ set(GEOM_SOURCES
     libraries/geom/line/line.c
     libraries/geom/packer/impl.h
     libraries/geom/packer/packer.c
+    libraries/geom/region/impl.h
+    libraries/geom/region/builder.c
+    libraries/geom/region/invert.c
+    libraries/geom/region/outline.c
+    libraries/geom/region/polygon.c
+    libraries/geom/region/region.c
     libraries/geom/stack/impl.h
     libraries/geom/stack/axis-size.c
     libraries/geom/stack/measure-min.c
@@ -360,6 +390,7 @@ set(IO_SOURCES
     libraries/io/stream/stream.c)
 
 set(TESTLIB_SOURCES
+    libraries/test/tmpdir/tmpdir.c
     libraries/test/txtscr/txtscr.c)
 
 set(TEXT_SOURCES
@@ -404,6 +435,7 @@ set(UTILS_SOURCES
 
 set(WUSS_CORE_SOURCES
     libraries/wuss/core/backdrop.c
+    libraries/wuss/core/capture.c
     libraries/wuss/core/create.c
     libraries/wuss/core/destroy.c
     libraries/wuss/core/drag.c
@@ -432,18 +464,21 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/set-focus.c
     libraries/wuss/core/set-palette.c
     libraries/wuss/core/set-time.c
+    libraries/wuss/core/relayout.c
     libraries/wuss/font/font.h
     libraries/wuss/font/registry.c
     libraries/wuss/font/text.c
     libraries/wuss/core/task/create.c
     libraries/wuss/core/task/destroy.c
     libraries/wuss/core/task/set-autoclose.c
+    libraries/wuss/core/task/set-parent.c
     libraries/wuss/core/task/deliver.c
     libraries/wuss/core/window/at.c
     libraries/wuss/core/window/create.c
     libraries/wuss/core/window/create-placed.c
     libraries/wuss/core/window/close.c
     libraries/wuss/core/window/get-content-bounds.c
+    libraries/wuss/core/window/get-max-content.c
     libraries/wuss/core/window/get-scroll.c
     libraries/wuss/core/window/get-title.c
     libraries/wuss/core/window/get-visible-bounds.c
@@ -455,6 +490,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/window/z-order.c
     libraries/wuss/core/window/set-background.c
     libraries/wuss/core/window/set-doc.c
+    libraries/wuss/core/window/set-min-size.c
     libraries/wuss/core/window/set-hidden.c
     libraries/wuss/core/window/set-scroll.c
     libraries/wuss/core/window/set-title.c
@@ -484,6 +520,7 @@ set(WUSS_ICONBAR_SOURCES
     libraries/wuss/iconbar/destroy.c
     libraries/wuss/iconbar/draw.c
     libraries/wuss/iconbar/hit-test.c
+    libraries/wuss/iconbar/menu-open.c
     libraries/wuss/iconbar/task-destroyed.c
     libraries/wuss/iconbar.h)
 
@@ -503,7 +540,7 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/hit-test.c
     libraries/wuss/icon/invalidate.c
     libraries/wuss/icon/plot.c
-    libraries/wuss/icon/registry.c
+    libraries/wuss/icon/iconpool.c
     libraries/wuss/icon/screen-box.c
     libraries/wuss/icon/set-disabled.c
     libraries/wuss/icon/set-flag.c
@@ -764,18 +801,24 @@ if(BUILD_TESTS)
         libraries/datastruct/hash/test/hash-test.c
         libraries/datastruct/list/test/list-test.c
         libraries/datastruct/ntree/test/ntree-test.c
+        libraries/framebuf/bitmap/test/load-test.c
         libraries/framebuf/bitmap/test/rle-test.c
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/bmfont/test/bmfontcache-test.c
         libraries/framebuf/bmfont/test/bmfontfamily-test.c
         libraries/framebuf/composite/test/composite-test.c
         libraries/framebuf/curve/test/curve-test.c
+        libraries/framebuf/dither/test/dither-test.c
+        libraries/framebuf/effects/test/effects-test.c
+        libraries/framebuf/octree/test/octree-test.c
         libraries/framebuf/pattern/test/pattern-test.c
         libraries/framebuf/pixelmap/test/pixelmap-test.c
+        libraries/framebuf/tonemap/test/tonemap-test.c
         libraries/framebuf/screen/test/screen-test.c
         libraries/geom/box/test/box-test.c
         libraries/geom/layout/test/layout-test.c
         libraries/geom/packer/test/packer-test.c
+        libraries/geom/region/test/region-test.c
         libraries/geom/stack/test/stack-test.c
         libraries/io/dirlist/test/dirlist-test.c
         libraries/io/filetype/test/filetype-test.c
@@ -788,6 +831,10 @@ if(BUILD_TESTS)
         libraries/utils/bytesex/test/bytesex-test.c
         libraries/utils/pack/test/pack-test.c
         libraries/datastruct/vector/test/vector-test.c
+        libraries/wuss/test/gridview-bench-test.c
+        libraries/wuss/test/paint-doc-test.c
+        libraries/wuss/test/tasks/paint-doc.c
+        libraries/wuss/test/tasks/paint-doc.h
         libraries/wuss/test/wuss-test.c)
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})
@@ -798,6 +845,8 @@ if(BUILD_TESTS)
     add_executable(DPTLibTest ${TEST_SOURCES})
 
     set_target_properties(DPTLibTest PROPERTIES
+        XCODE_GENERATE_SCHEME ON
+        XCODE_SCHEME_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         DESCRIPTION "DPTLib test program"
         C_STANDARD 99
         OUTPUT_NAME_DEBUG DPTLibTest-debug
@@ -840,27 +889,41 @@ if(BUILD_APPS)
     endif()
 
     set(WUSS_APP_SOURCES
+        apps/wuss/appsfiler.c
+        apps/wuss/appsfiler.h
         apps/wuss/main.c
         apps/wuss/script.c
         apps/wuss/script.h
+        apps/wuss/taskmanager.c
+        apps/wuss/taskmanager.h
         apps/wuss/tasks.c
         libraries/wuss/test/tasks/ball.c
+        libraries/wuss/test/tasks/chasehq.c
+        libraries/wuss/test/tasks/greatescape.c
         libraries/wuss/test/tasks/chars.c
         libraries/wuss/test/tasks/checker.c
         libraries/wuss/test/tasks/clock.c
         libraries/wuss/test/tasks/config.c
         libraries/wuss/test/tasks/curve.c
+        libraries/wuss/test/tasks/dithering.c
         libraries/wuss/test/tasks/display.c
         libraries/wuss/test/tasks/doughnut.c
+        libraries/wuss/test/tasks/effects.c
         libraries/wuss/test/tasks/filer.c
+        libraries/wuss/test/tasks/fireball.c
         libraries/wuss/test/tasks/gradient.c
         libraries/wuss/test/tasks/greeble.c
-        libraries/wuss/test/tasks/iconbar-demo.c
         libraries/wuss/test/tasks/icons.c
-        libraries/wuss/test/tasks/image.c
+        libraries/wuss/test/tasks/viewing.c
         libraries/wuss/test/tasks/keys.c
         libraries/wuss/test/tasks/lissajous.c
         libraries/wuss/test/tasks/minesweeper.c
+        libraries/wuss/test/tasks/paint-doc.c
+        libraries/wuss/test/tasks/paint-doc.h
+        libraries/wuss/test/tasks/paint-new.c
+        libraries/wuss/test/tasks/paint-new.h
+        libraries/wuss/test/tasks/paint.c
+        libraries/wuss/test/tasks/paint.h
         libraries/wuss/test/tasks/palette.c
         libraries/wuss/test/tasks/particles.c
         libraries/wuss/test/tasks/patterns.c
@@ -869,7 +932,11 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/snapshot.c
         libraries/wuss/test/tasks/sofa.c
         libraries/wuss/test/tasks/spheroid.c
-        libraries/wuss/test/tasks/text.c)
+        libraries/wuss/test/tasks/reading.c
+        libraries/wuss/test/tasks/tiling.c
+        libraries/wuss/test/tasks/taskapp.c
+        libraries/wuss/test/tasks/taskapp.h
+        libraries/wuss/test/tasks/zxtask.c)
 
     if(TARGET_RISCOS)
         list(APPEND WUSS_APP_SOURCES apps/wuss/frontend-riscos.c)
@@ -885,6 +952,8 @@ if(BUILD_APPS)
     add_executable(wuss ${WUSS_APP_SOURCES})
 
     set_target_properties(wuss PROPERTIES
+        XCODE_GENERATE_SCHEME ON
+        XCODE_SCHEME_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         DESCRIPTION "DPTLib Wuss interactive demo"
         C_STANDARD 99
         OUTPUT_NAME_DEBUG wuss-debug
@@ -904,7 +973,7 @@ if(BUILD_APPS)
     include(FetchContent)
     FetchContent_Declare(explosion
                          GIT_REPOSITORY https://github.com/dpt/Explosion.git
-                         GIT_TAG 97449f0b9b746dafab920c92863608088e44829f) # develop
+                         GIT_TAG e86fdffa80c83c51dfd1ab3ee3922e01ad8ef5de) # develop
     FetchContent_MakeAvailable(explosion)
     target_link_libraries(wuss explosion)
 
@@ -912,7 +981,9 @@ if(BUILD_APPS)
         target_compile_options(wuss PRIVATE -ffunction-sections -fdata-sections)
         if(APPLE)
             target_link_options(wuss PRIVATE -Wl,-dead_strip)
-        elseif(NOT EMSCRIPTEN)
+        elseif(NOT EMSCRIPTEN AND NOT TARGET_RISCOS)
+            # Not on RISC OS: it strips startup code the SCL stubs need,
+            # giving "Branch through zero" before main
             target_link_options(wuss PRIVATE -Wl,--gc-sections)
         endif()
     endif()
@@ -941,6 +1012,121 @@ if(BUILD_APPS)
         find_package(SDL3 REQUIRED)
         target_compile_definitions(wuss PRIVATE USE_SDL)
         target_link_libraries(wuss SDL3::SDL3)
+    endif()
+
+    # The Chase H.Q. and Great Escape tasks run ZX Spectrum game ports on a
+    # pthread, so desktop only. FetchContent only fetches the sources (no
+    # CMakeLists.txt in SOURCE_SUBDIR); the libraries are built here. For local
+    # work on the ports, configure with e.g.
+    # -DFETCHCONTENT_SOURCE_DIR_CHASEHQ=../ChaseHQ
+    if(NOT TARGET_RISCOS AND NOT EMSCRIPTEN AND NOT MSVC)
+        FetchContent_Declare(chasehq
+                             GIT_REPOSITORY https://github.com/dpt/ChaseHQ.git
+                             GIT_TAG 05ce4bdda77843a9ed27141c3f8257164ec61bed # develop
+                             SOURCE_SUBDIR none)
+        FetchContent_Declare(greatescape
+                             GIT_REPOSITORY https://github.com/dpt/The-Great-Escape-in-C.git
+                             GIT_TAG 8a3f5c572716851999018c4d13b7a29f7f91dd17 # master
+                             SOURCE_SUBDIR none)
+        FetchContent_MakeAvailable(chasehq greatescape)
+        find_package(Threads REQUIRED)
+
+        # https://github.com/dpt/ChaseHQ
+        set(CHQ_DIR "${chasehq_SOURCE_DIR}/C")
+        set(CHQ "${CHQ_DIR}/libraries")
+        add_library(chasehq STATIC
+            ${CHQ}/ChaseHQ/Data/CommonData.c
+            ${CHQ}/ChaseHQ/Data/LoadingScreen.c
+            ${CHQ}/ChaseHQ/Data/SoundSamples.c
+            ${CHQ}/ChaseHQ/Data/Stage1Data.c
+            ${CHQ}/ChaseHQ/Data/Stage2Data.c
+            ${CHQ}/ChaseHQ/Data/Stage3Data.c
+            ${CHQ}/ChaseHQ/Data/Stage4Data.c
+            ${CHQ}/ChaseHQ/Data/Stage5Data.c
+            ${CHQ}/ChaseHQ/Data/Stages.c
+            ${CHQ}/ChaseHQ/Engine/Bank3.c
+            ${CHQ}/ChaseHQ/Engine/Bank7.c
+            ${CHQ}/ChaseHQ/Engine/Create.c
+            ${CHQ}/ChaseHQ/Engine/Main.c
+            ${CHQ}/ZXSpectrum/Kempston.c
+            ${CHQ}/ZXSpectrum/Keyboard.c
+            ${CHQ}/ZXSpectrum/Screen.c
+            ${CHQ}/ZXSpectrum/Spectrum.c
+            ${CHQ}/ZXSpectrum/Z80.c)
+        # The Great Escape ships its own ZXSpectrum/*.h, so the include dir is
+        # handed only to the file that needs it, not to all of wuss
+        target_include_directories(chasehq
+            PRIVATE "${CHQ_DIR}/include" "${CHQ}")
+        set_source_files_properties(libraries/wuss/test/tasks/chasehq.c
+            PROPERTIES INCLUDE_DIRECTORIES "${CHQ_DIR}/include")
+        # third-party code: its warnings are policed by its own build
+        target_compile_options(chasehq PRIVATE -w)
+        target_link_libraries(chasehq PUBLIC Threads::Threads)
+        target_link_libraries(wuss chasehq)
+        target_compile_definitions(wuss PRIVATE WUSS_CHASEHQ)
+
+        # https://github.com/dpt/The-Great-Escape-in-C
+        set(TGE_DIR "${greatescape_SOURCE_DIR}")
+        set(TGE "${TGE_DIR}/libraries")
+        add_library(greatescape STATIC
+            ${TGE}/TheGreatEscape/Data/ExteriorTiles.c
+            ${TGE}/TheGreatEscape/Data/Font.c
+            ${TGE}/TheGreatEscape/Data/InteriorObjectDefs.c
+            ${TGE}/TheGreatEscape/Data/InteriorTiles.c
+            ${TGE}/TheGreatEscape/Data/ItemBitmaps.c
+            ${TGE}/TheGreatEscape/Data/Map.c
+            ${TGE}/TheGreatEscape/Data/Masks.c
+            ${TGE}/TheGreatEscape/Data/Music.c
+            ${TGE}/TheGreatEscape/Data/RoomDefs.c
+            ${TGE}/TheGreatEscape/Data/SpriteBitmaps.c
+            ${TGE}/TheGreatEscape/Data/Sprites.c
+            ${TGE}/TheGreatEscape/Data/StaticGraphics.c
+            ${TGE}/TheGreatEscape/Data/StaticTiles.c
+            ${TGE}/TheGreatEscape/Data/SuperTiles.c
+            ${TGE}/TheGreatEscape/Engine/Create.c
+            ${TGE}/TheGreatEscape/Engine/Debug.c
+            ${TGE}/TheGreatEscape/Engine/Events.c
+            ${TGE}/TheGreatEscape/Engine/Input.c
+            ${TGE}/TheGreatEscape/Engine/Main.c
+            ${TGE}/TheGreatEscape/Engine/Menu.c
+            ${TGE}/TheGreatEscape/Engine/Messages.c
+            ${TGE}/TheGreatEscape/Engine/Screen.c
+            ${TGE}/TheGreatEscape/Engine/Text.c
+            ${TGE}/TheGreatEscape/Engine/Utils.c
+            ${TGE}/TheGreatEscape/Engine/Zoombox.c
+            ${TGE}/ZXSpectrum/Kempston.c
+            ${TGE}/ZXSpectrum/Keyboard.c
+            ${TGE}/ZXSpectrum/Screen.c
+            ${TGE}/ZXSpectrum/Spectrum.c)
+        target_include_directories(greatescape
+            PRIVATE "${TGE_DIR}/include"
+                    "${TGE}/TheGreatEscape/include"
+                    "${TGE}/ZXSpectrum/include")
+        # Chase H.Q. links its own ZX Spectrum layer under the same names, so
+        # this copy, and the task file calling it, is renamed
+        set(TGE_ZX_RENAMES)
+        foreach(sym zxkempston_assign zxkeyset_assign zxkeyset_clear
+                    zxkeyset_clearchar zxkeyset_for_port zxkeyset_setchar
+                    zxscreen_convert zxscreen_convert16
+                    zxspectrum_claim_screen zxspectrum_create
+                    zxspectrum_destroy zxspectrum_release_screen)
+            list(APPEND TGE_ZX_RENAMES "${sym}=tge_${sym}")
+        endforeach()
+        target_compile_definitions(greatescape PRIVATE ${TGE_ZX_RENAMES})
+        # its ZX layer converts the screen to 4bpp only on RISC OS, keyed on
+        # __riscos, which affects nothing else in Spectrum.c. ponytail:
+        # replace with a TGE build option if it ever gains one
+        set_source_files_properties(${TGE}/ZXSpectrum/Spectrum.c
+            PROPERTIES COMPILE_DEFINITIONS "__riscos")
+        set_source_files_properties(libraries/wuss/test/tasks/greatescape.c
+            PROPERTIES
+                INCLUDE_DIRECTORIES "${TGE_DIR}/include"
+                COMPILE_DEFINITIONS "${TGE_ZX_RENAMES}")
+        # third-party code: its warnings are policed by its own build
+        target_compile_options(greatescape PRIVATE -w)
+        target_link_libraries(greatescape PUBLIC Threads::Threads)
+        target_link_libraries(wuss greatescape)
+        target_compile_definitions(wuss PRIVATE WUSS_GREATESCAPE)
     endif()
 
     if(NOT MSVC)
