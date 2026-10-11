@@ -61,7 +61,7 @@
                                     * remainder is deferred to the next entry
                                     * point; see wuss__message_drain */
 
-#define WUSS_PLACE_GUTTER 6 /* px left between windows auto-placed by wuss_window_create_placed */
+#define WUSS_PLACE_GUTTER 6 /* px left between windows auto-placed by wuss_window_create_at */
 
 #define WUSS_BUTTON_INSET 3  /* shared by close/back/toggle/resize furniture buttons and scrollbar breadth */
 

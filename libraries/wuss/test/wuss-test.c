@@ -5891,6 +5891,121 @@ result_t wuss_test(const char *resources)
       wuss_window_close(win_p[k]);
   }
 
+  printf("test: wuss_window_create_at anchors, places relative and avoids "
+         "the icon bar\n");
+
+  {
+    static test_task_t tc_a;
+    wuss_task_t       *delegate_a;
+    wuss_place_t       place;
+    wuss_window_t     *win_a, *win_b;
+    box_t              vis_a, vis_b;
+    int                bottom;
+#ifdef WUSS_ICONBAR
+    wuss_iconbar_icon_spec_t spec;
+    wuss_iconbar_icon_t     *icon;
+#endif
+
+    reap_test_tasks();
+
+    memset(&tc_a, 0, sizeof(tc_a));
+    delegate_a = mk_task(wuss, test_handle, &tc_a);
+    if (delegate_a == NULL) goto Failure;
+
+    /* top right: flush with the gutter on both edges it is against */
+    memset(&place, 0, sizeof(place));
+    place.align = wuss_ALIGN_TOP | wuss_ALIGN_RIGHT;
+    rc = wuss_window_create_at(delegate_a, &place, SIZE2D(40, 30), "A",
+                               wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                               SIZE2D(40, 30), SIZE2D(0, 0), &win_a);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_visible_bounds(win_a, &vis_a);
+    if (vis_a.y0 != WUSS_PLACE_GUTTER || vis_a.x1 != 200 - WUSS_PLACE_GUTTER)
+      goto Failure;
+
+    /* relative: the footprint's top-left is offset from the other window's */
+    memset(&place, 0, sizeof(place));
+    place.relative_to = win_a;
+    place.offset      = POINT(-32, 32);
+    rc = wuss_window_create_at(delegate_a, &place, SIZE2D(40, 30), "B",
+                               wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                               SIZE2D(40, 30), SIZE2D(0, 0), &win_b);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_visible_bounds(win_b, &vis_b);
+    if (vis_b.x0 != vis_a.x0 - 32 || vis_b.y0 != vis_a.y0 + 32)
+      goto Failure;
+    wuss_window_close(win_b);
+
+    /* relative past the bottom-right corner: clamped back onto the screen */
+    place.offset = POINT(500, 500);
+    rc = wuss_window_create_at(delegate_a, &place, SIZE2D(40, 30), "B",
+                               wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                               SIZE2D(40, 30), SIZE2D(0, 0), &win_b);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_visible_bounds(win_b, &vis_b);
+    if (vis_b.x1 != 200 || vis_b.y1 != 200)
+      goto Failure;
+    wuss_window_close(win_b);
+
+    /* centred (zero-initialised) */
+    memset(&place, 0, sizeof(place));
+    rc = wuss_window_create_at(delegate_a, &place, SIZE2D(40, 30), "B",
+                               wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                               SIZE2D(40, 30), SIZE2D(0, 0), &win_b);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_visible_bounds(win_b, &vis_b);
+    if (vis_b.x0 != (200 - (vis_b.x1 - vis_b.x0)) / 2 ||
+        vis_b.y0 != (200 - (vis_b.y1 - vis_b.y0)) / 2)
+      goto Failure;
+    wuss_window_close(win_b);
+
+    /* bottom left, avoiding the icon bar: sits a gutter above the bar */
+    bottom = 200;
+#ifdef WUSS_ICONBAR
+    memset(&spec, 0, sizeof(spec));
+    spec.text = "T";
+    rc = wuss_iconbar_icon_create(wuss, delegate_a, &spec, &icon);
+    if (rc != result_OK)
+      goto Failure;
+    bottom = 200 - WUSS_ICONBAR_HEIGHT;
+#endif
+    memset(&place, 0, sizeof(place));
+    place.flags = wuss_PLACE_AVOID_ICONBAR;
+    place.align = wuss_ALIGN_BOTTOM | wuss_ALIGN_LEFT;
+    rc = wuss_window_create_at(delegate_a, &place, SIZE2D(40, 30), "B",
+                               wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                               SIZE2D(40, 30), SIZE2D(0, 0), &win_b);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_visible_bounds(win_b, &vis_b);
+    if (vis_b.x0 != WUSS_PLACE_GUTTER ||
+        vis_b.y1 != bottom - WUSS_PLACE_GUTTER)
+      goto Failure;
+    wuss_window_close(win_b);
+
+    /* spare space first: lands in the free top-left, not at the anchor */
+    place.flags |= wuss_PLACE_SPARE;
+    rc = wuss_window_create_at(delegate_a, &place, SIZE2D(40, 30), "B",
+                               wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                               SIZE2D(40, 30), SIZE2D(0, 0), &win_b);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_visible_bounds(win_b, &vis_b);
+    if (vis_b.x0 != WUSS_PLACE_GUTTER || vis_b.y0 != WUSS_PLACE_GUTTER ||
+        box_intersects(&vis_a, &vis_b))
+      goto Failure;
+    wuss_window_close(win_b);
+
+#ifdef WUSS_ICONBAR
+    wuss_iconbar_icon_destroy(wuss, icon);
+#endif
+    reap_test_tasks();
+  }
+
   printf("test: wuss_set_palette and wuss_idle broadcast once per registered task\n");
   {
     /* the wuss under test was made with a 2-entry palette (see top of this

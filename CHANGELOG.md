@@ -10,6 +10,12 @@ _Unreleased_ until one is cut.
 
 ### Added
 
+- `wuss_window_create_at()` opens a window where a `wuss_place_t` says: in
+  the first free region (`wuss_PLACE_SPARE`) with a fallback, centred or
+  against any of the nine screen anchors (`wuss_ALIGN_*`), or offset from
+  another window, optionally keeping clear of the icon bar
+  (`wuss_PLACE_AVOID_ICONBAR`). `wuss_window_create_placed()` is now a
+  wrapper around it.
 - `wuss` private icon pools: a task may load its own pool
   (`wuss_task_iconpool_load()`, `wuss_task_iconpool_load_resource()`, from
   `resources/wuss/tasks/<task name>/iconpool/`) and look names up with
