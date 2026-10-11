@@ -29,7 +29,18 @@ makes an instance of its own.
   background colour. Clicking a swatch in the toolbox sets the foreground
   (Select) or the background (Adjust).
 - Tools: brush, eraser (paints the background colour), line, rect, filled
-  rect and flood fill. Press `B` `E` `L` `R` `X` or `F` to pick one. The slider sets the width, 1 to 32 pixels.
+  rect, flood fill, spray, select (rectangle) and lasso. Press `B` `E` `L` `R`
+  `X` `F` `P` `S` or `O` to pick one. Other keys pass on to the demo's
+  hotkeys. The slider sets the width, 1 to 32 pixels. For spray it sets the
+  radius (3 pixels per unit).
+- Spray scatters dots in a disc round the pointer. Dots build up while the
+  button is held still.
+- Select and lasso make a selection, shown with marching ants. The new
+  selection replaces the old one. A click without a drag drops it. Every
+  drawing tool only changes selected pixels.
+- Menu > Selection has Select All, Deselect and Invert. `Esc` also
+  deselects. Deselect and Undo are shaded when they do not apply, and update
+  while the menu stays open.
 - Line and rect show a rubber band while the button is down. They draw into
   the canvas when it is released.
 - `Ctrl-Z` or Menu > Undo steps back. There are 20 levels and no redo.
@@ -46,6 +57,10 @@ span table for the alpha formats, so drawing straight onto one asserts.
 Every operation in `paint-doc.h` takes canvas pixels and returns the box it
 may have changed. The task passes that box to `wuss_window_invalidate`.
 
+The selection is a `geom/region.h` region (`paintdoc_select_*`). The lasso
+fills its polygon with the even-odd rule and Invert uses `region_invert`.
+`paintdoc_selection_outline` gives the boundary boxes that the ants draw.
+
 Undo keeps RLE-compressed copies of the whole canvas. A stroke takes one
 `paintdoc_checkpoint` when the button goes down. `paintdoc_rect` and
 `paintdoc_fill` take their own.
@@ -60,7 +75,6 @@ left as it was.
 
 ## Open points
 
-- The tool buttons are text labels. Sprites for them are not drawn yet.
 - There is no dirty tracking: closing the canvas never asks to save.
 - The pointer is the same over the canvas and the toolbox. A per-window
   pointer shape would let the canvas show a crosshair.
