@@ -298,7 +298,8 @@ result_t paintdoc_test(const char *resources)
   printf("test: loading a paletted or an RGB PNG resizes the canvas, drops "
          "the undo history and keeps the picture\n");
 
-  snprintf(path, sizeof(path), "%s/resources/images/bob-lady.png", resources);
+  snprintf(path, sizeof(path), "%s/resources/wuss/images/bob-lady.png",
+           resources);
   CHECK(paintdoc_checkpoint(doc) == result_OK);
   CHECK(paintdoc_load_png(doc, path) == result_OK);
   CHECK(paintdoc_bitmap(doc)->size.w == 64);
@@ -312,7 +313,8 @@ result_t paintdoc_test(const char *resources)
       n += px(doc, x, y) != WHITE;
   CHECK(n > 100);
 
-  snprintf(path, sizeof(path), "%s/resources/images/smred.png", resources);
+  snprintf(path, sizeof(path), "%s/resources/wuss/images/smred.png",
+           resources);
   CHECK(paintdoc_load_png(doc, path) == result_OK);
   CHECK(paintdoc_bitmap(doc)->size.w == 512);
   CHECK(paintdoc_bitmap(doc)->size.h == 512);
@@ -320,7 +322,7 @@ result_t paintdoc_test(const char *resources)
   printf("test: a PNG that will not load leaves the canvas alone\n");
 
   paintdoc_stroke(doc, POINT(5, 5), POINT(5, 5), 1, red());
-  snprintf(path, sizeof(path), "%s/resources/images/no-such-file.png",
+  snprintf(path, sizeof(path), "%s/resources/wuss/images/no-such-file.png",
            resources);
   CHECK(paintdoc_load_png(doc, path) != result_OK);
   CHECK(paintdoc_bitmap(doc)->size.w == 512);
