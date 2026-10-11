@@ -491,14 +491,15 @@ result_t config_create(wuss_t *wuss, config_task_t **out)
 
   doc = min_sz;
 
-  rc = wuss_window_create_placed(delegate,
-                                 doc,
-                                 "Configure",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
-                                 doc,
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = wuss_window_create_at(delegate,
+                             &task_place,
+                             doc,
+                             "Configure",
+                             wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                             wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
+                             doc,
+                             SIZE2D(0, 0),
+                             &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */

@@ -697,16 +697,17 @@ result_t icons_create(wuss_t *wuss, icons_task_t **out)
 
   /* crosshatch the standard window colour over the standard backdrop colour,
    * so the texture tracks the chrome config rather than fixed greys */
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(ICONS_DOC_W, 200),
-                                 "Icons",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                 wuss_BACKDROP_PATTERN(wuss_COLOUR_GREY,
-                                                       screen_PATTERN_CROSSHATCH,
-                                                       wuss_COLOUR_WINDOW),
-                                 SIZE2D(ICONS_DOC_W, ICONS_DOC_H),
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = wuss_window_create_at(delegate,
+                             &task_place,
+                             SIZE2D(ICONS_DOC_W, 200),
+                             "Icons",
+                             wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                             wuss_BACKDROP_PATTERN(wuss_COLOUR_GREY,
+                                                   screen_PATTERN_CROSSHATCH,
+                                                   wuss_COLOUR_WINDOW),
+                             SIZE2D(ICONS_DOC_W, ICONS_DOC_H),
+                             SIZE2D(0, 0),
+                             &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* QUIT frees the task block and its sprite */

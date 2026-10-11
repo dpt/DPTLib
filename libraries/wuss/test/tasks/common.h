@@ -55,6 +55,26 @@ static inline result_t load_png_deep(bitmap_t   *bm,
   return result_OK;
 }
 
+/* where a demo task's window opens: the first free region clear of the icon
+ * bar, else centred */
+static const wuss_place_t task_place =
+{
+  wuss_PLACE_SPARE | wuss_PLACE_AVOID_ICONBAR, wuss_ALIGN_CENTRE, NULL, { 0, 0 }
+};
+
+/* where a task's second window opens: as task_place, but cascaded from
+ * parent rather than centred when there is no free region */
+static inline wuss_place_t task_place_after(const wuss_window_t *parent)
+{
+  wuss_place_t place;
+
+  place             = task_place;
+  place.relative_to = parent;
+  place.offset      = POINT(32, 32);
+
+  return place;
+}
+
 /* create a focusable window with no backdrop whose document is exactly size,
  * as most demo tasks want */
 static inline result_t task_window_create(wuss_task_t    *task,
@@ -62,14 +82,15 @@ static inline result_t task_window_create(wuss_task_t    *task,
                                           const char     *title,
                                           wuss_window_t **window)
 {
-  return wuss_window_create_placed(task,
-                                   size,
-                                   title,
-                                   wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                   wuss_NO_BACKDROP,
-                                   size,
-                                   SIZE2D(0, 0),
-                                   window);
+  return wuss_window_create_at(task,
+                               &task_place,
+                               size,
+                               title,
+                               wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                               wuss_NO_BACKDROP,
+                               size,
+                               SIZE2D(0, 0),
+                               window);
 }
 
 /* offer a key event to menu's shortcuts. returns non-zero if the task should

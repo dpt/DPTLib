@@ -221,14 +221,15 @@ result_t effects_create(wuss_t *wuss, effects_task_t **out)
 
   sz = SIZE2D(EFFECTS_EMPTYSZ, EFFECTS_EMPTYSZ);
 
-  rc = wuss_window_create_placed(delegate,
-                                 sz,
-                                 "Effects",
-                                 wuss_WINDOW_DEFAULT,
-                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
-                                 sz,
-                                 SIZE2D(32, 32),
-                                 &task->window);
+  rc = wuss_window_create_at(delegate,
+                             &task_place,
+                             sz,
+                             "Effects",
+                             wuss_WINDOW_DEFAULT,
+                             wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
+                             sz,
+                             SIZE2D(32, 32),
+                             &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* QUIT frees the bitmaps and the block */

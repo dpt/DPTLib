@@ -208,14 +208,15 @@ static result_t display_create_window(display_task_t *task,
   if (rc != result_OK)
     return rc;
 
-  rc = wuss_window_create_placed(delegate,
-                                 size,
-                                 "Display",
-                                 wuss_WINDOW_CLOSE | wuss_WINDOW_BACK,
-                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
-                                 size,
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = wuss_window_create_at(delegate,
+                             &task_place,
+                             size,
+                             "Display",
+                             wuss_WINDOW_CLOSE | wuss_WINDOW_BACK,
+                             wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
+                             size,
+                             SIZE2D(0, 0),
+                             &task->window);
   if (rc != result_OK)
     return rc;
 

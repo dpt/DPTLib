@@ -287,14 +287,15 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
     return rc;
   }
 
-  rc = wuss_window_create_placed(task->delegate,
-                                 task->source.size,
-                                 "Dithering",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
-                                 task->source.size,
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = wuss_window_create_at(task->delegate,
+                             &task_place,
+                             task->source.size,
+                             "Dithering",
+                             wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                             wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
+                             task->source.size,
+                             SIZE2D(0, 0),
+                             &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(task->delegate); /* QUIT frees the block */

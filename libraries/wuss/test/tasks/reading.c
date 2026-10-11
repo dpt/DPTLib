@@ -723,14 +723,15 @@ result_t reading_create(wuss_t *wuss, reading_task_t **out)
   task->base_width  = sz.w;
   task->base_height = sz.h;
 
-  rc = wuss_window_create_placed(delegate,
-                                 sz,
-                                 "Reading",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
-                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
-                                 SIZE2D(sz.w, 220 * 4),
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = wuss_window_create_at(delegate,
+                             &task_place,
+                             sz,
+                             "Reading",
+                             wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
+                             wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
+                             SIZE2D(sz.w, 220 * 4),
+                             SIZE2D(0, 0),
+                             &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */

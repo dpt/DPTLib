@@ -87,14 +87,15 @@ result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
   sz.w = task->bitmap.size.w + VIEWING_MARGINSZ * 2;
   sz.h = task->bitmap.size.h + VIEWING_MARGINSZ * 2;
 
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(sz.w, sz.h),
-                                 "Viewing",
-                                 wuss_WINDOW_DEFAULT,
-                                 wuss_NO_BACKDROP,
-                                 sz,
-                                 SIZE2D(32, 32),
-                                 &task->window);
+  rc = wuss_window_create_at(delegate,
+                             &task_place,
+                             SIZE2D(sz.w, sz.h),
+                             "Viewing",
+                             wuss_WINDOW_DEFAULT,
+                             wuss_NO_BACKDROP,
+                             sz,
+                             SIZE2D(32, 32),
+                             &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* QUIT frees the two bitmaps and the block */

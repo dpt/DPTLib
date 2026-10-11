@@ -715,18 +715,19 @@ result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out)
   /* no scrollbars: the sphere is laid out across the visible content, so a
    * resize must redraw all of it and doc is only the growth ceiling. wuss
    * fills the strip's background; the redraw paints the preview pane */
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(SPHEROID_STRIP + 240,
-                                        MAX(240, strip_sz.h)),
-                                 "Spheroid Designer",
-                                 wuss_WINDOW_CLOSE | wuss_WINDOW_BACK |
-                                 wuss_WINDOW_TOGGLE_SIZE | wuss_WINDOW_RESIZE |
-                                 wuss_WINDOW_NO_RESIZE_BLIT |
-                                 wuss_WINDOW_FOCUSABLE,
-                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
-                                 SIZE2D(1024, 1024),
-                                 SIZE2D(SPHEROID_STRIP + 64, strip_sz.h),
-                                 &task->window);
+  rc = wuss_window_create_at(delegate,
+                             &task_place,
+                             SIZE2D(SPHEROID_STRIP + 240,
+                                    MAX(240, strip_sz.h)),
+                             "Spheroid Designer",
+                             wuss_WINDOW_CLOSE | wuss_WINDOW_BACK |
+                             wuss_WINDOW_TOGGLE_SIZE | wuss_WINDOW_RESIZE |
+                             wuss_WINDOW_NO_RESIZE_BLIT |
+                             wuss_WINDOW_FOCUSABLE,
+                             wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
+                             SIZE2D(1024, 1024),
+                             SIZE2D(SPHEROID_STRIP + 64, strip_sz.h),
+                             &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */

@@ -486,14 +486,15 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   task->cols = MIN(task->cols, chars_cols_for_width(cell_w,
                    wuss_get_screen_size(wuss).w));
   grid = chars_window_size(task, font);
-  rc = wuss_window_create_placed(delegate,
-                                 grid,
-                                 "Chars",
-                                 wuss_WINDOW_DEFAULT & ~wuss_WINDOW_HSCROLL,
-                                 wuss_NO_BACKDROP,
-                                 grid,
-                                 SIZE2D(64, 64),
-                                 &task->window);
+  rc = wuss_window_create_at(delegate,
+                             &task_place,
+                             grid,
+                             "Chars",
+                             wuss_WINDOW_DEFAULT & ~wuss_WINDOW_HSCROLL,
+                             wuss_NO_BACKDROP,
+                             grid,
+                             SIZE2D(64, 64),
+                             &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */

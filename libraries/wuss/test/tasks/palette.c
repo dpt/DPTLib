@@ -120,6 +120,7 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
   const colour_t  *current;
   int              ncurrent;
   int              i;
+  wuss_place_t     place;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -181,28 +182,31 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
     return rc;
   }
 
-  rc = wuss_window_create_placed(task->delegate,
-                                 SIZE2D(100, 100),
-                                 "Palette",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
-                                 wuss_BACKDROP_COLOUR(palette_PICO8_BLACK),
-                                 SIZE2D(100, 100),
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = wuss_window_create_at(task->delegate,
+                             &task_place,
+                             SIZE2D(100, 100),
+                             "Palette",
+                             wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
+                             wuss_BACKDROP_COLOUR(palette_PICO8_BLACK),
+                             SIZE2D(100, 100),
+                             SIZE2D(0, 0),
+                             &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(task->delegate); /* unregister; its QUIT frees the task block */
     return rc;
   }
 
-  rc = wuss_window_create_placed(task->delegate,
-                                 SIZE2D(100, 100),
-                                 "Screen",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT,
-                                 wuss_BACKDROP_COLOUR(palette_PICO8_BLACK),
-                                 SIZE2D(100, 100),
-                                 SIZE2D(0, 0),
-                                 &task->window2);
+  place = task_place_after(task->window);
+  rc = wuss_window_create_at(task->delegate,
+                             &place,
+                             SIZE2D(100, 100),
+                             "Screen",
+                             wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT,
+                             wuss_BACKDROP_COLOUR(palette_PICO8_BLACK),
+                             SIZE2D(100, 100),
+                             SIZE2D(0, 0),
+                             &task->window2);
   if (rc != result_OK)
   {
     wuss_task_destroy(task->delegate); /* closes "Palette", QUIT frees the block */

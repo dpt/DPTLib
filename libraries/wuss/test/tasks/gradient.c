@@ -265,14 +265,15 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
   wuss_task_set_autoclose(delegate, 1);
   task->delegate = delegate;
 
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(GRADIENT_OPEN_WIDTH, GRADIENT_OPEN_HEIGHT),
-                                 "Gradient",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP,
-                                 SIZE2D(GRADIENT_DOC_WIDTH, GRADIENT_DOC_HEIGHT),
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = wuss_window_create_at(delegate,
+                             &task_place,
+                             SIZE2D(GRADIENT_OPEN_WIDTH, GRADIENT_OPEN_HEIGHT),
+                             "Gradient",
+                             wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                             wuss_NO_BACKDROP,
+                             SIZE2D(GRADIENT_DOC_WIDTH, GRADIENT_DOC_HEIGHT),
+                             SIZE2D(0, 0),
+                             &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */

@@ -46,12 +46,12 @@ result_t tiling_create(wuss_t *wuss, tiling_task_t **out)
 
   sz = wuss_get_screen_size(wuss);
 
-  rc = wuss_window_create_placed(delegate, sz, "Tiling",
-                                 wuss_WINDOW_CLOSE | wuss_WINDOW_BACK |
-                                 wuss_WINDOW_FOCUSABLE,
-                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW), sz,
-                                 SIZE2D(32, 32),
-                                 &task->window);
+  rc = wuss_window_create_at(delegate, &task_place, sz, "Tiling",
+                             wuss_WINDOW_CLOSE | wuss_WINDOW_BACK |
+                             wuss_WINDOW_FOCUSABLE,
+                             wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW), sz,
+                             SIZE2D(32, 32),
+                             &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* QUIT frees the bitmap and the block */

@@ -228,6 +228,7 @@ result_t paint_create_with(wuss_t                  *wuss,
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   filetype_t       png_type;
+  wuss_place_t     place;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -260,15 +261,16 @@ result_t paint_create_with(wuss_t                  *wuss,
   }
   task->delegate = delegate;
 
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(MIN(params->size.w, PAINT_VIEW_W),
-                                        MIN(params->size.h, PAINT_VIEW_H)),
-                                 "Paint",
-                                 wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                                 wuss_NO_BACKDROP,
-                                 params->size,
-                                 SIZE2D(0, 0),
-                                 &task->window);
+  rc = wuss_window_create_at(delegate,
+                             &task_place,
+                             SIZE2D(MIN(params->size.w, PAINT_VIEW_W),
+                                    MIN(params->size.h, PAINT_VIEW_H)),
+                             "Paint",
+                             wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                             wuss_NO_BACKDROP,
+                             params->size,
+                             SIZE2D(0, 0),
+                             &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* unregister; its QUIT frees the task block */
@@ -276,14 +278,16 @@ result_t paint_create_with(wuss_t                  *wuss,
   }
 
   /* no close box: closing the canvas window is what ends the task */
-  rc = wuss_window_create_placed(delegate,
-                                 SIZE2D(TB_W, TB_H),
-                                 "Tools",
-                                 wuss_WINDOW_BACK | wuss_WINDOW_FOCUSABLE,
-                                 wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
-                                 SIZE2D(TB_W, TB_H),
-                                 SIZE2D(0, 0),
-                                 &task->toolbox);
+  place = task_place_after(task->window);
+  rc = wuss_window_create_at(delegate,
+                             &place,
+                             SIZE2D(TB_W, TB_H),
+                             "Tools",
+                             wuss_WINDOW_BACK | wuss_WINDOW_FOCUSABLE,
+                             wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
+                             SIZE2D(TB_W, TB_H),
+                             SIZE2D(0, 0),
+                             &task->toolbox);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* closes the canvas, QUIT frees the block */
