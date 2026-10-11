@@ -10,6 +10,14 @@ _Unreleased_ until one is cut.
 
 ### Added
 
+- `wuss_EVENT_CLOSE_ADJUST`: ADJUST on a close icon now tells the window's
+  task, with the modifier keys held (`data.close_adjust.modifiers`), and
+  leaves the window open (it used to start a move drag). The filer uses it
+  as RISC OS does: it opens the parent directory's window, or brings it to
+  the front, then closes the current window unless Shift is held. Frontends
+  report held modifiers with the new `wuss_set_modifiers()` before each
+  `wuss_mouse_click()`; the demo's SDL and RISC OS frontends do so, and
+  script button names take `MOD+` prefixes (`click shift+adjust X Y`).
 - `wuss_window_create_at()` opens a window where a `wuss_place_t` says: in
   the first free region (`wuss_PLACE_SPARE`) with a fallback, centred or
   against any of the nine screen anchors (`wuss_ALIGN_*`), or offset from

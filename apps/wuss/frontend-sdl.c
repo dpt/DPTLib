@@ -497,6 +497,7 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
         event->kind   = wuss_INPUT_MOUSE_DOWN;
         event->pos    = POINT(x, y);
         event->button = sdl_button_to_wuss(ev.button.button);
+        event->mods   = sdl_mods_to_wuss(SDL_GetModState());
       }
       return true;
 
@@ -509,6 +510,7 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
         event->kind   = wuss_INPUT_MOUSE_UP;
         event->pos    = POINT(x, y);
         event->button = sdl_button_to_wuss(ev.button.button);
+        event->mods   = sdl_mods_to_wuss(SDL_GetModState());
       }
       return true;
 

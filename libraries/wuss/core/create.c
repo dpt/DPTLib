@@ -144,6 +144,7 @@ result_t wuss_create(screen_t               *scr,
 
   w->pointer.x = 0;
   w->pointer.y = 0;
+  w->modifiers = wuss_KEY_MOD_NONE;
 
   w->capture = NULL;
 

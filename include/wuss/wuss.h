@@ -1095,6 +1095,17 @@ result_t wuss_mouse_click(wuss_t             *wuss,
                           wuss_window_t     **hit);
 
 /**
+ * Record the modifier keys held, for the mouse events that follow. A
+ * frontend calls this before each wuss_mouse_click; wuss passes the value on
+ * where an event needs it (see wuss_EVENT_CLOSE_ADJUST). Starts out as
+ * wuss_KEY_MOD_NONE.
+ *
+ * \param[in] wuss      Window manager.
+ * \param[in] modifiers Modifier keys held.
+ */
+void wuss_set_modifiers(wuss_t *wuss, wuss_key_modifiers_t modifiers);
+
+/**
  * Deliver a mouse-move event. Updates the dragged window's position if a
  * drag is active (invalidating the affected region; call wuss_redraw_dirty
  * to actually repaint it), otherwise hit-tests and delivers to the window's

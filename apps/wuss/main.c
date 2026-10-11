@@ -362,10 +362,12 @@ static void wuss_frame(void *arg)
       break;
 
     case wuss_INPUT_MOUSE_DOWN:
+      wuss_set_modifiers(c->wuss, ev.mods);
       wuss_mouse_click(c->wuss, ev.pos, ev.button, wuss_MOUSE_DOWN, NULL);
       break;
 
     case wuss_INPUT_MOUSE_UP:
+      wuss_set_modifiers(c->wuss, ev.mods);
       wuss_mouse_click(c->wuss, ev.pos, ev.button, wuss_MOUSE_UP, NULL);
       break;
 

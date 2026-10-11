@@ -682,6 +682,24 @@ result_t filer_handle(wuss_window_t      *window,
     filer_drop(task, event);
     return result_OK;
 
+  case wuss_EVENT_CLOSE_ADJUST:
+  {
+    filer_window_t *fw;
+    char            parent[DPTLIB_MAXPATH];
+
+    /* as RISC OS: open the parent, then close this viewer unless Shift is
+     * held. The close frees fw's slot, so fw is not used after it. */
+    fw = filer_find_by_window(task, window);
+    if (fw == NULL)
+      return result_OK;
+
+    if (filer_parent_path(fw->path, parent, sizeof(parent)))
+      (void) filer_open_path(task, parent, fw->window);
+    if (!(event->data.close_adjust.modifiers & wuss_KEY_MOD_SHIFT))
+      return wuss_window_try_close(window);
+    return result_OK;
+  }
+
   case wuss_EVENT_CLOSE:
   {
     filer_window_t *fw;

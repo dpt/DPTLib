@@ -232,6 +232,19 @@ static result_t mouse_click(wuss_t             *wuss,
       return wuss_window_try_close(win);
     }
 
+    if (region == wuss_FURNITURE_CLOSE  &&
+        action == wuss_MOUSE_DOWN       &&
+        (button & wuss_BUTTON_ADJUST))
+    {
+      /* Lit until the ordinary MOUSE_UP release, as for SELECT; the task
+       * may close the window from the handler, which clears it. */
+      press_furniture(win, region);
+
+      event.kind                        = wuss_EVENT_CLOSE_ADJUST;
+      event.data.close_adjust.modifiers = wuss->modifiers;
+      return wuss__deliver(win->task, win, &event);
+    }
+
     if (region == wuss_FURNITURE_BACK && action == wuss_MOUSE_DOWN)
     {
       if (button & wuss_BUTTON_SELECT)
@@ -537,4 +550,9 @@ result_t wuss_mouse_click(wuss_t             *wuss,
   wuss__message_leave(wuss);
 
   return rc;
+}
+
+void wuss_set_modifiers(wuss_t *wuss, wuss_key_modifiers_t modifiers)
+{
+  wuss->modifiers = modifiers;
 }

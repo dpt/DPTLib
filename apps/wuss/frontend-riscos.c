@@ -378,6 +378,22 @@ static int riscos_key_to_wuss(int code, wuss_key_modifiers_t mods)
   return key;
 }
 
+/* the modifier keys held now, sampled from the keyboard */
+static wuss_key_modifiers_t read_mods(void)
+{
+  wuss_key_modifiers_t mods;
+
+  mods = wuss_KEY_MOD_NONE;
+  if (key_down(KEY_SCAN_SHIFT))
+    mods |= wuss_KEY_MOD_SHIFT;
+  if (key_down(KEY_SCAN_CTRL))
+    mods |= wuss_KEY_MOD_CTRL;
+  if (key_down(KEY_SCAN_ALT))
+    mods |= wuss_KEY_MOD_ALT;
+
+  return mods;
+}
+
 bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
 {
   int                  code;
@@ -389,13 +405,7 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
   /* keyboard first: the OS buffers presses and autorepeats for us */
   while (read_key(&code))
   {
-    mods = wuss_KEY_MOD_NONE;
-    if (key_down(KEY_SCAN_SHIFT))
-      mods |= wuss_KEY_MOD_SHIFT;
-    if (key_down(KEY_SCAN_CTRL))
-      mods |= wuss_KEY_MOD_CTRL;
-    if (key_down(KEY_SCAN_ALT))
-      mods |= wuss_KEY_MOD_ALT;
+    mods = read_mods();
 
     key = riscos_key_to_wuss(code, mods);
     if (key == 0)
@@ -427,6 +437,7 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
       event->kind   = wuss_INPUT_MOUSE_DOWN;
       event->pos    = POINT(px, py);
       event->button = mouse_buttons_to_wuss(pressed);
+      event->mods   = read_mods();
       return true;
     }
     if (released)
@@ -434,6 +445,7 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
       event->kind   = wuss_INPUT_MOUSE_UP;
       event->pos    = POINT(px, py);
       event->button = mouse_buttons_to_wuss(released);
+      event->mods   = read_mods();
       return true;
     }
   }

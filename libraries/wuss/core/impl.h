@@ -301,6 +301,8 @@ struct wuss
 
   /* Last pointer position, screen space, from any mouse click/move. */
   point_t                     pointer;
+  /* Modifier keys held, from wuss_set_modifiers. */
+  wuss_key_modifiers_t        modifiers;
   /* Set by wuss_set_time; arbitrary epoch, only differences matter. */
   unsigned int                now_ms;
   /* The last plain (non-double) DOWN, for double-click detection; see

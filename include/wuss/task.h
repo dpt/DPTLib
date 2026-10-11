@@ -149,7 +149,12 @@ typedef enum wuss_event_kind
    *  furniture or fonts and update its document extent. It is not raised
    *  for a window wuss left alone, nor by a plain move or resize (see
    *  wuss_EVENT_OPEN). Carries no data. */
-  wuss_EVENT_RELAYOUT
+  wuss_EVENT_RELAYOUT,
+  /** ADJUST was pressed on this window's close icon. wuss does nothing
+   *  else with the press -- the window stays open -- so the task decides
+   *  what it means: on RISC OS a filer opens the parent directory and
+   *  closes this window unless Shift is held. See data.close_adjust. */
+  wuss_EVENT_CLOSE_ADJUST
 }
 wuss_event_kind_t;
 
@@ -163,7 +168,8 @@ wuss_event_kind_t;
  * wuss_EVENT_PRE_CLOSE, wuss_EVENT_CLOSE, wuss_EVENT_POINTER_ENTER,
  * wuss_EVENT_POINTER_EXIT, wuss_EVENT_GAIN_FOCUS, wuss_EVENT_LOSE_FOCUS,
  * wuss_EVENT_KEY, wuss_EVENT_KEY_UP, wuss_EVENT_MESSAGE (a message addressed
- * to this window), wuss_EVENT_DRAG_END, wuss_EVENT_RELAYOUT.
+ * to this window), wuss_EVENT_DRAG_END, wuss_EVENT_RELAYOUT,
+ * wuss_EVENT_CLOSE_ADJUST.
  */
 typedef wuss_event_kind_t wuss_window_event_kind_t;
 
@@ -314,6 +320,15 @@ typedef struct wuss_event
       int picked;
     }
     menu_closed;
+
+    /** wuss_EVENT_CLOSE_ADJUST: modifiers is the set of
+     * wuss_key_modifiers_t flags held at the press (see
+     * wuss_set_modifiers). */
+    struct
+    {
+      wuss_key_modifiers_t modifiers;
+    }
+    close_adjust;
 
     /** wuss_EVENT_KEY / wuss_EVENT_KEY_UP: code is a Unicode codepoint or
      * a wuss_KEY_* constant; modifiers is a set of wuss_key_modifiers_t

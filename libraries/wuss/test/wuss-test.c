@@ -74,6 +74,8 @@ typedef struct test_task
   int                 last_scroll_x, last_scroll_y;
   int                 close_count;
   int                 pre_close_count;
+  int                 close_adjust_count;
+  int                 close_adjust_mods; /* wuss_key_modifiers_t */
   int                 show_count;
   int                 pre_show_count;
   int                 stop_count;
@@ -311,6 +313,11 @@ static result_t test_handle(wuss_window_t      *window,
 
   case wuss_EVENT_CLOSE:
     tc->close_count++;
+    break;
+
+  case wuss_EVENT_CLOSE_ADJUST:
+    tc->close_adjust_count++;
+    tc->close_adjust_mods = event->data.close_adjust.modifiers;
     break;
 
   case wuss_EVENT_PRE_CLOSE:
@@ -1320,6 +1327,29 @@ result_t wuss_test(const char *resources)
     goto Failure; /* unmoved: no drag was started by the close click */
 
   tc_a.veto_pre_close = 0;
+
+  printf("test: ADJUST on the close icon sends CLOSE_ADJUST, with the held modifiers, and keeps the window\n");
+
+  tc_a.pre_close_count = 0;
+  wuss_set_modifiers(wuss, wuss_KEY_MOD_SHIFT);
+  rc = wuss_mouse_click(wuss, POINT(6, 11), wuss_BUTTON_ADJUST, wuss_MOUSE_DOWN, &hit); /* A's close icon */
+  if (rc != result_OK)
+    goto Failure;
+
+  rc = wuss_mouse_click(wuss, POINT(31, 36), wuss_BUTTON_ADJUST, wuss_MOUSE_UP, &hit); /* if the press had started a drag, this would move A */
+  if (rc != result_OK)
+    goto Failure;
+
+  wuss_set_modifiers(wuss, wuss_KEY_MOD_NONE);
+
+  if (tc_a.close_adjust_count != 1 || tc_a.pre_close_count != 0)
+    goto Failure; /* told the task, did not try to close */
+  if (tc_a.close_adjust_mods != wuss_KEY_MOD_SHIFT)
+    goto Failure;
+
+  wuss_window_get_visible_bounds(win_a, &visible); /* still alive */
+  if (visible.x0 != 0 || visible.y0 != 0)
+    goto Failure; /* unmoved: no drag was started */
 
   printf("test: click-to-front changes subsequent overlap hits\n");
 
