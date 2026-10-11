@@ -29,6 +29,12 @@
 
 result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
 {
+  /* centred, clear of the icon bar, rather than in the first free region */
+  static const wuss_place_t place =
+  {
+    wuss_PLACE_AVOID_ICONBAR, wuss_ALIGN_CENTRE, NULL, { 0, 0 }
+  };
+
   result_t         rc;
   viewing_task_t  *task;
   wuss_task_t     *delegate;
@@ -88,7 +94,7 @@ result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
   sz.h = task->bitmap.size.h + VIEWING_MARGINSZ * 2;
 
   rc = wuss_window_create_at(delegate,
-                             &task_place,
+                             &place,
                              SIZE2D(sz.w, sz.h),
                              "Viewing",
                              wuss_WINDOW_DEFAULT,
