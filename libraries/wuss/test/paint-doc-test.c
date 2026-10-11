@@ -17,6 +17,7 @@
 #include "tasks/paint-doc.h"
 
 #include "test/all-tests.h"
+#include "test/tmpdir.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -327,7 +328,7 @@ result_t paintdoc_test(const char *resources)
 
   printf("test: a saved canvas loads back the same\n");
 
-  snprintf(path, sizeof(path), "dptlib-paintdoc-test.png");
+  CHECK(test_tmppath(path, sizeof(path), "dptlib-paintdoc-test.png"));
   before = px(doc, 6, 5);
   after  = px(doc, 300, 400);
   CHECK(bitmap_save_png(paintdoc_bitmap(doc), path) == result_OK);

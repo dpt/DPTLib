@@ -128,6 +128,7 @@ set(PUBLIC_HEADERS
     include/io/stream-stdio.h
     include/io/stream.h
     include/test/all-tests.h
+    include/test/tmpdir.h
     include/test/txtscr.h
     include/text/bmtext.h
     include/text/txtfmt.h
@@ -389,6 +390,7 @@ set(IO_SOURCES
     libraries/io/stream/stream.c)
 
 set(TESTLIB_SOURCES
+    libraries/test/tmpdir/tmpdir.c
     libraries/test/txtscr/txtscr.c)
 
 set(TEXT_SOURCES
