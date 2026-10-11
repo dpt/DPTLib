@@ -33,7 +33,7 @@ jobs:
 
       - name: Install apt packages
         if: runner.os == 'Linux'
-        run: sudo apt-get install -y libpng-dev
+        run: sudo apt-get update && sudo apt-get install -y libpng-dev
 
       - name: Install dependencies
         run: |
