@@ -641,6 +641,17 @@ result_t wuss_gridview_set_count(wuss_gridview_t *gv, int count)
   gv->selected = fresh;
   gv->count    = count;
 
+  /* the items behind the count may differ too (a directory rescan, say), so
+   * their widest label is measured afresh.
+   * ponytail: a text measure per item on every call (~78ms for 100k items in
+   * the debug ASan build); add an items-unchanged flag if a large list calls
+   * this often */
+  if (!gv->fixed_cell)
+  {
+    gridview_measure_items(gv);
+    gv->cell = gridview_cell_size(gv);
+  }
+
   gridview_reflow(gv);
   wuss_window_invalidate_visible(gv->window);
   return result_OK;

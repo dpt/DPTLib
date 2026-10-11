@@ -988,6 +988,9 @@ _Unreleased_ until one is cut.
 
 ### Fixed
 
+- `wuss_gridview_set_count()` re-measures the cell from the items, so a filer
+  window widens its cells when a rescan brings in a longer name (e.g. after
+  saving a new file) and narrows them when one goes.
 - `wuss_destroy()` closes each task's windows before freeing the task, so
   abandoning a later task's menu chain cannot hand the focus back to a window
   whose task is already gone (a heap use-after-free when quitting `wuss` with

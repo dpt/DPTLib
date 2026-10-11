@@ -276,7 +276,10 @@ int wuss_gridview_hit_test(const wuss_gridview_t *gridview, point_t point);
 /**
  * Recompute item count after the underlying item list changes, keeping the
  * selection where indices still apply (a selected index at or beyond the new
- * count is dropped). Reflows and redraws.
+ * count is dropped). Unless the cell size is fixed (see \ref
+ * wuss_gridview_set_cell_size), the items are walked again to re-measure the
+ * cell, so call this whenever the items change, even if their count does
+ * not. Reflows and redraws.
  *
  * \param[in] gridview Handle.
  * \param[in] count    New item count; at least 0.
@@ -296,9 +299,9 @@ size2d_t wuss_gridview_get_cell_size(const wuss_gridview_t *gridview);
 /**
  * Re-measure the cell after the window's font or palette changed, then
  * reflow and redraw. The items are only walked again if the font or its
- * height differs from the last measure; changes to the items alone are not
- * picked up. Called by \ref wuss_gridview_handle_event on wuss_EVENT_PALETTE
- * and wuss_EVENT_RELAYOUT.
+ * height differs from the last measure; for changes to the items, call \ref
+ * wuss_gridview_set_count. Called by \ref wuss_gridview_handle_event on
+ * wuss_EVENT_PALETTE and wuss_EVENT_RELAYOUT.
  *
  * \param[in] gridview Handle.
  */

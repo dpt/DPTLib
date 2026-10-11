@@ -7132,6 +7132,15 @@ StringSetOK: ;
     wuss_gridview_clear_selection(gv);
     if (wuss_gridview_selected_count(gv) != 0) goto GridViewFail;
 
+    /* a changed item list re-measures the cell: dropping the long label
+     * narrows it, bringing the label back widens it again */
+    rc = wuss_gridview_set_count(gv, 2);
+    if (rc != result_OK) goto GridViewFail;
+    if (wuss_gridview_get_cell_size(gv).w >= cell_w) goto GridViewFail;
+    rc = wuss_gridview_set_count(gv, NELEMS(gridview_test_labels));
+    if (rc != result_OK) goto GridViewFail;
+    if (wuss_gridview_get_cell_size(gv).w != cell_w) goto GridViewFail;
+
     wuss_gridview_destroy(gv);
 
     reap_test_tasks();
