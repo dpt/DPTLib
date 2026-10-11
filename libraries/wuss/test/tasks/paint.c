@@ -886,7 +886,15 @@ static void paint_set_tool(paint_task_t *pt, paint_tool_t tool)
   wuss_icon_set_selected(pt->toolbox, pt->tool_icons[tool], 1);
 }
 
-/* B, E, L, R, X, F, P, S and O pick the matching tool, Escape drops the selection. Anything else is passed back
+/* step the brush size by delta, keeping the toolbox slider in step */
+static void paint_step_size(paint_task_t *pt, int delta)
+{
+  pt->size = CLAMP(pt->size + delta, PAINT_SIZE_MIN, PAINT_SIZE_MAX);
+  (void) wuss_slider_row_set(pt->toolbox, &pt->size_row, pt->size);
+}
+
+/* B, E, L, R, X, F, P, S and O pick the matching tool, [ and ] step the
+ * size down and up, Escape drops the selection. Anything else is passed back
  * unclaimed */
 static result_t paint_key(paint_task_t *pt, int code)
 {
@@ -903,6 +911,8 @@ static result_t paint_key(paint_task_t *pt, int code)
   case 'p': case 'P': paint_set_tool(pt, paint_TOOL_SPRAY);  break;
   case 's': case 'S': paint_set_tool(pt, paint_TOOL_SELECT); break;
   case 'o': case 'O': paint_set_tool(pt, paint_TOOL_LASSO);  break;
+  case '[':           paint_step_size(pt, -1);               break;
+  case ']':           paint_step_size(pt, +1);               break;
   case wuss_KEY_ESCAPE:
     box = paintdoc_selection_bounds(pt->doc);
     paintdoc_select_none(pt->doc);
