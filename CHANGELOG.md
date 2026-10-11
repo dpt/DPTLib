@@ -13,8 +13,9 @@ _Unreleased_ until one is cut.
 - `wuss_EVENT_CLOSE_ADJUST`: ADJUST on a close icon now tells the window's
   task, with the modifier keys held (`data.close_adjust.modifiers`), and
   leaves the window open (it used to start a move drag). The filer uses it
-  as RISC OS does: it opens the parent directory's window, or brings it to
-  the front, then closes the current window unless Shift is held. Frontends
+  as RISC OS does: it opens the parent directory's window in the current
+  one's place (or brings it to the front) and closes the current one; with
+  Shift held the parent cascades instead and the current one stays. Frontends
   report held modifiers with the new `wuss_set_modifiers()` before each
   `wuss_mouse_click()`; the demo's SDL and RISC OS frontends do so, and
   script button names take `MOD+` prefixes (`click shift+adjust X Y`).
@@ -657,6 +658,10 @@ _Unreleased_ until one is cut.
 
 ### Changed
 
+- **Breaking:** `wuss_gridview_activate_fn_t` takes the double-click's
+  `wuss_button_t` after the index, and may close the gadget's window. The
+  filer uses it as RISC OS does: a double ADJUST on a directory opens it in
+  the place of the viewer it was in and closes that viewer.
 - **Breaking:** `wuss_gridview_window_create()` takes a `const wuss_place_t *`
   after the task (NULL keeps the old first-free-region placement). The filer
   and Apps windows use it to open a directory or category window offset

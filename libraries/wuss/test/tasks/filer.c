@@ -146,10 +146,12 @@ static void filer_item(int index, void *opaque, wuss_gridview_item_t *out)
 
 static result_t filer_open_path(filer_task_t        *task,
                                 const char          *path,
-                                const wuss_window_t *parent);
+                                const wuss_window_t *parent,
+                                int                  over);
 
 static void filer_activate(wuss_gridview_t *gridview,
                            int              index,
+                           wuss_button_t    button,
                            void            *opaque)
 {
   filer_window_t        *fw;
@@ -167,7 +169,14 @@ static void filer_activate(wuss_gridview_t *gridview,
       (int) sizeof(child))
     return;
 
-  (void) filer_open_path(fw->owner, child, fw->window);
+  /* as RISC OS: a double ADJUST opens the child in this viewer's place and
+   * closes this one. That frees fw's slot and destroys gridview; neither is
+   * used after. */
+  (void) filer_open_path(fw->owner, child, fw->window,
+                         button & wuss_BUTTON_ADJUST);
+
+  if (button & wuss_BUTTON_ADJUST)
+    (void) wuss_window_try_close(fw->window);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -225,9 +234,13 @@ static void filer_drop(filer_task_t *task, const wuss_event_t *event)
 
 /* ----------------------------------------------------------------------- */
 
+/* Opens a viewer on path, or brings an open one to the front. A new viewer
+ * cascades from parent, or with over set takes parent's place (top-left) for
+ * a parent that is about to close. */
 static result_t filer_open_path(filer_task_t        *task,
                                 const char          *path,
-                                const wuss_window_t *parent)
+                                const wuss_window_t *parent,
+                                int                  over)
 {
   result_t        rc;
   char            canon[DPTLIB_MAXPATH];
@@ -273,6 +286,8 @@ static result_t filer_open_path(filer_task_t        *task,
   snprintf(fw->path, sizeof(fw->path), "%s", path);
 
   place = task_place_from(parent);
+  if (over)
+    place.offset = POINT(0, 0);
 
   rc = wuss_gridview_window_create(&fw->gridview, task->delegate, &place,
                                    path, dirlist_count(listing), filer_item,
@@ -625,7 +640,7 @@ result_t filer_handle(wuss_window_t      *window,
       return result_OK; /* not the icon bar icon */
     if (event->data.iconbar_icon.action != wuss_MOUSE_UP)
       return result_OK;
-    return filer_open_path(task, filer_root(), NULL);
+    return filer_open_path(task, filer_root(), NULL, 0);
 
   case wuss_EVENT_MENU_SELECT:
   {
@@ -656,7 +671,7 @@ result_t filer_handle(wuss_window_t      *window,
 
     case FILER_MENU_OPEN_PARENT:
       if (fw != NULL && filer_parent_path(fw->path, parent, sizeof(parent)))
-        return filer_open_path(task, parent, fw->window);
+        return filer_open_path(task, parent, fw->window, 0);
       return result_OK;
 
 #ifdef __EMSCRIPTEN__
@@ -685,17 +700,20 @@ result_t filer_handle(wuss_window_t      *window,
   case wuss_EVENT_CLOSE_ADJUST:
   {
     filer_window_t *fw;
+    int             keep;
     char            parent[DPTLIB_MAXPATH];
 
-    /* as RISC OS: open the parent, then close this viewer unless Shift is
-     * held. The close frees fw's slot, so fw is not used after it. */
+    /* as RISC OS: open the parent in this viewer's place and close this one
+     * -- or, with Shift held, cascade the parent and keep this one. The
+     * close frees fw's slot, so fw is not used after it. */
     fw = filer_find_by_window(task, window);
     if (fw == NULL)
       return result_OK;
 
+    keep = (event->data.close_adjust.modifiers & wuss_KEY_MOD_SHIFT) != 0;
     if (filer_parent_path(fw->path, parent, sizeof(parent)))
-      (void) filer_open_path(task, parent, fw->window);
-    if (!(event->data.close_adjust.modifiers & wuss_KEY_MOD_SHIFT))
+      (void) filer_open_path(task, parent, fw->window, !keep);
+    if (!keep)
       return wuss_window_try_close(window);
     return result_OK;
   }

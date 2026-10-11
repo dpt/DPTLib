@@ -81,14 +81,18 @@ typedef void (wuss_gridview_item_fn_t)(int                    index,
                                        wuss_gridview_item_t  *out);
 
 /**
- * Activate callback: the user double-clicked item \p index.
+ * Activate callback: the user double-clicked item \p index. The callback may
+ * close the gadget's window (and so destroy the gadget).
  *
  * \param[in] gridview The gadget.
  * \param[in] index    The activated item's index.
+ * \param[in] button   The double-click's buttons: wuss_BUTTON_SELECT or
+ *                     wuss_BUTTON_ADJUST, with wuss_BUTTON_DOUBLE.
  * \param[in] opaque   As passed to \ref wuss_gridview_create.
  */
 typedef void (wuss_gridview_activate_fn_t)(wuss_gridview_t *gridview,
                                            int              index,
+                                           wuss_button_t    button,
                                            void            *opaque);
 
 /**

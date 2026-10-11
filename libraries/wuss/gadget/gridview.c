@@ -570,7 +570,7 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
         gridview_invalidate_cell(gv, index);
       }
 
-      gv->activate(gv, index, gv->opaque);
+      gv->activate(gv, index, event->data.mouse.button, gv->opaque);
     }
 
     return 1;

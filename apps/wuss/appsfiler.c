@@ -88,6 +88,7 @@ static void apps_item(int index, void *opaque, wuss_gridview_item_t *out)
 
 static void apps_activate(wuss_gridview_t *gridview,
                           int              index,
+                          wuss_button_t    button,
                           void            *opaque);
 
 static result_t apps_open(apps_task_t         *task,
@@ -127,11 +128,15 @@ static result_t apps_open(apps_task_t         *task,
   return result_OK;
 }
 
-static void apps_activate(wuss_gridview_t *gridview, int index, void *opaque)
+static void apps_activate(wuss_gridview_t *gridview,
+                          int              index,
+                          wuss_button_t    button,
+                          void            *opaque)
 {
   apps_window_t *aw;
 
   NOT_USED(gridview);
+  NOT_USED(button);
 
   aw = opaque;
   if (aw->category < 0)

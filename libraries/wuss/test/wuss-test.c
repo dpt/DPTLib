@@ -136,9 +136,11 @@ static void gridview_test_item(int                   index,
 /* gridview activate callback: records the activated index at opaque */
 static void gridview_test_activate(wuss_gridview_t *gridview,
                                    int              index,
+                                   wuss_button_t    button,
                                    void            *opaque)
 {
   NOT_USED(gridview);
+  NOT_USED(button);
 
   *(int *) opaque = index;
 }
