@@ -54,6 +54,7 @@
 #endif
 
 #include "test/all-tests.h"
+#include "test/tmpdir.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -179,7 +180,7 @@ static result_t colourset_test_changed(wuss_colourset_t *colourset,
 
 static int make_scratch_dir(char *path, size_t cap)
 {
-  if (snprintf(path, cap, "/tmp/dptlib-saveas-XXXXXX") >= (int) cap)
+  if (snprintf(path, cap, "%s/dptlib-saveas-XXXXXX", test_tmpdir()) >= (int) cap)
     return 0;
 
   return mkdtemp(path) != NULL;
