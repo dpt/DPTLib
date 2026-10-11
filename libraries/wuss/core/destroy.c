@@ -79,6 +79,16 @@ void wuss_destroy(wuss_t *doomed)
 
       event.kind = wuss_EVENT_QUIT;
       (void) wuss__deliver(task, NULL, &event);
+
+      /* Close the task's windows before freeing it, as wuss_task_destroy
+       * does: left for the z_order sweep, they would point at the freed
+       * task, and a later task's teardown could still deliver to them -- an
+       * abandoned borrowed menu level handing the focus back to one, say.
+       * Closing also clears any menu level's saved focus on them.
+       * REAPING (set above) keeps autoclose from freeing the task here. */
+      while (task->windows.next != NULL)
+        wuss_window_close(wuss__window_from_task_link(task->windows.next));
+
       wuss__free(doomed, e);
     }
     e = next;

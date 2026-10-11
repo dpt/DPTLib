@@ -988,6 +988,10 @@ _Unreleased_ until one is cut.
 
 ### Fixed
 
+- `wuss_destroy()` closes each task's windows before freeing the task, so
+  abandoning a later task's menu chain cannot hand the focus back to a window
+  whose task is already gone (a heap use-after-free when quitting `wuss` with
+  Paint's New dialogue open).
 - `screen_copy_bitmap()` honours BGR(X|A)8888 source formats instead of
   assuming RGB byte order.
 - `wuss` windows are now placed around their actual (furniture-included)

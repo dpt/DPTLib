@@ -975,6 +975,61 @@ result_t wuss_test(const char *resources)
     mk_task_count = 0;  /* drop the now-stale registry entry */
   }
 
+#ifdef WUSS_MENUS
+  printf("test: wuss_destroy with a borrowed menu window open does not "
+         "hand the focus back to a task it already freed\n");
+
+  {
+    /* task A's window has the focus when task B opens its own window as a
+     * menu, so B's level saves A's window to restore the focus to. A is
+     * reaped first; abandoning B's chain must not deliver GAIN_FOCUS to A's
+     * window once A is gone. Caught by ASan. */
+    static test_task_t tc_fa, tc_fb;
+    wuss_t            *fw;
+    wuss_task_t       *task_fa, *task_fb;
+    wuss_window_t     *win_fa, *win_fb;
+    box_t              fbox;
+    wuss_icon_spec_t   fspec;
+
+    rc = wuss_create(&scr, NULL, 0, NULL, 0, NULL, NULL, NULL, &fw);
+    if (rc != result_OK)
+      goto Failure;
+
+    memset(&tc_fa, 0, sizeof(tc_fa));
+    memset(&tc_fb, 0, sizeof(tc_fb));
+    task_fa = mk_task(fw, test_handle, &tc_fa);
+    task_fb = mk_task(fw, test_handle, &tc_fb);
+    forget_test_tasks(); /* wuss_destroy frees both */
+    if (task_fa == NULL || task_fb == NULL) { wuss_destroy(fw); goto Failure; }
+
+    fbox.x0 = 10; fbox.y0 = 30; fbox.x1 = 90; fbox.y1 = 90;
+    rc = wuss_window_create(task_fa, &fbox, "A",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                            wuss_NO_BACKDROP, SIZE2D(80, 60), SIZE2D(0, 0),
+                            &win_fa);
+    if (rc == result_OK)
+      rc = wuss_set_focus(fw, win_fa);
+    if (rc == result_OK)
+      rc = wuss_window_create(task_fb, &fbox, "B",
+                              wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE |
+                              wuss_WINDOW_HIDDEN,
+                              wuss_NO_BACKDROP, SIZE2D(80, 60), SIZE2D(0, 0),
+                              &win_fb);
+    if (rc == result_OK)
+    {
+      /* a writable makes the level take the focus, saving A's window */
+      wuss_icon_spec_writable(&fspec, (box_t) BOX_POS_SIZE(4, 4, 56, 16), "x",
+                              8, 0);
+      rc = wuss_icon_create(win_fb, &fspec, NULL);
+    }
+    if (rc == result_OK)
+      rc = wuss_menu_open_window(task_fb, win_fb, POINT(20, 40), NULL);
+    if (rc != result_OK) { wuss_destroy(fw); goto Failure; }
+
+    wuss_destroy(fw);
+  }
+#endif
+
   printf("test: wuss_set_config swaps the config mid-session, refusing a "
          "bad colour without change\n");
 
