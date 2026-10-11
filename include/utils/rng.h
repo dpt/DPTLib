@@ -31,6 +31,8 @@ extern "C"
 
 #include <stdint.h>
 
+#include "base/utils.h"
+
 /* ----------------------------------------------------------------------- */
 
 /** Generator state. A single 32-bit word the caller stores. */
@@ -46,7 +48,7 @@ typedef uint32_t rng_t;
  * \param[out] s    Generator state.
  * \param[in]  seed Seed value.
  */
-static __inline__ void rng_seed(rng_t *s, uint32_t seed)
+static INLINE void rng_seed(rng_t *s, uint32_t seed)
 {
   *s = seed ? seed : 1u;
 }
@@ -58,7 +60,7 @@ static __inline__ void rng_seed(rng_t *s, uint32_t seed)
  *                  this).
  * \return The new state word.
  */
-static __inline__ uint32_t rng_xorshift32(rng_t *s)
+static INLINE uint32_t rng_xorshift32(rng_t *s)
 {
   uint32_t x;
 
@@ -81,7 +83,7 @@ static __inline__ uint32_t rng_xorshift32(rng_t *s)
  * \param[in,out] s Generator state.
  * \return The new state word.
  */
-static __inline__ uint32_t rng_lcg32(rng_t *s)
+static INLINE uint32_t rng_lcg32(rng_t *s)
 {
   *s = *s * 1664525u + 1013904223u;
 
@@ -99,7 +101,7 @@ static __inline__ uint32_t rng_lcg32(rng_t *s)
  * \param[in]     n Exclusive upper bound (> 0).
  * \return A value in [0, n).
  */
-static __inline__ int rng_range(rng_t *s, int n)
+static INLINE int rng_range(rng_t *s, int n)
 {
   return (int) (rng_xorshift32(s) % (uint32_t) n);
 }
