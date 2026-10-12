@@ -8,7 +8,9 @@
 #include <stdbool.h>
 
 #include "base/result.h"
+#include "framebuf/bitmap.h"
 #include "wuss/message.h"
+#include "wuss/task.h"
 #include "wuss/wuss.h"
 
 /* Every demo task's X_create shares one shape: (wuss_t *, X_task_t **). The
@@ -79,6 +81,12 @@ result_t taskapp_window_data_load(wuss_t                *wuss,
                                   void                  *instance,
                                   taskapp_data_load_fn_t load,
                                   const wuss_message_t  *msg);
+
+/* The glyph for the app called name: "app_" plus name lowercased, keeping
+ * only its letters and digits ("Chase H.Q." finds "app_chasehq"), else the
+ * generic "file_app". Looked up through task's pools; NULL if neither is
+ * there. Icon bar builds only. */
+const bitmap_t *taskapp_glyph(const wuss_task_t *task, const char *name);
 
 /* Destroy every app whose Quit was picked, with its instances. Call it after
  * wuss_idle, never from inside it: destroying an app takes its child tasks

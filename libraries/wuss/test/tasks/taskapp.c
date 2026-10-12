@@ -2,6 +2,7 @@
 
 #ifdef WUSS_APP
 
+#include <ctype.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -253,6 +254,25 @@ static result_t app_handle(wuss_window_t      *window,
   }
 }
 
+const bitmap_t *taskapp_glyph(const wuss_task_t *task, const char *name)
+{
+  char            leaf[32];
+  size_t          n;
+  const bitmap_t *bm;
+
+  memcpy(leaf, "app_", 4);
+  n = 4;
+  for (; *name != '\0' && n < sizeof(leaf) - 1; name++)
+    if (isalnum((unsigned char) *name))
+      leaf[n++] = (char) tolower((unsigned char) *name);
+  leaf[n] = '\0';
+
+  bm = wuss_task_iconpool_find(task, leaf);
+  if (bm == NULL)
+    bm = wuss_task_iconpool_find(task, "file_app");
+  return bm;
+}
+
 result_t taskapp_install(wuss_t *wuss, const taskapp_desc_t *desc)
 {
   result_t                 rc;
@@ -302,7 +322,7 @@ result_t taskapp_install(wuss_t *wuss, const taskapp_desc_t *desc)
   g_apps    = app;
 
   spec.text  = desc->name;
-  spec.image = wuss_task_iconpool_find(app->task, "file_app");
+  spec.image = taskapp_glyph(app->task, desc->name);
   if (spec.image == NULL)
     logf_warning("taskapp: icon 'file_app' unavailable; icons show label only");
   spec.side  = wuss_ICONBAR_RIGHT;

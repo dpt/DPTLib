@@ -22,6 +22,7 @@
 #include "appsfiler.h"
 #include "tasks.h"
 #include "tasks/common.h"
+#include "tasks/taskapp.h"
 
 #define APPS_LABEL_CHARS 12
 #define APPS_COLUMNS     4
@@ -50,8 +51,7 @@ struct apps_task
 
   apps_window_t         windows[1 + APPS_MAX_CATEGORIES]; /* [0] root,
                                                            * [c + 1] category c */
-  const bitmap_t       *glyph_file;      /* borrowed from the icon pool */
-  const bitmap_t       *glyph_directory;
+  const bitmap_t       *glyph_directory; /* borrowed from the icon pool */
   const bitmap_t       *glyph_apps;
 
   wuss_menu_handle_t    menu_handle;
@@ -81,7 +81,7 @@ static void apps_item(int index, void *opaque, wuss_gridview_item_t *out)
   }
 
   out->label = tasks_entry_name(aw->category, index);
-  out->glyph = aw->owner->glyph_file;
+  out->glyph = taskapp_glyph(aw->owner->delegate, out->label);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -337,7 +337,6 @@ result_t appsfiler_create(wuss_t *wuss)
     return rc;
   }
 
-  task->glyph_file      = apps_find_glyph(task->delegate, "file_app");
   task->glyph_directory = apps_find_glyph(task->delegate, "file_dir");
   task->glyph_apps      = apps_find_glyph(task->delegate, "apps");
 
