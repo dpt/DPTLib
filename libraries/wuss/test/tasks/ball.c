@@ -20,9 +20,10 @@
 #define BALL_BASE_RADIUS 8 /* +/-50% at spawn -> 4..12 */
 #define BALL_MAX_DY     16 /* cap on vertical speed under gravity */
 
-/* a wall bounce keeps 3/4 of the speed; integer division leaves speeds under
- * 4 alone, so the spawn speeds of 3 and 2 bounce forever */
-#define BALL_BOUNCE(v) ((v) = -((v) - (v) / 4))
+/* with damping on, a wall bounce keeps 3/4 of the speed, truncated towards
+ * zero so every bounce loses something and a slow ball comes to rest. With
+ * damping off, a bounce only reverses direction. */
+#define BALL_BOUNCE(v, damp) ((v) = -((damp) ? (v) * 3 / 4 : (v)))
 
 /* MENU click pops this menu; the item table and wuss_menu_t live per-instance
  * in ball_task_t, not as a file-scope static */
@@ -32,7 +33,8 @@ enum
   BALL_MENU_PAUSE,
   BALL_MENU_ADD,
   BALL_MENU_CLEAR,
-  BALL_MENU_GRAVITY
+  BALL_MENU_GRAVITY,
+  BALL_MENU_DAMPING
 };
 
 /* a fresh radius in [BALL_BASE_RADIUS/2, BALL_BASE_RADIUS*3/2] */
@@ -84,8 +86,9 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
   task->bg      = colour_rgb(0xFF, 0x00, 0x00);
   task->nballs  = 1;
   task->grabbed = -1;
+  task->damping = 1;
 
-  task->balls[0].x      = 50;
+  task->balls[0].x     = 50;
   task->balls[0].y      = 50;
   task->balls[0].dx     = 3;
   task->balls[0].dy     = 2;
@@ -129,6 +132,9 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_GRAVITY, "Gravity",
                           wuss_MENU_ITEM_NONE, "G");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_DAMPING, "Damping",
+                          wuss_MENU_ITEM_NONE, "D");
 
   WUSS_MENU_TITLE(task->menu, "Bouncing Ball", task->menu_items,
                  NELEMS(task->menu_items));
@@ -272,6 +278,7 @@ static result_t ball_mouse(wuss_window_t      *window,
   {
     wuss_menu_tick_item(&bc->menu, BALL_MENU_PAUSE, bc->paused);
     wuss_menu_tick_item(&bc->menu, BALL_MENU_GRAVITY, bc->gravity);
+    wuss_menu_tick_item(&bc->menu, BALL_MENU_DAMPING, bc->damping);
 
     return wuss_menu_open_at_pointer(bc->delegate, &bc->menu,
                                      &bc->menu_handle);
@@ -360,10 +367,10 @@ static result_t ball_idle(void *task_data)
     b->x += b->dx;
     b->y += b->dy;
 
-    if (b->x - b->radius < scroll.x)               { b->x = scroll.x + b->radius;              BALL_BOUNCE(b->dx); }
-    else if (b->x + b->radius >= scroll.x + width) { b->x = scroll.x + width - 1 - b->radius;  BALL_BOUNCE(b->dx); }
-    if (b->y - b->radius < scroll.y)               { b->y = scroll.y + b->radius;              BALL_BOUNCE(b->dy); }
-    else if (b->y + b->radius >= scroll.y + height){ b->y = scroll.y + height - 1 - b->radius; BALL_BOUNCE(b->dy); }
+    if (b->x - b->radius < scroll.x)               { b->x = scroll.x + b->radius;              BALL_BOUNCE(b->dx, bc->damping); }
+    else if (b->x + b->radius >= scroll.x + width) { b->x = scroll.x + width - 1 - b->radius;  BALL_BOUNCE(b->dx, bc->damping); }
+    if (b->y - b->radius < scroll.y)               { b->y = scroll.y + b->radius;              BALL_BOUNCE(b->dy, bc->damping); }
+    else if (b->y + b->radius >= scroll.y + height){ b->y = scroll.y + height - 1 - b->radius; BALL_BOUNCE(b->dy, bc->damping); }
 
     local = ball_local_box(MIN(old_x, b->x), MIN(old_y, b->y),
                            MAX(old_x, b->x), MAX(old_y, b->y),
@@ -384,15 +391,21 @@ static result_t ball_menu_select(ball_task_t *bc, const wuss_event_t *event)
 }
 
 /* The "Pause" row stops or restarts the idle animation; the "Gravity" row
- * pulls the balls downward each tick. An ADJUST pick keeps the menu open,
- * so retick the live row; a SELECT pick has already closed it. */
+ * pulls the balls downward each tick; the "Damping" row makes wall bounces
+ * lose speed. An ADJUST pick keeps the menu open, so retick the live row; a
+ * SELECT pick has already closed it. */
 static result_t ball_toggle(ball_task_t *bc, const wuss_event_t *event)
 {
   int  index;
   int *flag;
 
   index = event->data.menu_select.index;
-  flag  = (index == BALL_MENU_PAUSE) ? &bc->paused : &bc->gravity;
+  if (index == BALL_MENU_PAUSE)
+    flag = &bc->paused;
+  else if (index == BALL_MENU_GRAVITY)
+    flag = &bc->gravity;
+  else
+    flag = &bc->damping;
   *flag = !*flag;
 
   wuss_menu_tick_item_live(bc->menu_handle, &bc->menu, index, *flag);
@@ -473,7 +486,8 @@ result_t ball_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_SELECT:
     if (event->data.menu_select.menu == &bc->menu &&
         (event->data.menu_select.index == BALL_MENU_PAUSE ||
-         event->data.menu_select.index == BALL_MENU_GRAVITY))
+         event->data.menu_select.index == BALL_MENU_GRAVITY ||
+         event->data.menu_select.index == BALL_MENU_DAMPING))
       return ball_toggle(bc, event);
     if (event->data.menu_select.menu == &bc->menu &&
         event->data.menu_select.index == BALL_MENU_ADD)
