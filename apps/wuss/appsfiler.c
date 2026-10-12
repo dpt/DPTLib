@@ -146,7 +146,11 @@ static void apps_activate(wuss_gridview_t *gridview,
   aw = opaque;
   if (aw->category >= 0)
   {
-    (void) tasks_entry_spawn(aw->category, index);
+    /* as RISC OS: a task launched with a double ADJUST closes its viewer.
+     * That destroys gridview; neither it nor aw's window is used after. */
+    if (tasks_entry_spawn(aw->category, index) == result_OK &&
+        (button & wuss_BUTTON_ADJUST))
+      (void) wuss_window_try_close(aw->window);
     return;
   }
 
