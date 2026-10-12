@@ -41,6 +41,8 @@ extern struct wuss_app_tasks
                          * current by tasks_set_crt */
   bool             pointer; /* software pointer on: requested by --pointer,
                              * then kept current by tasks_set_pointer */
+  bool             grey; /* 8bpp screen holds a 256-grey ramp, not colours;
+                          * set by app_set_mode(.., app_DEPTH_GREY256) */
   bool             debug_redraw_all;   /* set by the launcher's Debug picks */
   bool             debug_garbage;      /* (having already called */
   bool             debug_pixel_stress; /* wuss_redraw for Redraw); read and
@@ -49,8 +51,12 @@ extern struct wuss_app_tasks
 }
 g_tasks;
 
+/* Pseudo depth for app_set_mode / app_get_depth: an 8bpp screen with a
+ * 256-level grey ramp palette instead of colours */
+#define app_DEPTH_GREY256 (-8)
+
 /* Change the desktop resolution to width x height and the framebuffer to
- * depth bits per pixel (1, 2, 4, 8, 15, 16 or 32): reallocates the framebuffer
+ * depth bits per pixel (1, 2, 4, 8, 15, 16, 32 or app_DEPTH_GREY256): reallocates the framebuffer
  * bitmap and the frontend's backing surface, updates g_tasks.bm/frontend and
  * wuss's own screen_t, then walks every window (via wuss_resize) so none is
  * left off-screen or larger than the new screen. A depth change also rebuilds
@@ -128,7 +134,8 @@ result_t tasks_entry_spawn(int category, int index);
  * Used to build a paletted screen's full-size palette (nout = whatever
  * bitmap_set_palette will read for the screen's format) from wuss's
  * fixed-size UI palette, both at startup and on a live wuss_EVENT_PALETTE.
- * nout 2 (1bpp) or 4 (2bpp) instead gets a black-to-white grey ramp. */
+ * nout 2 (1bpp) or 4 (2bpp), or 256 when g_tasks.grey is set, instead gets
+ * a black-to-white grey ramp. */
 void tasks_build_screen_palette(colour_t       *out,
                                 int             nout,
                                 const colour_t *ui,

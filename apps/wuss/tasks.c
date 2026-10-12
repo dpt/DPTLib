@@ -66,8 +66,9 @@ void tasks_build_screen_palette(colour_t       *out,
   int r, g, b, n;
 
   /* 1bpp and 2bpp screens can't hold the UI colours, so they get a fixed
-   * grey ramp instead and the UI colours match onto it */
-  if (nout == 2 || nout == 4)
+   * grey ramp instead and the UI colours match onto it; so does 8bpp in
+   * grey mode */
+  if (nout == 2 || nout == 4 || (nout == 256 && g_tasks.grey))
   {
     for (n = 0; n < nout; n++)
     {

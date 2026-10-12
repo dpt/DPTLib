@@ -794,10 +794,13 @@ result_t app_set_mode(size2d_t size, int depth)
   colour_t        scr_palette[256];
   int             scr_nentries;
 
-  rc = wuss_frontend_resize(g_tasks.frontend, size.w, size.h, depth,
+  rc = wuss_frontend_resize(g_tasks.frontend, size.w, size.h,
+                            (depth == app_DEPTH_GREY256) ? 8 : depth,
                             &pixels, &rowbytes, &fmt);
   if (rc != result_OK)
     return rc;
+
+  g_tasks.grey = (depth == app_DEPTH_GREY256);
 
   /* drop the old palette buffer: it's sized for the old format, and
    * bitmap_init would otherwise copy out of it (overrunning if the new
@@ -835,6 +838,7 @@ int app_get_depth(void)
   {
   case pixelfmt_rgbx5551: return 15;
   case pixelfmt_rgb565:   return 16;
+  case pixelfmt_p8:       return g_tasks.grey ? app_DEPTH_GREY256 : 8;
   default:                return 1 << pixelfmt_log2bpp(g_bm.format);
   }
 }
