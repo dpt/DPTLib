@@ -34,8 +34,17 @@ enum
   DISPLAY_ST_RESOLUTION_ROW,
   DISPLAY_ST_RESOLUTION_LABEL,
   DISPLAY_ST_RESOLUTION,
+  DISPLAY_ST_ZOOM_ROW,
+  DISPLAY_ST_ZOOM_LABEL,
+  DISPLAY_ST_ZOOM,
+  DISPLAY_ST_CRT_ROW,
+  DISPLAY_ST_CRT_LABEL,
+  DISPLAY_ST_CRT,
+  DISPLAY_ST_POINTER_ROW,
+  DISPLAY_ST_POINTER_LABEL,
+  DISPLAY_ST_POINTER,
   DISPLAY_ST_BUTTONS,
-  DISPLAY_ST_BUTTONS_SPACER,
+  DISPLAY_ST_BUTTONS_LABEL,
   DISPLAY_ST_CANCEL,
   DISPLAY_ST_CHANGE,
   DISPLAY_ST__LIMIT
@@ -48,22 +57,37 @@ static const stack_item_t g_display_stack[DISPLAY_ST__LIMIT] =
 
   [DISPLAY_ST_COLOURS_ROW]      = STACK_HBOX(DISPLAY_ST_ROOT, wuss_STD_GLYPH_SIZE, wuss_STD_GAP, stack_ALIGN_START),
   [DISPLAY_ST_COLOURS_LABEL]    = STACK_LEAF_GROUP(DISPLAY_ST_COLOURS_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE, DISPLAY_G_LABEL),
-  [DISPLAY_ST_COLOURS]          = STACK_LEAF(DISPLAY_ST_COLOURS_ROW, DISPLAY_SET_W, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE),
+  [DISPLAY_ST_COLOURS]          = STACK_LEAF_EX(DISPLAY_ST_COLOURS_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE, 1, DISPLAY_SET_W, 0),
 
   [DISPLAY_ST_RESOLUTION_ROW]   = STACK_HBOX(DISPLAY_ST_ROOT, wuss_STD_GLYPH_SIZE, wuss_STD_GAP, stack_ALIGN_START),
   [DISPLAY_ST_RESOLUTION_LABEL] = STACK_LEAF_GROUP(DISPLAY_ST_RESOLUTION_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE, DISPLAY_G_LABEL),
-  [DISPLAY_ST_RESOLUTION]       = STACK_LEAF(DISPLAY_ST_RESOLUTION_ROW, DISPLAY_SET_W, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE),
+  [DISPLAY_ST_RESOLUTION]       = STACK_LEAF_EX(DISPLAY_ST_RESOLUTION_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE, 1, DISPLAY_SET_W, 0),
 
-  [DISPLAY_ST_BUTTONS]          = STACK_HBOX(DISPLAY_ST_ROOT, wuss_STD_PRIMARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_END),
-  [DISPLAY_ST_BUTTONS_SPACER]   = STACK_SPACER(DISPLAY_ST_BUTTONS, 1), /* push the buttons right */
-  [DISPLAY_ST_CANCEL]           = STACK_LEAF(DISPLAY_ST_BUTTONS, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
-  [DISPLAY_ST_CHANGE]           = STACK_LEAF(DISPLAY_ST_BUTTONS, 0, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
+  [DISPLAY_ST_ZOOM_ROW]         = STACK_HBOX(DISPLAY_ST_ROOT, wuss_STD_GLYPH_SIZE, wuss_STD_GAP, stack_ALIGN_START),
+  [DISPLAY_ST_ZOOM_LABEL]       = STACK_LEAF_GROUP(DISPLAY_ST_ZOOM_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE, DISPLAY_G_LABEL),
+  [DISPLAY_ST_ZOOM]             = STACK_LEAF_EX(DISPLAY_ST_ZOOM_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE, 1, DISPLAY_SET_W, 0),
+
+  [DISPLAY_ST_CRT_ROW]          = STACK_HBOX(DISPLAY_ST_ROOT, wuss_STD_GLYPH_SIZE, wuss_STD_GAP, stack_ALIGN_START),
+  [DISPLAY_ST_CRT_LABEL]        = STACK_SPACER_GROUP(DISPLAY_ST_CRT_ROW, 0, DISPLAY_G_LABEL), /* empty first column */
+  [DISPLAY_ST_CRT]              = STACK_LEAF_EX(DISPLAY_ST_CRT_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE, 1, 0, 0),
+
+  [DISPLAY_ST_POINTER_ROW]      = STACK_HBOX(DISPLAY_ST_ROOT, wuss_STD_GLYPH_SIZE, wuss_STD_GAP, stack_ALIGN_START),
+  [DISPLAY_ST_POINTER_LABEL]    = STACK_SPACER_GROUP(DISPLAY_ST_POINTER_ROW, 0, DISPLAY_G_LABEL),
+  [DISPLAY_ST_POINTER]          = STACK_LEAF_EX(DISPLAY_ST_POINTER_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE, 1, 0, 0),
+
+  [DISPLAY_ST_BUTTONS]          = STACK_HBOX(DISPLAY_ST_ROOT, wuss_STD_SECONDARY_BUTTON_HEIGHT, wuss_STD_GAP, stack_ALIGN_START),
+  [DISPLAY_ST_BUTTONS_LABEL]    = STACK_SPACER_GROUP(DISPLAY_ST_BUTTONS, 0, DISPLAY_G_LABEL),
+  [DISPLAY_ST_CANCEL]           = STACK_LEAF_EX(DISPLAY_ST_BUTTONS, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, 0, 0),
+  [DISPLAY_ST_CHANGE]           = STACK_LEAF_EX(DISPLAY_ST_BUTTONS, 0, wuss_STD_SECONDARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE, 1, 0, 0),
 };
 
 enum
 {
   DISPLAY_ICON_COLOURS_LABEL,
   DISPLAY_ICON_RESOLUTION_LABEL,
+  DISPLAY_ICON_ZOOM_LABEL,
+  DISPLAY_ICON_CRT,
+  DISPLAY_ICON_POINTER,
   DISPLAY_ICON_CANCEL,
   DISPLAY_ICON_CHANGE,
   DISPLAY_NICONS
@@ -118,6 +142,16 @@ static const char *const g_display_resolution_labels[NELEMS(g_display_resolution
   "1920 x 1080"
 };
 
+/* fixed set of window zooms the Zoom picker offers, 1x..4x: the entry index
+ * plus one is the zoom */
+static const char *const g_display_zoom_labels[] =
+{
+  "1x",
+  "2x",
+  "3x",
+  "4x"
+};
+
 /* where the window opens: bottom right, above the icon bar */
 static const wuss_place_t g_display_place =
 {
@@ -156,20 +190,40 @@ static int display_resolution_index(const wuss_t *wuss)
   return 0;
 }
 
-/* show the mode actually in force, e.g. after app_set_mode refused a pick */
+/* show the settings actually in force, e.g. after app_set_mode refused a
+ * pick, or to revert the fields */
 static void display_sync(display_task_t *dc)
 {
+  wuss_icon_set_selected(dc->window, dc->crt, g_tasks.crt);
+  wuss_icon_set_selected(dc->window, dc->pointer, g_tasks.pointer);
+  (void) wuss_stringset_set_index(dc->zoom,
+                                  wuss_frontend_get_zoom(g_tasks.frontend) - 1);
   (void) wuss_stringset_set_index(dc->colours, display_depth_index());
   (void) wuss_stringset_set_index(dc->resolution,
                                   display_resolution_index(dc->wuss));
 }
 
-/* apply the picked mode; on refusal show the one still in force */
+/* apply every pick; on refusal show the settings still in force */
 static result_t display_change(display_task_t *dc)
 {
   result_t rc;
   int      res;
   int      depth;
+  int      zoom;
+
+  zoom = wuss_stringset_get_index(dc->zoom) + 1;
+  wuss_frontend_zoom(g_tasks.frontend,
+                     zoom - wuss_frontend_get_zoom(g_tasks.frontend));
+
+  if (!!wuss_icon_get_selected(dc->crt) != g_tasks.crt)
+  {
+    tasks_set_crt(!g_tasks.crt);
+    /* the new surface starts empty: present the whole frame */
+    g_tasks.debug_redraw_all = true;
+  }
+
+  if (!!wuss_icon_get_selected(dc->pointer) != g_tasks.pointer)
+    tasks_set_pointer(!g_tasks.pointer);
 
   res   = wuss_stringset_get_index(dc->resolution);
   depth = wuss_stringset_get_index(dc->colours);
@@ -199,10 +253,16 @@ static result_t display_create_window(display_task_t *task,
     task_text_width(task->wuss, "Colours");
   items[DISPLAY_ST_RESOLUTION_LABEL].axis_size =
     task_text_width(task->wuss, "Resolution");
-  items[DISPLAY_ST_CANCEL].axis_size =
+  items[DISPLAY_ST_ZOOM_LABEL].axis_size =
+    task_text_width(task->wuss, "Zoom");
+  items[DISPLAY_ST_CRT].min = wuss_STD_GLYPH_SIZE + wuss_STD_GAP +
+                              task_text_width(task->wuss, "CRT effect");
+  items[DISPLAY_ST_POINTER].min = wuss_STD_GLYPH_SIZE + wuss_STD_GAP +
+    task_text_width(task->wuss, "Software pointer");
+  items[DISPLAY_ST_CANCEL].min =
     task_button_width(task->wuss, "Cancel", wuss_STD_SECONDARY_BUTTON_BORDER);
-  items[DISPLAY_ST_CHANGE].axis_size =
-    task_button_width(task->wuss, "Change", wuss_STD_PRIMARY_BUTTON_BORDER);
+  items[DISPLAY_ST_CHANGE].min =
+    task_button_width(task->wuss, "Change", wuss_STD_SECONDARY_BUTTON_BORDER);
 
   rc = stack_smallest(items, NELEMS(items), &size);
   if (rc != result_OK)
@@ -231,19 +291,35 @@ static result_t display_create_window(display_task_t *task,
   wuss_icon_spec_label(&specs[DISPLAY_ICON_RESOLUTION_LABEL],
                        boxes[DISPLAY_ST_RESOLUTION_LABEL],
                        "Resolution", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+  wuss_icon_spec_label(&specs[DISPLAY_ICON_ZOOM_LABEL],
+                       boxes[DISPLAY_ST_ZOOM_LABEL],
+                       "Zoom", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+  wuss_icon_spec_option(&specs[DISPLAY_ICON_CRT],
+                        boxes[DISPLAY_ST_CRT], "CRT effect");
+  wuss_icon_spec_option(&specs[DISPLAY_ICON_POINTER],
+                        boxes[DISPLAY_ST_POINTER], "Software pointer");
   wuss_icon_spec_action(&specs[DISPLAY_ICON_CANCEL],
                         boxes[DISPLAY_ST_CANCEL], "Cancel", 0);
   wuss_icon_spec_action(&specs[DISPLAY_ICON_CHANGE],
-                        boxes[DISPLAY_ST_CHANGE], "Change", 1);
+                        boxes[DISPLAY_ST_CHANGE], "Change", 0);
 
   rc = wuss_icon_create_array(task->window, specs, NELEMS(specs), made);
   if (rc != result_OK)
     return rc;
 
+  task->crt      = made[DISPLAY_ICON_CRT];
+  task->pointer  = made[DISPLAY_ICON_POINTER];
   task->cancel = made[DISPLAY_ICON_CANCEL];
   task->change = made[DISPLAY_ICON_CHANGE];
 
-  /* picks only update the fields; Change applies them */
+  rc = wuss_stringset_create(&task->zoom, task->window,
+                             boxes[DISPLAY_ST_ZOOM], "Zoom", -1,
+                             g_display_zoom_labels,
+                             NELEMS(g_display_zoom_labels), NULL, NULL);
+  if (rc != result_OK)
+    return rc;
+
+  /* mode picks only update the fields; Change applies them */
   rc = wuss_stringset_create(&task->colours, task->window,
                              boxes[DISPLAY_ST_COLOURS], "Colours", -1,
                              g_display_depth_labels,
@@ -320,6 +396,7 @@ result_t display_app_create(wuss_t *wuss)
 
 void display_destroy(display_task_t *task)
 {
+  wuss_stringset_destroy(task->zoom);
   wuss_stringset_destroy(task->colours);
   wuss_stringset_destroy(task->resolution);
   free(task);
@@ -331,7 +408,8 @@ static int display_offer(display_task_t     *dc,
                          const wuss_event_t *event,
                          result_t           *rc)
 {
-  return wuss_stringset_handle_event(dc->colours, event, rc) ||
+  return wuss_stringset_handle_event(dc->zoom, event, rc) ||
+         wuss_stringset_handle_event(dc->colours, event, rc) ||
          wuss_stringset_handle_event(dc->resolution, event, rc);
 }
 
@@ -368,7 +446,7 @@ result_t display_handle(wuss_window_t      *window,
       if (!(event->data.icon.button & wuss_BUTTON_ADJUST))
         return wuss_window_try_close(dc->window); /* frees dc likewise */
 
-      display_sync(dc); /* revert the fields to the mode in force */
+      display_sync(dc); /* revert the fields to the settings in force */
     }
     return result_OK;
 
@@ -380,7 +458,8 @@ result_t display_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_CLOSED:
     /* both sets must see it, and neither consumes it */
-    (void) wuss_stringset_handle_event(dc->colours, event, &rc);
+    (void) wuss_stringset_handle_event(dc->zoom, event, &rc);
+  (void) wuss_stringset_handle_event(dc->colours, event, &rc);
     (void) wuss_stringset_handle_event(dc->resolution, event, &rc);
     return result_OK;
 

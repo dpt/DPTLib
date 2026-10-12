@@ -124,13 +124,17 @@ void wuss_frontend_set_palette(wuss_frontend_t *frontend,
  * range. No-op on a backend without a resizable window (RISC OS). */
 void wuss_frontend_zoom(wuss_frontend_t *frontend, int delta);
 
+/* The current window zoom, in device pixels per screen pixel; 1 on a backend
+ * without a resizable window. */
+int wuss_frontend_get_zoom(const wuss_frontend_t *frontend);
+
 /* Switch the CRT post-effect on or off (Debug > CRT). Returns whether it is
  * now on: false on a backend or platform without it (RISC OS, non-Metal
  * SDL), leaving the plain surface in place. */
 bool wuss_frontend_set_crt(wuss_frontend_t *frontend, bool on);
 
 /* Hide or show the OS mouse pointer over the window, for when main.c draws
- * its own (System > Software Pointer). Returns whether it is now hidden:
+ * its own (Display > Software pointer). Returns whether it is now hidden:
  * false on a backend that keeps its hardware pointer (RISC OS). */
 bool wuss_frontend_hide_pointer(wuss_frontend_t *frontend, bool hide);
 

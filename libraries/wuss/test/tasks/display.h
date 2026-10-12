@@ -9,20 +9,25 @@
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
-/* window D's task: a small window, after RISC OS's Display Manager, with two
- * string sets -- colour depth and resolution -- showing the current mode.
- * Change calls app_set_mode with the picks, which live-changes the frontend's
- * surface and wuss's own screen, nudging every open window back on-screen and
- * shrinking any that no longer fit, then closes the window (Adjust leaves it
- * open). Cancel closes it, discarding the picks; Adjust-Cancel instead reverts
- * them to the mode in force. */
+/* window D's task: a small window, after RISC OS's Display Manager, with
+ * string sets for colour depth, resolution and zoom (1x-4x), and options for
+ * the CRT effect and Software pointer, showing the current settings. Nothing
+ * takes effect until Change: it applies the zoom, options and mode (via
+ * app_set_mode, which live-changes the frontend's surface and wuss's own
+ * screen, nudging every open window back on-screen and shrinking any that no
+ * longer fit), then closes the window (Adjust leaves it open). Cancel closes
+ * it, discarding the picks; Adjust-Cancel instead reverts them to the
+ * settings in force. */
 typedef struct display_task
 {
   wuss_t             *wuss;
   wuss_task_t        *delegate;
   wuss_window_t      *window;
+  wuss_stringset_t   *zoom;
   wuss_stringset_t   *colours;
   wuss_stringset_t   *resolution;
+  wuss_icon_t        *crt;
+  wuss_icon_t        *pointer;
   wuss_icon_t        *cancel;
   wuss_icon_t        *change;
 }

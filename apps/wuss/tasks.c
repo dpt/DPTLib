@@ -203,10 +203,6 @@ static const wuss_menu_t g_debug_menu =
 enum
 {
   TASK_ITEM_INFO,
-  TASK_ITEM_ZOOM_IN,
-  TASK_ITEM_ZOOM_OUT,
-  TASK_ITEM_CRT,
-  TASK_ITEM_POINTER,
   TASK_ITEM_DEBUG
 #ifndef __EMSCRIPTEN__
   ,
@@ -216,15 +212,10 @@ enum
 
 /* not const: the "Info" row's .window is filled in by tasks_open_launcher,
  * retargeting the shared proginfo singleton at g_tasks.menu_task each time
- * -- the table itself cannot name it at compile time. The CRT and Software
- * pointer rows' ticks track g_tasks.crt and g_tasks.pointer. */
+ * -- the table itself cannot name it at compile time. */
 static wuss_menu_item_t g_task_items[] =
 {
   { "Info",             wuss_MENU_ITEM_PRE_OPEN, NULL, NULL                          },
-  { "Zoom In",          wuss_MENU_ITEM_DASHED,   NULL, NULL, 0, "F2"                 },
-  { "Zoom Out",         wuss_MENU_ITEM_NONE,     NULL, NULL, 0, WUSS_MENU_SHIFT "F2" },
-  { "CRT Effect",       wuss_MENU_ITEM_NONE,     NULL, NULL, 0, "F5"                 },
-  { "Software Pointer", wuss_MENU_ITEM_NONE,     NULL, NULL, 0, "F6"                 },
   { "Debug",            wuss_MENU_ITEM_DASHED,   &g_debug_menu                       }
 #ifndef __EMSCRIPTEN__
   ,
@@ -240,19 +231,11 @@ static const wuss_menu_t g_task_menu =
 void tasks_set_crt(bool on)
 {
   g_tasks.crt = wuss_frontend_set_crt(g_tasks.frontend, on);
-  if (g_tasks.crt)
-    g_task_items[TASK_ITEM_CRT].flags |= wuss_MENU_ITEM_TICKED;
-  else
-    g_task_items[TASK_ITEM_CRT].flags &= ~wuss_MENU_ITEM_TICKED;
 }
 
 void tasks_set_pointer(bool on)
 {
   g_tasks.pointer = app_set_pointer(on);
-  if (g_tasks.pointer)
-    g_task_items[TASK_ITEM_POINTER].flags |= wuss_MENU_ITEM_TICKED;
-  else
-    g_task_items[TASK_ITEM_POINTER].flags &= ~wuss_MENU_ITEM_TICKED;
 }
 
 /* g_task_menu picks are dispatched by index and g_debug_menu picks likewise.
@@ -341,20 +324,6 @@ result_t task_handle_event(wuss_window_t      *window,
   {
     switch (index)
     {
-    case TASK_ITEM_ZOOM_IN:
-      wuss_frontend_zoom(g_tasks.frontend, 1);
-      break;
-    case TASK_ITEM_ZOOM_OUT:
-      wuss_frontend_zoom(g_tasks.frontend, -1);
-      break;
-    case TASK_ITEM_CRT:
-      tasks_set_crt(!g_tasks.crt);
-      /* the new surface starts empty: present the whole frame */
-      g_tasks.debug_redraw_all = true;
-      break;
-    case TASK_ITEM_POINTER:
-      tasks_set_pointer(!g_tasks.pointer);
-      break;
 #ifndef __EMSCRIPTEN__
     case TASK_ITEM_QUIT:
       g_tasks.quit = true;
@@ -385,6 +354,16 @@ result_t tasks_open_menu(void)
 result_t tasks_launcher_key(int code, wuss_key_modifiers_t modifiers)
 {
   wuss_event_t key;
+
+  /* zoom stays on its F2 / Shift-F2 keys, now that the menu rows are gone;
+   * the CRT and pointer options live only in the Display window, whose
+   * ticks a key could not keep current */
+  if (code == wuss_KEY_F1 + 1)
+  {
+    wuss_frontend_zoom(g_tasks.frontend,
+                       (modifiers & wuss_KEY_MOD_SHIFT) ? -1 : 1);
+    return result_OK;
+  }
 
   key.kind               = wuss_EVENT_KEY;
   key.data.key.code      = code;

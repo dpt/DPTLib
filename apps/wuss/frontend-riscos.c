@@ -494,6 +494,13 @@ void wuss_frontend_zoom(wuss_frontend_t *fe, int delta)
   /* fixed screen mode: nothing to zoom */
 }
 
+int wuss_frontend_get_zoom(const wuss_frontend_t *fe)
+{
+  NOT_USED(fe);
+
+  return 1;
+}
+
 bool wuss_frontend_set_crt(wuss_frontend_t *fe, bool on)
 {
   NOT_USED(fe);

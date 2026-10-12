@@ -150,7 +150,7 @@ static void pixel_stress(wuss_t *wuss, int scr_width, int scr_height)
 
 /* ----------------------------------------------------------------------- */
 
-/* The optional software pointer (--pointer, System > Software Pointer): an
+/* The optional software pointer (--pointer, Display > Software pointer): an
  * arrow drawn into the framebuffer itself, so it scales with the window zoom
  * and goes through the CRT shader like everything else. wuss never learns of
  * it: each frame puts back the pixels under it before wuss can draw (a window
@@ -693,8 +693,8 @@ static result_t run_wuss(const char *resources,
   g_tasks.frontend       = frontend;
   g_tasks.bm             = &g_bm;
 
-  /* --crt: the frontend opens plain; switch over now so the Debug menu's
-   * tick agrees */
+  /* --crt: the frontend opens plain; switch over now so the Display
+   * window's option agrees */
   if (g_tasks.crt)
     tasks_set_crt(true);
 

@@ -95,11 +95,11 @@ result_t tasks_launcher_key(int code, wuss_key_modifiers_t modifiers);
 void tasks_reap_apps(void);
 
 /* Switch the frontend's CRT post-effect on or off, recording the outcome in
- * g_tasks.crt and the Debug menu's tick. Needs g_tasks.frontend set. */
+ * g_tasks.crt. Needs g_tasks.frontend set. */
 void tasks_set_crt(bool on);
 
 /* Switch the software pointer on or off (app_set_pointer), recording the
- * outcome in g_tasks.pointer and the Debug menu's tick. */
+ * outcome in g_tasks.pointer. */
 void tasks_set_pointer(bool on);
 
 /* Install the apps named in names, a comma-separated list of launcher-menu

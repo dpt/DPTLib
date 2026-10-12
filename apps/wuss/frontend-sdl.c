@@ -650,6 +650,11 @@ void wuss_frontend_zoom(wuss_frontend_t *fe, int delta)
   SDL_SetWindowSize(fe->window, fe->scr_width * scale, fe->scr_height * scale);
 }
 
+int wuss_frontend_get_zoom(const wuss_frontend_t *fe)
+{
+  return fe->scale;
+}
+
 bool wuss_frontend_set_crt(wuss_frontend_t *fe, bool on)
 {
   if (on == (fe->crt != NULL))
