@@ -42,7 +42,7 @@
 enum
 {
   APP_MENU_INFO,
-  APP_MENU_MAX = 3
+  APP_MENU_MAX = 5
 };
 
 typedef struct app app_t;
@@ -58,6 +58,8 @@ struct app
   wuss_menu_item_t      menu_items[APP_MENU_MAX];
   wuss_menu_t           menu;
   int                   new_row;  /* menu row of "New...", or -1 */
+  int                   create_row; /* menu rows of the create and adjust */
+  int                   adjust_row; /* entries, or -1 when no adjust */
   int                   quit_row; /* menu row of "Quit" */
   bool                  quit; /* Quit picked; taskapp_reap destroys the task */
 };
@@ -94,6 +96,15 @@ static result_t app_create_adapter(wuss_t *wuss, void *param, void **out)
 static result_t app_spawn_instance(app_t *app, void **out)
 {
   return app_spawn(app, app_create_adapter, app, out);
+}
+
+static result_t app_adjust_adapter(wuss_t *wuss, void *param, void **out)
+{
+  const app_t *app;
+
+  app = param;
+
+  return app->desc->adjust(wuss, out);
 }
 
 /* what SELECT on the icon and the "New..." row do */
@@ -210,7 +221,10 @@ static result_t app_handle(wuss_window_t      *window,
       return app_menu_open(app);
     if (event->data.iconbar_icon.button & wuss_BUTTON_SELECT)
       return app->desc->drop_only ? result_OK : app_new(app);
-    return result_OK; /* ADJUST: nothing yet */
+    if ((event->data.iconbar_icon.button & wuss_BUTTON_ADJUST) &&
+        app->desc->adjust != NULL)
+      return app_spawn(app, app_adjust_adapter, app, NULL);
+    return result_OK;
 
   case wuss_EVENT_MESSAGE:
     if (window == NULL)
@@ -224,6 +238,10 @@ static result_t app_handle(wuss_window_t      *window,
       app->quit = true;
     else if (event->data.menu_select.index == app->new_row)
       return app_new(app);
+    else if (event->data.menu_select.index == app->create_row)
+      return app_spawn_instance(app, NULL);
+    else if (event->data.menu_select.index == app->adjust_row)
+      return app_spawn(app, app_adjust_adapter, app, NULL);
     return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
@@ -306,6 +324,19 @@ result_t taskapp_install(wuss_t *wuss, const taskapp_desc_t *desc)
   {
     app->new_row = n;
     WUSS_MENU_ITEM(app->menu_items, n, "New...", wuss_MENU_ITEM_NONE);
+    n++;
+  }
+  app->create_row = -1;
+  app->adjust_row = -1;
+  if (desc->adjust != NULL)
+  {
+    app->create_row = n;
+    WUSS_MENU_ITEM(app->menu_items, n, desc->create_label,
+                   wuss_MENU_ITEM_NONE);
+    n++;
+    app->adjust_row = n;
+    WUSS_MENU_ITEM(app->menu_items, n, desc->adjust_label,
+                   wuss_MENU_ITEM_NONE);
     n++;
   }
   app->quit_row = n;

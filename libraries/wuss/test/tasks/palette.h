@@ -35,10 +35,11 @@ typedef struct palette_task
 {
   wuss_t              *wuss;
   wuss_task_t         *delegate;
-  wuss_window_t       *window;
-  wuss_window_t       *window2; /* "Screen" window: the physical screen's
-                                  * own palette (1/2/4/8bpp) or a "none"
-                                  * label (32bpp has no palette) */
+  wuss_window_t       *window;  /* desktop palette; NULL in a Screen task */
+  wuss_window_t       *window2; /* Screen task's window, else NULL:
+                                  * the physical screen's own palette
+                                  * (1/2/4/8bpp) or a "none" label (32bpp
+                                  * has no palette) */
   bool                 invert;
   bool                 grey; /* Menu > Greyscale */
 
@@ -87,6 +88,10 @@ result_t palette_load_hex_n(const char *resources,
  * content matches wuss's current system palette (wuss_get_palette), if any.
  * if out is non-NULL, the task block is also returned through it. */
 result_t palette_create(wuss_t *wuss, palette_task_t **out);
+
+/* as palette_create, but opens the "Screen" window (the physical screen's
+ * own palette) instead of the desktop palette's */
+result_t palette_screen_create(wuss_t *wuss, palette_task_t **out);
 
 /* install the icon bar app that opens palette windows on demand */
 result_t palette_app_create(wuss_t *wuss);

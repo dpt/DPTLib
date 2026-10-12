@@ -110,17 +110,45 @@ result_t palette_load_hex(const char *resources,
 
 /* ----------------------------------------------------------------------- */
 
-result_t palette_create(wuss_t *wuss, palette_task_t **out)
+/* where the palette windows open: the free region nearest the bottom right,
+ * clear of the icon bar, else anchored there */
+static const wuss_place_t palette_place =
+{
+  wuss_PLACE_SPARE | wuss_PLACE_AVOID_ICONBAR,
+  wuss_ALIGN_RIGHT | wuss_ALIGN_BOTTOM, NULL, { 0, 0 }
+};
+
+/* the open desktop and Screen palette tasks, if any: each window is a
+ * singleton, raised rather than opened twice. Cleared by palette_destroy. */
+static palette_task_t *g_desktop;
+static palette_task_t *g_screen;
+
+/* Make a task block and open one window on it: the desktop palette, or with
+ * screen the physical screen's ("Screen") */
+static result_t palette_open(wuss_t *wuss, bool screen, palette_task_t **out)
 {
   result_t         rc;
   palette_task_t  *task;
+  palette_task_t  *existing;
   wuss_task_desc_t delegate_desc;
   const char      *resources;
   const char      *dir;
   const colour_t  *current;
   int              ncurrent;
   int              i;
-  wuss_place_t     place;
+
+  existing = screen ? g_screen : g_desktop;
+  if (existing != NULL)
+  {
+    wuss_window_t *open_window;
+
+    open_window = screen ? existing->window2 : existing->window;
+    if (open_window != NULL)
+      wuss_window_restack(open_window, wuss_ZORDER_FRONT);
+    if (out)
+      *out = existing;
+    return result_OK;
+  }
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -183,44 +211,43 @@ result_t palette_create(wuss_t *wuss, palette_task_t **out)
   }
 
   rc = wuss_window_create_at(task->delegate,
-                             &task_place,
+                             &palette_place,
                              SIZE2D(100, 100),
-                             "Palette",
+                             screen ? "Screen" : "Palette",
                              wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT, /* swatch grid is laid out across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
                              wuss_BACKDROP_COLOUR(palette_PICO8_BLACK),
                              SIZE2D(100, 100),
                              SIZE2D(0, 0),
-                             &task->window);
+                             screen ? &task->window2 : &task->window);
   if (rc != result_OK)
   {
     wuss_task_destroy(task->delegate); /* unregister; its QUIT frees the task block */
     return rc;
   }
 
-  place = task_place_after(task->window);
-  rc = wuss_window_create_at(task->delegate,
-                             &place,
-                             SIZE2D(100, 100),
-                             "Screen",
-                             wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT,
-                             wuss_BACKDROP_COLOUR(palette_PICO8_BLACK),
-                             SIZE2D(100, 100),
-                             SIZE2D(0, 0),
-                             &task->window2);
-  if (rc != result_OK)
-  {
-    wuss_task_destroy(task->delegate); /* closes "Palette", QUIT frees the block */
-    return rc;
-  }
-
-  /* both windows up: from here, closing the last one reaps the task and its
-   * wuss_EVENT_QUIT frees task_data */
+  /* window up: closing it reaps the task and its wuss_EVENT_QUIT frees
+   * task_data */
   wuss_task_set_autoclose(task->delegate, 1);
+
+  if (screen)
+    g_screen = task;
+  else
+    g_desktop = task;
 
   if (out)
     *out = task;
 
   return result_OK;
+}
+
+result_t palette_create(wuss_t *wuss, palette_task_t **out)
+{
+  return palette_open(wuss, false, out);
+}
+
+result_t palette_screen_create(wuss_t *wuss, palette_task_t **out)
+{
+  return palette_open(wuss, true, out);
 }
 
 result_t palette_app_create(wuss_t *wuss)
@@ -233,7 +260,10 @@ result_t palette_app_create(wuss_t *wuss)
     NULL,
     false,
     NULL,
-    true
+    true,
+    (taskapp_create_fn_t) palette_screen_create,
+    "Desktop palette",
+    "System palette"
   };
 
   return taskapp_install(wuss, &desc);
@@ -241,6 +271,11 @@ result_t palette_app_create(wuss_t *wuss)
 
 void palette_destroy(palette_task_t *task)
 {
+  if (task == g_desktop)
+    g_desktop = NULL;
+  if (task == g_screen)
+    g_screen = NULL;
+
   free(task);
 }
 
@@ -490,6 +525,8 @@ result_t palette_handle(wuss_window_t      *window,
     return palette_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
+    if (window == pc->window2) /* the Screen window has no menu */
+      return result_OK;
     return palette_click(task_data, event);
 
   case wuss_EVENT_MENU_SELECT:

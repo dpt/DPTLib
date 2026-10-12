@@ -47,6 +47,13 @@ typedef struct taskapp_desc
   taskapp_new_fn_t     new_dialogue; /* optional: see taskapp_new_fn_t */
   bool                 singleton;    /* SELECT on the icon raises the open
                                       * instance rather than opening another */
+  taskapp_create_fn_t  adjust;       /* optional: ADJUST on the icon calls
+                                      * this in place of create, and the menu
+                                      * gets a row for each of create and
+                                      * adjust, labelled create_label and
+                                      * adjust_label */
+  const char          *create_label; /* menu row for create, if adjust */
+  const char          *adjust_label; /* menu row for adjust, if adjust */
 }
 taskapp_desc_t;
 
