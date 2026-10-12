@@ -79,12 +79,14 @@ static int align_axis(int lo, int hi, int len, int at_lo, int at_hi)
  * call, so windows created at explicit positions, moved or resized by the
  * user, or a changed screen size are all accounted for with no slot
  * bookkeeping. Returns result_PACKER_DIDNT_FIT when no region is large
- * enough.
+ * enough. The search starts from the corner of area that align names
+ * (top-left if it names none), so a window lands nearest that corner.
  * ponytail: O(windows^2) per placement; keep a live packer if that shows. */
 static result_t find_slot(wuss_t      *wuss,
                           const box_t *area,
                           int          fw,
                           int          fh,
+                          wuss_align_t align,
                           point_t     *pos)
 {
   static const box_t margins = {
@@ -97,6 +99,7 @@ static result_t find_slot(wuss_t      *wuss,
   wuss_window_t *w;
   box_t          taken;
   const box_t   *slot;
+  packer_loc_t   loc;
 
   layout = packer_create(area);
   if (layout == NULL)
@@ -126,8 +129,15 @@ static result_t find_slot(wuss_t      *wuss,
       goto exit;
   }
 
-  /* packer's Y axis is reversed. bottom left here gives top left packing. */
-  rc = packer_place_by(layout, packer_LOC_BOTTOM_LEFT, fw, fh, &slot);
+  /* packer's Y axis is reversed: its bottom is the screen's top, so bottom
+   * left gives top left packing, the default */
+  if (align & wuss_ALIGN_BOTTOM)
+    loc = (align & wuss_ALIGN_RIGHT) ? packer_LOC_TOP_RIGHT
+                                     : packer_LOC_TOP_LEFT;
+  else
+    loc = (align & wuss_ALIGN_RIGHT) ? packer_LOC_BOTTOM_RIGHT
+                                     : packer_LOC_BOTTOM_LEFT;
+  rc = packer_place_by(layout, loc, fw, fh, &slot);
   if (rc == result_OK)
   {
     pos->x = slot->x0;
@@ -154,7 +164,7 @@ static result_t place_footprint(wuss_t             *wuss,
 
   if (place->flags & wuss_PLACE_SPARE)
   {
-    rc = find_slot(wuss, &area, fw, fh, pos);
+    rc = find_slot(wuss, &area, fw, fh, place->align, pos);
     if (rc != result_PACKER_DIDNT_FIT)
       return rc; /* placed, or failed */
   }

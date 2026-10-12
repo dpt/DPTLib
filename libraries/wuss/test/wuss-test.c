@@ -6074,7 +6074,8 @@ result_t wuss_test(const char *resources)
       goto Failure;
     wuss_window_close(win_b);
 
-    /* spare space first: lands in the free top-left, not at the anchor */
+    /* spare space first, searched from the anchor's corner: lands in the
+     * free bottom-left, clear of A */
     place.flags |= wuss_PLACE_SPARE;
     rc = wuss_window_create_at(delegate_a, &place, SIZE2D(40, 30), "B",
                                wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
@@ -6082,7 +6083,36 @@ result_t wuss_test(const char *resources)
     if (rc != result_OK)
       goto Failure;
     wuss_window_get_visible_bounds(win_b, &vis_b);
+    if (vis_b.x0 != WUSS_PLACE_GUTTER ||
+        vis_b.y1 != bottom - WUSS_PLACE_GUTTER ||
+        box_intersects(&vis_a, &vis_b))
+      goto Failure;
+    wuss_window_close(win_b);
+
+    /* no anchor: searched from the top-left, as before */
+    place.align = wuss_ALIGN_CENTRE;
+    rc = wuss_window_create_at(delegate_a, &place, SIZE2D(40, 30), "B",
+                               wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                               SIZE2D(40, 30), SIZE2D(0, 0), &win_b);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_visible_bounds(win_b, &vis_b);
     if (vis_b.x0 != WUSS_PLACE_GUTTER || vis_b.y0 != WUSS_PLACE_GUTTER ||
+        box_intersects(&vis_a, &vis_b))
+      goto Failure;
+    wuss_window_close(win_b);
+
+    /* bottom right: A leaves no room against the right edge, so nearest
+     * that corner is the bottom row, clear of A, not the top-left */
+    place.align = wuss_ALIGN_BOTTOM | wuss_ALIGN_RIGHT;
+    rc = wuss_window_create_at(delegate_a, &place, SIZE2D(40, 30), "B",
+                               wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                               SIZE2D(40, 30), SIZE2D(0, 0), &win_b);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_visible_bounds(win_b, &vis_b);
+    if (vis_b.x0 <= WUSS_PLACE_GUTTER ||
+        vis_b.y1 != bottom - WUSS_PLACE_GUTTER ||
         box_intersects(&vis_a, &vis_b))
       goto Failure;
     wuss_window_close(win_b);

@@ -141,7 +141,9 @@ typedef enum wuss_place_flags
   /**
    * Try the first free screen region first, as wuss_window_create_placed;
    * the anchor or relative position is then only the fallback for when no
-   * region is large enough.
+   * region is large enough. The search starts from the screen corner that
+   * align names (wuss_ALIGN_RIGHT and/or wuss_ALIGN_BOTTOM), else the
+   * top-left, so the window opens nearest that corner.
    */
   wuss_PLACE_SPARE         = 1 << 0,
 
