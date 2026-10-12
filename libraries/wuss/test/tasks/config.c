@@ -636,7 +636,11 @@ result_t config_app_create(wuss_t *wuss)
   {
     "Configure",
     "System settings",
-    (taskapp_create_fn_t) config_create
+    (taskapp_create_fn_t) config_create,
+    NULL,
+    false,
+    NULL,
+    true
   };
 
   return taskapp_install(wuss, &desc);

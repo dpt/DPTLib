@@ -101,6 +101,10 @@ static result_t app_new(app_t *app)
 {
   result_t rc;
 
+  if (app->desc->singleton &&
+      wuss_task_raise_children(app->wuss, app->task))
+    return result_OK;
+
   if (app->desc->new_dialogue == NULL)
     return app_spawn_instance(app, NULL);
 

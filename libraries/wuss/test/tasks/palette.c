@@ -229,7 +229,11 @@ result_t palette_app_create(wuss_t *wuss)
   {
     "Palette",
     "Desktop palette swatches",
-    (taskapp_create_fn_t) palette_create
+    (taskapp_create_fn_t) palette_create,
+    NULL,
+    false,
+    NULL,
+    true
   };
 
   return taskapp_install(wuss, &desc);

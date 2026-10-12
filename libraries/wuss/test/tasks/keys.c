@@ -85,7 +85,11 @@ result_t keys_app_create(wuss_t *wuss)
   {
     "Keys",
     "Key input and focus",
-    (taskapp_create_fn_t) keys_create
+    (taskapp_create_fn_t) keys_create,
+    NULL,
+    false,
+    NULL,
+    true
   };
 
   return taskapp_install(wuss, &desc);

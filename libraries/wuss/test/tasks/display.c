@@ -125,8 +125,6 @@ static const wuss_place_t g_display_place =
   wuss_PLACE_AVOID_ICONBAR, wuss_ALIGN_RIGHT | wuss_ALIGN_BOTTOM, NULL, { 0, 0 }
 };
 
-static display_task_t *g_display; /* the one open instance, or NULL */
-
 /* ----------------------------------------------------------------------- */
 
 /* the entry matching the current depth. ponytail: an unlisted mode shows
@@ -273,15 +271,6 @@ result_t display_create(wuss_t *wuss, display_task_t **out)
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
 
-  if (g_display != NULL)
-  {
-    wuss_window_restack(g_display->window, wuss_ZORDER_FRONT);
-    if (out)
-      *out = g_display;
-
-    return result_OK;
-  }
-
   task = calloc(1, sizeof(*task));
   if (task == NULL)
     return result_OOM;
@@ -308,7 +297,6 @@ result_t display_create(wuss_t *wuss, display_task_t **out)
     return rc;
   }
 
-  g_display = task;
   if (out)
     *out = task;
 
@@ -321,7 +309,11 @@ result_t display_app_create(wuss_t *wuss)
   {
     "Display",
     "Set colours and resolution",
-    (taskapp_create_fn_t) display_create
+    (taskapp_create_fn_t) display_create,
+    NULL,
+    false,
+    NULL,
+    true
   };
 
   return taskapp_install(wuss, &desc);
@@ -329,9 +321,6 @@ result_t display_app_create(wuss_t *wuss)
 
 void display_destroy(display_task_t *task)
 {
-  if (g_display == task)
-    g_display = NULL;
-
   wuss_stringset_destroy(task->colours);
   wuss_stringset_destroy(task->resolution);
   free(task);
@@ -398,11 +387,7 @@ result_t display_handle(wuss_window_t      *window,
 
   case wuss_EVENT_CLOSE:
     if (window == dc->window)
-    {
       dc->window = NULL;
-      if (g_display == dc)
-        g_display = NULL;
-    }
     return result_OK;
 
   case wuss_EVENT_QUIT:

@@ -45,6 +45,8 @@ typedef struct taskapp_desc
   taskapp_data_load_fn_t data_load; /* optional: file dropped on the icon */
   bool                 drop_only;   /* SELECT on the icon opens nothing */
   taskapp_new_fn_t     new_dialogue; /* optional: see taskapp_new_fn_t */
+  bool                 singleton;    /* SELECT on the icon raises the open
+                                      * instance rather than opening another */
 }
 taskapp_desc_t;
 

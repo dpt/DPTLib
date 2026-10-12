@@ -792,7 +792,11 @@ result_t icons_app_create(wuss_t *wuss)
   {
     "Icons",
     "Every work-area icon type",
-    (taskapp_create_fn_t) icons_create
+    (taskapp_create_fn_t) icons_create,
+    NULL,
+    false,
+    NULL,
+    true
   };
 
   return taskapp_install(wuss, &desc);

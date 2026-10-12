@@ -477,6 +477,16 @@ void wuss_task_destroy(wuss_task_t *doomed);
 void wuss_task_set_autoclose(wuss_task_t *task, int on);
 
 /**
+ * Bring the windows of every child of \p parent (see wuss_set_task_parent)
+ * to the front of their stacks.
+ *
+ * \param[in] wuss   Window manager.
+ * \param[in] parent Task whose children to raise.
+ * \return Non-zero if \p parent has any child task, else zero.
+ */
+int wuss_task_raise_children(wuss_t *wuss, wuss_task_t *parent);
+
+/**
  * Make every task created from now on a child of \p parent: destroying \p
  * parent (wuss_task_destroy) first destroys its children, each firing its
  * own wuss_EVENT_QUIT. Lets a launcher task start tasks it did not create
