@@ -49,7 +49,7 @@ _Unreleased_ until one is cut.
   Light frames with the control strip lined up in columns.
 - `wuss_colourset` gadget — a row of colour swatches (one active pick, an
   optional title) built on `wuss_colourmenu`; `wuss_colourset_button_width()`
-  and `wuss_STD_OPTION_SIZE` size it, and `wuss_stringset`/`wuss_colourset`
+  and `wuss_STD_GLYPH_SIZE` size it, and `wuss_stringset`/`wuss_colourset`
   both take an optional title width.
 - `wuss_menu_open_at_pointer()` and `wuss_colourmenu`'s RGB open/pick
   helpers factor out boilerplate the per-task menu code kept repeating.

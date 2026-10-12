@@ -24,7 +24,7 @@ Derived from the dialogues in `libraries/wuss/test/tasks/` (`display.c`,
 ## Rows
 
 - One `STACK_HBOX` per row, `wuss_STD_GAP` between its children, height
-  set to the tallest child (`wuss_STD_SLIDER_HEIGHT`, `wuss_STD_OPTION_SIZE`
+  set to the tallest child (`wuss_STD_SLIDER_HEIGHT`, `wuss_STD_GLYPH_SIZE`
   or the field height).
 - Children are centred on the cross axis (`stack_ALIGN_CENTRE`).
 - A row holds everything that belongs to it: a caption and its radios share
@@ -42,7 +42,7 @@ Derived from the dialogues in `libraries/wuss/test/tasks/` (`display.c`,
 
 ## Controls
 
-- Radios and options: height `wuss_STD_OPTION_SIZE`, width glyph plus
+- Radios and options: height `wuss_STD_GLYPH_SIZE`, width glyph plus
   `wuss_STD_GAP` plus text width.
 - Sliders: `wuss_STD_SLIDER_HEIGHT`, flexible on the main axis.
 - Writable fields: fixed width, centred text, field height from the font.

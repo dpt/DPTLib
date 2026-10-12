@@ -25,7 +25,6 @@
 
 /* ----------------------------------------------------------------------- */
 
-#define PN_FIELD_H  22
 #define PN_FIELD_W  60
 #define PN_DIGITS   4    /* PAINTNEW_SIZE_MAX is four digits */
 #define PN_G_LABEL  1    /* size group, see stack_item_t::group */
@@ -84,23 +83,23 @@ enum
 };
 
 #define PN_ST_RADIO(i) \
-  [PN_ST_BG + (i)] = STACK_LEAF(PN_ST_BG_ROW, 0, wuss_STD_OPTION_SIZE, stack_ALIGN_CENTRE)
+  [PN_ST_BG + (i)] = STACK_LEAF(PN_ST_BG_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE)
 
 static const stack_item_t g_paintnew_stack[PN_ST__LIMIT] =
 {
   [PN_ST_ROOT] = { .kind = stack_KIND_VBOX, .parent = -1,
                    .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
 
-  [PN_ST_WIDTH_ROW]    = STACK_HBOX(PN_ST_ROOT, PN_FIELD_H, wuss_STD_GAP, stack_ALIGN_START),
-  [PN_ST_WIDTH_LABEL]  = STACK_LEAF_GROUP(PN_ST_WIDTH_ROW, 0, PN_FIELD_H, stack_ALIGN_CENTRE, PN_G_LABEL),
-  [PN_ST_WIDTH]        = STACK_LEAF(PN_ST_WIDTH_ROW, PN_FIELD_W, PN_FIELD_H, stack_ALIGN_CENTRE),
+  [PN_ST_WIDTH_ROW]    = STACK_HBOX(PN_ST_ROOT, wuss_STD_GLYPH_SIZE, wuss_STD_GAP, stack_ALIGN_START),
+  [PN_ST_WIDTH_LABEL]  = STACK_LEAF_GROUP(PN_ST_WIDTH_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE, PN_G_LABEL),
+  [PN_ST_WIDTH]        = STACK_LEAF(PN_ST_WIDTH_ROW, PN_FIELD_W, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE),
 
-  [PN_ST_HEIGHT_ROW]   = STACK_HBOX(PN_ST_ROOT, PN_FIELD_H, wuss_STD_GAP, stack_ALIGN_START),
-  [PN_ST_HEIGHT_LABEL] = STACK_LEAF_GROUP(PN_ST_HEIGHT_ROW, 0, PN_FIELD_H, stack_ALIGN_CENTRE, PN_G_LABEL),
-  [PN_ST_HEIGHT]       = STACK_LEAF(PN_ST_HEIGHT_ROW, PN_FIELD_W, PN_FIELD_H, stack_ALIGN_CENTRE),
+  [PN_ST_HEIGHT_ROW]   = STACK_HBOX(PN_ST_ROOT, wuss_STD_GLYPH_SIZE, wuss_STD_GAP, stack_ALIGN_START),
+  [PN_ST_HEIGHT_LABEL] = STACK_LEAF_GROUP(PN_ST_HEIGHT_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE, PN_G_LABEL),
+  [PN_ST_HEIGHT]       = STACK_LEAF(PN_ST_HEIGHT_ROW, PN_FIELD_W, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE),
 
-  [PN_ST_BG_ROW]       = STACK_HBOX(PN_ST_ROOT, wuss_STD_OPTION_SIZE, wuss_STD_GAP, stack_ALIGN_START),
-  [PN_ST_BG_LABEL]     = STACK_LEAF_GROUP(PN_ST_BG_ROW, 0, wuss_STD_OPTION_SIZE, stack_ALIGN_CENTRE, PN_G_LABEL),
+  [PN_ST_BG_ROW]       = STACK_HBOX(PN_ST_ROOT, wuss_STD_GLYPH_SIZE, wuss_STD_GAP, stack_ALIGN_START),
+  [PN_ST_BG_LABEL]     = STACK_LEAF_GROUP(PN_ST_BG_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE, PN_G_LABEL),
   PN_ST_RADIO(0),
   PN_ST_RADIO(1),
   PN_ST_RADIO(2),
@@ -230,7 +229,7 @@ static result_t paintnew_layout(const wuss_t *wuss,
   items[PN_ST_HEIGHT_LABEL].axis_size = task_text_width(wuss, "Height");
   items[PN_ST_BG_LABEL].axis_size     = task_text_width(wuss, "Background");
   for (i = 0; i < PN_BG__COUNT; i++)
-    items[PN_ST_BG + i].axis_size = wuss_STD_OPTION_SIZE + wuss_STD_GAP +
+    items[PN_ST_BG + i].axis_size = wuss_STD_GLYPH_SIZE + wuss_STD_GAP +
                                     task_text_width(wuss, paintnew_bg_names[i]);
   items[PN_ST_CANCEL].axis_size =
     task_button_width(wuss, "Cancel", wuss_STD_SECONDARY_BUTTON_BORDER);
