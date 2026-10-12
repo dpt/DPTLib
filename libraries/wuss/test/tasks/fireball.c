@@ -69,6 +69,9 @@ void fireball_init(fireball_t *fb)
   fb->style.min_size     *= 4;
   fb->style.max_size     *= 4;
   fb->style.palette_index = 0;
+  /* set_default_style leaves probability alone; a zero total divides by
+   * zero building the chance table */
+  fb->style.probability   = 1;
   init_particle_system(&fb->ps, 0, &fb->style, 1, 0.2f, fireball_rand,
                        fireball_time, fireball_render_particle, fb);
 }
