@@ -31,6 +31,13 @@
 
 #define GRIDVIEW_ELLIPSIS "..."
 
+/* the window never shrinks narrower than a cell with a label this long */
+#define GRIDVIEW_MIN_LABEL_CHARS 10
+
+/* with no items there is no glyph to measure, so an empty grid assumes one
+ * this tall (a RISC OS file icon's height) to keep a cell's room for one */
+#define GRIDVIEW_EMPTY_GLYPH_H 34
+
 static void gridview_reflow(wuss_gridview_t *gv);
 
 struct wuss_gridview
@@ -48,6 +55,7 @@ struct wuss_gridview
   int                            label_chars;
   size2d_t                       cell;    /* glyph+label cell size, with padding */
   size2d_t                       content; /* widest glyph/label, tallest glyph */
+  int                            min_label_w; /* GRIDVIEW_MIN_LABEL_CHARS wide */
   bmfont_t                      *measured_font; /* font last measured with */
   int                            measured_height; /* its height then */
   int                            pad_x;   /* cell side edge to its contents */
@@ -70,9 +78,10 @@ struct wuss_gridview
 
 /* Walk every item once and record the widest content (its glyph or its
  * measured label, the label capped at "label_chars" characters of the
- * window's font) and the tallest glyph in gv->content. Costs a text measure
- * per item, so it runs only when the items or the font may have changed --
- * the label cap stops one long name inflating the grid. */
+ * window's font) and the tallest glyph (GRIDVIEW_EMPTY_GLYPH_H if there are
+ * no items) in gv->content. Costs a text measure per item, so it runs only
+ * when the items or the font may have changed -- the label cap stops one long
+ * name inflating the grid. */
 static void gridview_measure_items(wuss_gridview_t *gv)
 {
   wuss_t              *wuss;
@@ -88,11 +97,14 @@ static void gridview_measure_items(wuss_gridview_t *gv)
   label_w = 0;
   cap_w   = 0;
 
+  gv->min_label_w = 0;
   if (font != NULL)
   {
     char_w = 0;
     wuss__text_measure(font, "M", 1, INT_MAX, NULL, &char_w);
-    cap_w = (int) char_w * gv->label_chars;
+    cap_w           = (int) char_w * gv->label_chars;
+    gv->min_label_w = (int) char_w * MIN(gv->label_chars,
+                                         GRIDVIEW_MIN_LABEL_CHARS);
   }
 
   for (i = 0; i < gv->count; i++)
@@ -112,6 +124,9 @@ static void gridview_measure_items(wuss_gridview_t *gv)
       label_w = MAX(label_w, MIN((int) text_w, cap_w));
     }
   }
+
+  if (gv->count == 0)
+    glyph_h = GRIDVIEW_EMPTY_GLYPH_H;
 
   gv->content         = SIZE2D(MAX(glyph_w, label_w), glyph_h);
   gv->measured_font   = font;
@@ -231,6 +246,18 @@ static int gridview_width_for_columns(const wuss_gridview_t *gv, int cols)
   return 2 * gv->inset + cols * gv->cell.w;
 }
 
+/* Smallest content size: one cell, widened to fit a GRIDVIEW_MIN_LABEL_CHARS
+ * label unless the caller fixed the cell size. */
+static size2d_t gridview_min_size(const wuss_gridview_t *gv)
+{
+  int w;
+
+  w = gv->cell.w;
+  if (!gv->fixed_cell)
+    w = MAX(w, gv->min_label_w + 2 * gv->pad_x);
+  return SIZE2D(w + 2 * gv->inset, gv->cell.h + 2 * gv->inset);
+}
+
 /* Recompute the column count from the window's current content width, and
  * set the document extent to match. The extent is as wide as the widest
  * layout this screen and item count allow, so the window can always be
@@ -239,7 +266,7 @@ static int gridview_width_for_columns(const wuss_gridview_t *gv, int cols)
 static void gridview_reflow(wuss_gridview_t *gv)
 {
   box_t    content;
-  size2d_t doc, max;
+  size2d_t doc, max, min;
   int      cols, max_cols, rows;
 
   wuss_window_get_content_bounds(gv->window, &content);
@@ -248,15 +275,15 @@ static void gridview_reflow(wuss_gridview_t *gv)
   cols     = gridview_columns_for_width(gv, content.x1 - content.x0);
   max_cols = MAX(gridview_columns_for_width(gv, max.w), cols);
   rows     = (gv->count + cols - 1) / cols;
+  min      = gridview_min_size(gv);
 
-  /* always positive: cell size and at least one column and row */
-  doc = SIZE2D(gridview_width_for_columns(gv, max_cols),
+  /* always positive: cell size and at least one column and row; at least
+   * min wide, as the window's min_doc is capped to its doc */
+  doc = SIZE2D(MAX(gridview_width_for_columns(gv, max_cols), min.w),
                MAX(rows, 1) * gv->cell.h + 2 * gv->inset);
 
-  /* cannot fail: the width is positive */
-  (void) wuss_window_set_min_size(gv->window,
-                                  SIZE2D(gridview_width_for_columns(gv, 1),
-                                         wuss_KEEP));
+  /* cannot fail: both sizes are positive */
+  (void) wuss_window_set_min_size(gv->window, min);
 
   if (cols == gv->columns && doc.w == gv->doc.w && doc.h == gv->doc.h)
     return;
@@ -766,7 +793,8 @@ size2d_t wuss_gridview_natural_size(const wuss_gridview_t *gv,
   columns = MIN(MAX(columns, 1), MAX(gv->count, 1));
   rows    = (gv->count + columns - 1) / columns;
   rows    = MIN(MAX(rows, 1), MAX(max_rows, 1));
-  return SIZE2D(gridview_width_for_columns(gv, columns),
+  return SIZE2D(MAX(gridview_width_for_columns(gv, columns),
+                    gridview_min_size(gv).w),
                 rows * gv->cell.h + 2 * gv->inset);
 }
 

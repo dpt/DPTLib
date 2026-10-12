@@ -401,6 +401,9 @@ int wuss_gridview_width_for_columns(const wuss_gridview_t *gridview,
 /**
  * Content size that suits opening the window: \p columns wide (or one column
  * per item if fewer), as many rows as the items need up to \p max_rows.
+ * Never narrower than the window's minimum: one cell wide enough for a
+ * ten-character label (or \p label_chars, if fewer), unless the cell size
+ * was fixed by \ref wuss_gridview_set_cell_size.
  *
  * \param[in] gridview Handle.
  * \param[in] columns  Column count; at least 1.

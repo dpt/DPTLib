@@ -7031,8 +7031,10 @@ StringSetOK: ;
     cell_w = wuss_gridview_get_cell_size(gv).w;
     if (wuss_gridview_get_columns(gv) != 1) goto GridViewFail;
 
-    /* the minimum width is one column; wuss_KEEP leaves an axis alone */
-    if (gvwin->min_doc.w != wuss_gridview_width_for_columns(gv, 1)) goto GridViewFail;
+    /* the minimum is one cell (already label_chars wide here, from the long
+     * label); wuss_KEEP leaves an axis alone */
+    if (gvwin->min_doc.w != wuss_gridview_width_for_columns(gv, 1) ||
+        gvwin->min_doc.h != cell_h) goto GridViewFail;
     if (wuss_window_set_min_size(gvwin, SIZE2D(wuss_KEEP, 9)) != result_OK) goto GridViewFail;
     if (gvwin->min_doc.h != 9 ||
         gvwin->min_doc.w != wuss_gridview_width_for_columns(gv, 1)) goto GridViewFail;
@@ -7053,6 +7055,41 @@ StringSetOK: ;
     /* a foreign event is declined */
     ev.kind = wuss_EVENT_IDLE;
     if (wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+
+    /* one short label: the minimum is still wide enough for a ten-character
+     * label, so wider than the one narrow column, and so is the natural
+     * size; gv then reflows the window back */
+    {
+      wuss_gridview_t *short_gv;
+      int              one_col;
+
+      rc = wuss_gridview_create(&short_gv, gvwin, 1, gridview_test_item, 12,
+                                NULL, NULL);
+      if (rc != result_OK) goto GridViewFail;
+      one_col = wuss_gridview_width_for_columns(short_gv, 1);
+      if (gvwin->min_doc.w <= one_col ||
+          wuss_gridview_natural_size(short_gv, 1, 1).w != gvwin->min_doc.w)
+      {
+        wuss_gridview_destroy(short_gv);
+        goto GridViewFail;
+      }
+      wuss_gridview_destroy(short_gv);
+
+      /* no items: no glyph to measure, yet the minimum keeps room for an
+       * icon above the label */
+      rc = wuss_gridview_create(&short_gv, gvwin, 0, gridview_test_item, 12,
+                                NULL, NULL);
+      if (rc != result_OK) goto GridViewFail;
+      if (gvwin->min_doc.h < 34)
+      {
+        wuss_gridview_destroy(short_gv);
+        goto GridViewFail;
+      }
+      wuss_gridview_destroy(short_gv);
+
+      ev.kind = wuss_EVENT_OPEN;
+      (void) wuss_gridview_handle_event(gv, &ev);
+    }
 
     /* a redraw is consumed and draws without crashing (ASan-checked) */
     ev.kind                = wuss_EVENT_REDRAW;
