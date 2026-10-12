@@ -36,6 +36,7 @@
 #include "tasks/gradient.h"
 #include "tasks/greeble.h"
 #include "tasks/icons.h"
+#include "tasks/resizing.h"
 #include "tasks/viewing.h"
 #include "tasks/fern.h"
 #include "tasks/keys.h"
@@ -131,6 +132,7 @@ g_image_tasks[] =
   { "Dithering", dithering_app_create },
   { "Effects", effects_app_create },
   { "Paint", paint_app_create },
+  { "Resizing", resizing_app_create },
   { "Viewing", viewing_app_create },
   { "Tiling", tiling_app_create }
 },

@@ -286,6 +286,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/bitmap/compress.c
     libraries/framebuf/bitmap/fill-pattern.c
     libraries/framebuf/bitmap/load.c
+    libraries/framebuf/bitmap/resize.c
     libraries/framebuf/bitmap/rle.h
     libraries/framebuf/bitmap/save.c
     libraries/framebuf/bmfont/bmfont.c
@@ -803,6 +804,7 @@ if(BUILD_TESTS)
         libraries/datastruct/list/test/list-test.c
         libraries/datastruct/ntree/test/ntree-test.c
         libraries/framebuf/bitmap/test/load-test.c
+        libraries/framebuf/bitmap/test/resize-test.c
         libraries/framebuf/bitmap/test/rle-test.c
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/bmfont/test/bmfontcache-test.c
@@ -936,6 +938,8 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/sofa.c
         libraries/wuss/test/tasks/spheroid.c
         libraries/wuss/test/tasks/reading.c
+        libraries/wuss/test/tasks/resizing.c
+        libraries/wuss/test/tasks/resizing.h
         libraries/wuss/test/tasks/tiling.c
         libraries/wuss/test/tasks/taskapp.c
         libraries/wuss/test/tasks/taskapp.h
