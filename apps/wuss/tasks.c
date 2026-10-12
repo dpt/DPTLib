@@ -37,6 +37,7 @@
 #include "tasks/greeble.h"
 #include "tasks/icons.h"
 #include "tasks/viewing.h"
+#include "tasks/fern.h"
 #include "tasks/keys.h"
 #include "tasks/lissajous.h"
 #include "tasks/minesweeper.h"
@@ -160,6 +161,7 @@ g_visuals_tasks[] =
 g_toys_tasks[] =
 {
   { "Doughnut", doughnut_app_create },
+  { "Fern", fern_app_create },
   { "Particles", particles_app_create },
   { "Saturn", saturn_app_create },
   { "Sofa", sofa_app_create },
