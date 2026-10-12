@@ -694,8 +694,9 @@ static result_t saturn_conf_fillout(void *opaque)
 static result_t saturn_conf_apply(saturn_task_t *task)
 {
   result_t rc;
-  int      row, size_value;
+  int      row, size_value, old_size;
 
+  old_size = task->config.size;
   for (row = 0; row < SATURN_SIZEDLG_NROWS; row++)
     *saturn_sizedlg_field(task, row) =
       wuss_icon_get_value(task->conf.rows[row].slider);
@@ -704,6 +705,12 @@ static result_t saturn_conf_apply(saturn_task_t *task)
     return result_OK; /* planet window closed while the dialogue lingers */
 
   size_value = task->config.size;
+  if (size_value == old_size)
+  {
+    wuss_window_invalidate_visible(task->window); /* iterations changed */
+    return result_OK;
+  }
+
   rc = wuss_window_resize(task->window, SIZE2D(size_value, size_value));
   if (rc != result_OK)
     return rc;
