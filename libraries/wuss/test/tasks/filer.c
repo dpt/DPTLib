@@ -17,6 +17,7 @@
 #include "base/debug.h"
 #include "base/utils.h"
 #include "io/path.h"
+#include "wuss/component/proginfo.h"
 #include "wuss/icon-spec.h"
 #include "wuss/icon.h"
 #include "wuss/menu.h"
@@ -357,6 +358,16 @@ result_t filer_create(wuss_t *wuss, filer_task_t **out)
   WUSS_MENU_TITLE(task->menu, "Filer", task->menu_items,
                  NELEMS(task->menu_items));
 
+  WUSS_MENU_ITEM_WINDOW(task->ib_menu_items, FILER_IB_MENU_INFO, "Info",
+                        wuss_MENU_ITEM_BORROWED_SUBMENU |
+                        wuss_MENU_ITEM_PRE_OPEN,
+                        NULL); /* retargeted at the shared proginfo
+                                * singleton when the menu opens */
+  WUSS_MENU_ITEM(task->ib_menu_items, FILER_IB_MENU_OPEN_ROOT, "Open root",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_TITLE(task->ib_menu, "Filer", task->ib_menu_items,
+                  NELEMS(task->ib_menu_items));
+
   delegate_desc.handle    = filer_handle;
   delegate_desc.task_data = task;
   delegate_desc.name      = "filer";
@@ -532,6 +543,19 @@ static void filer_menu_update(filer_task_t *task)
 #endif
 }
 
+static result_t filer_iconbar_menu_open(filer_task_t *task)
+{
+  static const wuss_proginfo_desc_t desc =
+    TASK_PROGINFO_DESC("Filer", "Directory display and file save target");
+
+  wuss_proginfo_set_desc(&desc);
+  task->ib_menu_items[FILER_IB_MENU_INFO].window =
+    wuss_proginfo_window(task->delegate);
+
+  return wuss_iconbar_menu_open(task->delegate, &task->ib_menu,
+                                &task->menu_handle);
+}
+
 static result_t filer_menu_open(filer_task_t *task, wuss_window_t *window)
 {
   task->menu_window = window;
@@ -640,6 +664,8 @@ result_t filer_handle(wuss_window_t      *window,
       return result_OK; /* not the icon bar icon */
     if (event->data.iconbar_icon.action != wuss_MOUSE_UP)
       return result_OK;
+    if (event->data.iconbar_icon.button & wuss_BUTTON_MENU)
+      return filer_iconbar_menu_open(task);
     return filer_open_path(task, filer_root(), NULL, 0);
 
   case wuss_EVENT_MENU_SELECT:
@@ -647,6 +673,12 @@ result_t filer_handle(wuss_window_t      *window,
     filer_window_t *fw;
     char            parent[DPTLIB_MAXPATH];
 
+    if (event->data.menu_select.menu == &task->ib_menu)
+    {
+      if (event->data.menu_select.index == FILER_IB_MENU_OPEN_ROOT)
+        return filer_open_path(task, filer_root(), NULL, 0);
+      return result_OK;
+    }
     if (event->data.menu_select.menu != &task->menu)
       return result_OK;
 
@@ -684,6 +716,21 @@ result_t filer_handle(wuss_window_t      *window,
     default:
       return result_OK;
     }
+  }
+
+  case wuss_EVENT_PRE_SHOW:
+  {
+    result_t rc;
+
+    if (window == task->ib_menu_items[FILER_IB_MENU_INFO].window)
+      rc = wuss_proginfo_handle_pre_show();
+    else
+      rc = result_OK;
+    if (rc != result_OK || event->data.pre_show.handle == NULL)
+      return rc;
+
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
   }
 
   case wuss_EVENT_MENU_CLOSED:

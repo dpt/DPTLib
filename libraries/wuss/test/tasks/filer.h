@@ -32,6 +32,14 @@ enum
   FILER_MENU__LIMIT
 };
 
+/* icon bar menu rows */
+enum
+{
+  FILER_IB_MENU_INFO,
+  FILER_IB_MENU_OPEN_ROOT,
+  FILER_IB_MENU__LIMIT
+};
+
 /* Set the directory a Filer's icon bar icon/System menu row opens, applied
  * the next time a Filer task is created (see filer_create). Not retroactive:
  * a Filer already running keeps the windows it has open. Call before
@@ -93,6 +101,8 @@ struct filer_task
                                        * over, or NULL */
   wuss_menu_item_t       menu_items[FILER_MENU__LIMIT];
   wuss_menu_t            menu;
+  wuss_menu_item_t       ib_menu_items[FILER_IB_MENU__LIMIT];
+  wuss_menu_t            ib_menu;
 };
 
 wuss_window_fn_t filer_handle;
