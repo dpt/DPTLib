@@ -906,8 +906,8 @@ if(BUILD_APPS)
         libraries/wuss/tasks/chars.c
         libraries/wuss/tasks/checker.c
         libraries/wuss/tasks/clock.c
-        libraries/wuss/tasks/config.c
-        libraries/wuss/tasks/curve.c
+        libraries/wuss/tasks/configuring.c
+        libraries/wuss/tasks/curving.c
         libraries/wuss/tasks/dithering.c
         libraries/wuss/tasks/display.c
         libraries/wuss/tasks/doughnut.c
@@ -919,7 +919,7 @@ if(BUILD_APPS)
         libraries/wuss/tasks/icons.c
         libraries/wuss/tasks/viewing.c
         libraries/wuss/tasks/keys.c
-        libraries/wuss/tasks/lissajous.c
+        libraries/wuss/tasks/oscillating.c
         libraries/wuss/tasks/minesweeping.c
         libraries/wuss/tasks/painting-doc.c
         libraries/wuss/tasks/painting-doc.h
@@ -930,9 +930,9 @@ if(BUILD_APPS)
         libraries/wuss/tasks/painting.c
         libraries/wuss/tasks/painting.h
         libraries/wuss/tasks/palette.c
-        libraries/wuss/tasks/particles.c
+        libraries/wuss/tasks/fireworks.c
         libraries/wuss/tasks/patterns.c
-        libraries/wuss/tasks/porter-duff.c
+        libraries/wuss/tasks/compositing.c
         libraries/wuss/tasks/saturn.c
         libraries/wuss/tasks/snapshot.c
         libraries/wuss/tasks/sofa.c

@@ -1,7 +1,7 @@
-/* wuss/tasks/porter-duff.h -- animated Porter-Duff compositing task */
+/* wuss/tasks/compositing.h -- animated Porter-Duff compositing task */
 
-#ifndef TASKS_PORTER_DUFF_H
-#define TASKS_PORTER_DUFF_H
+#ifndef TASKS_COMPOSITING_H
+#define TASKS_COMPOSITING_H
 
 #ifdef WUSS_APP
 
@@ -22,7 +22,7 @@
  * typed) that writes the window's contents out. Once a click has given the
  * window the input focus, Space pauses/resumes and Left/Right step the
  * rule. */
-typedef struct porter_duff_task
+typedef struct compositing_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
   wuss_task_t        *delegate; /* the task that owns the menu */
@@ -50,9 +50,9 @@ typedef struct porter_duff_task
   colour_t         fg;              /* rule name label */
   colour_t         bg;              /* rule name label */
 }
-porter_duff_task_t;
+compositing_task_t;
 
-wuss_window_fn_t porter_duff_handle;
+wuss_window_fn_t compositing_handle;
 
 /* load the two demo images and create the window against the given wuss
  * instance, colouring the checkerboard/label from wuss's own palette
@@ -60,15 +60,15 @@ wuss_window_fn_t porter_duff_handle;
  * font (wuss_get_font_n(wuss, 0)); the images are loaded from
  * wuss_get_resources(wuss) (the DPTLib repo root); if out is non-NULL, the
  * task block is also returned through it */
-result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out);
+result_t compositing_create(wuss_t *wuss, compositing_task_t **out);
 
-/* install the icon bar app that opens porter_duff windows on demand */
-result_t porter_duff_app_create(wuss_t *wuss);
+/* install the icon bar app that opens compositing windows on demand */
+result_t compositing_app_create(wuss_t *wuss);
 
-/* free a task block allocated by porter_duff_create; normally called by the
+/* free a task block allocated by compositing_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
-void porter_duff_destroy(porter_duff_task_t *task);
+void compositing_destroy(compositing_task_t *task);
 
 #endif /* WUSS_APP */
 
-#endif /* TASKS_PORTER_DUFF_H */
+#endif /* TASKS_COMPOSITING_H */

@@ -26,8 +26,8 @@
 #include "tasks/checker.h"
 #include "tasks/clock.h"
 #include "tasks/common.h"
-#include "tasks/config.h"
-#include "tasks/curve.h"
+#include "tasks/configuring.h"
+#include "tasks/curving.h"
 #include "tasks/dithering.h"
 #include "tasks/display.h"
 #include "tasks/doughnut.h"
@@ -40,13 +40,13 @@
 #include "tasks/viewing.h"
 #include "tasks/fern.h"
 #include "tasks/keys.h"
-#include "tasks/lissajous.h"
+#include "tasks/oscillating.h"
 #include "tasks/minesweeping.h"
 #include "tasks/painting.h"
 #include "tasks/palette.h"
-#include "tasks/particles.h"
+#include "tasks/fireworks.h"
 #include "tasks/patterns.h"
-#include "tasks/porter-duff.h"
+#include "tasks/compositing.h"
 #include "tasks/saturn.h"
 #include "tasks/sofa.h"
 #include "tasks/spheroid.h"
@@ -141,7 +141,7 @@ g_tests_tasks[] =
 {
   { "Icons", icons_app_create },
   { "Keys", keys_app_create },
-  { "Porter-Duff", porter_duff_app_create }
+  { "Compositing", compositing_app_create }
 },
 g_text_tasks[] =
 {
@@ -155,24 +155,24 @@ g_utilities_tasks[] =
 g_visuals_tasks[] =
 {
   { "Checker", checker_app_create },
-  { "Curve", curve_app_create },
+  { "Curving", curving_app_create },
   { "Gradient", gradient_app_create },
   { "Greebling", greebling_app_create },
-  { "Lissajous", lissajous_app_create },
+  { "Oscillating", oscillating_app_create },
   { "Patterns", patterns_app_create }
 },
 g_toys_tasks[] =
 {
   { "Doughnut", doughnut_app_create },
   { "Fern", fern_app_create },
-  { "Particles", particles_app_create },
+  { "Fireworks", fireworks_app_create },
   { "Saturn", saturn_app_create },
   { "Sofa", sofa_app_create },
   { "Spheroid", spheroid_app_create }
 },
 g_system_tasks[] =
 {
-  { "Configure", config_app_create },
+  { "Configuring", configuring_app_create },
   { "Display", display_app_create },
   { "Palette", palette_app_create },
 #ifdef WUSS_ICONBAR

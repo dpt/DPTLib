@@ -1,14 +1,14 @@
-/* wuss/tasks/config.h -- startup settings task (mouse button swap,
+/* wuss/tasks/configuring.h -- startup settings task (mouse button swap,
  * reverse scroll, backdrop swatches) */
 
-#ifndef TASKS_CONFIG_H
-#define TASKS_CONFIG_H
+#ifndef TASKS_CONFIGURING_H
+#define TASKS_CONFIGURING_H
 
 #ifdef WUSS_APP
 
 /* Longest text a writable timing field ever needs to hold: "65535" (5 chars)
  * plus the terminator. */
-#define CONFIG_FIELD_BUF  6
+#define CONFIGURING_FIELD_BUF  6
 
 #include "framebuf/pattern.h"
 #include "geom/box.h"
@@ -29,7 +29,7 @@
  * mixing the three, and a "Set backdrop" action applying the result via
  * wuss_set_backdrop. Opened once from run_wuss, not from the task launcher
  * menu. */
-typedef struct config_task
+typedef struct configuring_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the
                                  * menu */
@@ -41,13 +41,13 @@ typedef struct config_task
   wuss_icon_t         *double_click_px_icon;
   wuss_icon_t         *drag_threshold_px_icon;
   wuss_icon_t         *apply_timing_icon;
-  char                 double_click_ms_text[CONFIG_FIELD_BUF];
+  char                 double_click_ms_text[CONFIGURING_FIELD_BUF];
                                              /* "65535\0" */
-  char                 double_click_px_text[CONFIG_FIELD_BUF];
-  char                 drag_threshold_px_text[CONFIG_FIELD_BUF];
+  char                 double_click_px_text[CONFIGURING_FIELD_BUF];
+  char                 drag_threshold_px_text[CONFIGURING_FIELD_BUF];
   int                  swatch_x;    /* left edge of every swatch column and
                                      * the grid, document space; set once by
-                                     * config_create, read by redraw and
+                                     * configuring_create, read by redraw and
                                      * click hit-testing so the two always
                                      * agree */
   int                  fg_y;
@@ -62,21 +62,21 @@ typedef struct config_task
                                  * result's tile */
   wuss_icon_t         *set_backdrop_icon;
 }
-config_task_t;
+configuring_task_t;
 
-wuss_window_fn_t config_handle;
+wuss_window_fn_t configuring_handle;
 
 /* create the startup settings window against the given wuss instance; if out
  * is non-NULL, the task block is also returned through it */
-result_t config_create(wuss_t *wuss, config_task_t **out);
+result_t configuring_create(wuss_t *wuss, configuring_task_t **out);
 
 /* install the icon bar app that opens config windows on demand */
-result_t config_app_create(wuss_t *wuss);
+result_t configuring_app_create(wuss_t *wuss);
 
-/* free a task block allocated by config_create; normally called by the
+/* free a task block allocated by configuring_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
-void config_destroy(config_task_t *task);
+void configuring_destroy(configuring_task_t *task);
 
 #endif /* WUSS_APP */
 
-#endif /* TASKS_CONFIG_H */
+#endif /* TASKS_CONFIGURING_H */

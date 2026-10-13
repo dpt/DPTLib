@@ -1,4 +1,4 @@
-/* wuss/tasks/porter-duff.c -- animated Porter-Duff compositing task */
+/* wuss/tasks/compositing.c -- animated Porter-Duff compositing task */
 
 #ifdef WUSS_APP
 
@@ -17,22 +17,22 @@
 #include "io/filetype.h"
 #include "io/path.h"
 
-#include "porter-duff.h"
+#include "compositing.h"
 #include "taskapp.h"
 #include "common.h"
 #include "snapshot.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live
- * per-instance in porter_duff_task_t, not as a file-scope static */
+ * per-instance in compositing_task_t, not as a file-scope static */
 enum
 {
-  PORTER_DUFF_MENU_PAUSE,
-  PORTER_DUFF_MENU_RULE,
-  PORTER_DUFF_MENU_SWAP,
-  PORTER_DUFF_MENU_SAVE
+  COMPOSITING_MENU_PAUSE,
+  COMPOSITING_MENU_RULE,
+  COMPOSITING_MENU_SWAP,
+  COMPOSITING_MENU_SAVE
 };
 
-#define PORTER_DUFF_SAVE_NAME "porter-duff.png" /* Save As's initial leafname */
+#define COMPOSITING_SAVE_NAME "compositing.png" /* Save As's initial leafname */
 
 #define PD_SIZE            (256) /* the demo images are 256x256 */
 #define PD_LABEL_HEIGHT     (20) /* strip below the pane, for the rule name */
@@ -168,22 +168,22 @@ static result_t load_demo_png(bitmap_t   *bm,
   return result_OK;
 }
 
-/* wuss_saveas_save_fn_t: opaque is the porter_duff_task_t */
-static result_t porter_duff_saveas_save(const char *path, void *opaque)
+/* wuss_saveas_save_fn_t: opaque is the compositing_task_t */
+static result_t compositing_saveas_save(const char *path, void *opaque)
 {
-  porter_duff_task_t *pd;
+  compositing_task_t *pd;
 
   pd = opaque;
 
-  return snapshot_save_png(pd->window, porter_duff_handle, pd, path);
+  return snapshot_save_png(pd->window, compositing_handle, pd, path);
 }
 
 /* ----------------------------------------------------------------------- */
 
-result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
+result_t compositing_create(wuss_t *wuss, compositing_task_t **out)
 {
   result_t            rc;
-  porter_duff_task_t *task;
+  compositing_task_t *task;
   wuss_task_t        *delegate;
   wuss_task_desc_t    delegate_desc;
   filetype_t          png_type;
@@ -224,10 +224,10 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
   if (rc != result_OK)
     goto free_src;
 
-  /* porter_duff_redraw paints every pixel itself */
-  delegate_desc.handle    = porter_duff_handle;
+  /* compositing_redraw paints every pixel itself */
+  delegate_desc.handle    = compositing_handle;
   delegate_desc.task_data = task;
-  delegate_desc.name      = "porter-duff";
+  delegate_desc.name      = "compositing";
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
     goto free_dst; /* nothing registered yet; nobody else owns task */
@@ -236,7 +236,7 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
 
   rc = task_window_create(delegate,
                           SIZE2D(PD_SIZE, PD_SIZE + PD_LABEL_HEIGHT),
-                          "Porter-Duff",
+                          "Compositing",
                           &task->window);
   if (rc != result_OK)
   {
@@ -246,7 +246,7 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
 
   png_type = filetype_from_ext(".png");
   rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
-                          PORTER_DUFF_SAVE_NAME, porter_duff_saveas_save,
+                          COMPOSITING_SAVE_NAME, compositing_saveas_save,
                           task);
   if (rc != result_OK)
   {
@@ -254,7 +254,7 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PORTER_DUFF_MENU_PAUSE, "Pause",
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, COMPOSITING_MENU_PAUSE, "Pause",
                           wuss_MENU_ITEM_NONE, "SPACE");
 
   for (i = 0; i < composite_RULE__LIMIT; i++)
@@ -263,19 +263,19 @@ result_t porter_duff_create(wuss_t *wuss, porter_duff_task_t **out)
   WUSS_MENU_TITLE(task->rule_menu, "Rule", task->rule_items,
                  NELEMS(task->rule_items));
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, PORTER_DUFF_MENU_RULE, "Rule",
+  WUSS_MENU_ITEM_MENU(task->menu_items, COMPOSITING_MENU_RULE, "Rule",
                       wuss_MENU_ITEM_NONE, &task->rule_menu);
 
-  WUSS_MENU_ITEM(task->menu_items, PORTER_DUFF_MENU_SWAP, "Swap images",
+  WUSS_MENU_ITEM(task->menu_items, COMPOSITING_MENU_SWAP, "Swap images",
                  wuss_MENU_ITEM_NONE);
 
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PORTER_DUFF_MENU_SAVE, "Save PNG",
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, COMPOSITING_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_NONE, "^S");
   /* hover opens the Save As dialogue as a submenu; ^S shows it standalone */
-  task->menu_items[PORTER_DUFF_MENU_SAVE].window =
+  task->menu_items[COMPOSITING_MENU_SAVE].window =
     wuss_saveas_window(task->saveas);
 
-  WUSS_MENU_TITLE(task->menu, "Porter-Duff", task->menu_items,
+  WUSS_MENU_TITLE(task->menu, "Compositing", task->menu_items,
                  NELEMS(task->menu_items));
 
   if (out)
@@ -296,19 +296,19 @@ free_a:
   return rc;
 }
 
-result_t porter_duff_app_create(wuss_t *wuss)
+result_t compositing_app_create(wuss_t *wuss)
 {
   static const taskapp_desc_t desc =
   {
-    "Porter-Duff",
+    "Compositing",
     "Animated Porter-Duff compositing",
-    (taskapp_create_fn_t) porter_duff_create
+    (taskapp_create_fn_t) compositing_create
   };
 
   return taskapp_install(wuss, &desc);
 }
 
-void porter_duff_destroy(porter_duff_task_t *task)
+void compositing_destroy(compositing_task_t *task)
 {
   wuss_saveas_destroy(task->saveas);
   free(task->dst.base);
@@ -322,7 +322,7 @@ void porter_duff_destroy(porter_duff_task_t *task)
 
 /* Triangle ramp: 0 at the start of the rule's turn, 255 at its midpoint, back
  * to 0 at its end. */
-static int porter_duff_ramp(const porter_duff_task_t *pd)
+static int compositing_ramp(const compositing_task_t *pd)
 {
   int half;
 
@@ -339,7 +339,7 @@ static int porter_duff_ramp(const porter_duff_task_t *pd)
 /* Copy "a" into "src", scaling its alpha channel by "ramp" (0..255). The
  * library's compositing works on non-premultiplied values, so the colour
  * components are left alone. */
-static void porter_duff_ramp_src(porter_duff_task_t *pd, int ramp)
+static void compositing_ramp_src(compositing_task_t *pd, int ramp)
 {
   pixelfmt_any_t *sp;
   pixelfmt_any_t *dp;
@@ -360,7 +360,7 @@ static void porter_duff_ramp_src(porter_duff_task_t *pd, int ramp)
     }
 }
 
-static void porter_duff_draw_checkerboard(const porter_duff_task_t *pd,
+static void compositing_draw_checkerboard(const compositing_task_t *pd,
                                           screen_t                 *scr,
                                           const box_t              *content,
                                           const box_t              *bounds,
@@ -404,11 +404,11 @@ static void porter_duff_draw_checkerboard(const porter_duff_task_t *pd,
     }
 }
 
-static result_t porter_duff_redraw(const wuss_event_t *event,
+static result_t compositing_redraw(const wuss_event_t *event,
                                    void               *task_data)
 {
   result_t            rc;
-  porter_duff_task_t *pd;
+  compositing_task_t *pd;
   screen_t           *scr;
   const box_t        *content, *bounds;
   const char         *name;
@@ -423,7 +423,7 @@ static result_t porter_duff_redraw(const wuss_event_t *event,
   sx      = event->data.redraw.scroll.x;
   sy      = event->data.redraw.scroll.y;
 
-  porter_duff_draw_checkerboard(pd, scr, content, bounds, sx, sy);
+  compositing_draw_checkerboard(pd, scr, content, bounds, sx, sy);
 
   /* ponytail: the whole 256x256 pane is recomposited on every redraw -- two
    * full-image memcpys plus two full-image passes. Fine for one window in a
@@ -433,7 +433,7 @@ static result_t porter_duff_redraw(const wuss_event_t *event,
   if (rc != result_OK)
     return rc;
 
-  porter_duff_ramp_src(pd, porter_duff_ramp(pd));
+  compositing_ramp_src(pd, compositing_ramp(pd));
 
   rc = composite(pd->rule, &pd->src, &pd->dst);
   if (rc != result_OK)
@@ -454,9 +454,9 @@ static result_t porter_duff_redraw(const wuss_event_t *event,
                      pd->fg, pd->bg, NULL, &pos, NULL);
 }
 
-static result_t porter_duff_idle(void *task_data)
+static result_t compositing_idle(void *task_data)
 {
-  porter_duff_task_t *pd;
+  compositing_task_t *pd;
 
   pd = task_data;
 
@@ -483,12 +483,12 @@ static result_t porter_duff_idle(void *task_data)
 }
 
 /* step the rule by dir (+1 or -1), wrapping round; paused, restart at the
- * ramp's midpoint, as porter_duff_pick_rule does */
-static result_t porter_duff_mouse(wuss_window_t *window,
+ * ramp's midpoint, as compositing_pick_rule does */
+static result_t compositing_mouse(wuss_window_t *window,
                                   int            dir,
                                   void          *task_data)
 {
-  porter_duff_task_t *pd;
+  compositing_task_t *pd;
 
   pd = task_data;
 
@@ -501,11 +501,11 @@ static result_t porter_duff_mouse(wuss_window_t *window,
   return result_OK;
 }
 
-static result_t porter_duff_scroll(wuss_window_t *window,
+static result_t compositing_scroll(wuss_window_t *window,
                                    int            delta,
                                    void          *task_data)
 {
-  porter_duff_task_t *pd;
+  compositing_task_t *pd;
 
   pd = task_data;
 
@@ -521,14 +521,14 @@ static result_t porter_duff_scroll(wuss_window_t *window,
 
 /* Left/Right step to the previous/next rule, as Adjust and Select clicks
  * do. Anything else is passed back unclaimed. */
-static result_t porter_duff_key(porter_duff_task_t *pd,
+static result_t compositing_key(compositing_task_t *pd,
                                 wuss_window_t      *window,
                                 int                 code)
 {
   switch (code)
   {
-  case wuss_KEY_LEFT:  return porter_duff_mouse(window, -1, pd);
-  case wuss_KEY_RIGHT: return porter_duff_mouse(window, +1, pd);
+  case wuss_KEY_LEFT:  return compositing_mouse(window, -1, pd);
+  case wuss_KEY_RIGHT: return compositing_mouse(window, +1, pd);
   default:             return result_WUSS_KEY_UNCLAIMED;
   }
 }
@@ -537,7 +537,7 @@ static result_t porter_duff_key(porter_duff_task_t *pd,
  * exchanges the source and destination images (with their scratch bitmaps,
  * which are sized to match). An ADJUST pick keeps the menu open, so retick
  * the live row; a SELECT pick has already closed it. */
-static result_t porter_duff_toggle(porter_duff_task_t *pd,
+static result_t compositing_toggle(compositing_task_t *pd,
                                    const wuss_event_t *event)
 {
   int      index;
@@ -546,7 +546,7 @@ static result_t porter_duff_toggle(porter_duff_task_t *pd,
 
   index = event->data.menu_select.index;
 
-  if (index == PORTER_DUFF_MENU_SWAP)
+  if (index == COMPOSITING_MENU_SWAP)
   {
     t       = pd->a;
     pd->a   = pd->b;
@@ -571,7 +571,7 @@ static result_t porter_duff_toggle(porter_duff_task_t *pd,
 /* A "Rule" submenu pick: jump straight to that rule. Paused, restart it at
  * the ramp's midpoint rather than its start, where the source is fully
  * transparent and the rule would look like DST. */
-static result_t porter_duff_pick_rule(porter_duff_task_t *pd,
+static result_t compositing_pick_rule(compositing_task_t *pd,
                                       const wuss_event_t *event)
 {
   pd->rule  = (composite_rule_t) event->data.menu_select.index;
@@ -584,18 +584,18 @@ static result_t porter_duff_pick_rule(porter_duff_task_t *pd,
   return result_OK;
 }
 
-result_t porter_duff_handle(wuss_window_t      *window,
+result_t compositing_handle(wuss_window_t      *window,
                             const wuss_event_t *event,
                             void               *task_data)
 {
-  porter_duff_task_t *pd;
+  compositing_task_t *pd;
 
   pd = task_data;
 
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return porter_duff_redraw(event, task_data);
+    return compositing_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
     if (window != pd->window)
@@ -605,21 +605,21 @@ result_t porter_duff_handle(wuss_window_t      *window,
       return result_OK;
     if (event->data.mouse.button & wuss_BUTTON_MENU)
     {
-      wuss_menu_tick_item(&pd->menu, PORTER_DUFF_MENU_PAUSE, pd->paused);
-      wuss_menu_tick_item(&pd->menu, PORTER_DUFF_MENU_SWAP, pd->swapped);
+      wuss_menu_tick_item(&pd->menu, COMPOSITING_MENU_PAUSE, pd->paused);
+      wuss_menu_tick_item(&pd->menu, COMPOSITING_MENU_SWAP, pd->swapped);
       wuss_menu_tick_exclusive(&pd->rule_menu, pd->rule);
 
       return wuss_menu_open_at_pointer(pd->delegate, &pd->menu,
                                        &pd->menu_handle);
     }
     if (event->data.mouse.button & wuss_BUTTON_SELECT)
-      return porter_duff_mouse(window, +1, task_data);
+      return compositing_mouse(window, +1, task_data);
     if (event->data.mouse.button & wuss_BUTTON_ADJUST)
-      return porter_duff_mouse(window, -1, task_data);
+      return compositing_mouse(window, -1, task_data);
     return result_OK;
 
   case wuss_EVENT_SCROLL:
-    return porter_duff_scroll(window, event->data.scroll.delta, task_data);
+    return compositing_scroll(window, event->data.scroll.delta, task_data);
 
   case wuss_EVENT_KEY:
   {
@@ -631,24 +631,24 @@ result_t porter_duff_handle(wuss_window_t      *window,
     if (!task_key_is_plain(pd->delegate, &pd->menu, event, &rc))
       return rc;
 
-    return porter_duff_key(pd, window, event->data.key.code);
+    return compositing_key(pd, window, event->data.key.code);
   }
 
   case wuss_EVENT_IDLE:
-    return porter_duff_idle(task_data);
+    return compositing_idle(task_data);
 
   case wuss_EVENT_MENU_SELECT:
     if (event->data.menu_select.menu == &pd->menu &&
-        (event->data.menu_select.index == PORTER_DUFF_MENU_PAUSE ||
-         event->data.menu_select.index == PORTER_DUFF_MENU_SWAP))
-      return porter_duff_toggle(pd, event);
+        (event->data.menu_select.index == COMPOSITING_MENU_PAUSE ||
+         event->data.menu_select.index == COMPOSITING_MENU_SWAP))
+      return compositing_toggle(pd, event);
     if (event->data.menu_select.menu == &pd->menu &&
-        event->data.menu_select.index == PORTER_DUFF_MENU_SAVE)
+        event->data.menu_select.index == COMPOSITING_MENU_SAVE)
     {
       return wuss_saveas_open(pd->saveas);
     }
     if (event->data.menu_select.menu == &pd->rule_menu)
-      return porter_duff_pick_rule(pd, event);
+      return compositing_pick_rule(pd, event);
     return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
@@ -661,7 +661,7 @@ result_t porter_duff_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_QUIT:
-    porter_duff_destroy(pd);
+    compositing_destroy(pd);
     return result_OK;
 
   default:

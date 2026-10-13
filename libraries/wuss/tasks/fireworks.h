@@ -1,7 +1,7 @@
-/* wuss/tasks/particles.h -- particle explosion task */
+/* wuss/tasks/fireworks.h -- particle explosion task */
 
-#ifndef TASKS_PARTICLES_H
-#define TASKS_PARTICLES_H
+#ifndef TASKS_FIREWORKS_H
+#define TASKS_FIREWORKS_H
 
 #ifdef WUSS_APP
 
@@ -16,7 +16,7 @@
 
 #include "explosion.h" /* fetched from github.com/dpt/Explosion */
 
-#define PARTICLES_NSTYLES 4
+#define FIREWORKS_NSTYLES 4
 
 /* window task: the Explosion particle engine. Select bursts a random mix of
  * styles at the click; Adjust bursts flecks. The pointer trails particles
@@ -32,7 +32,7 @@
  * Space toggles pause, W toggles walls, M markers and C clears, once a click has given
  * the window the input focus. A fresh burst fires by itself whenever the
  * window falls quiet. */
-typedef struct particles_task
+typedef struct fireworks_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
   wuss_task_t        *delegate; /* the task that owns the menu */
@@ -53,19 +53,19 @@ typedef struct particles_task
   wuss_slider_row_t   range_row; /* the force's sphere of influence, pixels */
   wuss_icon_t        *strength_cancel;
   wuss_icon_t        *strength_apply;
-  int                 strength_which; /* PARTICLES_ADD_ATTRACTOR or
-                                       * PARTICLES_ADD_REPELLER: set from the
+  int                 strength_which; /* FIREWORKS_ADD_ATTRACTOR or
+                                       * FIREWORKS_ADD_REPELLER: set from the
                                        * leaf's PRE_SHOW index, read by Apply */
   wuss_menu_item_t    gravity_items[5]; /* one row per strength */
   wuss_menu_t         gravity_menu;
-  int                 gravity; /* index into particles_gravities */
+  int                 gravity; /* index into fireworks_gravities */
   int                 menu_x, menu_y; /* where the menu was opened: an
                                        * emitter picked from it goes here */
   rng_t               rng;
   unsigned int        now_ms;   /* simulated clock, advanced per idle tick */
-  particle_style_t    styles[PARTICLES_NSTYLES];
+  particle_style_t    styles[FIREWORKS_NSTYLES];
   colour_t            bg;
-  colour_t            palette[PARTICLES_NSTYLES * PALETTE_SIZE];
+  colour_t            palette[FIREWORKS_NSTYLES * PALETTE_SIZE];
   particle_system_t   ps;
 
   /* pointer trail: last seen position and velocity (pixels/second) */
@@ -78,24 +78,24 @@ typedef struct particles_task
   /* valid only during redraw, for the engine's render callback */
   screen_t           *scr;
   int                 ox, oy;
-  pixelfmt_any_t      pixels[PARTICLES_NSTYLES * PALETTE_SIZE]; /* palette[] in scr's format */
+  pixelfmt_any_t      pixels[FIREWORKS_NSTYLES * PALETTE_SIZE]; /* palette[] in scr's format */
 }
-particles_task_t;
+fireworks_task_t;
 
-wuss_window_fn_t particles_handle;
+wuss_window_fn_t fireworks_handle;
 
 /* create the particles window against the given wuss instance; the task
  * block is allocated here, owned by the window, and freed when it closes.
  * if out is non-NULL, the task block is also returned through it */
-result_t particles_create(wuss_t *wuss, particles_task_t **out);
+result_t fireworks_create(wuss_t *wuss, fireworks_task_t **out);
 
 /* install the icon bar app that opens particles windows on demand */
-result_t particles_app_create(wuss_t *wuss);
+result_t fireworks_app_create(wuss_t *wuss);
 
-/* free a task block allocated by particles_create; normally called by the
+/* free a task block allocated by fireworks_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
-void particles_destroy(particles_task_t *task);
+void fireworks_destroy(fireworks_task_t *task);
 
 #endif /* WUSS_APP */
 
-#endif /* TASKS_PARTICLES_H */
+#endif /* TASKS_FIREWORKS_H */
