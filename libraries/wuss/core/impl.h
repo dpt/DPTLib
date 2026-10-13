@@ -403,6 +403,9 @@ struct wuss
     /* Held down, NULL when idle; released on any MOUSE_UP regardless of where
      * the pointer now is. */
     wuss_iconbar_icon_t  *pressed;
+    /* Horizontal scroll offset in pixels; non-zero only while the icons
+     * overflow the bar. */
+    int                   scroll;
   }
   iconbar;
 #endif

@@ -10047,6 +10047,61 @@ QuitFail:
       wuss_iconbar_icon_destroy(wuss, wuss->iconbar.icons[1]);
     }
 
+    /* an overfull bar scrolls while the pointer hovers near an end */
+    {
+      box_t                bar, s0;
+      wuss_iconbar_icon_t *ic;
+      int                  i, y, x0;
+
+      spec.text = "Wide label";
+      for (i = 0; i < 6; i++)
+      {
+        rc = wuss_iconbar_icon_create(wuss, owner, &spec, &ic);
+        if (rc != result_OK)
+          goto Failure;
+      }
+
+      wuss__iconbar_box(wuss, &bar);
+      y = bar.y0 + 5;
+      wuss__iconbar_slot_box(wuss, 0, &s0);
+      x0 = s0.x0;
+
+      /* pointer mid-bar: no scroll */
+      wuss->pointer = POINT(100, y);
+      (void) wuss_idle(wuss);
+      if (wuss->iconbar.scroll != 0)
+        goto Failure;
+
+      /* right end: scrolls left, icon 0 moves left of where it was */
+      wuss->pointer = POINT(bar.x1 - 1, y);
+      (void) wuss_idle(wuss);
+      wuss__iconbar_slot_box(wuss, 0, &s0);
+      if (wuss->iconbar.scroll != WUSS_ICONBAR_SCROLL_STEP ||
+          s0.x0 != x0 - WUSS_ICONBAR_SCROLL_STEP)
+        goto Failure;
+
+      /* held long enough, it clamps at the strip's end */
+      for (i = 0; i < 200; i++)
+        (void) wuss_idle(wuss);
+      i = wuss->iconbar.scroll;
+      (void) wuss_idle(wuss);
+      if (i <= WUSS_ICONBAR_SCROLL_STEP || wuss->iconbar.scroll != i)
+        goto Failure;
+
+      /* left end: scrolls back to 0 */
+      wuss->pointer = POINT(0, y);
+      for (i = 0; i < 200; i++)
+        (void) wuss_idle(wuss);
+      if (wuss->iconbar.scroll != 0)
+        goto Failure;
+
+      for (i = 0; i < 6; i++)
+        wuss_iconbar_icon_destroy(wuss, wuss->iconbar.icons[1]);
+      (void) wuss_idle(wuss);
+      if (wuss->iconbar.n != 1 || wuss->iconbar.scroll != 0)
+        goto Failure;
+    }
+
     /* a real z-order member can be moved/resized like any other window --
      * except this one is pinned, so both must refuse */
     wuss_window_move(wuss->iconbar.window, POINT(5, 5));

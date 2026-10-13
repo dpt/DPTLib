@@ -18,6 +18,10 @@ result_t wuss_idle(wuss_t *wuss)
   wuss__scroll_repeat(wuss);
 #endif
 
+#ifdef WUSS_ICONBAR
+  wuss__iconbar_scroll_tick(wuss);
+#endif
+
   if (wuss->drag.window != NULL)
     wuss__drag_tick(wuss);
 
