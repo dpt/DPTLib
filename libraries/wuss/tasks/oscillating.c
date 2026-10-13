@@ -13,6 +13,7 @@
 #include "framebuf/palettes.h"
 #include "geom/box.h"
 #include "io/filetype.h"
+#include "utils/easing.h"
 
 #include "oscillating.h"
 #include "taskapp.h"
@@ -25,12 +26,19 @@
  * singleton, retargeted just before wuss_menu_open */
 enum
 {
-  OSCILLATING_MENU_BACKGROUND = 0,
-  OSCILLATING_MENU_FOREGROUND,
-  OSCILLATING_MENU_PAUSE,
+  OSCILLATING_MENU_RATIO = 0,
   OSCILLATING_MENU_REVERSALS,
-  OSCILLATING_MENU_RATIO,
+  OSCILLATING_MENU_EASING,
+  OSCILLATING_MENU_COLOURS,
+  OSCILLATING_MENU_PAUSE,
   OSCILLATING_MENU_SAVE
+};
+
+/* rows of the Colours submenu */
+enum
+{
+  OSCILLATING_COLOURS_FOREGROUND = 0,
+  OSCILLATING_COLOURS_BACKGROUND
 };
 
 #define OSCILLATING_SAVE_NAME "oscillating.png" /* Save As's initial leafname */
@@ -47,6 +55,13 @@ oscillating_freqs[OSCILLATING_NFREQS] =
   { 5, 6, "5:6" }, { 1, 2, "1:2" }, { 7, 4, "7:4" },
   { 1, 1, "1:1" }, { 1, 3, "1:3" }, { 2, 3, "2:3" },
   { 3, 5, "3:5" }, { 4, 5, "4:5" }, { 7, 6, "7:6" }
+};
+
+/* easing curves listed in Menu > Easing, indexed by easing_kind_t */
+static const char *const oscillating_easings[OSCILLATING_NEASINGS] =
+{
+  "None", "Quad", "Cubic", "Quart", "Quint", "Sine",
+  "Expo", "Circ", "Back", "Elastic", "Bounce"
 };
 
 /* wuss_saveas_save_fn_t: opaque is the oscillating_task_t */
@@ -81,6 +96,7 @@ result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
   task->phase      = 0.0;
   task->drift      = 0.01;
   task->reversals  = 1;
+  task->easing_index = easing_LINEAR; /* row 0, "None" */
 
   /* redraw paints its own background every frame */
   delegate_desc.handle    = oscillating_handle;
@@ -114,18 +130,6 @@ result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, OSCILLATING_MENU_BACKGROUND, "Background",
-                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
-
-  WUSS_MENU_ITEM_MENU(task->menu_items, OSCILLATING_MENU_FOREGROUND, "Foreground",
-                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, OSCILLATING_MENU_PAUSE, "Pause",
-                          wuss_MENU_ITEM_NONE, "SPACE");
-
-  WUSS_MENU_ITEM(task->menu_items, OSCILLATING_MENU_REVERSALS, "Reversals",
-                 wuss_MENU_ITEM_NONE);
-
   for (i = 0; i < OSCILLATING_NFREQS; i++)
     WUSS_MENU_ITEM(task->ratio_items, i, oscillating_freqs[i].name,
                    wuss_MENU_ITEM_NONE);
@@ -135,6 +139,36 @@ result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
 
   WUSS_MENU_ITEM_MENU(task->menu_items, OSCILLATING_MENU_RATIO, "Ratio",
                       wuss_MENU_ITEM_NONE, &task->ratio_menu);
+
+  WUSS_MENU_ITEM(task->menu_items, OSCILLATING_MENU_REVERSALS, "Reversals",
+                 wuss_MENU_ITEM_NONE);
+
+  for (i = 0; i < OSCILLATING_NEASINGS; i++)
+    WUSS_MENU_ITEM(task->easing_items, i, oscillating_easings[i],
+                   wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->easing_menu, "Easing", task->easing_items,
+                 NELEMS(task->easing_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, OSCILLATING_MENU_EASING, "Easing",
+                      wuss_MENU_ITEM_NONE, &task->easing_menu);
+
+  WUSS_MENU_ITEM_MENU(task->colours_items, OSCILLATING_COLOURS_FOREGROUND,
+                      "Foreground", wuss_MENU_ITEM_PRE_OPEN,
+                      wuss_colourmenu_menu(wuss));
+
+  WUSS_MENU_ITEM_MENU(task->colours_items, OSCILLATING_COLOURS_BACKGROUND,
+                      "Background", wuss_MENU_ITEM_PRE_OPEN,
+                      wuss_colourmenu_menu(wuss));
+
+  WUSS_MENU_TITLE(task->colours_menu, "Colours", task->colours_items,
+                 NELEMS(task->colours_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, OSCILLATING_MENU_COLOURS, "Colours",
+                      wuss_MENU_ITEM_NONE, &task->colours_menu);
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, OSCILLATING_MENU_PAUSE, "Pause",
+                          wuss_MENU_ITEM_NONE, "SPACE");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, OSCILLATING_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_NONE, "^S");
@@ -245,6 +279,7 @@ static result_t oscillating_mouse(wuss_window_t      *window,
     wuss_menu_tick_item(&lc->menu, OSCILLATING_MENU_PAUSE, lc->paused);
     wuss_menu_tick_item(&lc->menu, OSCILLATING_MENU_REVERSALS, lc->reversals);
     wuss_menu_tick_exclusive(&lc->ratio_menu, lc->freq_index);
+    wuss_menu_tick_exclusive(&lc->easing_menu, lc->easing_index);
 
     return wuss_menu_open_at_pointer(lc->delegate, &lc->menu,
                                      &lc->menu_handle);
@@ -300,12 +335,19 @@ static result_t oscillating_idle(void *task_data)
 
   /* 2% of ticks start a 90 degree backwards run, then the drift resumes */
   if (lc->reversals && lc->reversing <= 0.0 && rand() % 100 < 2)
-    lc->reversing = M_PI / 2.0;
+  {
+    lc->reversing    = 1.0;
+    lc->reverse_from = lc->phase;
+  }
 
   if (lc->reversing > 0.0)
   {
-    lc->phase     -= lc->drift;
-    lc->reversing -= fabs(lc->drift);
+    /* same duration as a linear run at the drift rate; the chosen curve
+     * shapes it (None is linear) */
+    lc->reversing = MAX(lc->reversing - fabs(lc->drift) / (M_PI / 2.0), 0.0);
+    lc->phase     = lc->reverse_from -
+                    M_PI / 2.0 * easing((easing_kind_t) lc->easing_index,
+                                        easing_IN_OUT, 1.0 - lc->reversing);
   }
   else
   {
@@ -331,7 +373,8 @@ static result_t oscillating_pre_submenu_open(oscillating_task_t *lc,
 {
   const char *title;
 
-  if (event->data.pre_submenu_open.index == OSCILLATING_MENU_FOREGROUND)
+  /* only the Colours rows are PRE_OPEN, so the index is theirs */
+  if (event->data.pre_submenu_open.index == OSCILLATING_COLOURS_FOREGROUND)
   {
     lc->colourmenu_target = &lc->fg;
     title                 = "Foreground";
@@ -354,6 +397,14 @@ static result_t oscillating_menu_select(oscillating_task_t *lc,
     oscillating_set_freq(lc, event->data.menu_select.index);
     wuss_menu_tick_exclusive_live(lc->menu_handle, &lc->ratio_menu,
                                   lc->freq_index);
+    return result_OK;
+  }
+
+  if (event->data.menu_select.menu == &lc->easing_menu)
+  {
+    lc->easing_index = event->data.menu_select.index;
+    wuss_menu_tick_exclusive_live(lc->menu_handle, &lc->easing_menu,
+                                  lc->easing_index);
     return result_OK;
   }
 

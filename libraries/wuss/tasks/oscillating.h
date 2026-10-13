@@ -13,12 +13,15 @@
 
 #define OSCILLATING_POINTS 512 /* samples plotted along the curve */
 #define OSCILLATING_NFREQS 12  /* frequency pairs offered */
+#define OSCILLATING_NEASINGS 11 /* easing_NKINDS; None is the first */
 
 /* window task: a Lissajous figure x=sin(a*t+phase), y=sin(b*t) plotted as a
  * ring of dots. The phase drifts each idle tick so the figure slowly morphs.
  * Select cycles the frequency pair (a,b); Adjust reverses the drift. The
- * menu's Background and Foreground rows pick bg and fg from the shared
- * colourmenu; its Ratio row picks the frequency pair directly; Save PNG
+ * menu's Ratio row picks the frequency pair directly; its Easing row picks
+ * the curve for the random backwards runs (None by default); its Colours
+ * row has Foreground and Background rows that pick fg and bg from the shared
+ * colourmenu; Save PNG
  * opens a Save As dialogue (drag its icon onto a Filer window, or Save with
  * a full path already typed) that writes the window's content out. Once a
  * click has given the window the input focus, Space pauses/resumes and
@@ -37,6 +40,11 @@ typedef struct oscillating_task
   int                 reversals; /* Menu > Reversals; random backwards runs */
   wuss_menu_item_t    ratio_items[OSCILLATING_NFREQS]; /* one row per pair */
   wuss_menu_t         ratio_menu;
+  wuss_menu_item_t    easing_items[OSCILLATING_NEASINGS]; /* one per curve */
+  wuss_menu_t         easing_menu;
+  wuss_menu_item_t    colours_items[2]; /* Foreground, Background */
+  wuss_menu_t         colours_menu;
+  int                 easing_index; /* easing_kind_t; easing_LINEAR = None */
   wuss_window_t *window;
   colour_t       bg, fg;
   colour_t      *colourmenu_target; /* &bg or &fg: whichever row last
@@ -44,7 +52,8 @@ typedef struct oscillating_task
   int            a, b;    /* frequency ratio */
   double         phase;
   double         drift;
-  double         reversing; /* radians of backwards rotation still to do */
+  double         reversing; /* fraction of the backwards run still to do */
+  double         reverse_from; /* phase at the start of the backwards run */
   int            freq_index; /* index into oscillating_freqs */
 }
 oscillating_task_t;
