@@ -31,17 +31,17 @@
 #include "tasks/dithering.h"
 #include "tasks/display.h"
 #include "tasks/doughnut.h"
-#include "tasks/effects.h"
-#include "tasks/filer.h"
+#include "tasks/effecting.h"
+#include "tasks/filing.h"
 #include "tasks/gradient.h"
-#include "tasks/greeble.h"
+#include "tasks/greebling.h"
 #include "tasks/icons.h"
 #include "tasks/resizing.h"
 #include "tasks/viewing.h"
 #include "tasks/fern.h"
 #include "tasks/keys.h"
 #include "tasks/lissajous.h"
-#include "tasks/minesweeper.h"
+#include "tasks/minesweeping.h"
 #include "tasks/painting.h"
 #include "tasks/palette.h"
 #include "tasks/particles.h"
@@ -126,12 +126,12 @@ g_games_tasks[] =
 #ifdef WUSS_GREATESCAPE
   { "The Great Escape", greatescape_app_create },
 #endif
-  { "Minesweeper", minesweeper_app_create }
+  { "Minesweeping", minesweeping_app_create }
 },
 g_image_tasks[] =
 {
   { "Dithering", dithering_app_create },
-  { "Effects", effects_app_create },
+  { "Effecting", effecting_app_create },
   { "Painting", painting_app_create },
   { "Resizing", resizing_app_create },
   { "Viewing", viewing_app_create },
@@ -157,7 +157,7 @@ g_visuals_tasks[] =
   { "Checker", checker_app_create },
   { "Curve", curve_app_create },
   { "Gradient", gradient_app_create },
-  { "Greeble", greeble_app_create },
+  { "Greebling", greebling_app_create },
   { "Lissajous", lissajous_app_create },
   { "Patterns", patterns_app_create }
 },
@@ -176,7 +176,7 @@ g_system_tasks[] =
   { "Display", display_app_create },
   { "Palette", palette_app_create },
 #ifdef WUSS_ICONBAR
-  { "Filer", filer_app_create }
+  { "Filing", filing_app_create }
 #endif
 };
 

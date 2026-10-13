@@ -911,16 +911,16 @@ if(BUILD_APPS)
         libraries/wuss/tasks/dithering.c
         libraries/wuss/tasks/display.c
         libraries/wuss/tasks/doughnut.c
-        libraries/wuss/tasks/effects.c
-        libraries/wuss/tasks/filer.c
+        libraries/wuss/tasks/effecting.c
+        libraries/wuss/tasks/filing.c
         libraries/wuss/tasks/fireball.c
         libraries/wuss/tasks/gradient.c
-        libraries/wuss/tasks/greeble.c
+        libraries/wuss/tasks/greebling.c
         libraries/wuss/tasks/icons.c
         libraries/wuss/tasks/viewing.c
         libraries/wuss/tasks/keys.c
         libraries/wuss/tasks/lissajous.c
-        libraries/wuss/tasks/minesweeper.c
+        libraries/wuss/tasks/minesweeping.c
         libraries/wuss/tasks/painting-doc.c
         libraries/wuss/tasks/painting-doc.h
         libraries/wuss/tasks/painting-new.c

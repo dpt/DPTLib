@@ -4,7 +4,7 @@ A *reflowable* window lays its content out as a grid of equal cells and
 re-wraps that grid to fit whatever width the user gives it. It never shows a
 horizontal scrollbar. Two tasks in the `wuss` demo are of this kind:
 
-- **Filer** (`libraries/wuss/tasks/filer.c`): one icon-and-name cell per
+- **Filer** (`libraries/wuss/tasks/filing.c`): one icon-and-name cell per
   directory entry, laid out by `wuss_gridview` (`libraries/wuss/gadget/gridview.c`).
   Any column count that fits is used.
 - **Chars** (`libraries/wuss/tasks/chars.c`): one cell per codepoint of a
@@ -96,7 +96,7 @@ When a window is opened it takes the natural layout width:
 2. From it, derive the largest column count that fits and the largest layout
    width. Gridview does this when it lays out.
 3. Choose the starting column count: the task's preferred count (Chars: 16;
-   Filer: `FILER_COLUMNS`), capped by the item count and by what fits.
+   Filer: `FILING_COLUMNS`), capped by the item count and by what fits.
 4. Create the window at that layout width, with `doc.w` set to the largest
    layout width (rule 3).
 

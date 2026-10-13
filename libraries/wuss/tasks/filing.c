@@ -1,4 +1,4 @@
-/* wuss/tasks/filer.c -- directory display / drag-save target task */
+/* wuss/tasks/filing.c -- directory display / drag-save target task */
 
 #if defined(WUSS_APP) && defined(WUSS_ICONBAR)
 
@@ -23,27 +23,27 @@
 #include "wuss/menu.h"
 #include "wuss/message.h"
 
-#include "filer.h"
+#include "filing.h"
 #include "common.h"
 
-#define FILER_LABEL_CHARS 12
-#define FILER_COLUMNS     4  /* initial window width, in cells */
-#define FILER_MAX_ROWS    4  /* initial window height cap, in cells */
+#define FILING_LABEL_CHARS 12
+#define FILING_COLUMNS     4  /* initial window width, in cells */
+#define FILING_MAX_ROWS    4  /* initial window height cap, in cells */
 
-static char g_filer_root[DPTLIB_MAXPATH] = "";
+static char g_filing_root[DPTLIB_MAXPATH] = "";
 
-void filer_set_root(const char *root)
+void filing_set_root(const char *root)
 {
   if (root == NULL)
   {
-    g_filer_root[0] = '\0';
+    g_filing_root[0] = '\0';
     return;
   }
 
-  snprintf(g_filer_root, sizeof(g_filer_root), "%s", root);
+  snprintf(g_filing_root, sizeof(g_filing_root), "%s", root);
 }
 
-static const char *filer_default_root(void)
+static const char *filing_default_root(void)
 {
 #ifdef __EMSCRIPTEN__
   return "/";
@@ -56,10 +56,10 @@ static const char *filer_default_root(void)
 
 /* native "dir<sep>leaf" (RISC OS joins with '.'). Returns the snprintf
  * length, so >= cap means truncated. */
-static int filer_join(char       *out,
-                      size_t      cap,
-                      const char *dir,
-                      const char *leaf)
+static int filing_join(char       *out,
+                       size_t      cap,
+                       const char *dir,
+                       const char *leaf)
 {
 #ifdef __riscos
   return snprintf(out, cap, "%s.%s", dir, leaf);
@@ -68,15 +68,15 @@ static int filer_join(char       *out,
 #endif
 }
 
-static const char *filer_root(void)
+static const char *filing_root(void)
 {
-  return g_filer_root[0] != '\0' ? g_filer_root : filer_default_root();
+  return g_filing_root[0] != '\0' ? g_filing_root : filing_default_root();
 }
 
 /* ----------------------------------------------------------------------- */
 
-static filer_window_t *filer_find_window(filer_task_t *task,
-                                         const char   *path)
+static filing_window_t *filing_find_window(filing_task_t *task,
+                                           const char    *path)
 {
   int i;
 
@@ -88,8 +88,8 @@ static filer_window_t *filer_find_window(filer_task_t *task,
   return NULL;
 }
 
-static filer_window_t *filer_find_by_window(filer_task_t        *task,
-                                            const wuss_window_t *window)
+static filing_window_t *filing_find_by_window(filing_task_t       *task,
+                                              const wuss_window_t *window)
 {
   int i;
 
@@ -100,7 +100,7 @@ static filer_window_t *filer_find_by_window(filer_task_t        *task,
   return NULL;
 }
 
-static void filer_rescan(filer_window_t *fw)
+static void filing_rescan(filing_window_t *fw)
 {
   dirlist_t *fresh;
 
@@ -115,8 +115,8 @@ static void filer_rescan(filer_window_t *fw)
 /* wuss_gridview_item_fn_t's opaque is fw (set at wuss_gridview_create); the
  * owning task (for its shared glyphs) is reached via fw->owner. */
 
-static const bitmap_t *filer_glyph_for(filer_task_t          *task,
-                                       const dirlist_entry_t *entry)
+static const bitmap_t *filing_glyph_for(filing_task_t         *task,
+                                        const dirlist_entry_t *entry)
 {
   if (entry->is_dir)
     return task->glyph_directory;
@@ -127,9 +127,9 @@ static const bitmap_t *filer_glyph_for(filer_task_t          *task,
   return task->glyph_file;
 }
 
-static void filer_item(int index, void *opaque, wuss_gridview_item_t *out)
+static void filing_item(int index, void *opaque, wuss_gridview_item_t *out)
 {
-  filer_window_t        *fw;
+  filing_window_t       *fw;
   const dirlist_entry_t *entry;
 
   fw    = opaque;
@@ -142,20 +142,20 @@ static void filer_item(int index, void *opaque, wuss_gridview_item_t *out)
   }
 
   out->label = entry->leaf;
-  out->glyph = filer_glyph_for(fw->owner, entry);
+  out->glyph = filing_glyph_for(fw->owner, entry);
 }
 
-static result_t filer_open_path(filer_task_t        *task,
-                                const char          *path,
-                                const wuss_window_t *parent,
-                                int                  over);
+static result_t filing_open_path(filing_task_t       *task,
+                                 const char          *path,
+                                 const wuss_window_t *parent,
+                                 int                  over);
 
-static void filer_activate(wuss_gridview_t *gridview,
-                           int              index,
-                           wuss_button_t    button,
-                           void            *opaque)
+static void filing_activate(wuss_gridview_t *gridview,
+                            int              index,
+                            wuss_button_t    button,
+                            void            *opaque)
 {
-  filer_window_t        *fw;
+  filing_window_t       *fw;
   const dirlist_entry_t *entry;
   char                   child[DPTLIB_MAXPATH];
 
@@ -166,14 +166,14 @@ static void filer_activate(wuss_gridview_t *gridview,
   if (entry == NULL || !entry->is_dir)
     return;
 
-  if (filer_join(child, sizeof(child), fw->path, entry->leaf) >=
+  if (filing_join(child, sizeof(child), fw->path, entry->leaf) >=
       (int) sizeof(child))
     return;
 
   /* as RISC OS: a double ADJUST opens the child in this viewer's place and
    * closes this one. That frees fw's slot and destroys gridview; neither is
    * used after. */
-  (void) filer_open_path(fw->owner, child, fw->window,
+  (void) filing_open_path(fw->owner, child, fw->window,
                          button & wuss_BUTTON_ADJUST);
 
   if (button & wuss_BUTTON_ADJUST)
@@ -183,11 +183,11 @@ static void filer_activate(wuss_gridview_t *gridview,
 /* ----------------------------------------------------------------------- */
 
 /* wuss_gridview_drag_fn_t: a file pressed and moved past the drag threshold
- * starts a core drag, and its path is remembered for filer_drop. Directories
+ * starts a core drag, and its path is remembered for filing_drop. Directories
  * are not draggable. */
-static int filer_drag(wuss_gridview_t *gridview, int index, void *opaque)
+static int filing_drag(wuss_gridview_t *gridview, int index, void *opaque)
 {
-  filer_window_t        *fw;
+  filing_window_t       *fw;
   const dirlist_entry_t *entry;
 
   NOT_USED(gridview);
@@ -197,7 +197,7 @@ static int filer_drag(wuss_gridview_t *gridview, int index, void *opaque)
   if (entry == NULL || entry->is_dir)
     return 0;
 
-  if (filer_join(fw->owner->drag_path, sizeof(fw->owner->drag_path),
+  if (filing_join(fw->owner->drag_path, sizeof(fw->owner->drag_path),
                  fw->path, entry->leaf) >= (int) sizeof(fw->owner->drag_path))
   {
     fw->owner->drag_path[0] = '\0';
@@ -210,7 +210,7 @@ static int filer_drag(wuss_gridview_t *gridview, int index, void *opaque)
 /* The drag ended: offer the file to the window or icon bar icon it was
  * dropped on. Drops on nothing, on a Filer window or after Escape do
  * nothing. */
-static void filer_drop(filer_task_t *task, const wuss_event_t *event)
+static void filing_drop(filing_task_t *task, const wuss_event_t *event)
 {
   char              path[DPTLIB_MAXPATH];
   wuss_msg_target_t target = { NULL, NULL };
@@ -222,7 +222,7 @@ static void filer_drop(filer_task_t *task, const wuss_event_t *event)
   task->drag_path[0] = '\0';
 
   if (event->data.drag_end.cancelled || event->data.drag_end.drop == NULL ||
-      filer_find_by_window(task, event->data.drag_end.drop) != NULL)
+      filing_find_by_window(task, event->data.drag_end.drop) != NULL)
     return;
 
   target.window = event->data.drag_end.drop;
@@ -238,18 +238,18 @@ static void filer_drop(filer_task_t *task, const wuss_event_t *event)
 /* Opens a viewer on path, or brings an open one to the front. A new viewer
  * cascades from parent, or with over set takes parent's place (top-left) for
  * a parent that is about to close. */
-static result_t filer_open_path(filer_task_t        *task,
-                                const char          *path,
-                                const wuss_window_t *parent,
-                                int                  over)
+static result_t filing_open_path(filing_task_t       *task,
+                                 const char          *path,
+                                 const wuss_window_t *parent,
+                                 int                  over)
 {
-  result_t        rc;
-  char            canon[DPTLIB_MAXPATH];
-  filer_window_t *fw;
-  int             slot;
-  dirlist_t      *listing;
-  wuss_place_t    place;
-  wuss_window_t  *window;
+  result_t         rc;
+  char             canon[DPTLIB_MAXPATH];
+  filing_window_t *fw;
+  int              slot;
+  dirlist_t       *listing;
+  wuss_place_t     place;
+  wuss_window_t   *window;
 
 #ifndef __riscos
   /* "." or "a/../b" becomes the full path, for the title and so that the
@@ -258,7 +258,7 @@ static result_t filer_open_path(filer_task_t        *task,
     path = canon;
 #endif
 
-  fw = filer_find_window(task, path);
+  fw = filing_find_window(task, path);
   if (fw != NULL)
   {
     wuss_window_restack(fw->window, wuss_ZORDER_FRONT);
@@ -271,9 +271,9 @@ static result_t filer_open_path(filer_task_t        *task,
     if (task->windows[slot].window == NULL)
       break;
 
-  if (slot >= FILER_MAX_WINDOWS)
+  if (slot >= FILING_MAX_WINDOWS)
   {
-    logf_error("filer: too many windows open, cannot open \"%s\"", path);
+    logf_error("filing: too many windows open, cannot open \"%s\"", path);
     return result_OOM;
   }
 
@@ -283,7 +283,7 @@ static result_t filer_open_path(filer_task_t        *task,
 
   fw          = &task->windows[slot];
   fw->owner   = task;
-  fw->listing = listing; /* wuss_gridview_create measures through filer_item */
+  fw->listing = listing; /* wuss_gridview_create measures through filing_item */
   snprintf(fw->path, sizeof(fw->path), "%s", path);
 
   place = task_place_from(parent);
@@ -291,8 +291,8 @@ static result_t filer_open_path(filer_task_t        *task,
     place.offset = POINT(0, 0);
 
   rc = wuss_gridview_window_create(&fw->gridview, task->delegate, &place,
-                                   path, dirlist_count(listing), filer_item,
-                                   FILER_LABEL_CHARS, filer_activate, fw,
+                                   path, dirlist_count(listing), filing_item,
+                                   FILING_LABEL_CHARS, filing_activate, fw,
                                    &window);
   if (rc != result_OK)
   {
@@ -301,40 +301,40 @@ static result_t filer_open_path(filer_task_t        *task,
     return rc;
   }
 
-  wuss_gridview_set_drag(fw->gridview, filer_drag);
+  wuss_gridview_set_drag(fw->gridview, filing_drag);
 
   fw->window = window;
   if (slot == task->nwindows)
     task->nwindows++;
 
-  /* filer_find_by_window must find this slot before this call: it fires
-   * wuss_EVENT_OPEN synchronously, and filer_handle's OPEN case looks the
+  /* filing_find_by_window must find this slot before this call: it fires
+   * wuss_EVENT_OPEN synchronously, and filing_handle's OPEN case looks the
    * window up to forward the event to wuss_gridview_handle_event, which is
    * what actually reflows the grid to the new width. */
-  wuss_gridview_fit_window(fw->gridview, FILER_COLUMNS, FILER_MAX_ROWS);
+  wuss_gridview_fit_window(fw->gridview, FILING_COLUMNS, FILING_MAX_ROWS);
 
   return result_OK;
 }
 
 /* ----------------------------------------------------------------------- */
 
-static const bitmap_t *filer_find_glyph(const wuss_task_t *task,
-                                        const char        *name)
+static const bitmap_t *filing_find_glyph(const wuss_task_t *task,
+                                         const char        *name)
 {
   const bitmap_t *bm;
 
   bm = wuss_task_iconpool_find(task, name);
   if (bm == NULL)
-    logf_warning("filer: glyph '%s' unavailable; cells show label only",
+    logf_warning("filing: glyph '%s' unavailable; cells show label only",
                  name);
 
   return bm;
 }
 
-result_t filer_create(wuss_t *wuss, filer_task_t **out)
+result_t filing_create(wuss_t *wuss, filing_task_t **out)
 {
   result_t                 rc;
-  filer_task_t            *task;
+  filing_task_t           *task;
   wuss_task_desc_t         delegate_desc;
   wuss_iconbar_icon_spec_t spec;
 
@@ -345,32 +345,32 @@ result_t filer_create(wuss_t *wuss, filer_task_t **out)
   task->wuss     = wuss;
   task->nwindows = 0;
 
-  WUSS_MENU_ITEM(task->menu_items, FILER_MENU_SELECT_ALL, "Select all",
+  WUSS_MENU_ITEM(task->menu_items, FILING_MENU_SELECT_ALL, "Select all",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->menu_items, FILER_MENU_CLEAR_SELECTION,
+  WUSS_MENU_ITEM(task->menu_items, FILING_MENU_CLEAR_SELECTION,
                  "Clear selection", wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->menu_items, FILER_MENU_OPEN_PARENT, "Open parent",
+  WUSS_MENU_ITEM(task->menu_items, FILING_MENU_OPEN_PARENT, "Open parent",
                  wuss_MENU_ITEM_NONE);
 #ifdef __EMSCRIPTEN__
-  WUSS_MENU_ITEM(task->menu_items, FILER_MENU_DOWNLOAD, "Download",
+  WUSS_MENU_ITEM(task->menu_items, FILING_MENU_DOWNLOAD, "Download",
                  wuss_MENU_ITEM_NONE);
 #endif
-  WUSS_MENU_TITLE(task->menu, "Filer", task->menu_items,
+  WUSS_MENU_TITLE(task->menu, "Filing", task->menu_items,
                  NELEMS(task->menu_items));
 
-  WUSS_MENU_ITEM_WINDOW(task->ib_menu_items, FILER_IB_MENU_INFO, "Info",
+  WUSS_MENU_ITEM_WINDOW(task->ib_menu_items, FILING_IB_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU |
                         wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo
                                 * singleton when the menu opens */
-  WUSS_MENU_ITEM(task->ib_menu_items, FILER_IB_MENU_OPEN_ROOT, "Open root",
+  WUSS_MENU_ITEM(task->ib_menu_items, FILING_IB_MENU_OPEN_ROOT, "Open root",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_TITLE(task->ib_menu, "Filer", task->ib_menu_items,
+  WUSS_MENU_TITLE(task->ib_menu, "Filing", task->ib_menu_items,
                   NELEMS(task->ib_menu_items));
 
-  delegate_desc.handle    = filer_handle;
+  delegate_desc.handle    = filing_handle;
   delegate_desc.task_data = task;
-  delegate_desc.name      = "filer";
+  delegate_desc.name      = "filing";
   rc = wuss_task_create(wuss, &delegate_desc, &task->delegate);
   if (rc != result_OK)
   {
@@ -378,11 +378,11 @@ result_t filer_create(wuss_t *wuss, filer_task_t **out)
     return rc;
   }
 
-  task->glyph_file      = filer_find_glyph(task->delegate, "file_unk");
-  task->glyph_directory = filer_find_glyph(task->delegate, "file_dir");
-  task->glyph_png       = filer_find_glyph(task->delegate, "file_b60");
+  task->glyph_file      = filing_find_glyph(task->delegate, "file_unk");
+  task->glyph_directory = filing_find_glyph(task->delegate, "file_dir");
+  task->glyph_png       = filing_find_glyph(task->delegate, "file_b60");
 
-  spec.text  = "Filer";
+  spec.text  = "Filing";
   spec.side  = wuss_ICONBAR_LEFT;
   spec.image = task->glyph_directory;
   rc = wuss_iconbar_icon_create(wuss, task->delegate, &spec,
@@ -400,12 +400,12 @@ result_t filer_create(wuss_t *wuss, filer_task_t **out)
   return result_OK;
 }
 
-result_t filer_app_create(wuss_t *wuss)
+result_t filing_app_create(wuss_t *wuss)
 {
-  return filer_create(wuss, NULL);
+  return filing_create(wuss, NULL);
 }
 
-void filer_destroy(filer_task_t *task)
+void filing_destroy(filing_task_t *task)
 {
   int i;
 
@@ -423,7 +423,7 @@ void filer_destroy(filer_task_t *task)
 #ifdef __EMSCRIPTEN__
 /* Hands the file at path, in Emscripten's in-memory filesystem, to the
  * browser as a download named after its leaf. */
-EM_JS(void, filer_web_download, (const char *path),
+EM_JS(void, filing_web_download, (const char *path),
 {
   var p = UTF8ToString(path);
   var a;
@@ -439,13 +439,13 @@ EM_JS(void, filer_web_download, (const char *path),
   }
   catch (e)
   {
-    console.error('filer: cannot download ' + p + ': ' + e);
+    console.error('filing: cannot download ' + p + ': ' + e);
   }
 });
 
 /* Downloads every selected file in fw, or with download zero just counts
  * them. Directories are skipped. Returns the number of files. */
-static int filer_download_selection(const filer_window_t *fw, int download)
+static int filing_download_selection(const filing_window_t *fw, int download)
 {
   const dirlist_entry_t *entry;
   char                   path[DPTLIB_MAXPATH];
@@ -466,11 +466,11 @@ static int filer_download_selection(const filer_window_t *fw, int download)
     if (!download)
       continue;
 
-    if (filer_join(path, sizeof(path), fw->path, entry->leaf) >=
+    if (filing_join(path, sizeof(path), fw->path, entry->leaf) >=
         (int) sizeof(path))
       continue;
 
-    filer_web_download(path);
+    filing_web_download(path);
   }
 
   return n;
@@ -479,7 +479,7 @@ static int filer_download_selection(const filer_window_t *fw, int download)
 
 /* the directory holding path, in out (capacity cap). Returns zero if path is
  * the root or has no parent to give. */
-static int filer_parent_path(const char *path, char *out, size_t cap)
+static int filing_parent_path(const char *path, char *out, size_t cap)
 {
   const char *slash;
 #ifndef __riscos
@@ -507,7 +507,7 @@ static int filer_parent_path(const char *path, char *out, size_t cap)
 }
 
 /* shade or unshade a menu row, on screen too if the menu is open */
-static void filer_menu_enable(filer_task_t *task, int row, int enabled)
+static void filing_menu_enable(filing_task_t *task, int row, int enabled)
 {
   if (enabled)
     task->menu_items[row].flags &= ~wuss_MENU_ITEM_DISABLED;
@@ -521,45 +521,45 @@ static void filer_menu_enable(filer_task_t *task, int row, int enabled)
 /* set which rows apply to the window the menu was opened over, from its
  * listing and selection. Called as the menu opens and again after a pick that
  * leaves it open (ADJUST) and changes the selection. */
-static void filer_menu_update(filer_task_t *task)
+static void filing_menu_update(filing_task_t *task)
 {
-  filer_window_t *fw;
-  char            parent[DPTLIB_MAXPATH];
-  int             count;
-  int             selected;
+  filing_window_t *fw;
+  char             parent[DPTLIB_MAXPATH];
+  int              count;
+  int              selected;
 
-  fw       = filer_find_by_window(task, task->menu_window);
+  fw       = filing_find_by_window(task, task->menu_window);
   count    = fw != NULL ? dirlist_count(fw->listing) : 0;
   selected = fw != NULL ? wuss_gridview_selected_count(fw->gridview) : 0;
 
-  filer_menu_enable(task, FILER_MENU_SELECT_ALL, selected < count);
-  filer_menu_enable(task, FILER_MENU_CLEAR_SELECTION, selected > 0);
-  filer_menu_enable(task, FILER_MENU_OPEN_PARENT,
+  filing_menu_enable(task, FILING_MENU_SELECT_ALL, selected < count);
+  filing_menu_enable(task, FILING_MENU_CLEAR_SELECTION, selected > 0);
+  filing_menu_enable(task, FILING_MENU_OPEN_PARENT,
                     fw != NULL &&
-                    filer_parent_path(fw->path, parent, sizeof(parent)));
+                    filing_parent_path(fw->path, parent, sizeof(parent)));
 #ifdef __EMSCRIPTEN__
-  filer_menu_enable(task, FILER_MENU_DOWNLOAD,
-                    fw != NULL && filer_download_selection(fw, 0) > 0);
+  filing_menu_enable(task, FILING_MENU_DOWNLOAD,
+                    fw != NULL && filing_download_selection(fw, 0) > 0);
 #endif
 }
 
-static result_t filer_iconbar_menu_open(filer_task_t *task)
+static result_t filing_iconbar_menu_open(filing_task_t *task)
 {
   static const wuss_proginfo_desc_t desc =
-    TASK_PROGINFO_DESC("Filer", "Directory display and file save target");
+    TASK_PROGINFO_DESC("Filing", "Directory display and file save target");
 
   wuss_proginfo_set_desc(&desc);
-  task->ib_menu_items[FILER_IB_MENU_INFO].window =
+  task->ib_menu_items[FILING_IB_MENU_INFO].window =
     wuss_proginfo_window(task->delegate);
 
   return wuss_iconbar_menu_open(task->delegate, &task->ib_menu,
                                 &task->menu_handle);
 }
 
-static result_t filer_menu_open(filer_task_t *task, wuss_window_t *window)
+static result_t filing_menu_open(filing_task_t *task, wuss_window_t *window)
 {
   task->menu_window = window;
-  filer_menu_update(task);
+  filing_menu_update(task);
 
   return wuss_menu_open_at_pointer(task->delegate, &task->menu,
                                    &task->menu_handle);
@@ -570,26 +570,26 @@ static result_t filer_menu_open(filer_task_t *task, wuss_window_t *window)
  * a code describing why the save cannot proceed (bad leafname, or the
  * resulting path too long) -- either way the caller must not acknowledge
  * the DataSave, so the transfer bounces. */
-static result_t filer_build_save_path(const filer_window_t *fw,
-                                      const char           *leaf,
-                                      char                 *path,
-                                      size_t                cap)
+static result_t filing_build_save_path(const filing_window_t *fw,
+                                       const char            *leaf,
+                                       char                  *path,
+                                       size_t                 cap)
 {
   if (!path_leaf_valid(leaf))
     return result_BAD_ARG;
 
-  if (filer_join(path, cap, fw->path, leaf) >= (int) cap)
+  if (filing_join(path, cap, fw->path, leaf) >= (int) cap)
     return result_BAD_ARG;
 
   return result_OK;
 }
 
-static result_t filer_message(filer_task_t       *task,
-                              wuss_window_t      *window,
-                              const wuss_event_t *event)
+static result_t filing_message(filing_task_t      *task,
+                               wuss_window_t      *window,
+                               const wuss_event_t *event)
 {
   const wuss_message_t *msg;
-  filer_window_t       *fw;
+  filing_window_t      *fw;
 
   msg = event->data.message;
 
@@ -598,12 +598,12 @@ static result_t filer_message(filer_task_t       *task,
     char                    path[DPTLIB_MAXPATH];
     const wuss_data_save_t *payload;
 
-    fw = filer_find_by_window(task, window);
+    fw = filing_find_by_window(task, window);
     if (fw == NULL)
       return result_OK; /* not one of ours; leave it to bounce */
 
     payload = (const wuss_data_save_t *) msg->data;
-    if (filer_build_save_path(fw, payload->leafname, path,
+    if (filing_build_save_path(fw, payload->leafname, path,
                               sizeof(path)) != result_OK)
       return result_OK; /* invalid leaf or path too long: never
                          * acknowledged, so the send bounces naturally */
@@ -616,13 +616,13 @@ static result_t filer_message(filer_task_t       *task,
 
   if (msg->action == wuss_MESSAGE_DATA_LOAD)
   {
-    fw = filer_find_by_window(task, window);
+    fw = filing_find_by_window(task, window);
     if (fw == NULL)
       return result_OK;
 
     /* no state is kept between DataSaveAck and this DataLoad -- the file is
      * already on disk under fw->path, so just rescan and acknowledge */
-    filer_rescan(fw);
+    filing_rescan(fw);
     (void) wuss_acknowledge(task->wuss, task->delegate, msg);
     return result_OK;
   }
@@ -630,11 +630,11 @@ static result_t filer_message(filer_task_t       *task,
   return result_OK;
 }
 
-result_t filer_handle(wuss_window_t      *window,
-                      const wuss_event_t *event,
-                      void               *task_data)
+result_t filing_handle(wuss_window_t      *window,
+                       const wuss_event_t *event,
+                       void               *task_data)
 {
-  filer_task_t *task;
+  filing_task_t *task;
 
   task = task_data;
 
@@ -647,15 +647,15 @@ result_t filer_handle(wuss_window_t      *window,
   case wuss_EVENT_POINTER_EXIT:
   case wuss_EVENT_RELAYOUT:
   {
-    filer_window_t *fw;
+    filing_window_t *fw;
 
-    fw = filer_find_by_window(task, window);
+    fw = filing_find_by_window(task, window);
     if (fw != NULL)
       (void) wuss_gridview_handle_event(fw->gridview, event);
     if (event->kind == wuss_EVENT_MOUSE &&
         (event->data.mouse.action == wuss_MOUSE_DOWN) &&
         (event->data.mouse.button & wuss_BUTTON_MENU))
-      return filer_menu_open(task, window);
+      return filing_menu_open(task, window);
     return result_OK;
   }
 
@@ -665,51 +665,51 @@ result_t filer_handle(wuss_window_t      *window,
     if (event->data.iconbar_icon.action != wuss_MOUSE_UP)
       return result_OK;
     if (event->data.iconbar_icon.button & wuss_BUTTON_MENU)
-      return filer_iconbar_menu_open(task);
-    return filer_open_path(task, filer_root(), NULL, 0);
+      return filing_iconbar_menu_open(task);
+    return filing_open_path(task, filing_root(), NULL, 0);
 
   case wuss_EVENT_MENU_SELECT:
   {
-    filer_window_t *fw;
-    char            parent[DPTLIB_MAXPATH];
+    filing_window_t *fw;
+    char             parent[DPTLIB_MAXPATH];
 
     if (event->data.menu_select.menu == &task->ib_menu)
     {
-      if (event->data.menu_select.index == FILER_IB_MENU_OPEN_ROOT)
-        return filer_open_path(task, filer_root(), NULL, 0);
+      if (event->data.menu_select.index == FILING_IB_MENU_OPEN_ROOT)
+        return filing_open_path(task, filing_root(), NULL, 0);
       return result_OK;
     }
     if (event->data.menu_select.menu != &task->menu)
       return result_OK;
 
-    fw = filer_find_by_window(task, task->menu_window);
+    fw = filing_find_by_window(task, task->menu_window);
     switch (event->data.menu_select.index)
     {
-    case FILER_MENU_SELECT_ALL:
+    case FILING_MENU_SELECT_ALL:
       if (fw != NULL)
       {
         wuss_gridview_select_all(fw->gridview);
-        filer_menu_update(task);
+        filing_menu_update(task);
       }
       return result_OK;
 
-    case FILER_MENU_CLEAR_SELECTION:
+    case FILING_MENU_CLEAR_SELECTION:
       if (fw != NULL)
       {
         wuss_gridview_clear_selection(fw->gridview);
-        filer_menu_update(task);
+        filing_menu_update(task);
       }
       return result_OK;
 
-    case FILER_MENU_OPEN_PARENT:
-      if (fw != NULL && filer_parent_path(fw->path, parent, sizeof(parent)))
-        return filer_open_path(task, parent, fw->window, 0);
+    case FILING_MENU_OPEN_PARENT:
+      if (fw != NULL && filing_parent_path(fw->path, parent, sizeof(parent)))
+        return filing_open_path(task, parent, fw->window, 0);
       return result_OK;
 
 #ifdef __EMSCRIPTEN__
-    case FILER_MENU_DOWNLOAD:
+    case FILING_MENU_DOWNLOAD:
       if (fw != NULL)
-        (void) filer_download_selection(fw, 1);
+        (void) filing_download_selection(fw, 1);
       return result_OK;
 #endif
 
@@ -722,7 +722,7 @@ result_t filer_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == task->ib_menu_items[FILER_IB_MENU_INFO].window)
+    if (window == task->ib_menu_items[FILING_IB_MENU_INFO].window)
       rc = wuss_proginfo_handle_pre_show();
     else
       rc = result_OK;
@@ -738,28 +738,28 @@ result_t filer_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_MESSAGE:
-    return filer_message(task, window, event);
+    return filing_message(task, window, event);
 
   case wuss_EVENT_DRAG_END:
-    filer_drop(task, event);
+    filing_drop(task, event);
     return result_OK;
 
   case wuss_EVENT_CLOSE_ADJUST:
   {
-    filer_window_t *fw;
-    int             keep;
-    char            parent[DPTLIB_MAXPATH];
+    filing_window_t *fw;
+    int              keep;
+    char             parent[DPTLIB_MAXPATH];
 
     /* as RISC OS: open the parent in this viewer's place and close this one
      * -- or, with Shift held, cascade the parent and keep this one. The
      * close frees fw's slot, so fw is not used after it. */
-    fw = filer_find_by_window(task, window);
+    fw = filing_find_by_window(task, window);
     if (fw == NULL)
       return result_OK;
 
     keep = (event->data.close_adjust.modifiers & wuss_KEY_MOD_SHIFT) != 0;
-    if (filer_parent_path(fw->path, parent, sizeof(parent)))
-      (void) filer_open_path(task, parent, fw->window, !keep);
+    if (filing_parent_path(fw->path, parent, sizeof(parent)))
+      (void) filing_open_path(task, parent, fw->window, !keep);
     if (!keep)
       return wuss_window_try_close(window);
     return result_OK;
@@ -767,9 +767,9 @@ result_t filer_handle(wuss_window_t      *window,
 
   case wuss_EVENT_CLOSE:
   {
-    filer_window_t *fw;
+    filing_window_t *fw;
 
-    fw = filer_find_by_window(task, window);
+    fw = filing_find_by_window(task, window);
     if (fw == NULL)
       return result_OK;
 
@@ -785,7 +785,7 @@ result_t filer_handle(wuss_window_t      *window,
   }
 
   case wuss_EVENT_QUIT:
-    filer_destroy(task);
+    filing_destroy(task);
     return result_OK;
 
   case wuss_EVENT_KEY:

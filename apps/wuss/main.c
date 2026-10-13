@@ -42,7 +42,7 @@
 
 #include "tasks/palette.h" /* palette_load_hex for the startup *.hex */
 #ifdef WUSS_ICONBAR
-#include "tasks/filer.h" /* filer_set_root for -root */
+#include "tasks/filing.h" /* filing_set_root for -root */
 #endif
 
 /* ----------------------------------------------------------------------- */
@@ -858,11 +858,12 @@ typedef struct wuss_options
   int         res_height;
   const char *tasks;        /* -t/--tasks: comma-separated launcher task
                              * names to auto-open at startup, or "all";
-                             * default "Filer,Display" ("Filer,Configure,Reading"
-                             * under Emscripten); giving -t replaces it */
-  const char *root;         /* --root: directory Filer's icon bar icon and
+                             * default "Filing,Display"
+                             * ("Filing,Configure,Reading" under
+                             * Emscripten); giving -t replaces it */
+  const char *root;         /* --root: directory Filing's icon bar icon and
                              * System menu row open; default "." (or "/"
-                             * under Emscripten, see filer_set_root) */
+                             * under Emscripten, see filing_set_root) */
   const char *script;       /* --script: input script to run; see script.h */
 }
 wuss_options_t;
@@ -1017,18 +1018,18 @@ int main(int argc, char *argv[])
   opts.res_width    = 640;
   opts.res_height   = 480;
 #ifdef __EMSCRIPTEN__
-  opts.tasks        = "Filer,Configure,Reading"; /* browser has no command line */
+  opts.tasks        = "Filing,Configure,Reading"; /* browser has no command line */
 #else
-  opts.tasks        = "Filer,Display";
+  opts.tasks        = "Filing,Display";
 #endif
-  opts.root       = NULL; /* NULL: leave filer_set_root's own default */
+  opts.root       = NULL; /* NULL: leave filing_set_root's own default */
   opts.script       = NULL;
 
   if (!parse_args(argc, argv, &opts))
     return EXIT_FAILURE;
 
 #ifdef WUSS_ICONBAR
-  filer_set_root(opts.root);
+  filing_set_root(opts.root);
 #endif
 
   if (opts.script != NULL)

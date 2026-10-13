@@ -1,37 +1,37 @@
 #!/usr/bin/env python3
-# gen_greeble_tiles.py -- bake the Xenon-2 greeble stamps into a C header
+# gen_greebling_tiles.py -- bake the Xenon-2 greeble stamps into a C header
 #
 # Reads an 8xN paletted PNG of stacked 8x8 tiles (PICO-8 black / dark-purple /
-# red / orange) and writes libraries/wuss/tasks/greeble-tiles.h:
+# red / orange) and writes libraries/wuss/tasks/greebling-tiles.h:
 #
-#   greeble_tiles[NTILES][8]      one uint16 per row, 2 bits/pixel, x0 low
+#   greebling_tiles[NTILES][8]      one uint16 per row, 2 bits/pixel, x0 low
 #
 # With a second image -- a sheet where the artist has laid the stamps out in
 # their intended shapes -- the connected non-empty clusters become prefab
 # blocks in the same header:
 #
-#   greeble_prefab_cells[]        flat pool of stamp indices, 0xFF = hole
-#   greeble_prefab[NPREFAB]       { w, h, offset into the pool }
-#   greeble_filler[NFILLER]       stamp indices the artist left standing alone
+#   greebling_prefab_cells[]        flat pool of stamp indices, 0xFF = hole
+#   greebling_prefab[NPREFAB]       { w, h, offset into the pool }
+#   greebling_filler[NFILLER]       stamp indices the artist left standing alone
 #
 # 1x1 clusters are not prefabs; they are the artist's shortlist of stamps that
-# read well dropped in on their own, so they become greeble_filler[] -- what
+# read well dropped in on their own, so they become greebling_filler[] -- what
 # the generator scatters into whatever space the blocks leave.
 #
 # A third image -- a 4xN sheet, one row per palette, four cells per row -- is
 # baked as:
 #
-#   greeble_palettes[NPALETTE][4]  four packed 0xAABBGGRR colours per row;
+#   greebling_palettes[NPALETTE][4]  four packed 0xAABBGGRR colours per row;
 #                                  the generator picks a row at random and
 #                                  stamp slots 0..3 index into it
 #
-# Usage: tools/gen_greeble_tiles.py <tiles-only.png> \
+# Usage: tools/gen_greebling_tiles.py <tiles-only.png> \
 #            [tiles-arranged.png [pals.png]]
 
 import sys
 from PIL import Image
 
-OUT = "libraries/wuss/tasks/greeble-tiles.h"
+OUT = "libraries/wuss/tasks/greebling-tiles.h"
 PAL = {(0, 0, 0, 255): 0, (126, 37, 83, 255): 1,
        (255, 0, 77, 255): 2, (255, 163, 0, 255): 3}
 HOLE = 0xFF
@@ -148,7 +148,7 @@ def load_palettes(path):
 
 def main():
     if not 2 <= len(sys.argv) <= 4:
-        sys.exit("usage: gen_greeble_tiles.py <tiles-only.png> "
+        sys.exit("usage: gen_greebling_tiles.py <tiles-only.png> "
                  "[tiles-arranged.png [pals.png]]")
 
     tiles = load_tiles(sys.argv[1])
@@ -162,20 +162,20 @@ def main():
     palettes = load_palettes(sys.argv[3]) if len(sys.argv) == 4 else []
 
     L = []
-    L += ["/* greeble-tiles.h -- baked 8x8 greeble stamps",
+    L += ["/* greebling-tiles.h -- baked 8x8 greeble stamps",
           " * generated from the Xenon 2 greebling tile sheet; do not hand-edit.",
-          " * regenerate with tools/gen_greeble_tiles.py */",
+          " * regenerate with tools/gen_greebling_tiles.py */",
           "",
-          "#ifndef TASKS_GREEBLE_TILES_H",
-          "#define TASKS_GREEBLE_TILES_H",
+          "#ifndef TASKS_GREEBLING_TILES_H",
+          "#define TASKS_GREEBLING_TILES_H",
           "",
-          "#define GREEBLE_NTILES %d" % n,
-          "#define GREEBLE_TILE_PX 8",
+          "#define GREEBLING_NTILES %d" % n,
+          "#define GREEBLING_TILE_PX 8",
           "",
           "/* each tile: 8 rows, one uint16 per row, 2 bits per pixel (x0 in the",
-          " * low bits); pixel value 0..3 indexes greeble_palette[] in greeble.c */",
-          "static const unsigned short greeble_tiles[GREEBLE_NTILES]"
-          "[GREEBLE_TILE_PX] =",
+          " * low bits); pixel value 0..3 indexes greebling_palette[] in greebling.c */",
+          "static const unsigned short greebling_tiles[GREEBLING_NTILES]"
+          "[GREEBLING_TILE_PX] =",
           "{"]
     for i, t in enumerate(tiles):
         row = ", ".join("0x%04X" % packrow(t[y]) for y in range(8))
@@ -189,15 +189,15 @@ def main():
         pool.extend(flat)
 
     L += ["/* prefab blocks lifted from the arrangement sheet: each is a w*h",
-          " * grid of stamp indices in greeble_prefab_cells[], 0x%02X marking a"
+          " * grid of stamp indices in greebling_prefab_cells[], 0x%02X marking a"
           % HOLE,
           " * cell the block's bounding box does not fill. 1x1 clusters are",
-          " * dropped. GREEBLE_NPREFAB is 0 when the sheet was not supplied. */",
-          "#define GREEBLE_NPREFAB %d" % len(spans),
-          "#define GREEBLE_PREFAB_HOLE 0x%02X" % HOLE,
+          " * dropped. GREEBLING_NPREFAB is 0 when the sheet was not supplied. */",
+          "#define GREEBLING_NPREFAB %d" % len(spans),
+          "#define GREEBLING_PREFAB_HOLE 0x%02X" % HOLE,
           ""]
     if spans:
-        L += ["static const unsigned char greeble_prefab_cells[] =",
+        L += ["static const unsigned char greebling_prefab_cells[] =",
               "{"]
         for w, h, off in spans:
             for r in range(h):
@@ -206,7 +206,7 @@ def main():
         L += ["};",
               "",
               "static const struct { unsigned char w, h; unsigned short off; }",
-              "greeble_prefab[GREEBLE_NPREFAB] =",
+              "greebling_prefab[GREEBLING_NPREFAB] =",
               "{"]
         for i, (w, h, off) in enumerate(spans):
             L.append("  { %2d, %2d, %4d }, /* %d */" % (w, h, off, i))
@@ -215,30 +215,30 @@ def main():
     L += ["/* stamps the generator scatters into cells no prefab claimed: the",
           " * 1x1 clusters from the arrangement sheet, or all tiles when no",
           " * sheet was supplied */",
-          "#define GREEBLE_NFILLER %d" % len(filler),
-          "static const unsigned char greeble_filler[GREEBLE_NFILLER] =",
+          "#define GREEBLING_NFILLER %d" % len(filler),
+          "static const unsigned char greebling_filler[GREEBLING_NFILLER] =",
           "{"]
     for i in range(0, len(filler), 12):
         L.append("  %s," % ", ".join("%3d" % v for v in filler[i:i + 12]))
     L += ["};", ""]
 
     if not palettes:
-        # PICO-8 black / dark-purple / red / orange, so greeble.c always has
+        # PICO-8 black / dark-purple / red / orange, so greebling.c always has
         # at least one row to pick from
         palettes = [[0xFF000000, 0xFF53257E, 0xFF4D00FF, 0xFF00A3FF]]
     L += ["/* four-colour palettes: the generator picks one row at random per",
           " * pattern and stamp slots 0..3 index straight into it. Each entry is",
-          " * a packed 0xAABBGGRR value for colour_rgba(). GREEBLE_NPALETTE is 1",
+          " * a packed 0xAABBGGRR value for colour_rgba(). GREEBLING_NPALETTE is 1",
           " * (a lone PICO-8 row) when no palette sheet was supplied. */",
-          "#define GREEBLE_NPALETTE %d" % len(palettes),
-          "static const unsigned int greeble_palettes[GREEBLE_NPALETTE][4] =",
+          "#define GREEBLING_NPALETTE %d" % len(palettes),
+          "static const unsigned int greebling_palettes[GREEBLING_NPALETTE][4] =",
           "{"]
     for i, row in enumerate(palettes):
         L.append("  { %s }, /* %d */"
                  % (", ".join("0x%08XU" % c for c in row), i))
     L += ["};", ""]
 
-    L += ["#endif /* TASKS_GREEBLE_TILES_H */", ""]
+    L += ["#endif /* TASKS_GREEBLING_TILES_H */", ""]
 
     with open(OUT, "w") as f:
         f.write("\n".join(L))

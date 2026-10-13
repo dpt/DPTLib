@@ -1,4 +1,4 @@
-/* wuss/tasks/effects.c -- bitmap effects task */
+/* wuss/tasks/effecting.c -- bitmap effects task */
 
 #ifdef WUSS_APP
 
@@ -19,16 +19,16 @@
 #include "wuss/menu.h"
 #include "wuss/menu-desc.h"
 
-#include "effects.h"
+#include "effecting.h"
 #include "taskapp.h"
 #include "common.h"
 
-static const int g_amounts[EFFECTS_NAMOUNTS] = { 2, 4, 8, 16, 32, 48 };
+static const int g_amounts[EFFECTING_NAMOUNTS] = { 2, 4, 8, 16, 32, 48 };
 
 /* ----------------------------------------------------------------------- */
 
 /* Run the chosen effect from source into result. */
-static result_t effects_apply(effects_task_t *ec)
+static result_t effecting_apply(effecting_task_t *ec)
 {
   result_t       rc;
   tonemap_t     *map;
@@ -42,34 +42,34 @@ static result_t effects_apply(effects_task_t *ec)
 
   switch (ec->effect)
   {
-  case EFFECTS_BLUR_BOX:
+  case EFFECTING_BLUR_BOX:
     return effects_blur_apply(&ec->source, &ec->result, effects_blur_BOX,
                               amount);
 
-  case EFFECTS_BLUR_GAUSSIAN:
+  case EFFECTING_BLUR_GAUSSIAN:
     return effects_blur_apply(&ec->source, &ec->result,
                               effects_blur_GAUSSIAN, amount);
 
-  case EFFECTS_SHARPEN:
+  case EFFECTING_SHARPEN:
     return effects_sharpen_apply(&ec->source, &ec->result);
 
-  case EFFECTS_GREY:
+  case EFFECTING_GREY:
     return effects_grey_apply(&ec->source, &ec->result);
 
-  case EFFECTS_EXPAND:
+  case EFFECTING_EXPAND:
     return effects_expand_apply(&ec->source, &ec->result, 0);
 
-  case EFFECTS_EQUALISE:
+  case EFFECTING_EQUALISE:
     return effects_equalise_apply(&ec->source, &ec->result);
 
-  case EFFECTS_BRIGHTEN:
-  case EFFECTS_INVERT:
+  case EFFECTING_BRIGHTEN:
+  case EFFECTING_INVERT:
     map = tonemap_create();
     if (map == NULL)
       return result_OOM;
 
     tonemap_get_values(map, tonemap_CHANNEL_RGB, &spec);
-    if (ec->effect == EFFECTS_BRIGHTEN)
+    if (ec->effect == EFFECTING_BRIGHTEN)
       spec.gamma = 200;
     else
       spec.flags = tonemap_FLAG_INVERT;
@@ -89,7 +89,7 @@ static result_t effects_apply(effects_task_t *ec)
 }
 
 /* Allocate result to match source, then apply. */
-static result_t effects_rebuild(effects_task_t *ec)
+static result_t effecting_rebuild(effecting_task_t *ec)
 {
   free(ec->result.base);
 
@@ -98,13 +98,13 @@ static result_t effects_rebuild(effects_task_t *ec)
   if (ec->result.base == NULL)
     return result_OOM;
 
-  return effects_apply(ec);
+  return effecting_apply(ec);
 }
 
-/* wuss_saveas_save_fn_t: opaque is the effects_task_t */
-static result_t effects_saveas_save(const char *path, void *opaque)
+/* wuss_saveas_save_fn_t: opaque is the effecting_task_t */
+static result_t effecting_saveas_save(const char *path, void *opaque)
 {
-  effects_task_t *ec;
+  effecting_task_t *ec;
 
   ec = opaque;
   if (ec->result.base == NULL)
@@ -114,9 +114,9 @@ static result_t effects_saveas_save(const char *path, void *opaque)
 }
 
 /* Seed Save As with "<image>-effects.png". */
-static void effects_saveas_name(effects_task_t *ec)
+static void effecting_saveas_name(effecting_task_t *ec)
 {
-  char leafname[EFFECTS_MAX_NAME_LEN + 16];
+  char leafname[EFFECTING_MAX_NAME_LEN + 16];
 
   snprintf(leafname, sizeof(leafname), "%s-effects.png", ec->name);
   wuss_saveas_set_leafname(ec->saveas, leafname);
@@ -124,11 +124,11 @@ static void effects_saveas_name(effects_task_t *ec)
 
 /* Load the PNG at path and re-apply, resizing the window to fit. A load
  * failure keeps the current image and is returned. */
-static result_t effects_show(effects_task_t *ec, const char *path)
+static result_t effecting_show(effecting_task_t *ec, const char *path)
 {
   result_t rc;
   bitmap_t next;
-  char     name[EFFECTS_MAX_NAME_LEN];
+  char     name[EFFECTING_MAX_NAME_LEN];
 
   if (!path_leaf_strip_ext(path_leaf(path), ".png", name, sizeof(name)))
     return result_BAD_ARG;
@@ -136,16 +136,16 @@ static result_t effects_show(effects_task_t *ec, const char *path)
   rc = load_png_deep(&next, path, pixelfmt_rgbx8888);
   if (rc != result_OK)
   {
-    logf_warning("effects: cannot load \"%s\" (rc=0x%X)", path, rc);
+    logf_warning("effecting: cannot load \"%s\" (rc=0x%X)", path, rc);
     return rc;
   }
 
   free(ec->source.base);
   ec->source = next;
   strcpy(ec->name, name);
-  effects_saveas_name(ec);
+  effecting_saveas_name(ec);
 
-  rc = effects_rebuild(ec);
+  rc = effecting_rebuild(ec);
   if (rc != result_OK)
     return rc;
 
@@ -159,46 +159,46 @@ static result_t effects_show(effects_task_t *ec, const char *path)
 
 /* ----------------------------------------------------------------------- */
 
-result_t effects_create(wuss_t *wuss, effects_task_t **out)
+result_t effecting_create(wuss_t *wuss, effecting_task_t **out)
 {
-  result_t         rc;
-  effects_task_t  *task;
-  wuss_task_t     *delegate;
-  wuss_task_desc_t delegate_desc;
-  filetype_t       png_type;
-  size2d_t         sz;
-  int              i;
+  result_t          rc;
+  effecting_task_t *task;
+  wuss_task_t      *delegate;
+  wuss_task_desc_t  delegate_desc;
+  filetype_t        png_type;
+  size2d_t          sz;
+  int               i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
     return result_OOM;
 
   task->wuss   = wuss;
-  task->effect = EFFECTS_BLUR_GAUSSIAN;
+  task->effect = EFFECTING_BLUR_GAUSSIAN;
   task->amount = 2;
 
-  WUSS_MENU_ITEM(task->effect_items, EFFECTS_NONE, "None",
+  WUSS_MENU_ITEM(task->effect_items, EFFECTING_NONE, "None",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->effect_items, EFFECTS_BLUR_BOX, "Box blur",
+  WUSS_MENU_ITEM(task->effect_items, EFFECTING_BLUR_BOX, "Box blur",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->effect_items, EFFECTS_BLUR_GAUSSIAN, "Gaussian blur",
+  WUSS_MENU_ITEM(task->effect_items, EFFECTING_BLUR_GAUSSIAN, "Gaussian blur",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->effect_items, EFFECTS_SHARPEN, "Sharpen",
+  WUSS_MENU_ITEM(task->effect_items, EFFECTING_SHARPEN, "Sharpen",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->effect_items, EFFECTS_GREY, "Grey",
+  WUSS_MENU_ITEM(task->effect_items, EFFECTING_GREY, "Grey",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->effect_items, EFFECTS_EXPAND, "Expand",
+  WUSS_MENU_ITEM(task->effect_items, EFFECTING_EXPAND, "Expand",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->effect_items, EFFECTS_EQUALISE, "Equalise",
+  WUSS_MENU_ITEM(task->effect_items, EFFECTING_EQUALISE, "Equalise",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->effect_items, EFFECTS_BRIGHTEN, "Brighten",
+  WUSS_MENU_ITEM(task->effect_items, EFFECTING_BRIGHTEN, "Brighten",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->effect_items, EFFECTS_INVERT, "Invert",
+  WUSS_MENU_ITEM(task->effect_items, EFFECTING_INVERT, "Invert",
                  wuss_MENU_ITEM_NONE);
   WUSS_MENU_TITLE(task->effect_menu, "Effect", task->effect_items,
                   NELEMS(task->effect_items));
 
-  for (i = 0; i < EFFECTS_NAMOUNTS; i++)
+  for (i = 0; i < EFFECTING_NAMOUNTS; i++)
   {
     snprintf(task->amount_text[i], sizeof(task->amount_text[i]), "%d", g_amounts[i]);
     WUSS_MENU_ITEM(task->amount_items, i, task->amount_text[i],
@@ -207,9 +207,9 @@ result_t effects_create(wuss_t *wuss, effects_task_t **out)
   WUSS_MENU_TITLE(task->amount_menu, "Amount", task->amount_items,
                   NELEMS(task->amount_items));
 
-  delegate_desc.handle    = effects_handle;
+  delegate_desc.handle    = effecting_handle;
   delegate_desc.task_data = task;
-  delegate_desc.name      = "effects";
+  delegate_desc.name      = "effecting";
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
   {
@@ -219,12 +219,12 @@ result_t effects_create(wuss_t *wuss, effects_task_t **out)
   task->delegate = delegate;
   /* No autoclose: QUIT is delivered at wuss_destroy instead. */
 
-  sz = SIZE2D(EFFECTS_EMPTYSZ, EFFECTS_EMPTYSZ);
+  sz = SIZE2D(EFFECTING_EMPTYSZ, EFFECTING_EMPTYSZ);
 
   rc = wuss_window_create_at(delegate,
                              &task_place,
                              sz,
-                             "Effects",
+                             "Effecting",
                              wuss_WINDOW_DEFAULT,
                              wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                              sz,
@@ -238,7 +238,7 @@ result_t effects_create(wuss_t *wuss, effects_task_t **out)
 
   png_type = filetype_from_ext(".png");
   rc = wuss_saveas_create(&task->saveas, wuss, &png_type, NULL,
-                          effects_saveas_save, task);
+                          effecting_saveas_save, task);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);
@@ -251,21 +251,21 @@ result_t effects_create(wuss_t *wuss, effects_task_t **out)
   return result_OK;
 }
 
-result_t effects_app_create(wuss_t *wuss)
+result_t effecting_app_create(wuss_t *wuss)
 {
   static const taskapp_desc_t desc =
   {
-    "Effects",
+    "Effecting",
     "Apply effects to PNGs",
-    (taskapp_create_fn_t) effects_create,
-    (taskapp_data_load_fn_t) effects_show,
+    (taskapp_create_fn_t) effecting_create,
+    (taskapp_data_load_fn_t) effecting_show,
     true
   };
 
   return taskapp_install(wuss, &desc);
 }
 
-void effects_destroy(effects_task_t *task)
+void effecting_destroy(effecting_task_t *task)
 {
   wuss_saveas_destroy(task->saveas);
   wuss_menu_destroy(task->menu);
@@ -276,12 +276,12 @@ void effects_destroy(effects_task_t *task)
 
 /* ----------------------------------------------------------------------- */
 
-static result_t effects_redraw(const wuss_event_t *event, void *task_data)
+static result_t effecting_redraw(const wuss_event_t *event, void *task_data)
 {
-  effects_task_t *ec;
-  screen_t       *scr;
-  const box_t    *bounds;
-  const bitmap_t *bm;
+  effecting_task_t *ec;
+  screen_t         *scr;
+  const box_t      *bounds;
+  const bitmap_t   *bm;
 
   ec = task_data;
 
@@ -300,7 +300,7 @@ static result_t effects_redraw(const wuss_event_t *event, void *task_data)
 }
 
 /* Menu shape built from a descriptor string; the submenus are borrowed. */
-static result_t effects_open_menu(effects_task_t *ec)
+static result_t effecting_open_menu(effecting_task_t *ec)
 {
 
   result_t     rc;
@@ -340,12 +340,12 @@ static result_t effects_open_menu(effects_task_t *ec)
   return wuss_menu_open_at_pointer(ec->delegate, ec->menu, &ec->menu_handle);
 }
 
-result_t effects_handle(wuss_window_t      *window,
-                        const wuss_event_t *event,
-                        void               *task_data)
+result_t effecting_handle(wuss_window_t      *window,
+                          const wuss_event_t *event,
+                          void               *task_data)
 {
   result_t           rc;
-  effects_task_t    *ec;
+  effecting_task_t  *ec;
   const wuss_menu_t *menu;
   int                index;
 
@@ -354,7 +354,7 @@ result_t effects_handle(wuss_window_t      *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    return effects_redraw(event, task_data);
+    return effecting_redraw(event, task_data);
 
   case wuss_EVENT_MOUSE:
     if (window != ec->window)
@@ -368,7 +368,7 @@ result_t effects_handle(wuss_window_t      *window,
       return result_OK;
     }
     if (event->data.mouse.button & wuss_BUTTON_MENU)
-      return effects_open_menu(ec);
+      return effecting_open_menu(ec);
     return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
@@ -392,7 +392,7 @@ result_t effects_handle(wuss_window_t      *window,
     wuss_menu_tick_exclusive_live(ec->menu_handle, &ec->amount_menu,
                                   ec->amount);
 
-    rc = effects_apply(ec);
+    rc = effecting_apply(ec);
     wuss_window_invalidate_visible(ec->window);
     return rc;
 
@@ -400,7 +400,7 @@ result_t effects_handle(wuss_window_t      *window,
     if (ec->window == NULL || window != ec->window)
       return result_OK;
     return taskapp_window_data_load(ec->wuss, ec->delegate, ec,
-                                    (taskapp_data_load_fn_t) effects_show,
+                                    (taskapp_data_load_fn_t) effecting_show,
                                     event->data.message);
 
   case wuss_EVENT_MENU_CLOSED:
@@ -429,7 +429,7 @@ result_t effects_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_QUIT:
-    effects_destroy(ec);
+    effecting_destroy(ec);
     return result_OK;
 
   case wuss_EVENT_KEY:

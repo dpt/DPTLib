@@ -1,16 +1,16 @@
-/* greeble-tiles.h -- baked 8x8 greeble stamps
+/* greebling-tiles.h -- baked 8x8 greeble stamps
  * generated from the Xenon 2 greebling tile sheet; do not hand-edit.
- * regenerate with tools/gen_greeble_tiles.py */
+ * regenerate with tools/gen_greebling_tiles.py */
 
-#ifndef TASKS_GREEBLE_TILES_H
-#define TASKS_GREEBLE_TILES_H
+#ifndef TASKS_GREEBLING_TILES_H
+#define TASKS_GREEBLING_TILES_H
 
-#define GREEBLE_NTILES 205
-#define GREEBLE_TILE_PX 8
+#define GREEBLING_NTILES 205
+#define GREEBLING_TILE_PX 8
 
 /* each tile: 8 rows, one uint16 per row, 2 bits per pixel (x0 in the
- * low bits); pixel value 0..3 indexes greeble_palette[] in greeble.c */
-static const unsigned short greeble_tiles[GREEBLE_NTILES][GREEBLE_TILE_PX] =
+ * low bits); pixel value 0..3 indexes greebling_palette[] in greebling.c */
+static const unsigned short greebling_tiles[GREEBLING_NTILES][GREEBLING_TILE_PX] =
 {
   { 0x6AAB, 0x5AAE, 0x1556, 0x0001, 0x6AAB, 0x5AAE, 0x1556, 0x0001 }, /* 0 */
   { 0x6AAB, 0x1556, 0x1556, 0x1556, 0x1556, 0x1556, 0x1556, 0x0001 }, /* 1 */
@@ -220,13 +220,13 @@ static const unsigned short greeble_tiles[GREEBLE_NTILES][GREEBLE_TILE_PX] =
 };
 
 /* prefab blocks lifted from the arrangement sheet: each is a w*h
- * grid of stamp indices in greeble_prefab_cells[], 0xFF marking a
+ * grid of stamp indices in greebling_prefab_cells[], 0xFF marking a
  * cell the block's bounding box does not fill. 1x1 clusters are
- * dropped. GREEBLE_NPREFAB is 0 when the sheet was not supplied. */
-#define GREEBLE_NPREFAB 137
-#define GREEBLE_PREFAB_HOLE 0xFF
+ * dropped. GREEBLING_NPREFAB is 0 when the sheet was not supplied. */
+#define GREEBLING_NPREFAB 137
+#define GREEBLING_PREFAB_HOLE 0xFF
 
-static const unsigned char greeble_prefab_cells[] =
+static const unsigned char greebling_prefab_cells[] =
 {
   0x79, 0x7E,
   0x89, 0x8A,
@@ -630,7 +630,7 @@ static const unsigned char greeble_prefab_cells[] =
 };
 
 static const struct { unsigned char w, h; unsigned short off; }
-greeble_prefab[GREEBLE_NPREFAB] =
+greebling_prefab[GREEBLING_NPREFAB] =
 {
   {  2,  2,    0 }, /* 0 */
   {  3,  3,    4 }, /* 1 */
@@ -774,8 +774,8 @@ greeble_prefab[GREEBLE_NPREFAB] =
 /* stamps the generator scatters into cells no prefab claimed: the
  * 1x1 clusters from the arrangement sheet, or all tiles when no
  * sheet was supplied */
-#define GREEBLE_NFILLER 30
-static const unsigned char greeble_filler[GREEBLE_NFILLER] =
+#define GREEBLING_NFILLER 30
+static const unsigned char greebling_filler[GREEBLING_NFILLER] =
 {
    15,   1,   9, 127,   7,  68, 185, 184, 204,  21,   0, 181,
   177, 179, 203, 178,  33,   8, 202, 187, 183,  22, 180, 189,
@@ -784,10 +784,10 @@ static const unsigned char greeble_filler[GREEBLE_NFILLER] =
 
 /* four-colour palettes: the generator picks one row at random per
  * pattern and stamp slots 0..3 index straight into it. Each entry is
- * a packed 0xAABBGGRR value for colour_rgba(). GREEBLE_NPALETTE is 1
+ * a packed 0xAABBGGRR value for colour_rgba(). GREEBLING_NPALETTE is 1
  * (a lone PICO-8 row) when no palette sheet was supplied. */
-#define GREEBLE_NPALETTE 16
-static const unsigned int greeble_palettes[GREEBLE_NPALETTE][4] =
+#define GREEBLING_NPALETTE 16
+static const unsigned int greebling_palettes[GREEBLING_NPALETTE][4] =
 {
   { 0xFF532B1DU, 0xFF9C7683U, 0xFFC7C3C2U, 0xFFE8F1FFU }, /* 0 */
   { 0xFF000000U, 0xFF4F575FU, 0xFFC7C3C2U, 0xFFE8F1FFU }, /* 1 */
@@ -807,4 +807,4 @@ static const unsigned int greeble_palettes[GREEBLE_NPALETTE][4] =
   { 0xFF000000U, 0xFF532B1DU, 0xFF518700U, 0xFF36E400U }, /* 15 */
 };
 
-#endif /* TASKS_GREEBLE_TILES_H */
+#endif /* TASKS_GREEBLING_TILES_H */

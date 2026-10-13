@@ -1,7 +1,7 @@
-/* wuss/tasks/filer.h -- directory display / drag-save target task */
+/* wuss/tasks/filing.h -- directory display / drag-save target task */
 
-#ifndef TASKS_FILER_H
-#define TASKS_FILER_H
+#ifndef TASKS_FILING_H
+#define TASKS_FILING_H
 
 #if defined(WUSS_APP) && defined(WUSS_ICONBAR)
 
@@ -14,44 +14,44 @@
 #include "wuss/window.h"
 
 /* ponytail: fixed cap on the number of directory windows open at once, so
- * filer_task_t can hold them inline with no malloc bookkeeping. Raise it if
+ * filing_task_t can hold them inline with no malloc bookkeeping. Raise it if
  * this ever feels cramped. */
-#define FILER_MAX_WINDOWS 16
+#define FILING_MAX_WINDOWS 16
 
 /* Filer menu rows, which act on the window the menu was opened over.
  * Download only exists in the browser build, where saved files
  * otherwise stay trapped in Emscripten's in-memory filesystem. */
 enum
 {
-  FILER_MENU_SELECT_ALL,
-  FILER_MENU_CLEAR_SELECTION,
-  FILER_MENU_OPEN_PARENT,
+  FILING_MENU_SELECT_ALL,
+  FILING_MENU_CLEAR_SELECTION,
+  FILING_MENU_OPEN_PARENT,
 #ifdef __EMSCRIPTEN__
-  FILER_MENU_DOWNLOAD,
+  FILING_MENU_DOWNLOAD,
 #endif
-  FILER_MENU__LIMIT
+  FILING_MENU__LIMIT
 };
 
 /* icon bar menu rows */
 enum
 {
-  FILER_IB_MENU_INFO,
-  FILER_IB_MENU_OPEN_ROOT,
-  FILER_IB_MENU__LIMIT
+  FILING_IB_MENU_INFO,
+  FILING_IB_MENU_OPEN_ROOT,
+  FILING_IB_MENU__LIMIT
 };
 
 /* Set the directory a Filer's icon bar icon/System menu row opens, applied
- * the next time a Filer task is created (see filer_create). Not retroactive:
+ * the next time a Filer task is created (see filing_create). Not retroactive:
  * a Filer already running keeps the windows it has open. Call before
  * spawning the first Filer; the default is "." (the current directory), or
  * "/" when built for Emscripten.
  *
  * \param[in] root Directory path; copied. NULL restores the default. */
-void filer_set_root(const char *root);
+void filing_set_root(const char *root);
 
 /* window D's task: a RISC OS-style Filer. A System menu row and an icon bar
  * icon both open (or, if already open, bring to the front) a window on the
- * root directory (see filer_set_root); each subsequent window is opened by
+ * root directory (see filing_set_root); each subsequent window is opened by
  * double-clicking a directory entry in an existing window, one window per
  * path, never duplicated. Double-clicking a file does nothing. Dragging a
  * file out of a window starts a core drag; when it ends over a window of
@@ -66,26 +66,26 @@ void filer_set_root(const char *root);
  * window opens; the drop point within the window is ignored, so a file
  * always lands in that window's own directory regardless of where it was
  * dropped. */
-typedef struct filer_task filer_task_t;
+typedef struct filing_task filing_task_t;
 
-typedef struct filer_window
+typedef struct filing_window
 {
-  filer_task_t    *owner; /* for the shared glyphs, from wuss_gridview's
-                           * opaque callbacks (filer_item/filer_activate) */
+  filing_task_t    *owner; /* for the shared glyphs, from wuss_gridview's
+                           * opaque callbacks (filing_item/filing_activate) */
   wuss_window_t   *window;
   wuss_gridview_t *gridview;
   dirlist_t       *listing;
   char             path[DPTLIB_MAXPATH];
 }
-filer_window_t;
+filing_window_t;
 
-struct filer_task
+struct filing_task
 {
   wuss_t                *wuss;
   wuss_task_t           *delegate;
   wuss_iconbar_icon_t   *iconbar_icon;
 
-  filer_window_t         windows[FILER_MAX_WINDOWS];
+  filing_window_t         windows[FILING_MAX_WINDOWS];
   int                    nwindows; /* slots used so far; a closed window's
                                     * slot stays, window NULL, for reuse */
 
@@ -99,28 +99,28 @@ struct filer_task
   wuss_menu_handle_t     menu_handle;
   wuss_window_t         *menu_window; /* Filer window the menu was opened
                                        * over, or NULL */
-  wuss_menu_item_t       menu_items[FILER_MENU__LIMIT];
+  wuss_menu_item_t       menu_items[FILING_MENU__LIMIT];
   wuss_menu_t            menu;
-  wuss_menu_item_t       ib_menu_items[FILER_IB_MENU__LIMIT];
+  wuss_menu_item_t       ib_menu_items[FILING_IB_MENU__LIMIT];
   wuss_menu_t            ib_menu;
 };
 
-wuss_window_fn_t filer_handle;
+wuss_window_fn_t filing_handle;
 
 /* create the Filer task against the given wuss instance: an icon bar icon
- * and a System menu row, neither yet showing a window (see filer_set_root
+ * and a System menu row, neither yet showing a window (see filing_set_root
  * for where the first window, opened on demand, points). if out is non-NULL,
  * the task block is also returned through it. */
-result_t filer_create(wuss_t *wuss, filer_task_t **out);
+result_t filing_create(wuss_t *wuss, filing_task_t **out);
 
 /* create the Filer: it keeps its own icon bar icon, so there is nothing to
  * wrap and no window opens until the icon is clicked */
-result_t filer_app_create(wuss_t *wuss);
+result_t filing_app_create(wuss_t *wuss);
 
-/* free a task block allocated by filer_create; normally called by the
+/* free a task block allocated by filing_create; normally called by the
  * task's wuss_EVENT_QUIT handler, not by callers directly */
-void filer_destroy(filer_task_t *task);
+void filing_destroy(filing_task_t *task);
 
 #endif /* WUSS_APP && WUSS_ICONBAR */
 
-#endif /* TASKS_FILER_H */
+#endif /* TASKS_FILING_H */

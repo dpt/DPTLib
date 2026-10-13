@@ -1,7 +1,7 @@
-/* wuss/tasks/minesweeper.h -- minesweeper task */
+/* wuss/tasks/minesweeping.h -- minesweeper task */
 
-#ifndef TASKS_MINESWEEPER_H
-#define TASKS_MINESWEEPER_H
+#ifndef TASKS_MINESWEEPING_H
+#define TASKS_MINESWEEPING_H
 
 #ifdef WUSS_APP
 
@@ -17,42 +17,42 @@
 
 #include "fireball.h"
 
-#define MINESWEEPER_CELL 22 /* pixels per cell; matches mine.png/flag.png */
+#define MINESWEEPING_CELL 22 /* pixels per cell; matches mine.png/flag.png */
 
 /* board sizes offered on the "Grid Size" menu; arrays are sized for the
  * largest so a resize just changes ms->rows/cols/mines and re-clears */
-#define MINESWEEPER_MAX_ROWS 24
-#define MINESWEEPER_MAX_COLS 24
+#define MINESWEEPING_MAX_ROWS 24
+#define MINESWEEPING_MAX_COLS 24
 
-typedef enum minesweeper_size
+typedef enum minesweeping_size
 {
-  minesweeper_SIZE_24X24,
-  minesweeper_SIZE_24X12,
-  minesweeper_SIZE_16X16,
-  minesweeper_SIZE_16X12,
-  minesweeper_SIZE_12X12,
-  minesweeper_NSIZES
+  minesweeping_SIZE_24X24,
+  minesweeping_SIZE_24X12,
+  minesweeping_SIZE_16X16,
+  minesweeping_SIZE_16X12,
+  minesweeping_SIZE_12X12,
+  minesweeping_NSIZES
 }
-minesweeper_size_t;
+minesweeping_size_t;
 
 /* mine densities offered on the "Difficulty" menu; each scales the chosen
  * grid size's classic mine count */
-typedef enum minesweeper_difficulty
+typedef enum minesweeping_difficulty
 {
-  minesweeper_DIFFICULTY_EASY,
-  minesweeper_DIFFICULTY_NORMAL,
-  minesweeper_DIFFICULTY_HARD,
-  minesweeper_NDIFFICULTIES
+  minesweeping_DIFFICULTY_EASY,
+  minesweeping_DIFFICULTY_NORMAL,
+  minesweeping_DIFFICULTY_HARD,
+  minesweeping_NDIFFICULTIES
 }
-minesweeper_difficulty_t;
+minesweeping_difficulty_t;
 
-typedef enum minesweeper_cell_state
+typedef enum minesweeping_cell_state
 {
-  minesweeper_HIDDEN,
-  minesweeper_REVEALED,
-  minesweeper_FLAGGED
+  minesweeping_HIDDEN,
+  minesweeping_REVEALED,
+  minesweeping_FLAGGED
 }
-minesweeper_cell_state_t;
+minesweeping_cell_state_t;
 
 /* classic minesweeper: Select reveals a cell (flood-filling neighbouring
  * zeros), Adjust toggles a flag. Select on a revealed number whose flags
@@ -66,15 +66,15 @@ minesweeper_cell_state_t;
  * and shows every mine. With the input focus, the arrow keys move a cursor
  * cell, Return reveals it, Space toggles its flag and N starts a new
  * game. Hitting a mine sets off a particle explosion at the clicked cell. */
-typedef struct minesweeper_task
+typedef struct minesweeping_task
 {
   wuss_t                  *wuss;
   wuss_window_t           *window;
   wuss_task_t             *task; /* delegate; opens the New Game menu */
   wuss_menu_handle_t       menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t         size_items[minesweeper_NSIZES];
+  wuss_menu_item_t         size_items[minesweeping_NSIZES];
   wuss_menu_t              size_menu;
-  wuss_menu_item_t         difficulty_items[minesweeper_NDIFFICULTIES];
+  wuss_menu_item_t         difficulty_items[minesweeping_NDIFFICULTIES];
   wuss_menu_t              difficulty_menu;
   wuss_menu_item_t         menu_items[4]; /* per-instance: a shared static
                                             * would leak one instance's
@@ -90,16 +90,16 @@ typedef struct minesweeper_task
                                      * mine cell */
   const bitmap_t          *flag_bm; /* private pool "flag"; drawn on a flagged
                                      * cell */
-  minesweeper_size_t       size;
-  minesweeper_difficulty_t difficulty;
+  minesweeping_size_t       size;
+  minesweeping_difficulty_t difficulty;
   int                      rows, cols, mines;
-  bool                     mine[MINESWEEPER_MAX_ROWS][MINESWEEPER_MAX_COLS];
-  minesweeper_cell_state_t state[MINESWEEPER_MAX_ROWS][MINESWEEPER_MAX_COLS];
+  bool                     mine[MINESWEEPING_MAX_ROWS][MINESWEEPING_MAX_COLS];
+  minesweeping_cell_state_t state[MINESWEEPING_MAX_ROWS][MINESWEEPING_MAX_COLS];
   bool                     placed;  /* mines placed yet? */
   bool                     dead;    /* a mine was revealed */
   bool                     won;
   bool                     new_best; /* this win beat best[][] */
-  int                      best[minesweeper_NSIZES][minesweeper_NDIFFICULTIES];
+  int                      best[minesweeping_NSIZES][minesweeping_NDIFFICULTIES];
                                      /* fastest win in seconds + 1, per
                                       * size and difficulty; 0 = none yet */
   int                      flags;   /* flagged cell count, for the counter */
@@ -123,22 +123,22 @@ typedef struct minesweeper_task
 
   fireball_t               boom; /* death explosion over the board */
 }
-minesweeper_task_t;
+minesweeping_task_t;
 
-wuss_window_fn_t minesweeper_handle;
+wuss_window_fn_t minesweeping_handle;
 
 /* create the minesweeper window against the given wuss instance, lettering
  * neighbour counts with wuss's own bold font (wuss_get_font_n(wuss, 1)).
  * if out is non-NULL, the task block is also returned through it */
-result_t minesweeper_create(wuss_t *wuss, minesweeper_task_t **out);
+result_t minesweeping_create(wuss_t *wuss, minesweeping_task_t **out);
 
 /* install the icon bar app that opens minesweeper windows on demand */
-result_t minesweeper_app_create(wuss_t *wuss);
+result_t minesweeping_app_create(wuss_t *wuss);
 
-/* free a task block allocated by minesweeper_create; normally called by the
+/* free a task block allocated by minesweeping_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
-void minesweeper_destroy(minesweeper_task_t *task);
+void minesweeping_destroy(minesweeping_task_t *task);
 
 #endif /* WUSS_APP */
 
-#endif /* TASKS_MINESWEEPER_H */
+#endif /* TASKS_MINESWEEPING_H */
