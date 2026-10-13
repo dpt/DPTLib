@@ -1,16 +1,16 @@
-# [DPTLib](https://github.com/dpt/DPTLib) > wuss > paint
+# [DPTLib](https://github.com/dpt/DPTLib) > wuss > painting
 
-Paint is a basic painting task in the `wuss` demo. It is also a worked example
+Painting is a basic painting task in the `wuss` demo. It is also a worked example
 of a task that draws into its own bitmap, captures the mouse during a stroke
 and saves and loads PNG files.
 
-- `libraries/wuss/test/tasks/paint-doc.c`: the canvas, the drawing operations
-  and undo. It has no wuss dependency, so `paintdoc_test` runs headless.
-- `libraries/wuss/test/tasks/paint.c`: the windows, the toolbox and input.
+- `libraries/wuss/test/tasks/painting-doc.c`: the canvas, the drawing operations
+  and undo. It has no wuss dependency, so `paintingdoc_test` runs headless.
+- `libraries/wuss/test/tasks/painting.c`: the windows, the toolbox and input.
 
 ## Using it
 
-Run `wuss -t Paint` (or pick Paint from the demo's icon bar) and click the
+Run `wuss -t Painting` (or pick Painting from the demo's icon bar) and click the
 icon. The New dialogue opens above the icon bar. Menu > New... on the icon
 bar opens the same dialogue.
 
@@ -45,7 +45,7 @@ makes an instance of its own.
   the canvas when it is released.
 - `Ctrl-Z` or Menu > Undo steps back. There are 20 levels and no redo.
 - Menu > Save PNG (`Ctrl-S`) opens the Save As dialogue.
-- Drop a PNG on the canvas window or on the Paint icon to load it.
+- Drop a PNG on the canvas window or on the Painting icon to load it.
 
 ## The canvas
 
@@ -54,20 +54,20 @@ asks for. The window shows up to 400 x 300 of it and scrolls. Drawing is
 opaque and hard-edged. There is no alpha channel because `screen_t` has no
 span table for the alpha formats, so drawing straight onto one asserts.
 
-Every operation in `paint-doc.h` takes canvas pixels and returns the box it
+Every operation in `painting-doc.h` takes canvas pixels and returns the box it
 may have changed. The task passes that box to `wuss_window_invalidate`.
 
-The selection is a `geom/region.h` region (`paintdoc_select_*`). The lasso
+The selection is a `geom/region.h` region (`paintingdoc_select_*`). The lasso
 fills its polygon with the even-odd rule and Invert uses `region_invert`.
-`paintdoc_selection_outline` gives the boundary boxes that the ants draw.
+`paintingdoc_selection_outline` gives the boundary boxes that the ants draw.
 
 Undo keeps RLE-compressed copies of the whole canvas. A stroke takes one
-`paintdoc_checkpoint` when the button goes down. `paintdoc_rect` and
-`paintdoc_fill` take their own.
+`paintingdoc_checkpoint` when the button goes down. `paintingdoc_rect` and
+`paintingdoc_fill` take their own.
 
 ## Loading
 
-`paintdoc_load_png` replaces the canvas and resizes it to the image. Undo is
+`paintingdoc_load_png` replaces the canvas and resizes it to the image. Undo is
 dropped, as a saved step cannot apply to a canvas of another size. An image
 with an alpha channel is composited over white. A paletted image is converted
 to `bgrx8888`, which loses any palette transparency. On failure the canvas is

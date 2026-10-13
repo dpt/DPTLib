@@ -835,9 +835,9 @@ if(BUILD_TESTS)
         libraries/utils/pack/test/pack-test.c
         libraries/datastruct/vector/test/vector-test.c
         libraries/wuss/test/gridview-bench-test.c
-        libraries/wuss/test/paint-doc-test.c
-        libraries/wuss/test/tasks/paint-doc.c
-        libraries/wuss/test/tasks/paint-doc.h
+        libraries/wuss/test/painting-doc-test.c
+        libraries/wuss/test/tasks/painting-doc.c
+        libraries/wuss/test/tasks/painting-doc.h
         libraries/wuss/test/wuss-test.c)
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})
@@ -921,14 +921,14 @@ if(BUILD_APPS)
         libraries/wuss/test/tasks/keys.c
         libraries/wuss/test/tasks/lissajous.c
         libraries/wuss/test/tasks/minesweeper.c
-        libraries/wuss/test/tasks/paint-doc.c
-        libraries/wuss/test/tasks/paint-doc.h
-        libraries/wuss/test/tasks/paint-new.c
-        libraries/wuss/test/tasks/paint-new.h
+        libraries/wuss/test/tasks/painting-doc.c
+        libraries/wuss/test/tasks/painting-doc.h
+        libraries/wuss/test/tasks/painting-new.c
+        libraries/wuss/test/tasks/painting-new.h
         libraries/wuss/test/tasks/fern.c
         libraries/wuss/test/tasks/fern.h
-        libraries/wuss/test/tasks/paint.c
-        libraries/wuss/test/tasks/paint.h
+        libraries/wuss/test/tasks/painting.c
+        libraries/wuss/test/tasks/painting.h
         libraries/wuss/test/tasks/palette.c
         libraries/wuss/test/tasks/particles.c
         libraries/wuss/test/tasks/patterns.c

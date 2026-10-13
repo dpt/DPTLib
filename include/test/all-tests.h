@@ -68,7 +68,7 @@ extern testfn_t array_test,
 
 /* wuss */
 extern testfn_t gridview_bench_test,
-                paintdoc_test,
+                paintingdoc_test,
                 wuss_test;
 
 #endif /* TESTS_ALL_TESTS_H */

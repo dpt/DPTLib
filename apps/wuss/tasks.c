@@ -42,7 +42,7 @@
 #include "tasks/keys.h"
 #include "tasks/lissajous.h"
 #include "tasks/minesweeper.h"
-#include "tasks/paint.h"
+#include "tasks/painting.h"
 #include "tasks/palette.h"
 #include "tasks/particles.h"
 #include "tasks/patterns.h"
@@ -132,7 +132,7 @@ g_image_tasks[] =
 {
   { "Dithering", dithering_app_create },
   { "Effects", effects_app_create },
-  { "Paint", paint_app_create },
+  { "Painting", painting_app_create },
   { "Resizing", resizing_app_create },
   { "Viewing", viewing_app_create },
   { "Tiling", tiling_app_create }

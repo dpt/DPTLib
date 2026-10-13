@@ -141,7 +141,7 @@ DPTLib is my platform independent C library. It contains a wide variety of funct
   - [`wuss/component/colourmenu.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/component/colourmenu.h) — menu of the system palette colours
   - [`wuss/component/fontmenu.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/component/fontmenu.h) — menu of the available bitmap fonts
 
-The interactive `wuss` demo (`apps/wuss/`) hosts several example tasks, including [Paint](https://github.com/dpt/DPTLib/blob/master/docs/windowing/paint.md). More notes are in [`docs/windowing/`](https://github.com/dpt/DPTLib/blob/master/docs/windowing).
+The interactive `wuss` demo (`apps/wuss/`) hosts several example tasks, including [Painting](https://github.com/dpt/DPTLib/blob/master/docs/windowing/painting.md). More notes are in [`docs/windowing/`](https://github.com/dpt/DPTLib/blob/master/docs/windowing).
 
 ## Building
 

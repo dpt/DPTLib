@@ -1,7 +1,7 @@
-/* wuss/test/tasks/paint.h -- basic painting task */
+/* wuss/test/tasks/painting.h -- basic painting task */
 
-#ifndef TASKS_PAINT_H
-#define TASKS_PAINT_H
+#ifndef TASKS_PAINTING_H
+#define TASKS_PAINTING_H
 
 #ifdef WUSS_APP
 
@@ -14,98 +14,98 @@
 #include "wuss/task.h"
 #include "wuss/window.h"
 
-#include "paint-doc.h"
-#include "paint-new.h"
+#include "painting-doc.h"
+#include "painting-new.h"
 
-#define PAINT_SIZE_MIN 1
-#define PAINT_SIZE_MAX 32
+#define PAINTING_SIZE_MIN 1
+#define PAINTING_SIZE_MAX 32
 
 /* the toolbox's radio buttons, in this order */
-typedef enum paint_tool
+typedef enum painting_tool
 {
-  paint_TOOL_BRUSH,
-  paint_TOOL_ERASER,
-  paint_TOOL_LINE,
-  paint_TOOL_RECT,
-  paint_TOOL_RECT_FILL, /* as RECT, but solid */
-  paint_TOOL_FILL,
-  paint_TOOL_SPRAY,  /* scatter dots around the pointer while held */
-  paint_TOOL_SELECT, /* rubber-band a rectangular selection */
-  paint_TOOL_LASSO,  /* drag out a freeform selection */
-  paint_TOOL__COUNT
+  painting_TOOL_BRUSH,
+  painting_TOOL_ERASER,
+  painting_TOOL_LINE,
+  painting_TOOL_RECT,
+  painting_TOOL_RECT_FILL, /* as RECT, but solid */
+  painting_TOOL_FILL,
+  painting_TOOL_SPRAY,  /* scatter dots around the pointer while held */
+  painting_TOOL_SELECT, /* rubber-band a rectangular selection */
+  painting_TOOL_LASSO,  /* drag out a freeform selection */
+  painting_TOOL__COUNT
 }
-paint_tool_t;
+painting_tool_t;
 
 /* the Menu click menu's rows */
 enum
 {
-  PAINT_MENU_UNDO,
-  PAINT_MENU_SELECTION, /* submenu: PAINT_SEL_* */
-  PAINT_MENU_SAVE,
-  PAINT_MENU__COUNT
+  PAINTING_MENU_UNDO,
+  PAINTING_MENU_SELECTION, /* submenu: PAINTING_SEL_* */
+  PAINTING_MENU_SAVE,
+  PAINTING_MENU__COUNT
 };
 
 /* the Selection submenu's rows */
 enum
 {
-  PAINT_SEL_ALL,
-  PAINT_SEL_NONE,
-  PAINT_SEL_INVERT,
-  PAINT_SEL__COUNT
+  PAINTING_SEL_ALL,
+  PAINTING_SEL_NONE,
+  PAINTING_SEL_INVERT,
+  PAINTING_SEL__COUNT
 };
 
 /* a 640x480 white canvas in a scrollable window, with a small toolbox window
  * beside it. Select paints with the foreground colour and Adjust with the
  * background colour; clicking a toolbox swatch sets either. Closing the
  * canvas window closes the toolbox too */
-typedef struct paint_task
+typedef struct painting_task
 {
   wuss_t            *wuss;
   wuss_task_t       *delegate;
   wuss_window_t     *window;    /* the canvas window; NULL once closed */
   wuss_window_t     *toolbox;   /* the toolbox window; NULL once closed */
-  paintdoc_t        *doc;
+  paintingdoc_t     *doc;
   wuss_saveas_t     *saveas;
   colour_t           fg, bg;
-  paint_tool_t       tool;
+  painting_tool_t    tool;
   int                size;      /* brush and outline width in pixels */
   int                held;      /* button of the stroke in progress, or 0 */
   point_t            anchor;    /* where the stroke began */
   point_t            last;      /* where the stroke last reached */
   point_t           *lasso;     /* points dragged out so far by the lasso */
   int                nlasso, caplasso;
-  int                ants_tick; /* idles since the marching ants last moved */
-  int                ants_phase; /* where the ants have marched to, 0..7 */
+  int                ants_tick;  /* idles since the ants last moved */
+  int                ants_phase; /* where the ants have marched, 0..7 */
   rng_t              rng;        /* the spray's scatter */
-  wuss_icon_t       *tool_icons[paint_TOOL__COUNT];
+  wuss_icon_t       *tool_icons[painting_TOOL__COUNT];
   wuss_slider_row_t  size_row;
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t   menu_items[PAINT_MENU__COUNT];
+  wuss_menu_item_t   menu_items[PAINTING_MENU__COUNT];
   wuss_menu_t        menu;
-  wuss_menu_item_t   sel_items[PAINT_SEL__COUNT];
+  wuss_menu_item_t   sel_items[PAINTING_SEL__COUNT];
   wuss_menu_t        sel_menu;
   char               size_text[WUSS_SLIDER_ROW_BUF];
 }
-paint_task_t;
+painting_task_t;
 
-wuss_window_fn_t paint_handle;
+wuss_window_fn_t painting_handle;
 
 /* create the paint windows against the given wuss instance;
  * if out is non-NULL, the task block is also returned through it */
-result_t paint_create(wuss_t *wuss, paint_task_t **out);
+result_t painting_create(wuss_t *wuss, painting_task_t **out);
 
-/* as paint_create, but with a canvas of the given size and colour */
-result_t paint_create_with(wuss_t                  *wuss,
-                           const paintnew_params_t *params,
-                           paint_task_t           **out);
+/* as painting_create, but with a canvas of the given size and colour */
+result_t painting_create_with(wuss_t                     *wuss,
+                              const paintingnew_params_t *params,
+                              painting_task_t           **out);
 
 /* install the icon bar app that opens paint windows on demand */
-result_t paint_app_create(wuss_t *wuss);
+result_t painting_app_create(wuss_t *wuss);
 
-/* free a task block allocated by paint_create; normally called by the
+/* free a task block allocated by painting_create; normally called by the
  * task's wuss_EVENT_QUIT handler, not by callers directly */
-void paint_destroy(paint_task_t *task);
+void painting_destroy(painting_task_t *task);
 
 #endif /* WUSS_APP */
 
-#endif /* TASKS_PAINT_H */
+#endif /* TASKS_PAINTING_H */

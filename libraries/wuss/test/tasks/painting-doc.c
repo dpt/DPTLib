@@ -1,4 +1,4 @@
-/* wuss/test/tasks/paint-doc.c -- paint canvas, drawing operations and undo */
+/* wuss/test/tasks/painting-doc.c -- paint canvas, drawing operations and undo */
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -14,19 +14,19 @@
 #include "framebuf/screen.h"
 #include "geom/region.h"
 
-#include "paint-doc.h"
+#include "painting-doc.h"
 
 /* the unused byte of a bgrx8888 pixel is not significant */
 #define RGB(px) ((px) & 0x00FFFFFFu)
 
 /* ----------------------------------------------------------------------- */
 
-struct paintdoc
+struct paintingdoc
 {
   bitmap_t bm;
   screen_t scr;
   /* RLE-compressed copies of bm, oldest first */
-  bitmap_t undo[PAINTDOC_UNDO_MAX];
+  bitmap_t undo[PAINTINGDOC_UNDO_MAX];
   int      nundo;
   /* the selection, or NULL for none, and its boundary pixels for the ants.
    * pre is a raw copy of the canvas as of the last checkpoint, kept while
@@ -61,17 +61,17 @@ static result_t canvas_make(size2d_t size, colour_t colour, bitmap_t *bm)
   return result_OK;
 }
 
-result_t paintdoc_create(size2d_t size, paintdoc_t **doc)
+result_t paintingdoc_create(size2d_t size, paintingdoc_t **doc)
 {
-  return paintdoc_create_filled(size, colour_rgb(255, 255, 255), doc);
+  return paintingdoc_create_filled(size, colour_rgb(255, 255, 255), doc);
 }
 
-result_t paintdoc_create_filled(size2d_t     size,
-                                colour_t     colour,
-                                paintdoc_t **doc)
+result_t paintingdoc_create_filled(size2d_t        size,
+                                   colour_t        colour,
+                                   paintingdoc_t **doc)
 {
-  result_t    rc;
-  paintdoc_t *d;
+  result_t       rc;
+  paintingdoc_t *d;
 
   if (size.w <= 0 || size.h <= 0)
     return result_BAD_ARG;
@@ -94,7 +94,7 @@ result_t paintdoc_create_filled(size2d_t     size,
 }
 
 /* drop every undo step */
-static void undo_clear(paintdoc_t *doc)
+static void undo_clear(paintingdoc_t *doc)
 {
   int i;
 
@@ -104,13 +104,13 @@ static void undo_clear(paintdoc_t *doc)
   doc->nundo = 0;
 }
 
-void paintdoc_destroy(paintdoc_t *doc)
+void paintingdoc_destroy(paintingdoc_t *doc)
 {
   if (doc == NULL)
     return;
 
   undo_clear(doc);
-  paintdoc_select_none(doc);
+  paintingdoc_select_none(doc);
   free(doc->bm.base);
   free(doc);
 }
@@ -124,7 +124,7 @@ static void bitmap_discard(bitmap_t *bm, int heap_struct)
     free(bm);
 }
 
-result_t paintdoc_load_png(paintdoc_t *doc, const char *path)
+result_t paintingdoc_load_png(paintingdoc_t *doc, const char *path)
 {
   result_t  rc;
   bitmap_t  src;
@@ -166,7 +166,7 @@ result_t paintdoc_load_png(paintdoc_t *doc, const char *path)
     return rc;
 
   undo_clear(doc);
-  paintdoc_select_none(doc);
+  paintingdoc_select_none(doc);
   free(doc->bm.base);
   doc->bm = next;
   screen_for_bitmap(&doc->scr, &doc->bm);
@@ -174,7 +174,7 @@ result_t paintdoc_load_png(paintdoc_t *doc, const char *path)
   return result_OK;
 }
 
-const bitmap_t *paintdoc_bitmap(const paintdoc_t *doc)
+const bitmap_t *paintingdoc_bitmap(const paintingdoc_t *doc)
 {
   return &doc->bm;
 }
@@ -182,7 +182,7 @@ const bitmap_t *paintdoc_bitmap(const paintdoc_t *doc)
 /* ----------------------------------------------------------------------- */
 
 /* the canvas box */
-static box_t canvas_box(const paintdoc_t *doc)
+static box_t canvas_box(const paintingdoc_t *doc)
 {
   box_t box = BOX_POS_SIZE(0, 0, doc->bm.size.w, doc->bm.size.h);
 
@@ -190,10 +190,10 @@ static box_t canvas_box(const paintdoc_t *doc)
 }
 
 /* box covering a and b, grown by margin, clipped to the canvas */
-static box_t clipped_box(const paintdoc_t *doc,
-                         point_t           a,
-                         point_t           b,
-                         int               margin)
+static box_t clipped_box(const paintingdoc_t *doc,
+                         point_t              a,
+                         point_t              b,
+                         int                  margin)
 {
   box_t box;
   box_t canvas;
@@ -213,7 +213,7 @@ static box_t clipped_box(const paintdoc_t *doc,
 
 /* ----------------------------------------------------------------------- */
 
-void paintdoc_select_none(paintdoc_t *doc)
+void paintingdoc_select_none(paintingdoc_t *doc)
 {
   region_destroy(doc->sel);
   free(doc->outline);
@@ -225,11 +225,11 @@ void paintdoc_select_none(paintdoc_t *doc)
 }
 
 /* take a freshly built region as the selection (NULL selects nothing) */
-static result_t sel_adopt(paintdoc_t *doc, region_t *sel)
+static result_t sel_adopt(paintingdoc_t *doc, region_t *sel)
 {
   result_t rc;
 
-  paintdoc_select_none(doc);
+  paintingdoc_select_none(doc);
 
   if (sel == NULL)
     return result_OK;
@@ -245,7 +245,7 @@ static result_t sel_adopt(paintdoc_t *doc, region_t *sel)
   return result_OK;
 }
 
-result_t paintdoc_select_rect(paintdoc_t *doc, box_t box)
+result_t paintingdoc_select_rect(paintingdoc_t *doc, box_t box)
 {
   result_t  rc;
   box_t     canvas, r;
@@ -262,12 +262,12 @@ result_t paintdoc_select_rect(paintdoc_t *doc, box_t box)
   return sel_adopt(doc, sel);
 }
 
-result_t paintdoc_select_all(paintdoc_t *doc)
+result_t paintingdoc_select_all(paintingdoc_t *doc)
 {
-  return paintdoc_select_rect(doc, canvas_box(doc));
+  return paintingdoc_select_rect(doc, canvas_box(doc));
 }
 
-result_t paintdoc_select_invert(paintdoc_t *doc)
+result_t paintingdoc_select_invert(paintingdoc_t *doc)
 {
   result_t  rc;
   box_t     canvas;
@@ -281,7 +281,9 @@ result_t paintdoc_select_invert(paintdoc_t *doc)
   return sel_adopt(doc, sel);
 }
 
-result_t paintdoc_select_poly(paintdoc_t *doc, const point_t *pts, int n)
+result_t paintingdoc_select_poly(paintingdoc_t *doc,
+                                 const point_t *pts,
+                                 int            n)
 {
   result_t  rc;
   box_t     canvas;
@@ -295,17 +297,17 @@ result_t paintdoc_select_poly(paintdoc_t *doc, const point_t *pts, int n)
   return sel_adopt(doc, sel);
 }
 
-int paintdoc_has_selection(const paintdoc_t *doc)
+int paintingdoc_has_selection(const paintingdoc_t *doc)
 {
   return doc->sel != NULL;
 }
 
-box_t paintdoc_selection_bounds(const paintdoc_t *doc)
+box_t paintingdoc_selection_bounds(const paintingdoc_t *doc)
 {
   return region_bounds(doc->sel);
 }
 
-const box_t *paintdoc_selection_outline(const paintdoc_t *doc, int *n)
+const box_t *paintingdoc_selection_outline(const paintingdoc_t *doc, int *n)
 {
   *n = doc->noutline;
   return doc->outline;
@@ -313,7 +315,7 @@ const box_t *paintdoc_selection_outline(const paintdoc_t *doc, int *n)
 
 /* put back, from the last checkpoint, the pixels of dirty that lie outside the
  * selection */
-static void sel_clip(paintdoc_t *doc, box_t dirty)
+static void sel_clip(paintingdoc_t *doc, box_t dirty)
 {
   box_t      canvas, r;
   uint32_t  *dst;
@@ -352,7 +354,7 @@ static void sel_clip(paintdoc_t *doc, box_t dirty)
 
 /* ----------------------------------------------------------------------- */
 
-result_t paintdoc_checkpoint(paintdoc_t *doc)
+result_t paintingdoc_checkpoint(paintingdoc_t *doc)
 {
   result_t rc;
   size_t   n;
@@ -368,7 +370,7 @@ result_t paintdoc_checkpoint(paintdoc_t *doc)
     if (doc->pre != NULL)
       memcpy(doc->pre, doc->bm.base, n);
     else
-      logf_warning("paint: no memory to clip drawing to the selection");
+      logf_warning("painting: no memory to clip drawing to the selection");
   }
 
   pixels = malloc(n);
@@ -387,11 +389,11 @@ result_t paintdoc_checkpoint(paintdoc_t *doc)
     return rc;
   }
 
-  if (doc->nundo == PAINTDOC_UNDO_MAX)
+  if (doc->nundo == PAINTINGDOC_UNDO_MAX)
   {
     free(doc->undo[0].base);
     memmove(&doc->undo[0], &doc->undo[1],
-            (PAINTDOC_UNDO_MAX - 1) * sizeof(doc->undo[0]));
+            (PAINTINGDOC_UNDO_MAX - 1) * sizeof(doc->undo[0]));
     doc->nundo--;
   }
 
@@ -401,18 +403,18 @@ result_t paintdoc_checkpoint(paintdoc_t *doc)
 
 /* a drawing operation that takes its own checkpoint, but still draws if it
  * cannot: no undo for that step beats losing the user's edit */
-static void checkpoint_or_warn(paintdoc_t *doc)
+static void checkpoint_or_warn(paintingdoc_t *doc)
 {
-  if (paintdoc_checkpoint(doc) != result_OK)
-    logf_warning("paint: no memory for an undo step");
+  if (paintingdoc_checkpoint(doc) != result_OK)
+    logf_warning("painting: no memory for an undo step");
 }
 
-int paintdoc_can_undo(const paintdoc_t *doc)
+int paintingdoc_can_undo(const paintingdoc_t *doc)
 {
   return doc->nundo > 0;
 }
 
-box_t paintdoc_undo(paintdoc_t *doc)
+box_t paintingdoc_undo(paintingdoc_t *doc)
 {
   bitmap_t *snap;
   size_t    n;
@@ -435,11 +437,11 @@ box_t paintdoc_undo(paintdoc_t *doc)
 
 /* ----------------------------------------------------------------------- */
 
-void paintdoc_draw_stroke(screen_t *scr,
-                          point_t   a,
-                          point_t   b,
-                          int       width,
-                          colour_t  colour)
+void paintingdoc_draw_stroke(screen_t *scr,
+                             point_t   a,
+                             point_t   b,
+                             int       width,
+                             colour_t  colour)
 {
   width = MAX(width, 1);
 
@@ -456,17 +458,17 @@ void paintdoc_draw_stroke(screen_t *scr,
   screen_fill_circle(scr, b.x, b.y, width / 2, colour);
 }
 
-box_t paintdoc_stroke(paintdoc_t *doc,
-                      point_t     a,
-                      point_t     b,
-                      int         width,
-                      colour_t    colour)
+box_t paintingdoc_stroke(paintingdoc_t *doc,
+                         point_t        a,
+                         point_t        b,
+                         int            width,
+                         colour_t       colour)
 {
   box_t dirty;
 
   width = MAX(width, 1);
 
-  paintdoc_draw_stroke(&doc->scr, a, b, width, colour);
+  paintingdoc_draw_stroke(&doc->scr, a, b, width, colour);
 
   dirty = clipped_box(doc, a, b, width / 2);
   sel_clip(doc, dirty);
@@ -476,11 +478,11 @@ box_t paintdoc_stroke(paintdoc_t *doc,
 
 /* ----------------------------------------------------------------------- */
 
-box_t paintdoc_spray(paintdoc_t *doc,
-                     point_t     p,
-                     int         radius,
-                     colour_t    colour,
-                     rng_t      *rng)
+box_t paintingdoc_spray(paintingdoc_t *doc,
+                        point_t        p,
+                        int            radius,
+                        colour_t       colour,
+                        rng_t         *rng)
 {
   box_t dirty;
   int   n, x, y, w;
@@ -514,12 +516,12 @@ box_t paintdoc_spray(paintdoc_t *doc,
 
 /* ----------------------------------------------------------------------- */
 
-void paintdoc_draw_rect(screen_t *scr,
-                        point_t   a,
-                        point_t   b,
-                        int       width,
-                        int       fill,
-                        colour_t  colour)
+void paintingdoc_draw_rect(screen_t *scr,
+                           point_t   a,
+                           point_t   b,
+                           int       width,
+                           int       fill,
+                           colour_t  colour)
 {
   int x0, y0, w, h, t;
 
@@ -542,18 +544,18 @@ void paintdoc_draw_rect(screen_t *scr,
   }
 }
 
-box_t paintdoc_rect(paintdoc_t *doc,
-                    point_t     a,
-                    point_t     b,
-                    int         width,
-                    int         fill,
-                    colour_t    colour)
+box_t paintingdoc_rect(paintingdoc_t *doc,
+                       point_t        a,
+                       point_t        b,
+                       int            width,
+                       int            fill,
+                       colour_t       colour)
 {
   box_t dirty;
 
   checkpoint_or_warn(doc);
 
-  paintdoc_draw_rect(&doc->scr, a, b, width, fill, colour);
+  paintingdoc_draw_rect(&doc->scr, a, b, width, fill, colour);
 
   dirty = clipped_box(doc, a, b, 0);
   sel_clip(doc, dirty);
@@ -563,13 +565,13 @@ box_t paintdoc_rect(paintdoc_t *doc,
 
 /* ----------------------------------------------------------------------- */
 
-static uint32_t *pixel_row(const paintdoc_t *doc, int y)
+static uint32_t *pixel_row(const paintingdoc_t *doc, int y)
 {
   return (uint32_t *) ((uint8_t *) doc->bm.base +
                        (size_t) y * doc->bm.rowbytes);
 }
 
-box_t paintdoc_fill(paintdoc_t *doc, point_t p, colour_t colour)
+box_t paintingdoc_fill(paintingdoc_t *doc, point_t p, colour_t colour)
 {
   box_t     dirty = BOX_INIT;
   uint32_t  target, fillpx;
@@ -653,7 +655,7 @@ box_t paintdoc_fill(paintdoc_t *doc, point_t p, colour_t colour)
           grown = realloc(stack, (size_t) cap * 2 * sizeof(*stack));
           if (grown == NULL)
           {
-            logf_warning("paint: no memory to finish fill");
+            logf_warning("painting: no memory to finish fill");
             free(stack);
             sel_clip(doc, dirty);
             return dirty;

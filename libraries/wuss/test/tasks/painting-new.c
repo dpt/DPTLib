@@ -1,4 +1,4 @@
-/* wuss/test/tasks/paint-new.c -- paint's New dialogue */
+/* wuss/test/tasks/painting-new.c -- Painting's New dialogue */
 
 #ifdef WUSS_APP
 
@@ -21,12 +21,12 @@
 #include "wuss/window.h"
 
 #include "common.h"
-#include "paint-new.h"
+#include "painting-new.h"
 
 /* ----------------------------------------------------------------------- */
 
 #define PN_FIELD_W  60
-#define PN_DIGITS   4    /* PAINTNEW_SIZE_MAX is four digits */
+#define PN_DIGITS   4    /* PAINTINGNEW_SIZE_MAX is four digits */
 #define PN_G_LABEL  1    /* size group, see stack_item_t::group */
 
 #define PN_BAR_GAP   47 /* the gap an icon bar menu leaves */
@@ -43,7 +43,7 @@ enum
   PN_BG__COUNT
 };
 
-static const char *const paintnew_bg_names[PN_BG__COUNT] =
+static const char *const paintingnew_bg_names[PN_BG__COUNT] =
 {
   "White", "Black", "Grey"
 };
@@ -85,7 +85,7 @@ enum
 #define PN_ST_RADIO(i) \
   [PN_ST_BG + (i)] = STACK_LEAF(PN_ST_BG_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE)
 
-static const stack_item_t g_paintnew_stack[PN_ST__LIMIT] =
+static const stack_item_t g_paintingnew_stack[PN_ST__LIMIT] =
 {
   [PN_ST_ROOT] = { .kind = stack_KIND_VBOX, .parent = -1,
                    .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
@@ -110,13 +110,13 @@ static const stack_item_t g_paintnew_stack[PN_ST__LIMIT] =
   [PN_ST_CREATE]       = STACK_LEAF(PN_ST_BUTTONS, 0, wuss_STD_PRIMARY_BUTTON_HEIGHT, stack_ALIGN_CENTRE),
 };
 
-struct paintnew
+struct paintingnew
 {
-  paintnew_t           **slot;     /* cleared on QUIT */
+  paintingnew_t           **slot;     /* cleared on QUIT */
   wuss_t                *wuss;
   wuss_task_t           *task;
   wuss_dialogue_t       *dialogue;
-  paintnew_accept_fn_t  *accept;
+  paintingnew_accept_fn_t  *accept;
   void                  *opaque;
   wuss_menu_handle_t     menu_handle; /* live only while shown */
   wuss_icon_t           *icons[PN_ICON__COUNT];
@@ -125,7 +125,7 @@ struct paintnew
 /* ----------------------------------------------------------------------- */
 
 /* the colours for a background choice: the canvas, and a pen that shows on it */
-static void paintnew_colours(int which, paintnew_params_t *params)
+static void paintingnew_colours(int which, paintingnew_params_t *params)
 {
   switch (which)
   {
@@ -148,7 +148,7 @@ static void paintnew_colours(int which, paintnew_params_t *params)
 
 /* the number in a size field, clamped to the allowed range, with the field
  * rewritten to match. Anything that is not a number reads as the minimum */
-static int paintnew_read_size(const paintnew_t *pn, int which)
+static int paintingnew_read_size(const paintingnew_t *pn, int which)
 {
   wuss_icon_t *icon;
   int          size;
@@ -156,7 +156,7 @@ static int paintnew_read_size(const paintnew_t *pn, int which)
 
   icon = pn->icons[which];
   size = (int) strtol(wuss_icon_get_text(icon), NULL, 10);
-  size = CLAMP(size, PAINTNEW_SIZE_MIN, PAINTNEW_SIZE_MAX);
+  size = CLAMP(size, PAINTINGNEW_SIZE_MIN, PAINTINGNEW_SIZE_MAX);
 
   snprintf(text, sizeof(text), "%d", size);
   (void) wuss_icon_set_text(wuss_dialogue_window(pn->dialogue), icon, text);
@@ -164,7 +164,7 @@ static int paintnew_read_size(const paintnew_t *pn, int which)
   return size;
 }
 
-static int paintnew_read_bg(const paintnew_t *pn)
+static int paintingnew_read_bg(const paintingnew_t *pn)
 {
   int i;
 
@@ -175,38 +175,38 @@ static int paintnew_read_bg(const paintnew_t *pn)
   return PN_BG_WHITE;
 }
 
-static void paintnew_dismiss(paintnew_t *pn)
+static void paintingnew_dismiss(paintingnew_t *pn)
 {
   wuss_menu_close(pn->menu_handle);
   pn->menu_handle = NULL;
 }
 
-static result_t paintnew_action_cancel(void *opaque, wuss_button_t button)
+static result_t paintingnew_action_cancel(void *opaque, wuss_button_t button)
 {
-  paintnew_t *pn;
+  paintingnew_t *pn;
 
   pn = opaque;
 
   /* ADJUST leaves the dialogue open, as on RISC OS */
   if (!(button & wuss_BUTTON_ADJUST))
-    paintnew_dismiss(pn);
+    paintingnew_dismiss(pn);
 
   return result_OK;
 }
 
-static result_t paintnew_action_create(void *opaque, wuss_button_t button)
+static result_t paintingnew_action_create(void *opaque, wuss_button_t button)
 {
-  paintnew_t       *pn;
-  paintnew_params_t params;
+  paintingnew_t       *pn;
+  paintingnew_params_t params;
 
   pn = opaque;
 
-  params.size.w = paintnew_read_size(pn, PN_ICON_WIDTH);
-  params.size.h = paintnew_read_size(pn, PN_ICON_HEIGHT);
-  paintnew_colours(paintnew_read_bg(pn), &params);
+  params.size.w = paintingnew_read_size(pn, PN_ICON_WIDTH);
+  params.size.h = paintingnew_read_size(pn, PN_ICON_HEIGHT);
+  paintingnew_colours(paintingnew_read_bg(pn), &params);
 
   if (!(button & wuss_BUTTON_ADJUST))
-    paintnew_dismiss(pn);
+    paintingnew_dismiss(pn);
 
   return pn->accept(&params, pn->opaque);
 }
@@ -214,9 +214,9 @@ static result_t paintnew_action_create(void *opaque, wuss_button_t button)
 /* ----------------------------------------------------------------------- */
 
 /* solve the layout: the window size, and a box for every item */
-static result_t paintnew_layout(const wuss_t *wuss,
-                                size2d_t     *size,
-                                box_t         boxes[PN_ST__LIMIT])
+static result_t paintingnew_layout(const wuss_t *wuss,
+                                   size2d_t     *size,
+                                   box_t         boxes[PN_ST__LIMIT])
 {
   result_t     rc;
   stack_item_t items[PN_ST__LIMIT];
@@ -224,13 +224,13 @@ static result_t paintnew_layout(const wuss_t *wuss,
   int          i;
 
   /* each label's natural width; the size group widens the others to match */
-  memcpy(items, g_paintnew_stack, sizeof(items));
+  memcpy(items, g_paintingnew_stack, sizeof(items));
   items[PN_ST_WIDTH_LABEL].axis_size  = task_text_width(wuss, "Width");
   items[PN_ST_HEIGHT_LABEL].axis_size = task_text_width(wuss, "Height");
   items[PN_ST_BG_LABEL].axis_size     = task_text_width(wuss, "Background");
   for (i = 0; i < PN_BG__COUNT; i++)
     items[PN_ST_BG + i].axis_size = wuss_STD_GLYPH_SIZE + wuss_STD_GAP +
-                                    task_text_width(wuss, paintnew_bg_names[i]);
+                                    task_text_width(wuss, paintingnew_bg_names[i]);
   items[PN_ST_CANCEL].axis_size =
     task_button_width(wuss, "Cancel", wuss_STD_SECONDARY_BUTTON_BORDER);
   items[PN_ST_CREATE].axis_size =
@@ -245,8 +245,8 @@ static result_t paintnew_layout(const wuss_t *wuss,
   return stack_solve(items, NELEMS(items), &root, boxes);
 }
 
-static result_t paintnew_build_icons(paintnew_t *pn,
-                                     const box_t boxes[PN_ST__LIMIT])
+static result_t paintingnew_build_icons(paintingnew_t *pn,
+                                        const box_t    boxes[PN_ST__LIMIT])
 {
   result_t               rc;
   wuss_icon_spec_t       specs[PN_ICON__COUNT];
@@ -273,7 +273,7 @@ static result_t paintnew_build_icons(paintnew_t *pn,
                        "Background", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
   for (i = 0; i < PN_BG__COUNT; i++)
     wuss_icon_spec_radio(&specs[PN_ICON_BG + i], boxes[PN_ST_BG + i],
-                         paintnew_bg_names[i], 1);
+                         paintingnew_bg_names[i], 1);
 
   wuss_icon_spec_action(&specs[PN_ICON_CANCEL], boxes[PN_ST_CANCEL],
                         "Cancel", 0);
@@ -289,9 +289,9 @@ static result_t paintnew_build_icons(paintnew_t *pn,
                          pn->icons[PN_ICON_BG + PN_BG_WHITE], 1);
 
   actions[0].icon = pn->icons[PN_ICON_CANCEL];
-  actions[0].fn   = paintnew_action_cancel;
+  actions[0].fn   = paintingnew_action_cancel;
   actions[1].icon = pn->icons[PN_ICON_CREATE];
-  actions[1].fn   = paintnew_action_create;
+  actions[1].fn   = paintingnew_action_create;
 
   wuss_dialogue_set_cancel(pn->dialogue, pn->icons[PN_ICON_CANCEL]);
 
@@ -301,12 +301,12 @@ static result_t paintnew_build_icons(paintnew_t *pn,
 /* the dialogue's own task: not autoclose, so it survives its window being
  * dismissed and shown again. Its QUIT, while the window is still alive,
  * frees everything */
-static result_t paintnew_handle(wuss_window_t      *window,
-                                const wuss_event_t *event,
-                                void               *task_data)
+static result_t paintingnew_handle(wuss_window_t      *window,
+                                   const wuss_event_t *event,
+                                   void               *task_data)
 {
-  paintnew_t *pn;
-  result_t    rc;
+  paintingnew_t *pn;
+  result_t       rc;
 
   (void) window;
 
@@ -339,13 +339,13 @@ static result_t paintnew_handle(wuss_window_t      *window,
   }
 }
 
-result_t paintnew_create(paintnew_t          **slot,
-                         wuss_t               *wuss,
-                         paintnew_accept_fn_t *accept,
-                         void                 *opaque)
+result_t paintingnew_create(paintingnew_t          **slot,
+                            wuss_t                  *wuss,
+                            paintingnew_accept_fn_t *accept,
+                            void                    *opaque)
 {
   result_t         rc;
-  paintnew_t      *pn;
+  paintingnew_t   *pn;
   wuss_task_desc_t desc;
   size2d_t         size;
   box_t            boxes[PN_ST__LIMIT];
@@ -359,9 +359,9 @@ result_t paintnew_create(paintnew_t          **slot,
   pn->accept = accept;
   pn->opaque = opaque;
 
-  desc.handle    = paintnew_handle;
+  desc.handle    = paintingnew_handle;
   desc.task_data = pn;
-  desc.name      = "paint-new";
+  desc.name      = "painting-new";
   rc = wuss_task_create(wuss, &desc, &pn->task);
   if (rc != result_OK)
   {
@@ -369,11 +369,11 @@ result_t paintnew_create(paintnew_t          **slot,
     return rc;
   }
 
-  rc = paintnew_layout(wuss, &size, boxes);
+  rc = paintingnew_layout(wuss, &size, boxes);
   if (rc == result_OK)
     rc = wuss_dialogue_create(&pn->dialogue, pn->task, size, "New", NULL, pn);
   if (rc == result_OK)
-    rc = paintnew_build_icons(pn, boxes);
+    rc = paintingnew_build_icons(pn, boxes);
   if (rc != result_OK)
   {
     wuss_task_destroy(pn->task); /* its QUIT frees pn */
@@ -385,7 +385,7 @@ result_t paintnew_create(paintnew_t          **slot,
   return result_OK;
 }
 
-result_t paintnew_open(paintnew_t *pn)
+result_t paintingnew_open(paintingnew_t *pn)
 {
   result_t       rc;
   wuss_window_t *win;
