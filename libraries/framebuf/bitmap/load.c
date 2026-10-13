@@ -149,8 +149,10 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
       int i;
       int ngrey;
       int grey;
+      int was16;
 
-      if (pngbitdepth == 16)
+      was16 = (pngbitdepth == 16);
+      if (was16)
       {
         png_set_strip_16(png_ptr);
         pngbitdepth = 8;
@@ -164,12 +166,36 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
         grey    = i * 255 / (ngrey - 1);
         plte[i] = colour_rgba(grey, grey, grey, 0xFF);
       }
+
+      /* a colour-key tRNS makes the keyed grey transparent. A 16-bit key
+       * was stripped to 8 bits above, so it no longer names a palette
+       * entry; leave those opaque */
+      if (!was16 && png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
+      {
+        png_color_16p key = NULL;
+
+        png_get_tRNS(png_ptr, info_ptr, NULL, NULL, &key);
+        if (key != NULL && key->gray < ngrey)
+        {
+          grey            = key->gray * 255 / (ngrey - 1);
+          plte[key->gray] = colour_rgba(grey, grey, grey, 0);
+        }
+      }
       bm_palette = plte;
     }
     break;
   case PNG_COLOR_TYPE_RGB:
-    bm_fmt = pixelfmt_rgbx8888;
-    png_set_filler(png_ptr, 0xFF, PNG_FILLER_AFTER);
+    if (png_get_valid(png_ptr, info_ptr, PNG_INFO_tRNS))
+    {
+      /* a colour-key tRNS: the keyed colour becomes alpha 0 */
+      png_set_tRNS_to_alpha(png_ptr);
+      bm_fmt = pixelfmt_rgba8888;
+    }
+    else
+    {
+      bm_fmt = pixelfmt_rgbx8888;
+      png_set_filler(png_ptr, 0xFF, PNG_FILLER_AFTER);
+    }
     break;
   case PNG_COLOR_TYPE_RGBA:
     bm_fmt = pixelfmt_rgba8888;
