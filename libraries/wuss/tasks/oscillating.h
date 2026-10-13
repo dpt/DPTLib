@@ -29,11 +29,12 @@ typedef struct oscillating_task
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_saveas_t       *saveas;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[5]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[6]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer
                                        * into another's menu */
   wuss_menu_t         menu;
   int                 paused; /* Menu > Pause; idle does nothing while set */
+  int                 reversals; /* Menu > Reversals; random backwards runs */
   wuss_menu_item_t    ratio_items[OSCILLATING_NFREQS]; /* one row per pair */
   wuss_menu_t         ratio_menu;
   wuss_window_t *window;
@@ -43,6 +44,7 @@ typedef struct oscillating_task
   int            a, b;    /* frequency ratio */
   double         phase;
   double         drift;
+  double         reversing; /* radians of backwards rotation still to do */
   int            freq_index; /* index into oscillating_freqs */
 }
 oscillating_task_t;

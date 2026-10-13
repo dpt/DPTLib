@@ -28,6 +28,7 @@ enum
   OSCILLATING_MENU_BACKGROUND = 0,
   OSCILLATING_MENU_FOREGROUND,
   OSCILLATING_MENU_PAUSE,
+  OSCILLATING_MENU_REVERSALS,
   OSCILLATING_MENU_RATIO,
   OSCILLATING_MENU_SAVE
 };
@@ -79,6 +80,7 @@ result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
   task->b          = oscillating_freqs[0].b;
   task->phase      = 0.0;
   task->drift      = 0.01;
+  task->reversals  = 1;
 
   /* redraw paints its own background every frame */
   delegate_desc.handle    = oscillating_handle;
@@ -120,6 +122,9 @@ result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, OSCILLATING_MENU_PAUSE, "Pause",
                           wuss_MENU_ITEM_NONE, "SPACE");
+
+  WUSS_MENU_ITEM(task->menu_items, OSCILLATING_MENU_REVERSALS, "Reversals",
+                 wuss_MENU_ITEM_NONE);
 
   for (i = 0; i < OSCILLATING_NFREQS; i++)
     WUSS_MENU_ITEM(task->ratio_items, i, oscillating_freqs[i].name,
@@ -238,6 +243,7 @@ static result_t oscillating_mouse(wuss_window_t      *window,
   if (button & wuss_BUTTON_MENU)
   {
     wuss_menu_tick_item(&lc->menu, OSCILLATING_MENU_PAUSE, lc->paused);
+    wuss_menu_tick_item(&lc->menu, OSCILLATING_MENU_REVERSALS, lc->reversals);
     wuss_menu_tick_exclusive(&lc->ratio_menu, lc->freq_index);
 
     return wuss_menu_open_at_pointer(lc->delegate, &lc->menu,
@@ -292,7 +298,20 @@ static result_t oscillating_idle(void *task_data)
   if (lc->paused)
     return result_OK;
 
-  lc->phase += lc->drift;
+  /* 2% of ticks start a 90 degree backwards run, then the drift resumes */
+  if (lc->reversals && lc->reversing <= 0.0 && rand() % 100 < 2)
+    lc->reversing = M_PI / 2.0;
+
+  if (lc->reversing > 0.0)
+  {
+    lc->phase     -= lc->drift;
+    lc->reversing -= fabs(lc->drift);
+  }
+  else
+  {
+    lc->phase += lc->drift;
+  }
+
   if (lc->phase > 2.0 * M_PI)
     lc->phase -= 2.0 * M_PI;
   else if (lc->phase < 0.0)
@@ -399,6 +418,14 @@ result_t oscillating_handle(wuss_window_t      *window,
     if (event->data.menu_select.menu == &lc->menu &&
         event->data.menu_select.index == OSCILLATING_MENU_PAUSE)
       return oscillating_toggle_pause(lc, event);
+    if (event->data.menu_select.menu == &lc->menu &&
+        event->data.menu_select.index == OSCILLATING_MENU_REVERSALS)
+    {
+      lc->reversals = !lc->reversals;
+      wuss_menu_tick_item_live(lc->menu_handle, &lc->menu,
+                               OSCILLATING_MENU_REVERSALS, lc->reversals);
+      return result_OK;
+    }
     if (event->data.menu_select.menu == &lc->menu &&
         event->data.menu_select.index == OSCILLATING_MENU_SAVE)
     {
