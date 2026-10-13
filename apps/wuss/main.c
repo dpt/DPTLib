@@ -718,6 +718,10 @@ static result_t run_wuss(const char *resources,
   g_tasks.quit = false;
 
 #ifdef WUSS_ICONBAR
+  /* Filing's icon goes on the bar ahead of AppsFiler's; installing it is
+   * idempotent so the -tasks list below does not add a second */
+  tasks_spawn("Filing");
+
   rc = appsfiler_create(wuss);
   if (rc != result_OK)
     logf_error("wuss: appsfiler_create -> rc=0x%X (%s)", rc,

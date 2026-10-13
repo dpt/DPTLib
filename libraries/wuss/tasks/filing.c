@@ -400,14 +400,24 @@ result_t filing_create(wuss_t *wuss, filing_task_t **out)
   return result_OK;
 }
 
+/* the task installed by filing_app_create, so installing it again (e.g. from
+ * both the startup list and AppsFiler) does not add a second icon */
+static filing_task_t *g_filing;
+
 result_t filing_app_create(wuss_t *wuss)
 {
-  return filing_create(wuss, NULL);
+  if (g_filing != NULL)
+    return result_OK;
+
+  return filing_create(wuss, &g_filing);
 }
 
 void filing_destroy(filing_task_t *task)
 {
   int i;
+
+  if (g_filing == task)
+    g_filing = NULL;
 
   for (i = 0; i < task->nwindows; i++)
   {
