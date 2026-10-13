@@ -29,6 +29,7 @@ enum
   OSCILLATING_MENU_RATIO = 0,
   OSCILLATING_MENU_REVERSALS,
   OSCILLATING_MENU_EASING,
+  OSCILLATING_MENU_DECAY,
   OSCILLATING_MENU_COLOURS,
   OSCILLATING_MENU_PAUSE,
   OSCILLATING_MENU_SAVE
@@ -64,6 +65,17 @@ static const char *const oscillating_easings[OSCILLATING_NEASINGS] =
   "Expo", "Circ", "Back", "Elastic", "Bounce"
 };
 
+/* trail lengths listed in Menu > Decay */
+static const struct
+{
+  int         frames;
+  const char *name;
+}
+oscillating_decays[OSCILLATING_NDECAYS] =
+{
+  { 0, "Off" }, { 4, "Short" }, { 8, "Medium" }, { 16, "Long" }
+};
+
 /* wuss_saveas_save_fn_t: opaque is the oscillating_task_t */
 static result_t oscillating_saveas_save(const char *path, void *opaque)
 {
@@ -97,6 +109,7 @@ result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
   task->drift      = 0.01;
   task->reversals  = 1;
   task->easing_index = easing_LINEAR; /* row 0, "None" */
+  task->decay_index  = 0;             /* row 0, "Off" */
 
   /* redraw paints its own background every frame */
   delegate_desc.handle    = oscillating_handle;
@@ -142,6 +155,16 @@ result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
 
   WUSS_MENU_ITEM(task->menu_items, OSCILLATING_MENU_REVERSALS, "Reversals",
                  wuss_MENU_ITEM_NONE);
+
+  for (i = 0; i < OSCILLATING_NDECAYS; i++)
+    WUSS_MENU_ITEM(task->decay_items, i, oscillating_decays[i].name,
+                   wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->decay_menu, "Decay", task->decay_items,
+                 NELEMS(task->decay_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, OSCILLATING_MENU_DECAY, "Decay",
+                      wuss_MENU_ITEM_NONE, &task->decay_menu);
 
   for (i = 0; i < OSCILLATING_NEASINGS; i++)
     WUSS_MENU_ITEM(task->easing_items, i, oscillating_easings[i],
@@ -211,7 +234,8 @@ static result_t oscillating_redraw(const wuss_event_t *event,
   const box_t        *content, *bounds;
   int                 sx, sy;
   int                 width, height, cx, cy, rx, ry;
-  int                 i;
+  int                 i, age, ntrail;
+  double              phase;
   pixelfmt_any_t      fgpix;
 
   lc = task_data;
@@ -231,19 +255,32 @@ static result_t oscillating_redraw(const wuss_event_t *event,
   rx     = width  / 2 - 10;
   ry     = height / 2 - 10;
 
-  /* resolve the colour once, not once per plotted point */
-  fgpix = screen_colour_to_pixel(scr, lc->fg);
+  ntrail = MIN(oscillating_decays[lc->decay_index].frames, lc->trail_count);
 
-  for (i = 0; i < OSCILLATING_POINTS; i++)
+  /* oldest first so the newest frame is drawn on top; each age fades fg
+   * towards bg. Resolve the colour once per frame, not once per point */
+  for (age = ntrail; age >= 0; age--)
   {
-    double t;
-    int    px, py;
+    if (age == 0)
+      phase = lc->phase;
+    else
+      phase = lc->trail[(lc->trail_head - (age - 1) + OSCILLATING_MAX_TRAIL) %
+                        OSCILLATING_MAX_TRAIL];
 
-    t  = (double) i / OSCILLATING_POINTS * 2.0 * M_PI;
-    px = cx + (int) (rx * sin(lc->a * t + lc->phase));
-    py = cy + (int) (ry * sin(lc->b * t));
+    fgpix = screen_colour_to_pixel(scr,
+                                   colour_mix(lc->fg, lc->bg, age, ntrail + 1));
 
-    screen_set_pixel_value(scr, px, py, fgpix);
+    for (i = 0; i < OSCILLATING_POINTS; i++)
+    {
+      double t;
+      int    px, py;
+
+      t  = (double) i / OSCILLATING_POINTS * 2.0 * M_PI;
+      px = cx + (int) (rx * sin(lc->a * t + phase));
+      py = cy + (int) (ry * sin(lc->b * t));
+
+      screen_set_pixel_value(scr, px, py, fgpix);
+    }
   }
 
   return result_OK;
@@ -280,6 +317,7 @@ static result_t oscillating_mouse(wuss_window_t      *window,
     wuss_menu_tick_item(&lc->menu, OSCILLATING_MENU_REVERSALS, lc->reversals);
     wuss_menu_tick_exclusive(&lc->ratio_menu, lc->freq_index);
     wuss_menu_tick_exclusive(&lc->easing_menu, lc->easing_index);
+    wuss_menu_tick_exclusive(&lc->decay_menu, lc->decay_index);
 
     return wuss_menu_open_at_pointer(lc->delegate, &lc->menu,
                                      &lc->menu_handle);
@@ -332,6 +370,14 @@ static result_t oscillating_idle(void *task_data)
 
   if (lc->paused)
     return result_OK;
+
+  /* remember the frame about to be replaced for the decay trail */
+  if (oscillating_decays[lc->decay_index].frames > 0)
+  {
+    lc->trail_head = (lc->trail_head + 1) % OSCILLATING_MAX_TRAIL;
+    lc->trail[lc->trail_head] = lc->phase;
+    lc->trail_count = MIN(lc->trail_count + 1, OSCILLATING_MAX_TRAIL);
+  }
 
   /* 2% of ticks start a 90 degree backwards run, then the drift resumes */
   if (lc->reversals && lc->reversing <= 0.0 && rand() % 100 < 2)
@@ -397,6 +443,14 @@ static result_t oscillating_menu_select(oscillating_task_t *lc,
     oscillating_set_freq(lc, event->data.menu_select.index);
     wuss_menu_tick_exclusive_live(lc->menu_handle, &lc->ratio_menu,
                                   lc->freq_index);
+    return result_OK;
+  }
+
+  if (event->data.menu_select.menu == &lc->decay_menu)
+  {
+    lc->decay_index = event->data.menu_select.index;
+    wuss_menu_tick_exclusive_live(lc->menu_handle, &lc->decay_menu,
+                                  lc->decay_index);
     return result_OK;
   }
 

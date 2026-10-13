@@ -13,13 +13,17 @@
 
 #define OSCILLATING_POINTS 512 /* samples plotted along the curve */
 #define OSCILLATING_NFREQS 12  /* frequency pairs offered */
+#define OSCILLATING_NDECAYS 4   /* trail lengths offered; Off is the first */
+#define OSCILLATING_MAX_TRAIL 16 /* most previous frames drawn dimmed */
 #define OSCILLATING_NEASINGS 11 /* easing_NKINDS; None is the first */
 
 /* window task: a Lissajous figure x=sin(a*t+phase), y=sin(b*t) plotted as a
  * ring of dots. The phase drifts each idle tick so the figure slowly morphs.
  * Select cycles the frequency pair (a,b); Adjust reverses the drift. The
  * menu's Ratio row picks the frequency pair directly; its Easing row picks
- * the curve for the random backwards runs (None by default); its Colours
+ * the curve for the random backwards runs (None by default); its Decay row
+ * picks how many previous frames trail behind, dimmed (Off by default); its
+ * Colours
  * row has Foreground and Background rows that pick fg and bg from the shared
  * colourmenu; Save PNG
  * opens a Save As dialogue (drag its icon onto a Filer window, or Save with
@@ -32,7 +36,7 @@ typedef struct oscillating_task
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_saveas_t       *saveas;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[6]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[7]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer
                                        * into another's menu */
   wuss_menu_t         menu;
@@ -44,6 +48,12 @@ typedef struct oscillating_task
   wuss_menu_t         easing_menu;
   wuss_menu_item_t    colours_items[2]; /* Foreground, Background */
   wuss_menu_t         colours_menu;
+  wuss_menu_item_t    decay_items[OSCILLATING_NDECAYS]; /* one per length */
+  wuss_menu_t         decay_menu;
+  int                 decay_index; /* index into oscillating_decays */
+  double              trail[OSCILLATING_MAX_TRAIL]; /* ring of past phases */
+  int                 trail_head; /* newest entry in trail */
+  int                 trail_count; /* valid entries in trail */
   int                 easing_index; /* easing_kind_t; easing_LINEAR = None */
   wuss_window_t *window;
   colour_t       bg, fg;
