@@ -7605,11 +7605,13 @@ ColourSetOK: ;
     ev.data.drag_end.drop      = sarecvwin;
     ev.data.drag_end.point     = POINT(50, 50);
     ev.data.drag_end.cancelled = 0;
+    ev.data.drag_end.button    = wuss_BUTTON_SELECT;
     if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
 
     rc = wuss_idle(sawuss);
     if (rc != result_OK) goto SaveAsFail;
 
+    /* the DataLoadAck closes a SELECT drag-save */
     if (sa_save_calls != 1) goto SaveAsFail;
     if ((sawin->flags & wuss_WINDOW_HIDDEN) == 0) goto SaveAsFail;
     if (!path_is_full(wuss_saveas_get_path(sa))) goto SaveAsFail;
@@ -7638,6 +7640,21 @@ ColourSetOK: ;
     ev.data.icon.value  = 0;
     if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
     if ((sawin->flags & wuss_WINDOW_HIDDEN) == 0) goto SaveAsFail;
+
+    /* an ADJUST drag-save completes but leaves the dialogue open */
+    (void) wuss_window_set_hidden(sawin, 0);
+    (void) wuss_icon_set_text(sawin, sa_leaf, "adjust");
+    ev.kind                    = wuss_EVENT_DRAG_END;
+    ev.data.drag_end.drop      = sarecvwin;
+    ev.data.drag_end.point     = POINT(50, 50);
+    ev.data.drag_end.cancelled = 0;
+    ev.data.drag_end.button    = wuss_BUTTON_ADJUST;
+    if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+    rc = wuss_idle(sawuss);
+    if (rc != result_OK) goto SaveAsFail;
+    if (sa_save_calls != 2) goto SaveAsFail;
+    if ((sawin->flags & wuss_WINDOW_HIDDEN) != 0) goto SaveAsFail;
+    ev.data.drag_end.button    = wuss_BUTTON_SELECT;
 
     /* a drag while a transfer is already running is ignored: start one (the
      * receiver held back from replying), then drag again before it does */
@@ -7686,7 +7703,7 @@ ColourSetOK: ;
       if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
       rc = wuss_idle(sawuss);
       if (rc != result_OK) goto SaveAsFail;
-      if (sa_save_calls != 2) goto SaveAsFail;
+      if (sa_save_calls != 3) goto SaveAsFail;
     }
 
     wuss_saveas_destroy(sa);
