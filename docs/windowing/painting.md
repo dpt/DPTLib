@@ -4,9 +4,9 @@ Painting is a basic painting task in the `wuss` demo. It is also a worked exampl
 of a task that draws into its own bitmap, captures the mouse during a stroke
 and saves and loads PNG files.
 
-- `libraries/wuss/test/tasks/painting-doc.c`: the canvas, the drawing operations
+- `libraries/wuss/tasks/painting-doc.c`: the canvas, the drawing operations
   and undo. It has no wuss dependency, so `paintingdoc_test` runs headless.
-- `libraries/wuss/test/tasks/painting.c`: the windows, the toolbox and input.
+- `libraries/wuss/tasks/painting.c`: the windows, the toolbox and input.
 
 ## Using it
 

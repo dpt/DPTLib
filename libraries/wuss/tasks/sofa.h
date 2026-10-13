@@ -1,0 +1,78 @@
+/* wuss/tasks/sofa.h -- rotating wireframe sofa task */
+
+#ifndef TASKS_SOFA_H
+#define TASKS_SOFA_H
+
+#ifdef WUSS_APP
+
+#include <stdbool.h>
+
+#include "framebuf/colour.h"
+#include "wuss/component/colourmenu.h"
+#include "wuss/component/saveas.h"
+#include "wuss/menu.h"
+#include "wuss/window.h"
+
+/* which model is currently on show */
+typedef enum sofa_shape
+{
+  sofa_SHAPE_SOFA,
+  sofa_SHAPE_SHIP,
+  sofa_SHAPE_COBRA,
+  sofa_SHAPE_TETRAHEDRON,
+  sofa_SHAPE_CUBE,
+  sofa_SHAPE_OCTAHEDRON,
+  sofa_SHAPE_ICOSAHEDRON,
+  sofa_SHAPE_DODECAHEDRON,
+  sofa_SHAPE__LIMIT
+}
+sofa_shape_t;
+
+/* a wireframe sofa (seat, backrest, two arms), spaceship or Platonic solid,
+ * spinning about its vertical axis; a Select click or Menu > Pause
+ * pauses/resumes the spin, an Adjust click or Menu > Model changes the
+ * model, Menu > Auto-cycle turns the automatic change of model after a few
+ * turns on or off and Menu > Save PNG opens a Save As dialogue (drag its
+ * icon onto a Filer window, or Save with a full path already typed) that
+ * writes the window's content out. Once a click has given the window the
+ * input focus, Space pauses/resumes and Left/Right step the model
+ * back/forward */
+typedef struct sofa_task
+{
+  wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
+  wuss_task_t        *delegate; /* the task that owns the menu */
+  wuss_saveas_t       *saveas;
+  wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
+  wuss_menu_item_t    menu_items[5]; /* per-instance: a shared static would
+                                       * leak one instance's .window pointer
+                                       * into another's menu */
+  wuss_menu_t         menu;
+  wuss_menu_item_t    model_items[sofa_SHAPE__LIMIT]; /* one row per shape */
+  wuss_menu_t         model_menu;
+  wuss_window_t *window;
+  colour_t       bg, line, dot;
+  double         angle;
+  double         zoom; /* scroll-adjustable */
+  bool           spinning;
+  sofa_shape_t   shape;
+  int            turns; /* completed rotations of the current model */
+  bool           cycling; /* advance the model every few turns */
+}
+sofa_task_t;
+
+wuss_window_fn_t sofa_handle;
+
+/* create the sofa window against the given wuss instance; if out is
+ * non-NULL, the task block is also returned through it */
+result_t sofa_create(wuss_t *wuss, sofa_task_t **out);
+
+/* install the icon bar app that opens sofa windows on demand */
+result_t sofa_app_create(wuss_t *wuss);
+
+/* free a task block allocated by sofa_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void sofa_destroy(sofa_task_t *task);
+
+#endif /* WUSS_APP */
+
+#endif /* TASKS_SOFA_H */

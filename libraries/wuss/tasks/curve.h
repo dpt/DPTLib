@@ -1,0 +1,72 @@
+/* wuss/tasks/curve.h -- draggable Bezier curve task */
+
+#ifndef TASKS_CURVE_H
+#define TASKS_CURVE_H
+
+#ifdef WUSS_APP
+
+#include "framebuf/colour.h"
+#include "geom/point.h"
+#include "wuss/component/colourmenu.h"
+#include "wuss/component/saveas.h"
+#include "wuss/menu.h"
+#include "wuss/window.h"
+#include "wuss/wuss.h"
+
+#define CURVE_MINCONTROLPTS 2 /* a straight line */
+#define CURVE_MAXCONTROLPTS 6 /* a quintic Bezier */
+#define CURVE_NKINDS (CURVE_MAXCONTROLPTS - CURVE_MINCONTROLPTS + 1)
+#define CURVE_NWIDTHS 6 /* rows in Menu > Width */
+
+/* a single Bezier curve with draggable control points, redrawn as nsegments
+ * straight line segments. The mouse wheel adjusts nsegments; an Adjust click
+ * cycles the curve type (line, quadratic, cubic, quartic, quintic) by
+ * stepping npoints, the count of points[] actually in play; Menu > Type
+ * picks it directly; Menu > Width sets the line thickness; Menu > Hull
+ * shows or hides the control points' convex hull; Menu > Reset points puts
+ * the control points back where they started; Menu > Save PNG opens a Save As dialogue (drag its icon onto a
+ * Filer window, or Save with a full path already typed) that writes the
+ * window's content out. Once a click has given the window the input focus,
+ * Left/Right step the curve type, Up/Down step nsegments, H toggles the
+ * hull and R resets the points. */
+typedef struct curve_task
+{
+  wuss_t             *wuss;   /* borrowed; for wuss_get_font in the redraw */
+  wuss_task_t        *delegate; /* the task that owns the menu */
+  wuss_saveas_t       *saveas;
+  wuss_window_t      *window;
+  wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
+  wuss_menu_item_t    menu_items[6]; /* per-instance: a shared static would
+                                       * leak one instance's .window pointer
+                                       * into another's menu */
+  wuss_menu_t         menu;
+  wuss_menu_item_t    type_items[CURVE_NKINDS]; /* one row per curve type */
+  wuss_menu_t         type_menu;
+  wuss_menu_item_t    width_items[CURVE_NWIDTHS]; /* one row per line width */
+  wuss_menu_t         width_menu;
+  colour_t             bg, line, blob;
+  point_t              points[CURVE_MAXCONTROLPTS];
+  int                  npoints;     /* CURVE_MINCONTROLPTS..CURVE_MAXCONTROLPTS */
+  int                  nsegments;
+  int                  width;       /* line width in pixels, from curve_widths */
+  int                  dragging;    /* index into points, or -1 if not dragging */
+  int                  hull;        /* draw the control points' convex hull */
+}
+curve_task_t;
+
+wuss_window_fn_t curve_handle;
+
+/* create the curve window against the given wuss instance; if out is
+ * non-NULL, the task block is also returned through it */
+result_t curve_create(wuss_t *wuss, curve_task_t **out);
+
+/* install the icon bar app that opens curve windows on demand */
+result_t curve_app_create(wuss_t *wuss);
+
+/* free a task block allocated by curve_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void curve_destroy(curve_task_t *task);
+
+#endif /* WUSS_APP */
+
+#endif /* TASKS_CURVE_H */

@@ -4,10 +4,10 @@ A *reflowable* window lays its content out as a grid of equal cells and
 re-wraps that grid to fit whatever width the user gives it. It never shows a
 horizontal scrollbar. Two tasks in the `wuss` demo are of this kind:
 
-- **Filer** (`libraries/wuss/test/tasks/filer.c`): one icon-and-name cell per
+- **Filer** (`libraries/wuss/tasks/filer.c`): one icon-and-name cell per
   directory entry, laid out by `wuss_gridview` (`libraries/wuss/gadget/gridview.c`).
   Any column count that fits is used.
-- **Chars** (`libraries/wuss/test/tasks/chars.c`): one cell per codepoint of a
+- **Chars** (`libraries/wuss/tasks/chars.c`): one cell per codepoint of a
   256-codepoint page. Only power-of-two column counts are used, so a page
   divides into whole rows.
 

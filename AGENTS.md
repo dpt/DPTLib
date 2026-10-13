@@ -16,7 +16,7 @@ Build directories are per-config and already created; there is **no** plain
 - `build-sdl/`   — Release, ASan on, SDL tests on (`BUILD_SDL_TESTS=ON`) and
   apps on (`BUILD_APPS=ON`). Needed for the interactive `wuss` app
   (`apps/wuss/`, target `wuss`) and anything under
-  `libraries/wuss/test/tasks/`.
+  `libraries/wuss/tasks/`.
 - `build-nosdl/` — Release, core tests only.
 - `build-wuss-min/` — Release, core tests with `WUSS_FURNITURE=OFF`. Checks the
   wuss subsystem options still build when trimmed.

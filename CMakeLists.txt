@@ -836,8 +836,8 @@ if(BUILD_TESTS)
         libraries/datastruct/vector/test/vector-test.c
         libraries/wuss/test/gridview-bench-test.c
         libraries/wuss/test/painting-doc-test.c
-        libraries/wuss/test/tasks/painting-doc.c
-        libraries/wuss/test/tasks/painting-doc.h
+        libraries/wuss/tasks/painting-doc.c
+        libraries/wuss/tasks/painting-doc.h
         libraries/wuss/test/wuss-test.c)
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})
@@ -900,50 +900,50 @@ if(BUILD_APPS)
         apps/wuss/taskmanager.c
         apps/wuss/taskmanager.h
         apps/wuss/tasks.c
-        libraries/wuss/test/tasks/ball.c
-        libraries/wuss/test/tasks/chasehq.c
-        libraries/wuss/test/tasks/greatescape.c
-        libraries/wuss/test/tasks/chars.c
-        libraries/wuss/test/tasks/checker.c
-        libraries/wuss/test/tasks/clock.c
-        libraries/wuss/test/tasks/config.c
-        libraries/wuss/test/tasks/curve.c
-        libraries/wuss/test/tasks/dithering.c
-        libraries/wuss/test/tasks/display.c
-        libraries/wuss/test/tasks/doughnut.c
-        libraries/wuss/test/tasks/effects.c
-        libraries/wuss/test/tasks/filer.c
-        libraries/wuss/test/tasks/fireball.c
-        libraries/wuss/test/tasks/gradient.c
-        libraries/wuss/test/tasks/greeble.c
-        libraries/wuss/test/tasks/icons.c
-        libraries/wuss/test/tasks/viewing.c
-        libraries/wuss/test/tasks/keys.c
-        libraries/wuss/test/tasks/lissajous.c
-        libraries/wuss/test/tasks/minesweeper.c
-        libraries/wuss/test/tasks/painting-doc.c
-        libraries/wuss/test/tasks/painting-doc.h
-        libraries/wuss/test/tasks/painting-new.c
-        libraries/wuss/test/tasks/painting-new.h
-        libraries/wuss/test/tasks/fern.c
-        libraries/wuss/test/tasks/fern.h
-        libraries/wuss/test/tasks/painting.c
-        libraries/wuss/test/tasks/painting.h
-        libraries/wuss/test/tasks/palette.c
-        libraries/wuss/test/tasks/particles.c
-        libraries/wuss/test/tasks/patterns.c
-        libraries/wuss/test/tasks/porter-duff.c
-        libraries/wuss/test/tasks/saturn.c
-        libraries/wuss/test/tasks/snapshot.c
-        libraries/wuss/test/tasks/sofa.c
-        libraries/wuss/test/tasks/spheroid.c
-        libraries/wuss/test/tasks/reading.c
-        libraries/wuss/test/tasks/resizing.c
-        libraries/wuss/test/tasks/resizing.h
-        libraries/wuss/test/tasks/tiling.c
-        libraries/wuss/test/tasks/taskapp.c
-        libraries/wuss/test/tasks/taskapp.h
-        libraries/wuss/test/tasks/zxtask.c)
+        libraries/wuss/tasks/ball.c
+        libraries/wuss/tasks/chasehq.c
+        libraries/wuss/tasks/greatescape.c
+        libraries/wuss/tasks/chars.c
+        libraries/wuss/tasks/checker.c
+        libraries/wuss/tasks/clock.c
+        libraries/wuss/tasks/config.c
+        libraries/wuss/tasks/curve.c
+        libraries/wuss/tasks/dithering.c
+        libraries/wuss/tasks/display.c
+        libraries/wuss/tasks/doughnut.c
+        libraries/wuss/tasks/effects.c
+        libraries/wuss/tasks/filer.c
+        libraries/wuss/tasks/fireball.c
+        libraries/wuss/tasks/gradient.c
+        libraries/wuss/tasks/greeble.c
+        libraries/wuss/tasks/icons.c
+        libraries/wuss/tasks/viewing.c
+        libraries/wuss/tasks/keys.c
+        libraries/wuss/tasks/lissajous.c
+        libraries/wuss/tasks/minesweeper.c
+        libraries/wuss/tasks/painting-doc.c
+        libraries/wuss/tasks/painting-doc.h
+        libraries/wuss/tasks/painting-new.c
+        libraries/wuss/tasks/painting-new.h
+        libraries/wuss/tasks/fern.c
+        libraries/wuss/tasks/fern.h
+        libraries/wuss/tasks/painting.c
+        libraries/wuss/tasks/painting.h
+        libraries/wuss/tasks/palette.c
+        libraries/wuss/tasks/particles.c
+        libraries/wuss/tasks/patterns.c
+        libraries/wuss/tasks/porter-duff.c
+        libraries/wuss/tasks/saturn.c
+        libraries/wuss/tasks/snapshot.c
+        libraries/wuss/tasks/sofa.c
+        libraries/wuss/tasks/spheroid.c
+        libraries/wuss/tasks/reading.c
+        libraries/wuss/tasks/resizing.c
+        libraries/wuss/tasks/resizing.h
+        libraries/wuss/tasks/tiling.c
+        libraries/wuss/tasks/taskapp.c
+        libraries/wuss/tasks/taskapp.h
+        libraries/wuss/tasks/zxtask.c)
 
     if(TARGET_RISCOS)
         list(APPEND WUSS_APP_SOURCES apps/wuss/frontend-riscos.c)
@@ -968,7 +968,7 @@ if(BUILD_APPS)
         OUTPUT_NAME_RELWITHDEBINFO wuss-relwithdebinfo
         OUTPUT_NAME_MINSIZEREL wuss-minsizerel)
 
-    target_include_directories(wuss PRIVATE apps/wuss libraries/wuss/test)
+    target_include_directories(wuss PRIVATE apps/wuss libraries/wuss)
     target_compile_definitions(wuss PRIVATE WUSS_APP)
     # OS window title, naming the build type (e.g. "Wuss (Debug)")
     target_compile_definitions(wuss PRIVATE
@@ -1064,7 +1064,7 @@ if(BUILD_APPS)
         # handed only to the file that needs it, not to all of wuss
         target_include_directories(chasehq
             PRIVATE "${CHQ_DIR}/include" "${CHQ}")
-        set_source_files_properties(libraries/wuss/test/tasks/chasehq.c
+        set_source_files_properties(libraries/wuss/tasks/chasehq.c
             PROPERTIES INCLUDE_DIRECTORIES "${CHQ_DIR}/include")
         # third-party code: its warnings are policed by its own build
         target_compile_options(chasehq PRIVATE -w)
@@ -1125,7 +1125,7 @@ if(BUILD_APPS)
         # replace with a TGE build option if it ever gains one
         set_source_files_properties(${TGE}/ZXSpectrum/Spectrum.c
             PROPERTIES COMPILE_DEFINITIONS "__riscos")
-        set_source_files_properties(libraries/wuss/test/tasks/greatescape.c
+        set_source_files_properties(libraries/wuss/tasks/greatescape.c
             PROPERTIES
                 INCLUDE_DIRECTORIES "${TGE_DIR}/include"
                 COMPILE_DEFINITIONS "${TGE_ZX_RENAMES}")

@@ -115,7 +115,7 @@ wuss_menu_item_t;
 /** Fill in items[idx] as a plain row with no submenu/window leaf or
  *  shortcut (swatch left at 0), for building a wuss_menu_t whose items[]
  *  lives per-instance in a caller's own struct rather than as a file-scope
- *  static -- see e.g. wuss/test/tasks/chars.c. Terser than assigning each
+ *  static -- see e.g. wuss/tasks/chars.c. Terser than assigning each
  *  field on its own line. */
 #define WUSS_MENU_ITEM(items, idx, text_, flags_) \
   do \
@@ -182,7 +182,7 @@ wuss_menu_t;
 
 /** Fill in a wuss_menu_t whose fields live per-instance in a caller's own
  *  struct rather than as a file-scope static -- see e.g.
- *  wuss/test/tasks/chars.c. nitems_ is usually NELEMS(items_), but pass a
+ *  wuss/tasks/chars.c. nitems_ is usually NELEMS(items_), but pass a
  *  runtime count for a menu whose item count varies, e.g. one row per
  *  loaded name. */
 #define WUSS_MENU_TITLE(menu, title_, items_, nitems_) \
