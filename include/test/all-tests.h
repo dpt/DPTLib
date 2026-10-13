@@ -64,6 +64,7 @@ extern testfn_t txtfmt_test,
 extern testfn_t array_test,
                 bsearch_test,
                 bytesex_test,
+                easing_test,
                 pack_test;
 
 /* wuss */

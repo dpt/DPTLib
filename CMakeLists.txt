@@ -137,6 +137,7 @@ set(PUBLIC_HEADERS
     include/utils/barith.h
     include/utils/bsearch.h
     include/utils/bytesex.h
+    include/utils/easing.h
     include/utils/fxp.h
     include/utils/maths.h
     include/utils/pack.h
@@ -426,6 +427,7 @@ set(UTILS_SOURCES
     libraries/utils/bytesex/bytesex.c
     libraries/utils/bytesex/rev-l-block.c
     libraries/utils/bytesex/rev-s-block.c
+    libraries/utils/easing/easing.c
     libraries/utils/fxp/smull-fxp16.c
     libraries/utils/fxp/umull-fxp16.c
     libraries/utils/maths/degs-to-rads.c
@@ -832,6 +834,7 @@ if(BUILD_TESTS)
         libraries/utils/array/test/array-test.c
         libraries/utils/bsearch/test/bsearch-test.c
         libraries/utils/bytesex/test/bytesex-test.c
+        libraries/utils/easing/test/easing-test.c
         libraries/utils/pack/test/pack-test.c
         libraries/datastruct/vector/test/vector-test.c
         libraries/wuss/test/gridview-bench-test.c

@@ -82,6 +82,7 @@ static const test_t tests[] =
   { "array",      array_test      },
   { "bsearch",    bsearch_test    },
   { "bytesex",    bytesex_test    },
+  { "easing",     easing_test     },
   { "pack",       pack_test       },
 
   { "gridview-bench", gridview_bench_test },
