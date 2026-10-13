@@ -71,4 +71,18 @@ void colour_get_rgb(const colour_t *c,
                     unsigned int   *g,
                     unsigned int   *b);
 
+/**
+ * Blend two colours, per component and opaque.
+ *
+ * \param[in] a   Colour returned when num is 0.
+ * \param[in] b   Colour returned when num equals den.
+ * \param[in] num Numerator of the blend fraction, at most den.
+ * \param[in] den Denominator of the blend fraction, non-zero.
+ * \return Colour num/den of the way from a to b.
+ */
+colour_t colour_mix(colour_t     a,
+                    colour_t     b,
+                    unsigned int num,
+                    unsigned int den);
+
 #endif /* FRAMEBUF_COLOUR_H */

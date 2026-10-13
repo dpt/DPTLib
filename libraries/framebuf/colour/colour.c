@@ -23,6 +23,22 @@ colour_t colour_rgba(unsigned int r,
   return c;
 }
 
+colour_t colour_mix(colour_t     a,
+                    colour_t     b,
+                    unsigned int num,
+                    unsigned int den)
+{
+  unsigned int ar, ag, ab;
+  unsigned int br, bg, bb;
+
+  colour_get_rgb(&a, &ar, &ag, &ab);
+  colour_get_rgb(&b, &br, &bg, &bb);
+
+  return colour_rgb((ar * (den - num) + br * num) / den,
+                    (ag * (den - num) + bg * num) / den,
+                    (ab * (den - num) + bb * num) / den);
+}
+
 static unsigned int closest_palette_entry(const colour_t *palette,
                                           int             nentries,
                                           colour_t        required)
