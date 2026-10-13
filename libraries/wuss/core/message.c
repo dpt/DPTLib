@@ -140,10 +140,25 @@ result_t wuss_acknowledge(wuss_t               *wuss,
                           wuss_task_t          *recipient,
                           const wuss_message_t *msg)
 {
-  NOT_USED(recipient);
+  wuss_message_t ack;
+  wuss_event_t   event;
 
   if (wuss->msg.acking != NULL && msg->my_ref == wuss->msg.acking->my_ref)
     wuss->msg.acked = 1;
+
+  /* A recorded DataLoad completes the transfer: tell the saver, in its task
+   * view (a task has no single window; the saver matches on your_ref). */
+  if (msg->action == wuss_MESSAGE_DATA_LOAD && msg->recorded)
+  {
+    memset(&ack, 0, sizeof(ack));
+    ack.action   = wuss_MESSAGE_DATA_LOAD_ACK;
+    ack.sender   = recipient;
+    ack.your_ref = msg->my_ref;
+
+    event.kind         = wuss_EVENT_MESSAGE;
+    event.data.message = &ack;
+    (void) wuss__deliver(msg->sender, NULL, &event);
+  }
 
   return result_OK;
 }
