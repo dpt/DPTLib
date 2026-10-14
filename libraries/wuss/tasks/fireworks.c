@@ -14,7 +14,6 @@
 #include "geom/box.h"
 #include "geom/size.h"
 #include "geom/stack.h"
-#include "io/filetype.h"
 
 #include "common.h"
 #include "fireworks.h"
@@ -301,7 +300,6 @@ static result_t fireworks_saveas_save(const char *path, void *opaque)
 result_t fireworks_create(wuss_t *wuss, fireworks_task_t **out)
 {
   result_t          rc;
-  filetype_t        png_type;
   fireworks_task_t *task;
   wuss_task_t      *delegate;
   wuss_task_desc_t  delegate_desc;
@@ -404,9 +402,8 @@ result_t fireworks_create(wuss_t *wuss, fireworks_task_t **out)
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_CLEAR, "Clear",
                           wuss_MENU_ITEM_NONE, "C");
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
-                          FIREWORKS_SAVE_NAME, fireworks_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, FIREWORKS_SAVE_NAME,
+                              fireworks_saveas_save, task);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);

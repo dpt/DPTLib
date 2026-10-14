@@ -17,7 +17,6 @@
 #include "framebuf/curve.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
-#include "io/filetype.h"
 #include "utils/fxp.h"
 #include "wuss/wuss.h"
 
@@ -141,7 +140,6 @@ result_t curving_create(wuss_t *wuss, curving_task_t **out)
   curving_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  filetype_t       png_type;
   int              i;
 
   task = calloc(1, sizeof(*task));
@@ -179,9 +177,8 @@ result_t curving_create(wuss_t *wuss, curving_task_t **out)
     return rc;
   }
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
-                          CURVING_SAVE_NAME, curving_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, CURVING_SAVE_NAME,
+                              curving_saveas_save, task);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);

@@ -14,7 +14,6 @@
 #include "base/utils.h"
 #include "framebuf/dither.h"
 #include "framebuf/octree.h"
-#include "io/filetype.h"
 #include "io/namelist.h"
 #include "io/path.h"
 #include "wuss/menu.h"
@@ -23,6 +22,7 @@
 #include "palette.h"
 
 #include "dithering.h"
+#include "snapshot.h"
 #include "taskapp.h"
 
 /* ----------------------------------------------------------------------- */
@@ -214,7 +214,6 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
   result_t          rc;
   dithering_task_t *task;
   wuss_task_desc_t  delegate_desc;
-  filetype_t        png_type;
   int               i;
 
   task = calloc(1, sizeof(*task));
@@ -305,9 +304,8 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
   /* closing the window reaps the task; its QUIT frees the block */
   wuss_task_set_autoclose(task->delegate, 1);
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type, NULL,
-                          dithering_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, NULL, dithering_saveas_save,
+                              task);
   if (rc != result_OK)
   {
     wuss_task_destroy(task->delegate); /* QUIT frees the block */

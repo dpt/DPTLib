@@ -14,6 +14,7 @@
 #include "framebuf/pixelfmt.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "io/filetype.h"
 
 #include "snapshot.h"
 
@@ -73,6 +74,19 @@ result_t snapshot_save_png(wuss_window_t    *window,
 cleanup:
   free(pixels);
   return rc;
+}
+
+result_t snapshot_saveas_create(wuss_saveas_t        **out,
+                                wuss_t                *wuss,
+                                const char            *leafname,
+                                wuss_saveas_save_fn_t *save_fn,
+                                void                  *opaque)
+{
+  filetype_t png_type;
+
+  png_type = filetype_from_ext(".png");
+
+  return wuss_saveas_create(out, wuss, &png_type, leafname, save_fn, opaque);
 }
 
 #endif /* WUSS_APP */

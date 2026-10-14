@@ -12,7 +12,6 @@
 #include "framebuf/palettes.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
-#include "io/filetype.h"
 
 #include "ball.h"
 #include "snapshot.h"
@@ -88,7 +87,6 @@ static result_t ball_saveas_save(const char *path, void *opaque)
 result_t ball_create(wuss_t *wuss, ball_task_t **out)
 {
   result_t         rc;
-  filetype_t       png_type;
   ball_task_t     *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
@@ -133,9 +131,8 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
     return rc;
   }
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
-                          BALL_SAVE_NAME, ball_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, BALL_SAVE_NAME,
+                              ball_saveas_save, task);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);

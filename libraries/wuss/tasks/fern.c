@@ -16,7 +16,6 @@
 #include "geom/box.h"
 #include "geom/size.h"
 #include "geom/stack.h"
-#include "io/filetype.h"
 #include "utils/rng.h"
 
 #include "fern.h"
@@ -108,7 +107,6 @@ result_t fern_create(wuss_t *wuss, fern_task_t **out)
   fern_task_t     *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  filetype_t       png_type;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -130,9 +128,8 @@ result_t fern_create(wuss_t *wuss, fern_task_t **out)
   task->delegate = delegate;
   wuss_task_set_autoclose(delegate, 1);
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type, FERN_SAVE_NAME,
-                          fern_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, FERN_SAVE_NAME,
+                              fern_saveas_save, task);
   if (rc != result_OK)
     goto fail_delegate;
 

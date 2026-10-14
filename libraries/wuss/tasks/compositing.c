@@ -14,7 +14,6 @@
 #include "framebuf/pixelfmt.h"
 #include "geom/box.h"
 #include "geom/point.h"
-#include "io/filetype.h"
 #include "io/path.h"
 
 #include "compositing.h"
@@ -186,7 +185,6 @@ result_t compositing_create(wuss_t *wuss, compositing_task_t **out)
   compositing_task_t *task;
   wuss_task_t        *delegate;
   wuss_task_desc_t    delegate_desc;
-  filetype_t          png_type;
   const char         *resources;
   const colour_t     *palette;
   int                 i;
@@ -244,10 +242,8 @@ result_t compositing_create(wuss_t *wuss, compositing_task_t **out)
     return rc;
   }
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
-                          COMPOSITING_SAVE_NAME, compositing_saveas_save,
-                          task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, COMPOSITING_SAVE_NAME,
+                              compositing_saveas_save, task);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);

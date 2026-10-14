@@ -14,7 +14,6 @@
 #include "framebuf/palettes.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
-#include "io/filetype.h"
 #include "wuss/task.h"
 
 #include "doughnut.h"
@@ -210,7 +209,6 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
   doughnut_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  filetype_t       png_type;
   int              i;
 
   task = calloc(1, sizeof(*task));
@@ -244,9 +242,8 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
     return rc;
   }
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
-                          DOUGHNUT_SAVE_NAME, doughnut_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, DOUGHNUT_SAVE_NAME,
+                              doughnut_saveas_save, task);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);

@@ -11,7 +11,6 @@
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
-#include "io/filetype.h"
 
 #include "checker.h"
 #include "taskapp.h"
@@ -87,7 +86,6 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
   checker_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  filetype_t       png_type;
   colour_t        *fields[2];
   int              i;
 
@@ -125,9 +123,8 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
    * frees task_data */
   wuss_task_set_autoclose(delegate, 1);
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
-                          CHECKER_SAVE_NAME, checker_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, CHECKER_SAVE_NAME,
+                              checker_saveas_save, task);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);

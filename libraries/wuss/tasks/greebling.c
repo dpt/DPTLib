@@ -13,7 +13,6 @@
 #include "base/utils.h"
 #include "framebuf/colour.h"
 #include "geom/box.h"
-#include "io/filetype.h"
 #include "utils/rng.h"
 #include "wuss/menu.h"
 
@@ -496,7 +495,6 @@ result_t greebling_create(wuss_t *wuss, greebling_task_t **out)
   greebling_task_t *task;
   wuss_task_t      *delegate;
   wuss_task_desc_t  delegate_desc;
-  filetype_t        png_type;
   size2d_t          grid_px;
   int               i;
 
@@ -541,9 +539,8 @@ result_t greebling_create(wuss_t *wuss, greebling_task_t **out)
    * can shrink the window below grid_px and the rest scrolls into view */
   greebling_generate(task);
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
-                          GREEBLING_SAVE_NAME, greebling_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, GREEBLING_SAVE_NAME,
+                              greebling_saveas_save, task);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);

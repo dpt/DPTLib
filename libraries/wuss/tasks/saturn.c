@@ -17,7 +17,6 @@
 #include "geom/box.h"
 #include "geom/size.h"
 #include "geom/stack.h"
-#include "io/filetype.h"
 #include "utils/rng.h"
 #include "wuss/component/dialogue.h"
 #include "wuss/menu.h"
@@ -190,7 +189,6 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   saturn_task_t   *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  filetype_t       png_type;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -219,9 +217,8 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   task->delegate = delegate; /* the task the menu opens against */
   wuss_task_set_autoclose(delegate, 1);
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
-                          SATURN_SAVE_NAME, saturn_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, SATURN_SAVE_NAME,
+                              saturn_saveas_save, task);
   if (rc != result_OK)
     goto fail_delegate;
 

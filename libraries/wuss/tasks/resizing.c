@@ -12,13 +12,13 @@
 
 #include "base/debug.h"
 #include "base/utils.h"
-#include "io/filetype.h"
 #include "io/path.h"
 #include "wuss/menu.h"
 
 #include "common.h"
 
 #include "resizing.h"
+#include "snapshot.h"
 #include "taskapp.h"
 
 /* ----------------------------------------------------------------------- */
@@ -175,7 +175,6 @@ result_t resizing_create(wuss_t *wuss, resizing_task_t **out)
   result_t         rc;
   resizing_task_t *task;
   wuss_task_desc_t delegate_desc;
-  filetype_t       png_type;
   size2d_t         empty;
   int              i;
 
@@ -241,9 +240,8 @@ result_t resizing_create(wuss_t *wuss, resizing_task_t **out)
   /* closing the window reaps the task; its QUIT frees the block */
   wuss_task_set_autoclose(task->delegate, 1);
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type, NULL,
-                          resizing_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, NULL, resizing_saveas_save,
+                              task);
   if (rc != result_OK)
   {
     wuss_task_destroy(task->delegate); /* QUIT frees the block */

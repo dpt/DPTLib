@@ -19,11 +19,11 @@
 #include "framebuf/screen.h"
 #include "geom/box.h"
 #include "geom/stack.h"
-#include "io/filetype.h"
 #include "wuss/icon.h"
 #include "wuss/task.h"
 
 #include "orbing.h"
+#include "snapshot.h"
 #include "taskapp.h"
 #include "common.h"
 
@@ -680,7 +680,6 @@ result_t orbing_create(wuss_t *wuss, orbing_task_t **out)
   orbing_task_t   *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  filetype_t       png_type;
   stack_item_t     items[SS__LIMIT];
   size2d_t         strip_sz;
   int              i;
@@ -741,9 +740,8 @@ result_t orbing_create(wuss_t *wuss, orbing_task_t **out)
     return rc;
   }
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
-                          ORBING_SAVE_NAME, orbing_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, ORBING_SAVE_NAME,
+                              orbing_saveas_save, task);
   if (rc != result_OK)
   {
     wuss_window_close(task->window); /* its QUIT frees both */

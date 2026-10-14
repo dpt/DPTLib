@@ -14,12 +14,12 @@
 #include "base/utils.h"
 #include "framebuf/effects.h"
 #include "framebuf/tonemap.h"
-#include "io/filetype.h"
 #include "io/path.h"
 #include "wuss/menu.h"
 #include "wuss/menu-desc.h"
 
 #include "effecting.h"
+#include "snapshot.h"
 #include "taskapp.h"
 #include "common.h"
 
@@ -165,7 +165,6 @@ result_t effecting_create(wuss_t *wuss, effecting_task_t **out)
   effecting_task_t *task;
   wuss_task_t      *delegate;
   wuss_task_desc_t  delegate_desc;
-  filetype_t        png_type;
   size2d_t          sz;
   int               i;
 
@@ -236,9 +235,8 @@ result_t effecting_create(wuss_t *wuss, effecting_task_t **out)
     return rc;
   }
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type, NULL,
-                          effecting_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, NULL, effecting_saveas_save,
+                              task);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);

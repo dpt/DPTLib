@@ -17,7 +17,6 @@
 #include "framebuf/palettes.h"
 #include "geom/box.h"
 #include "geom/point.h"
-#include "io/filetype.h"
 #include "io/path.h"
 #include "text/utf8.h"
 #include "wuss/icon.h"
@@ -411,7 +410,6 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   chars_task_t      *task;
   wuss_task_t       *delegate;
   wuss_task_desc_t   delegate_desc;
-  filetype_t         png_type;
   bmfont_t          *font;
   const wuss_menu_t *menu;
   const char        *sysname;
@@ -517,9 +515,8 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   chars_set_cell(task);
   chars_sync(task);
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
-                          CHARS_SAVE_NAME, chars_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, CHARS_SAVE_NAME,
+                              chars_saveas_save, task);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);

@@ -12,7 +12,6 @@
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
-#include "io/filetype.h"
 #include "utils/easing.h"
 
 #include "oscillating.h"
@@ -119,7 +118,6 @@ result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
   oscillating_task_t *task;
   wuss_task_t        *delegate;
   wuss_task_desc_t    delegate_desc;
-  filetype_t          png_type;
   int                 i;
 
   task = calloc(1, sizeof(*task));
@@ -153,9 +151,8 @@ result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
     return rc;
   }
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
-                          OSCILLATING_SAVE_NAME, oscillating_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, OSCILLATING_SAVE_NAME,
+                              oscillating_saveas_save, task);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);

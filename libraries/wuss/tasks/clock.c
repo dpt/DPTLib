@@ -18,7 +18,6 @@
 #include "framebuf/screen.h"
 #include "geom/box.h"
 #include "geom/point.h"
-#include "io/filetype.h"
 #include "utils/fxp.h"
 
 #include "clock.h"
@@ -129,7 +128,6 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
   clock_task_t    *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  filetype_t       png_type;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -163,9 +161,8 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
     return rc;
   }
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
-                          CLOCK_SAVE_NAME, clock_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, CLOCK_SAVE_NAME,
+                              clock_saveas_save, task);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);

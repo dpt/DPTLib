@@ -17,7 +17,6 @@
 #include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
 #include "geom/box.h"
-#include "io/filetype.h"
 
 #include "gradient.h"
 #include "taskapp.h"
@@ -240,7 +239,6 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
   gradient_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  filetype_t       png_type;
   int              i;
 
   task = calloc(1, sizeof(*task));
@@ -280,9 +278,8 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
     return rc;
   }
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
-                          GRADIENT_SAVE_NAME, gradient_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, GRADIENT_SAVE_NAME,
+                              gradient_saveas_save, task);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);

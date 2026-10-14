@@ -14,7 +14,6 @@
 #include "framebuf/pattern.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
-#include "io/filetype.h"
 #include "utils/rng.h"
 
 #include "patterns.h"
@@ -90,7 +89,6 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
   patterns_task_t *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  filetype_t       png_type;
   colour_t        *fields[2];
 
   task = calloc(1, sizeof(*task));
@@ -124,9 +122,8 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
     return rc;
   }
 
-  png_type = filetype_from_ext(".png");
-  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
-                          PATTERNS_SAVE_NAME, patterns_saveas_save, task);
+  rc = snapshot_saveas_create(&task->saveas, wuss, PATTERNS_SAVE_NAME,
+                              patterns_saveas_save, task);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);
