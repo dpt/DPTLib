@@ -87,39 +87,7 @@ static result_t mouse_click(wuss_t             *wuss,
   if (action == wuss_MOUSE_DOWN)
     button = wuss__double_click(wuss, wuss__window_at(wuss, p), p, button);
 
-#ifdef WUSS_ICONS
-  /* Release a held button icon on a MOUSE_UP that will NOT reach it through the
-   * normal window hit-test: the up may land on a window that opened over the
-   * icon's owner on MOUSE_DOWN. When the up does land back on the pressed icon,
-   * leave it held so the icon-hit path below completes the click (latch
-   * radio/option state, toggle a menu tick). */
-  if (action == wuss_MOUSE_UP && wuss->pressed.icon != NULL)
-  {
-    wuss_icon_t   *pressed  = wuss->pressed.icon;
-    wuss_window_t *presswin = wuss->pressed.window;
-    box_t          content;
-    point_t        doc_point;
-    int            still_over;
-
-    wuss__content_box(presswin, &content);
-    doc_point.x = x - content.x0 + presswin->scroll.x;
-    doc_point.y = y - content.y0 + presswin->scroll.y;
-
-    still_over = (wuss__window_at(wuss, p) == presswin &&
-                  wuss__icon_hit_test(presswin, doc_point) == pressed);
-
-    if (!still_over)
-    {
-      wuss->pressed.icon   = NULL;
-      wuss->pressed.window = NULL;
-      if (wuss__icon_pressed(pressed))
-      {
-        wuss__icon_set_state(pressed, wuss_ICON_STATE_PRESSED, 0);
-        wuss__icon_invalidate(presswin, pressed);
-      }
-    }
-  }
-#endif
+  wuss__icon_release_held(wuss, p, action);
 
 #ifdef WUSS_FURNITURE
   if (action == wuss_MOUSE_UP && wuss->furniture.dragging != NULL)
@@ -392,76 +360,12 @@ static result_t mouse_click(wuss_t             *wuss,
     doc_point.x = x - content.x0 + win->scroll.x;
     doc_point.y = y - content.y0 + win->scroll.y;
 
-#ifdef WUSS_ICONS
     {
-      wuss_icon_t *icon;
+      result_t icon_rc;
 
-      /* MENU is never an icon gesture -- press/select/adjust are. Skipping
-       * the hit test lets a MENU click over an icon fall through to the
-       * plain wuss_EVENT_MOUSE below, so the task's own MENU handling (e.g.
-       * popping a work-area menu) sees it instead of the click being eaten
-       * here. */
-      icon = (button & wuss_BUTTON_MENU) ? NULL : wuss__icon_hit_test(win, doc_point);
-      if (icon != NULL)
-      {
-        if (action == wuss_MOUSE_DOWN &&
-            (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
-        {
-          wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 1);
-          wuss->pressed.icon   = icon;
-          wuss->pressed.window = win;
-          wuss->pressed.point  = POINT(x, y);
-          wuss->pressed.button = button;
-          wuss__icon_invalidate(win, icon);
-
-          /* a slider jumps straight to the click point rather than waiting
-           * for a completed press/release, and keeps updating on MOVE while
-           * held (core/mouse-move.c) */
-          if (icon->spec.type == wuss_ICON_TYPE_SLIDER)
-            wuss__icon_set_value(win, icon,
-                                 wuss__slider_value_for_point(win, icon,
-                                                              POINT(x, y)));
-
-          /* a writable takes the caret at the click, if the press above
-           * gave its window the focus */
-          if (icon->spec.type == wuss_ICON_TYPE_WRITABLE && wuss->focus == win)
-            wuss__writable_place_caret(win, icon,
-                                       wuss__writable_index_for_x(wuss, icon,
-                                                                  doc_point.x));
-        }
-        else if (action == wuss_MOUSE_UP && wuss__icon_pressed(icon))
-        {
-          wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 0);
-          wuss->pressed.icon   = NULL;
-          wuss->pressed.window = NULL;
-          wuss__icon_invalidate(win, icon);
-
-          /* a completed click latches radio/option state before the task is
-           * told, so the wuss_EVENT_ICON handler sees the new value */
-          if (icon->spec.type == wuss_ICON_TYPE_OPTION)
-            wuss__icon_select(win, icon, !wuss__icon_selected(icon));
-          else if (icon->spec.type == wuss_ICON_TYPE_BITMAP &&
-                   icon->spec.u.bitmap.group != 0)
-            wuss__icon_select(win, icon, 1);
-          else if (icon->spec.type == wuss_ICON_TYPE_RADIO)
-            /* ADJUST toggles a lone radio; a grouped one always keeps one
-             * member selected */
-            wuss__icon_select(win, icon,
-                              ((button & wuss_BUTTON_ADJUST) &&
-                               icon->spec.u.radio.group == 0)
-                                ? !wuss__icon_selected(icon)
-                                : 1);
-        }
-
-        event.kind             = wuss_EVENT_ICON;
-        event.data.icon.icon   = icon;
-        event.data.icon.action = action;
-        event.data.icon.button = button;
-        event.data.icon.value  = icon->value;
-        return wuss__deliver(win->task, win, &event);
-      }
+      if (wuss__icon_click(win, p, doc_point, button, action, &icon_rc))
+        return icon_rc;
     }
-#endif
 
     /* Set before delivery: closing the window in the handler clears it. */
     if (action == wuss_MOUSE_DOWN &&

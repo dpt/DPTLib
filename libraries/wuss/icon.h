@@ -257,6 +257,28 @@ void wuss__icon_draw(wuss_t              *wuss,
  * NULL. Label, hidden and disabled icons are skipped. */
 wuss_icon_t *wuss__icon_hit_test(wuss_window_t *window, point_t doc_point);
 
+/* Pointer clicks (icon/click.c), called from core/mouse-click.c. */
+
+/* On a MOUSE_UP, drop the held (pressed) icon if the up will not reach it
+ * through the window hit-test -- it landed on another window, or off the icon.
+ * An up back on the pressed icon leaves it held for wuss__icon_click to
+ * complete. */
+void wuss__icon_release_held(wuss_t             *wuss,
+                             point_t             p,
+                             wuss_mouse_action_t action);
+
+/* Route a click on "window" at screen point "p" (document point "doc_point")
+ * to the icon under it, if any: press/release state, option and radio
+ * latching, slider jump, writable caret, then wuss_EVENT_ICON to the task.
+ * MENU clicks are never icon gestures. Returns 1 when an icon took the click,
+ * with the delivery result in *rc; 0 leaves the click to the caller. */
+int wuss__icon_click(wuss_window_t      *window,
+                     point_t             p,
+                     point_t             doc_point,
+                     wuss_button_t       button,
+                     wuss_mouse_action_t action,
+                     result_t           *rc);
+
 /* wuss_ICON_TYPE_WRITABLE editing (icon/writable.c). */
 
 /* Move the caret to byte "index" (clamped to the text) of writable "icon" on

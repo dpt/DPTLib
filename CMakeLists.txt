@@ -542,6 +542,7 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/get-text.c
     libraries/wuss/icon/get-type.c
     libraries/wuss/icon/get-value.c
+    libraries/wuss/icon/click.c
     libraries/wuss/icon/hit-test.c
     libraries/wuss/icon/invalidate.c
     libraries/wuss/icon/plot.c
