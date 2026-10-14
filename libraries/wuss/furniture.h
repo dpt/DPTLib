@@ -256,4 +256,22 @@ void wuss__furniture_drag_sausage(wuss_window_t *window,
                                   int            scroll_start,
                                   int            horizontal);
 
+/* Pointer clicks (furniture/click.c), called from core/mouse-click.c. */
+
+/* On a MOUSE_UP, end any held furniture press: clear the pressed highlight and
+ * the drag state. Returns the window that held it, or NULL when nothing was
+ * held (or "action" is not a MOUSE_UP). */
+wuss_window_t *wuss__furniture_release(wuss_t             *wuss,
+                                       wuss_mouse_action_t action);
+
+/* Route a click on "window" at screen point "p" to whichever furniture region
+ * it lands on: close, back, toggle-size, scroll arrows and wells, titlebar and
+ * resize drags. Returns 1 when furniture took the click, with the result of
+ * any delivery or close in *rc; 0 means the click is on the content. */
+int wuss__furniture_click(wuss_window_t      *window,
+                          point_t             p,
+                          wuss_button_t       button,
+                          wuss_mouse_action_t action,
+                          result_t           *rc);
+
 #endif /* WUSS_FURNITURE_IMPL_H */

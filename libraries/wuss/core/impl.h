@@ -27,6 +27,29 @@
 
 #ifdef WUSS_FURNITURE
 #include "../furniture.h"
+#else
+/* No furniture: nothing is ever held or hit. */
+static inline wuss_window_t *wuss__furniture_release(wuss_t             *wuss,
+                                                     wuss_mouse_action_t action)
+{
+  NOT_USED(wuss);
+  NOT_USED(action);
+  return NULL;
+}
+
+static inline int wuss__furniture_click(wuss_window_t      *window,
+                                        point_t             p,
+                                        wuss_button_t       button,
+                                        wuss_mouse_action_t action,
+                                        result_t           *rc)
+{
+  NOT_USED(window);
+  NOT_USED(p);
+  NOT_USED(button);
+  NOT_USED(action);
+  NOT_USED(rc);
+  return 0;
+}
 #endif
 #ifdef WUSS_ICONBAR
 #include "../iconbar.h"

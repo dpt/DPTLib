@@ -503,6 +503,7 @@ set(WUSS_CORE_SOURCES
 
 set(WUSS_FURNITURE_SOURCES
     libraries/wuss/furniture/back-box.c
+    libraries/wuss/furniture/click.c
     libraries/wuss/furniture/close-box.c
     libraries/wuss/furniture/content-box.c
     libraries/wuss/furniture/drag-resize.c
