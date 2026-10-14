@@ -6,8 +6,6 @@ Items marked (blocks: X) are prerequisites for X.
 
 Filer
 - DataOpen
-- Adjust click on close icon
-- Adjust launching
 - Draw some icons - 'open' directory icon variant
 - Allow multiple selections?
 - Drags within the filer
@@ -16,19 +14,17 @@ Filer
 
 
 General window positioning issues
+- decide which windows should open centred etc.
 
 Message monitoring app? Filters?
 
-Icon internal layout. e.g. bbox+alignment possibilities.
-Icon bar: Sort out icon alignment.
-
 FontMenu: Add ability to select by font family.
 
-Icon Sprite Pools: Implement.
+Icon Sprite Pools: Implement PNG sprite sheets?
 
 PostScript style renderer.
 
-Chars: Clicking on a character inserts it into the keyboard buffer. Smaller numeric font?
+Chars: Clicking on a character inserts it into the keyboard buffer.
 
 Wussmoji. Would need colour fonts.
 
@@ -39,12 +35,23 @@ Triangle/quad plotter for Magnetoid style rendering.
 
 Tiled backdrop generation.
 
-Configure: CRT shader params.
+Configure: CRT shader params. Default res. Leads to .. Choices.
 
-Task dirs
+Tasks as dirs
 
+Effects: Upgrade until equivalent to PrivateEye
 
+Allow any desktop colour to be a backdrop-type pattern
 
+ADJUST on toggle icon does what?
+
+Window panes
+
+Paint: text tool
+
+An app to display the system sprite pool - grid view / sprite pool viewer.
+
+System key presses for Quit App and Hide Others etc.
 
 
 LAYER 2 - TEXT & FONTS (needs UTF-8, font-arch decision)
@@ -87,7 +94,7 @@ LAYER 5 - DRAG & TEMPLATES (needs sprites, config-after-the-fact)
 - Drag & Drop -- done (DataSave/DataSaveAck/DataLoad/DataLoadAck, Save As
   component, Filer drop target; see docs/windowing/drag-save-plan.md).
   Deferred: load from the Filer, task-to-task transfer, RAM transfer
-- Clipboard
+- Clipboard incl. desktop selection of writables
 - Drag & Drop protocol
 
 
@@ -102,14 +109,13 @@ LAYER 7 - APPS & POLISH (needs most of the above)
 - Post-Its app with explanatory text for newbies
   (Markdown rendering done in the Reading task sample; reuse from there)
   Part of Pinboard?
-- Have a Paint app as a target
 - Desktop cohort: Filer, Task Manager, Palette Util
 - Desktop palette editor (needs named colours; see Palette Util)
 - 24-bit Colour Picker component (named colours?)
 - Proper desktop font (just iterate on existing one?)
 - Support paletted images
 - Greebling symmetry
-- Spheroid: bump textures, arrays of spheres, saved presets
+- Orbing: bump textures, arrays of spheres, saved presets
 - 8x8 icon libraries - share the greeble code with other parts of wuss
 - Rounded corner windows
 - Procedural noise app
