@@ -46,8 +46,6 @@ enum
   DOUGHNUT_MENU_SAVE
 };
 
-enum { DOUGHNUT_COLOURS_MENU_FOREGROUND = 0, DOUGHNUT_COLOURS_MENU_BACKGROUND };
-
 #define DOUGHNUT_SAVE_NAME "doughnut.png" /* Save As's initial leafname */
 
 /* "Tube" submenu rows: tube radius R1, kept below DOUGHNUT_R2 so the hole
@@ -215,21 +213,10 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
     return rc;
   }
 
-  /* both rows share the colourmenu singleton, retitled/retargeted per hover
-   * by doughnut_pre_submenu_open; .submenu only gives each an arrow */
-  WUSS_MENU_ITEM_MENU(task->colours_items, DOUGHNUT_COLOURS_MENU_FOREGROUND,
-                      "Foreground", wuss_MENU_ITEM_PRE_OPEN,
-                      wuss_colourmenu_menu(wuss));
-
-  WUSS_MENU_ITEM_MENU(task->colours_items, DOUGHNUT_COLOURS_MENU_BACKGROUND,
-                      "Background", wuss_MENU_ITEM_PRE_OPEN,
-                      wuss_colourmenu_menu(wuss));
-
-  WUSS_MENU_TITLE(task->colours_menu, "Colours", task->colours_items,
-                  NELEMS(task->colours_items));
+  wuss_colourpair_init(&task->colours, wuss, &task->fg, &task->bg);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_NONE, &task->colours_menu);
+                      wuss_MENU_ITEM_NONE, &task->colours.menu);
 
   for (i = 0; i < NELEMS(task->tube_items); i++)
     WUSS_MENU_ITEM(task->tube_items, i, doughnut_tubes[i].name,
@@ -530,10 +517,7 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
     return result_OK;
   }
 
-  if (task->colourmenu_target == NULL)
-    return result_OK;
-
-  if (wuss_colourmenu_selected_rgb(event, task->colourmenu_target))
+  if (wuss_colourpair_selected(&task->colours, event))
   {
     doughnut_palette_build(task);
     wuss_window_invalidate_visible(task->window);
@@ -542,36 +526,21 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
   return result_OK;
 }
 
-/* Every submenu leaf fires wuss_EVENT_PRE_SUBMENU_OPEN -- "Colours" and "Tube"
- * too, which open unchanged. Only the Foreground/Background level retitles
- * and retargets the shared colourmenu before opening it. */
+/* Every submenu leaf fires wuss_EVENT_PRE_SUBMENU_OPEN -- "Tube" too, which
+ * opens unchanged. */
 static result_t doughnut_pre_submenu_open(doughnut_task_t    *task,
                                           const wuss_event_t *event)
 {
-  wuss_menu_handle_t handle;
-  int                index;
-  const char        *title;
+  result_t rc;
+  int      index;
 
-  handle = event->data.pre_submenu_open.handle;
-  index  = event->data.pre_submenu_open.index;
+  if (wuss_colourpair_pre_open(&task->colours, task->wuss, event, &rc))
+    return rc;
 
-  if (wuss_menu_handle_menu(handle) != &task->colours_menu)
-    return wuss_menu_open_submenu_now(handle, index,
-                                      task->menu_items[index].submenu);
+  index = event->data.pre_submenu_open.index;
 
-  if (index == DOUGHNUT_COLOURS_MENU_FOREGROUND)
-  {
-    task->colourmenu_target = &task->fg;
-    title                   = "Foreground";
-  }
-  else
-  {
-    task->colourmenu_target = &task->bg;
-    title                   = "Background";
-  }
-
-  return wuss_colourmenu_open_rgb(task->wuss, event, title,
-                                  *task->colourmenu_target);
+  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle, index,
+                                    task->menu_items[index].submenu);
 }
 
 result_t doughnut_handle(wuss_window_t      *window,
