@@ -855,6 +855,9 @@ if(BUILD_TESTS)
         libraries/wuss/test/harness.c
         libraries/wuss/test/harness.h
         libraries/wuss/menu/test/menu-test.c
+        libraries/wuss/menu/test/menu-desc-test.c
+        libraries/wuss/gadget/test/gadget-test.c
+        libraries/wuss/component/test/component-test.c
         libraries/wuss/core/test/pointer-test.c
         libraries/wuss/core/test/message-test.c
         libraries/wuss/core/test/drag-test.c
