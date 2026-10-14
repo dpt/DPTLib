@@ -506,6 +506,7 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
   {
     wuss_t *wuss;
     box_t   content;
+    int     clip_y0, clip_y1;
 
     wuss    = gv->window->task->wuss;
     content = *event->data.redraw.content;
@@ -514,9 +515,14 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
                      gv->has_bg ? gv->bg : wuss->palette[wuss->body.window]);
 
     /* only the rows the clip reaches */
-    first = (event->data.redraw.scr->clip.y0 - event->data.redraw.bounds->y0 +
+    clip_y0 = MAX(event->data.redraw.scr->clip.y0, content.y0);
+    clip_y1 = MIN(event->data.redraw.scr->clip.y1, content.y1);
+    if (clip_y1 <= clip_y0)
+      return 1; /* empty clip: nothing to draw */
+
+    first = (clip_y0 - event->data.redraw.bounds->y0 +
              event->data.redraw.scroll.y - gv->inset) / gv->cell.h;
-    last  = (event->data.redraw.scr->clip.y1 - event->data.redraw.bounds->y0 +
+    last  = (clip_y1 - event->data.redraw.bounds->y0 +
              event->data.redraw.scroll.y - gv->inset) / gv->cell.h;
     first = MAX(first, 0) * gv->columns;
     last  = MIN((last + 1) * gv->columns, gv->count);

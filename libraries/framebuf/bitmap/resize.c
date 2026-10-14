@@ -321,7 +321,7 @@ result_t bitmap_resize(const bitmap_t   *src,
 
     fy = resize_centre(y, src->size.h, size.h);
     y0 = (int) (fy >> FRAC_BITS); /* arithmetic shift floors */
-    wy = (int) (fy - ((int64_t) y0 << FRAC_BITS));
+    wy = (int) (fy - ((int64_t) y0 * (1 << FRAC_BITS)));
     y1 = y0 + 1;
     y0 = CLAMP(y0, 0, src->size.h - 1);
     y1 = CLAMP(y1, 0, src->size.h - 1);
@@ -332,7 +332,7 @@ result_t bitmap_resize(const bitmap_t   *src,
     {
       fx = resize_centre(x, src->size.w, size.w);
       x0 = (int) (fx >> FRAC_BITS);
-      wx = (int) (fx - ((int64_t) x0 << FRAC_BITS));
+      wx = (int) (fx - ((int64_t) x0 * (1 << FRAC_BITS)));
       x1 = x0 + 1;
       x0 = CLAMP(x0, 0, src->size.w - 1);
       x1 = CLAMP(x1, 0, src->size.w - 1);
