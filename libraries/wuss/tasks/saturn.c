@@ -79,9 +79,7 @@ static int saturn_rnd(int n)
 #define SATURN_SAMPLE(half, range) (saturn_rnd(range) - (half))
 
 /* MENU click over the content pops this. "Colours" leads to a submenu with
- * one row per task->fg/task->bg; both rows share task->colourmenu, retargeted
- * per hover by saturn_pre_submenu_open (wuss_EVENT_PRE_SUBMENU_OPEN) so one
- * instance serves either row. "Configuration" hover-opens
+ * one row per task->fg/task->bg (see task->colours). "Configuration" hover-opens
  * task->conf.dialogue's window, a borrowed window built once in
  * saturn_create and stored into task->menu_items[SATURN_MENU_SIZE].window
  * there. */
@@ -94,8 +92,6 @@ enum
 };
 
 #define SATURN_SAVE_NAME "saturn.png" /* Save As's initial leafname */
-enum { SATURN_COLOURS_MENU_FOREGROUND = 0, SATURN_COLOURS_MENU_BACKGROUND };
-
 #define SATURN_SEED_STEP 0x9E3779B9UL /* golden-ratio step between sketches */
 
 /* the size dialogue's icons, in creation order (see saturn_conf_dialogue_create):
@@ -151,15 +147,10 @@ static int *saturn_sizedlg_field(saturn_task_t *task, int row)
   return (int *) ((char *) &task->config + g_saturn_sizedlg_rows[row].config_offset);
 }
 
-/* Both rows' .submenu is patched in saturn_create to the one shared
- * task->colourmenu, just to give each row an arrow and a hover target --
- * wuss_EVENT_PRE_SUBMENU_OPEN fires on hover regardless of which menu
- * .submenu names, and saturn_pre_submenu_open retargets the shared
- * colourmenu before handing it back as the menu to actually open. The item
- * tables and wuss_menu_t values live per-instance in saturn_task_t, not as
- * file-scope statics, so that each window's Configuration row points at its
- * own .window pointer rather than every instance sharing (and overwriting)
- * one global .window pointer. */
+/* The item table and wuss_menu_t values live per-instance in saturn_task_t,
+ * not as file-scope statics, so that each window's Configuration row points
+ * at its own .window pointer rather than every instance sharing (and
+ * overwriting) one global .window pointer. */
 
 static result_t saturn_conf_dialogue_create(saturn_task_t *task);
 static result_t saturn_conf_fillout(void *opaque);
@@ -197,7 +188,6 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   task->fg               = colour_rgb(0xFF, 0xFF, 0xFF);
   task->seed             = 1;
   task->config           = default_config;
-  task->colourmenu_target = NULL;
   task->menu_handle      = NULL;
   task->conf.dialogue    = NULL;
   memset(task->conf.rows, 0, sizeof(task->conf.rows));
@@ -224,26 +214,10 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   if (rc != result_OK)
     goto fail_delegate;
 
-  /* shared colourmenu singleton: wuss_EVENT_PRE_SUBMENU_OPEN retitles/
-   * retargets it per hover (see saturn_pre_submenu_open), so Foreground and
-   * Background don't need their own instance. Both rows' .submenu just need
-   * to be non-NULL to draw an arrow and become hoverable; which menu they
-   * name doesn't matter since the handler always supplies the menu to
-   * open. */
-  WUSS_MENU_ITEM_MENU(task->colours_items, SATURN_COLOURS_MENU_FOREGROUND,
-                      "Foreground", wuss_MENU_ITEM_PRE_OPEN,
-                      wuss_colourmenu_menu(wuss));
-
-  WUSS_MENU_ITEM_MENU(task->colours_items, SATURN_COLOURS_MENU_BACKGROUND,
-                      "Background", wuss_MENU_ITEM_PRE_OPEN,
-                      wuss_colourmenu_menu(wuss));
-
-  WUSS_MENU_TITLE(task->colours_menu, "Colours", task->colours_items,
-                 NELEMS(task->colours_items));
-
+  wuss_colourpair_init(&task->colours, wuss, &task->fg, &task->bg);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, SATURN_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_NONE, &task->colours_menu);
+                      wuss_MENU_ITEM_NONE, &task->colours.menu);
 
   WUSS_MENU_ITEM(task->menu_items, SATURN_MENU_SIZE, "Configuration",
                 wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
@@ -812,43 +786,25 @@ static result_t saturn_conf_dialogue_icon(saturn_task_t      *task,
   return result_OK;
 }
 
-/* Every submenu leaf fires wuss_EVENT_PRE_SUBMENU_OPEN, not just the
- * Foreground/Background rows -- "Colours" itself is one (task->colours_menu
- * never changes, so it just opens unchanged). Only the Foreground/Background
- * level needs to retitle/retarget the shared task->colourmenu before opening
- * it. */
+/* Every submenu leaf fires wuss_EVENT_PRE_SUBMENU_OPEN, not just the colour
+ * pair's -- the rest open their own submenu unchanged. */
 static result_t saturn_pre_submenu_open(saturn_task_t      *task,
                                         const wuss_event_t *event)
 {
-  wuss_menu_handle_t handle;
-  int                index;
-  const char        *title;
+  result_t rc;
+  int      index;
 
-  handle = event->data.pre_submenu_open.handle;
-  index  = event->data.pre_submenu_open.index;
+  if (wuss_colourpair_pre_open(&task->colours, task->wuss, event, &rc))
+    return rc;
 
-  if (wuss_menu_handle_menu(handle) != &task->colours_menu)
-    return wuss_menu_open_submenu_now(handle, index,
-                                      task->menu_items[index].submenu);
+  index = event->data.pre_submenu_open.index;
 
-  if (index == SATURN_COLOURS_MENU_FOREGROUND)
-  {
-    task->colourmenu_target = &task->fg;
-    title                   = "Foreground";
-  }
-  else
-  {
-    task->colourmenu_target = &task->bg;
-    title                   = "Background";
-  }
-
-  return wuss_colourmenu_open_rgb(task->wuss, event, title,
-                                  *task->colourmenu_target);
+  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle, index,
+                                    task->menu_items[index].submenu);
 }
 
 /* A pick from the shared colour submenu, applied to whichever field it was
- * last retargeted at (task->colourmenu_target, set by
- * saturn_pre_submenu_open). "Configuration" is a wuss_menu_item_t::window
+ * last retargeted at (see wuss_colourpair_pre_open). "Configuration" is a wuss_menu_item_t::window
  * leaf, not a leaf pick, so it never reaches here -- see
  * saturn_conf_dialogue_icon and saturn_sizedlg_pre_show. */
 /* Menu > Animate: a fresh sketch every null event. The
@@ -883,10 +839,7 @@ static result_t saturn_menu_select(saturn_task_t      *task,
     return wuss_saveas_open(task->saveas);
   }
 
-  if (task->colourmenu_target == NULL)
-    return result_OK;
-
-  if (wuss_colourmenu_selected_rgb(event, task->colourmenu_target))
+  if (wuss_colourpair_selected(&task->colours, event))
     wuss_window_invalidate_visible(task->window);
 
   return result_OK;

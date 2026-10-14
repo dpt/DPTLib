@@ -79,17 +79,9 @@ typedef struct saturn_task
   colour_t           bg, fg;
   unsigned long      seed;     /* RNG state; Select/Adjust step it */
   saturn_config_t    config;
-  colour_t          *colourmenu_target; /* &task->fg or &task->bg: which
-                                         * field the open colourmenu picks
-                                         * into, set by
-                                         * saturn_pre_submenu_open */
   wuss_menu_handle_t menu_handle; /* live only between open and a SELECT pick */
   saturn_conf_t      conf;
-  wuss_menu_item_t   colours_items[2]; /* per-instance: a shared static
-                                        * would leak one instance's
-                                        * colourmenu/.window pointers into
-                                        * another's menu */
-  wuss_menu_t        colours_menu;
+  wuss_colourpair_t  colours; /* per-instance: Foreground/Background rows */
   wuss_menu_item_t   menu_items[4];
   wuss_menu_t        menu;
   int                animate; /* Menu > Animate: re-seed on every idle */
