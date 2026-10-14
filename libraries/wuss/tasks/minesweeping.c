@@ -798,6 +798,24 @@ static result_t minesweeping_key(minesweeping_task_t *ms, int code)
   return result_OK;
 }
 
+/* Give Up only makes sense while a game is in progress. Also shades the
+ * open menu, if any, so an Adjust pick shows it at once. */
+static void minesweeping_menu_update(minesweeping_task_t *ms)
+{
+  wuss_menu_item_t *give_up;
+  bool              disabled;
+
+  give_up  = &ms->menu_items[MINESWEEPING_MENU_GIVE_UP];
+  disabled = !(ms->placed && !ms->dead && !ms->won);
+  if (disabled)
+    give_up->flags |= wuss_MENU_ITEM_DISABLED;
+  else
+    give_up->flags &= ~wuss_MENU_ITEM_DISABLED;
+
+  wuss_menu_disable_item_live(ms->menu_handle, &ms->menu,
+                              MINESWEEPING_MENU_GIVE_UP, disabled);
+}
+
 static result_t minesweeping_mouse(minesweeping_task_t *ms,
                                    point_t              point,
                                    wuss_button_t        button)
@@ -806,17 +824,9 @@ static result_t minesweeping_mouse(minesweeping_task_t *ms,
 
   if (button & wuss_BUTTON_MENU)
   {
-    wuss_menu_item_t *give_up;
-
     wuss_menu_tick_exclusive(&ms->size_menu, ms->size);
     wuss_menu_tick_exclusive(&ms->difficulty_menu, ms->difficulty);
-
-    /* Give Up only makes sense while a game is in progress */
-    give_up = &ms->menu_items[MINESWEEPING_MENU_GIVE_UP];
-    if (ms->placed && !ms->dead && !ms->won)
-      give_up->flags &= ~wuss_MENU_ITEM_DISABLED;
-    else
-      give_up->flags |= wuss_MENU_ITEM_DISABLED;
+    minesweeping_menu_update(ms);
 
     return wuss_menu_open_at_pointer(ms->task, &ms->menu, &ms->menu_handle);
   }
@@ -921,6 +931,7 @@ result_t minesweeping_handle(wuss_window_t      *window,
       minesweeping_tick_clock(ms);
       ms->dead = true;
       minesweeping_reveal_all_mines(ms);
+      minesweeping_menu_update(ms);
       wuss_window_invalidate_visible(ms->window);
       return result_OK;
     }
@@ -939,6 +950,7 @@ result_t minesweeping_handle(wuss_window_t      *window,
       wuss_window_resize(ms->window, sz);
       wuss_window_set_doc(ms->window, sz);
     }
+    minesweeping_menu_update(ms);
     wuss_window_invalidate_visible(ms->window);
     return result_OK;
 
