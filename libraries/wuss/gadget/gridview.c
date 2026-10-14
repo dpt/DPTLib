@@ -51,6 +51,9 @@ struct wuss_gridview
   int                            press_index; /* item pressed, -1 for none */
   int                            menu_index; /* item selected only for an
                                               * open menu, -1 for none */
+  int                            menu_closed; /* that menu has picked and
+                                              * closed; undo at the next
+                                              * event */
   point_t                        press_point; /* its document point */
   void                          *opaque;
   bitvec_t                      *selected;
@@ -186,6 +189,7 @@ result_t wuss_gridview_create(wuss_gridview_t            **out,
   gv->drag        = NULL;
   gv->press_index = -1;
   gv->menu_index  = -1;
+  gv->menu_closed = 0;
   gv->opaque      = opaque;
   gv->label_chars = label_chars;
   gv->columns     = 0;
@@ -488,12 +492,27 @@ static void gridview_draw_cell(wuss_gridview_t    *gv,
   }
 }
 
+/* Undoes the selection a MENU click made, unless the menu's action changed
+ * it. */
+static void gridview_menu_undo(wuss_gridview_t *gv)
+{
+  if (gv->menu_index >= 0 && bitvec_count(gv->selected) == 1 &&
+      bitvec_get(gv->selected, (bitvec_index_t) gv->menu_index))
+    gridview_clear_selected(gv);
+
+  gv->menu_index  = -1;
+  gv->menu_closed = 0;
+}
+
 /* ----------------------------------------------------------------------- */
 
 int wuss_gridview_handle_event(wuss_gridview_t    *gv,
                                const wuss_event_t *event)
 {
   int index, i, first, last;
+
+  if (gv->menu_closed && event->kind != wuss_EVENT_MENU_CLOSED)
+    gridview_menu_undo(gv);
 
   switch (event->kind)
   {
@@ -626,14 +645,12 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
     return 1;
 
   case wuss_EVENT_MENU_CLOSED:
-    /* undo the selection a MENU click made, unless the menu changed it */
-    if (gv->menu_index >= 0)
-    {
-      if (bitvec_count(gv->selected) == 1 &&
-          bitvec_get(gv->selected, (bitvec_index_t) gv->menu_index))
-        gridview_clear_selected(gv);
-      gv->menu_index = -1;
-    }
+    /* a pick is closed before its wuss_EVENT_MENU_SELECT is delivered, and
+     * the task's action needs the selection: undo at the next event */
+    if (event->data.menu_closed.picked)
+      gv->menu_closed = 1;
+    else
+      gridview_menu_undo(gv);
     return 0;
 
   case wuss_EVENT_POINTER_EXIT:

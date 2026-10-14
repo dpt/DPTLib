@@ -229,11 +229,12 @@ void wuss_gridview_destroy(wuss_gridview_t *doomed);
  * Offer an event from the task's own handler: a wuss_EVENT_REDRAW,
  * wuss_EVENT_MOUSE or wuss_EVENT_OPEN on the gadget's window. Also offer
  * wuss_EVENT_MENU_CLOSED (any window): a MENU click over an unselected item
- * with nothing selected selects that item, and the close deselects it again.
- * Offer a MENU click before opening the menu, so the menu sees the
- * selection. wuss_EVENT_OPEN reflows the grid's columns to the window's
- * current visible width and updates its document extent -- offer it whenever
- * the window's width may have changed, not only on the first open.
+ * with nothing selected selects that item. It is deselected when the menu
+ * closes without a pick, or at the first event after a pick, so the pick's
+ * action still sees it. Offer a MENU click before opening the menu, so the
+ * menu sees the selection. wuss_EVENT_OPEN reflows the grid's columns to the
+ * window's current visible width and updates its document extent -- offer it
+ * whenever the window's width may have changed, not only on the first open.
  *
  * \param[in] gridview Handle.
  * \param[in] event    The event, of any kind.
