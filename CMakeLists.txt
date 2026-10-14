@@ -958,6 +958,7 @@ if(BUILD_APPS)
         libraries/wuss/tasks/display.c
         libraries/wuss/tasks/doughnut.c
         libraries/wuss/tasks/effecting.c
+        libraries/wuss/tasks/effecting-edit.c
         libraries/wuss/tasks/filing.c
         libraries/wuss/tasks/fireball.c
         libraries/wuss/tasks/gradient.c
