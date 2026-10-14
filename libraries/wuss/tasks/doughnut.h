@@ -34,9 +34,14 @@ typedef struct doughnut_task
   wuss_menu_item_t   tube_items[4]; /* "Tube" submenu: one row per radius */
   wuss_menu_t        tube_menu;
   int                tube;    /* index into doughnut_tubes */
-  colour_t           palette[256]; /* shade bitmap's palette: 0 = background
-                                    * (picked from the shared colourmenu),
-                                    * 1..255 = grey ramp */
+  wuss_menu_item_t   colours_items[2]; /* "Colours" submenu: Foreground,
+                                        * Background */
+  wuss_menu_t        colours_menu;
+  colour_t           fg, bg;  /* picked from the shared colourmenu */
+  colour_t          *colourmenu_target; /* &task->fg or &task->bg: which
+                                         * field the open colourmenu picks */
+  colour_t           palette[256]; /* shade bitmap's palette: 0 = bg,
+                                    * 1..255 = ramp from black up to fg */
   double             a, b;    /* rotation angles about the x and z axes */
   double             zoom;    /* scales k1; wheel steps this, clamped */
   int                paused;  /* Select or Menu > Pause toggles; idle

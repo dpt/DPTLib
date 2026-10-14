@@ -39,12 +39,14 @@
 
 enum
 {
-  DOUGHNUT_MENU_BACKGROUND = 0,
+  DOUGHNUT_MENU_COLOURS = 0,
   DOUGHNUT_MENU_TUBE,
   DOUGHNUT_MENU_PAUSE,
   DOUGHNUT_MENU_RESET,
   DOUGHNUT_MENU_SAVE
 };
+
+enum { DOUGHNUT_COLOURS_MENU_FOREGROUND = 0, DOUGHNUT_COLOURS_MENU_BACKGROUND };
 
 #define DOUGHNUT_SAVE_NAME "doughnut.png" /* Save As's initial leafname */
 
@@ -134,6 +136,20 @@ static int doughnut_project(double  r1,
   return 1;
 }
 
+/* palette[0] is the background; 1..255 ramp from black up to the foreground
+ * (darkest shade is 1, not 0, since index 0 is the background) */
+static void doughnut_palette_build(doughnut_task_t *task)
+{
+  unsigned int r, g, b;
+  int          i;
+
+  colour_get_rgb(&task->fg, &r, &g, &b);
+
+  task->palette[0] = task->bg;
+  for (i = 1; i < 256; i++)
+    task->palette[i] = colour_rgb(r * i / 255, g * i / 255, b * i / 255);
+}
+
 /* wuss_saveas_save_fn_t: opaque is the doughnut_task_t */
 static result_t doughnut_saveas_save(const char *path, void *opaque)
 {
@@ -163,9 +179,9 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
   task->zoom = 1.0;
   task->tube = DOUGHNUT_TUBE_CLASSIC;
 
-  task->palette[0] = colour_rgb(0x20, 0x20, 0x20);
-  for (i = 1; i < 256; i++)
-    task->palette[i] = colour_rgb(i, i, i);
+  task->bg = colour_rgb(0x20, 0x20, 0x20);
+  task->fg = colour_rgb(0xFF, 0xFF, 0xFF);
+  doughnut_palette_build(task);
 
   /* doughnut_redraw paints its own background every frame */
   delegate_desc.handle    = doughnut_handle;
@@ -199,8 +215,21 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_BACKGROUND, "Background",
-                     wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+  /* both rows share the colourmenu singleton, retitled/retargeted per hover
+   * by doughnut_pre_submenu_open; .submenu only gives each an arrow */
+  WUSS_MENU_ITEM_MENU(task->colours_items, DOUGHNUT_COLOURS_MENU_FOREGROUND,
+                      "Foreground", wuss_MENU_ITEM_PRE_OPEN,
+                      wuss_colourmenu_menu(wuss));
+
+  WUSS_MENU_ITEM_MENU(task->colours_items, DOUGHNUT_COLOURS_MENU_BACKGROUND,
+                      "Background", wuss_MENU_ITEM_PRE_OPEN,
+                      wuss_colourmenu_menu(wuss));
+
+  WUSS_MENU_TITLE(task->colours_menu, "Colours", task->colours_items,
+                  NELEMS(task->colours_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_COLOURS, "Colours",
+                      wuss_MENU_ITEM_NONE, &task->colours_menu);
 
   for (i = 0; i < NELEMS(task->tube_items); i++)
     WUSS_MENU_ITEM(task->tube_items, i, doughnut_tubes[i].name,
@@ -501,10 +530,48 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
     return result_OK;
   }
 
-  if (wuss_colourmenu_selected_rgb(event, &task->palette[0]))
+  if (task->colourmenu_target == NULL)
+    return result_OK;
+
+  if (wuss_colourmenu_selected_rgb(event, task->colourmenu_target))
+  {
+    doughnut_palette_build(task);
     wuss_window_invalidate_visible(task->window);
+  }
 
   return result_OK;
+}
+
+/* Every submenu leaf fires wuss_EVENT_PRE_SUBMENU_OPEN -- "Colours" and "Tube"
+ * too, which open unchanged. Only the Foreground/Background level retitles
+ * and retargets the shared colourmenu before opening it. */
+static result_t doughnut_pre_submenu_open(doughnut_task_t    *task,
+                                          const wuss_event_t *event)
+{
+  wuss_menu_handle_t handle;
+  int                index;
+  const char        *title;
+
+  handle = event->data.pre_submenu_open.handle;
+  index  = event->data.pre_submenu_open.index;
+
+  if (wuss_menu_handle_menu(handle) != &task->colours_menu)
+    return wuss_menu_open_submenu_now(handle, index,
+                                      task->menu_items[index].submenu);
+
+  if (index == DOUGHNUT_COLOURS_MENU_FOREGROUND)
+  {
+    task->colourmenu_target = &task->fg;
+    title                   = "Foreground";
+  }
+  else
+  {
+    task->colourmenu_target = &task->bg;
+    title                   = "Background";
+  }
+
+  return wuss_colourmenu_open_rgb(task->wuss, event, title,
+                                  *task->colourmenu_target);
 }
 
 result_t doughnut_handle(wuss_window_t      *window,
@@ -545,9 +612,7 @@ result_t doughnut_handle(wuss_window_t      *window,
   }
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
-    /* the "Background" row: the shared colourmenu, set up per open */
-    return wuss_colourmenu_open_rgb(task->wuss, event, "Background",
-                                    task->palette[0]);
+    return doughnut_pre_submenu_open(task, event);
 
   case wuss_EVENT_MENU_SELECT:
     return doughnut_menu_select(task, event);
