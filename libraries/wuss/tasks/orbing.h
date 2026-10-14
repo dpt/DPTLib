@@ -1,7 +1,7 @@
-/* wuss/tasks/spheroid.h -- KPT Spheroid Designer-style lit sphere */
+/* wuss/tasks/orbing.h -- KPT Spheroid Designer-style lit sphere */
 
-#ifndef TASKS_SPHEROID_H
-#define TASKS_SPHEROID_H
+#ifndef TASKS_ORBING_H
+#define TASKS_ORBING_H
 
 #ifdef WUSS_APP
 
@@ -14,15 +14,15 @@
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
-#define SPHEROID_NLIGHTS 4
-#define SPHEROID_NROWS   5 /* control strip slider rows */
-#define SPHEROID_NCOLOURS 3 /* control strip colour sets */
+#define ORBING_NLIGHTS 4
+#define ORBING_NROWS   5 /* control strip slider rows */
+#define ORBING_NCOLOURS 3 /* control strip colour sets */
 
 /* one of the fixed lights: a unit direction from the sphere's centre (x
  * right, y up, z towards the viewer; negative z is behind the sphere), a
  * colour, an intensity in percent (100 = the colour as-is) and the size and
  * sharpness of the highlight it makes */
-typedef struct spheroid_light
+typedef struct orbing_light
 {
   int      on;
   double   x, y, z;
@@ -31,7 +31,7 @@ typedef struct spheroid_light
   int      size;      /* 0..100: highlight size */
   int      sharpness; /* 0..100: highlight edge hardness */
 }
-spheroid_light_t;
+orbing_light_t;
 
 /* window task: a single sphere, shaded per pixel by up to four coloured lights,
  * in the spirit of Kai's Power Tools' Spheroid Designer. The sphere fills the
@@ -51,7 +51,7 @@ spheroid_light_t;
  * hues; Randomise (^R) picks every setting afresh, keeping at least one light
  * on; Reset (R) restores the defaults; Save PNG (^S) opens a Save As dialogue
  * that writes the sphere alone, transparent outside its edge. */
-typedef struct spheroid_task
+typedef struct orbing_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer, opening the menu */
   wuss_task_t       *delegate; /* the task that owns the menu */
@@ -60,7 +60,7 @@ typedef struct spheroid_task
   wuss_menu_item_t   menu_items[6]; /* per-instance, not a shared static */
   wuss_menu_t        menu;
   /* "Light" submenu: one row per light */
-  wuss_menu_item_t   light_items[SPHEROID_NLIGHTS];
+  wuss_menu_item_t   light_items[ORBING_NLIGHTS];
   wuss_menu_t        light_menu;
   /* "Dithering" submenu: one row per screen_dither_t */
   wuss_menu_item_t   dither_items[3];
@@ -68,35 +68,35 @@ typedef struct spheroid_task
   screen_dither_t    dithering;  /* how the preview is blitted */
   int                current;    /* index of the light a drag moves */
   int                dragging;   /* non-zero while a Select drag is live */
-  spheroid_light_t   lights[SPHEROID_NLIGHTS];
+  orbing_light_t   lights[ORBING_NLIGHTS];
   colour_t           sphere;     /* surface colour */
   colour_t           background; /* colour outside the sphere */
   int                ambient;    /* 0..100 */
   int                glow;       /* 0..100: rim light in the surface colour */
-  wuss_slider_row_t  rows[SPHEROID_NROWS];
+  wuss_slider_row_t  rows[ORBING_NROWS];
   wuss_icon_t       *light_frame; /* captioned with the current light */
   wuss_icon_t       *on_icon;     /* the current light's On option */
-  wuss_colourset_t  *colour_sets[SPHEROID_NCOLOURS]; /* sphere, background,
+  wuss_colourset_t  *colour_sets[ORBING_NCOLOURS]; /* sphere, background,
                                                      * current light */
   rng_t              rng;        /* for Mutate and Randomise */
   wuss_saveas_t       *saveas;
 }
-spheroid_task_t;
+orbing_task_t;
 
-wuss_window_fn_t spheroid_handle;
+wuss_window_fn_t orbing_handle;
 
-/* create the spheroid window against the given wuss instance; the task block
+/* create the orbing window against the given wuss instance; the task block
  * is allocated here, owned by the window, and freed when it closes. if out
  * is non-NULL, the task block is also returned through it */
-result_t spheroid_create(wuss_t *wuss, spheroid_task_t **out);
+result_t orbing_create(wuss_t *wuss, orbing_task_t **out);
 
-/* install the icon bar app that opens spheroid windows on demand */
-result_t spheroid_app_create(wuss_t *wuss);
+/* install the icon bar app that opens orbing windows on demand */
+result_t orbing_app_create(wuss_t *wuss);
 
-/* free a task block allocated by spheroid_create; normally called by the
+/* free a task block allocated by orbing_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
-void spheroid_destroy(spheroid_task_t *task);
+void orbing_destroy(orbing_task_t *task);
 
 #endif /* WUSS_APP */
 
-#endif /* TASKS_SPHEROID_H */
+#endif /* TASKS_ORBING_H */

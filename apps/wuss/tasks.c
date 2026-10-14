@@ -49,7 +49,7 @@
 #include "tasks/compositing.h"
 #include "tasks/saturn.h"
 #include "tasks/sofa.h"
-#include "tasks/spheroid.h"
+#include "tasks/orbing.h"
 #include "tasks/reading.h"
 #include "tasks/taskapp.h"
 #include "tasks/tiling.h"
@@ -168,7 +168,7 @@ g_toys_tasks[] =
   { "Fireworks", fireworks_app_create },
   { "Saturn", saturn_app_create },
   { "Sofa", sofa_app_create },
-  { "Spheroid", spheroid_app_create }
+  { "Orbing", orbing_app_create }
 },
 g_system_tasks[] =
 {

@@ -42,7 +42,7 @@ _Unreleased_ until one is cut.
   metrics from the first ink-free grid cell rather than the space glyph.
   Menu tick/submenu-arrow glyphs move to `U+2713`/`U+25B6` via the Symbols
   font's new cmap. New face: GrongyUI-Bold.
-- `wuss` Spheroid task: a shaded sphere with draggable point lights (marker
+- `wuss` Orbing task: a shaded sphere with draggable point lights (marker
   handles, a Light menu, per-light colour via `wuss_colourset`, highlight
   size/sharpness sliders, Randomise, arrow-key light nudging, a Dithering
   submenu drawing via `screen_copy_bitmap_dithered()`), laid out in Sphere/
@@ -74,7 +74,7 @@ _Unreleased_ until one is cut.
 - `screen_draw_rounded_rect()` — rounded-rectangle outline and fill, used
   to draw menu shortcut keycaps.
 - `screen_copy_bitmap_dithered()` gains a selectable dithering method
-  (`screen_dither_t`), Spheroid's own consumer of it.
+  (`screen_dither_t`), Orbing's own consumer of it.
 - The Display task also picks colour depth (not just resolution), gains
   Cancel/Change buttons (closing the task as RISC OS does) and offers
   480x360; mode changes move windows back on-screen instead of shrinking
@@ -153,7 +153,7 @@ _Unreleased_ until one is cut.
   them.
 - `stack` size groups: items sharing a group get the largest size among
   them, so labels and values in different rows line up. Dialogue labels in
-  the saturn, particles, display, spheroid and config tasks are now
+  the saturn, particles, display, orbing and config tasks are now
   size-grouped and measured from the font.
 - Particles task: repeller and attractor forces (Add submenu) with a shared
   Strength dialogue whose Range slider sets the force's reach, and a

@@ -1085,7 +1085,7 @@ MoveFail:
     /* Phase 1c: a window opened as a menu of its own (wuss_menu_open_window,
      * as a Save As dialogue from ^S) and then closed by its client. The close
      * must abandon the chain rather than leave its node pointing at the
-     * freed window. Regression: spheroid's QUIT closed its Save As window
+     * freed window. Regression: orbing's QUIT closed its Save As window
      * mid-chain, and wuss_destroy's later abandon hid the freed window and
      * delivered MENU_CLOSED to freed task data (ASan: heap-use-after-free). */
     memset(&qmt, 0, sizeof(qmt));

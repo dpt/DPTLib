@@ -980,7 +980,7 @@ if(BUILD_APPS)
         libraries/wuss/tasks/saturn.c
         libraries/wuss/tasks/snapshot.c
         libraries/wuss/tasks/sofa.c
-        libraries/wuss/tasks/spheroid.c
+        libraries/wuss/tasks/orbing.c
         libraries/wuss/tasks/reading.c
         libraries/wuss/tasks/resizing.c
         libraries/wuss/tasks/resizing.h

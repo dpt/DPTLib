@@ -1,7 +1,7 @@
 # Wuss window layout style guide
 
 Derived from the dialogues in `libraries/wuss/tasks/` (`display.c`,
-`fireworks.c`, `saturn.c`, `spheroid.c`) and `painting-new.c`.
+`fireworks.c`, `saturn.c`, `orbing.c`) and `painting-new.c`.
 
 ## Method
 
