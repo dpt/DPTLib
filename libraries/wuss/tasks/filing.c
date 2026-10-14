@@ -150,6 +150,21 @@ static result_t filing_open_path(filing_task_t       *task,
                                  const wuss_window_t *parent,
                                  int                  over);
 
+/* hide or show every window, relabelling the icon bar menu's row to match */
+static result_t filing_set_hidden(filing_task_t *task, int hidden)
+{
+  wuss_menu_item_t *item;
+
+  task->hidden = hidden;
+
+  item       = &task->ib_menu_items[FILING_IB_MENU_HIDE];
+  item->text = hidden ? "Show" : "Hide";
+  wuss_menu_set_item_text_live(task->menu_handle, &task->ib_menu,
+                               FILING_IB_MENU_HIDE, item->text);
+
+  return wuss_task_set_hidden(task->wuss, task->delegate, hidden);
+}
+
 static void filing_activate(wuss_gridview_t *gridview,
                             int              index,
                             wuss_button_t    button,
@@ -258,6 +273,9 @@ static result_t filing_open_path(filing_task_t       *task,
     path = canon;
 #endif
 
+  if (task->hidden)
+    (void) filing_set_hidden(task, 0);
+
   fw = filing_find_window(task, path);
   if (fw != NULL)
   {
@@ -364,6 +382,10 @@ result_t filing_create(wuss_t *wuss, filing_task_t **out)
                         NULL); /* retargeted at the shared proginfo
                                 * singleton when the menu opens */
   WUSS_MENU_ITEM(task->ib_menu_items, FILING_IB_MENU_OPEN_ROOT, "Open root",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->ib_menu_items, FILING_IB_MENU_CLOSE_ALL, "Close all",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->ib_menu_items, FILING_IB_MENU_HIDE, "Hide",
                  wuss_MENU_ITEM_NONE);
   WUSS_MENU_TITLE(task->ib_menu, "Filing", task->ib_menu_items,
                   NELEMS(task->ib_menu_items));
@@ -561,7 +583,6 @@ static result_t filing_iconbar_menu_open(filing_task_t *task)
   wuss_proginfo_set_desc(&desc);
   task->ib_menu_items[FILING_IB_MENU_INFO].window =
     wuss_proginfo_window(task->delegate);
-
   return wuss_iconbar_menu_open(task->delegate, &task->ib_menu,
                                 &task->menu_handle);
 }
@@ -676,6 +697,8 @@ result_t filing_handle(wuss_window_t      *window,
       return result_OK;
     if (event->data.iconbar_icon.button & wuss_BUTTON_MENU)
       return filing_iconbar_menu_open(task);
+    if (task->hidden) /* the click only reveals; it opens nothing new */
+      return filing_set_hidden(task, 0);
     return filing_open_path(task, filing_root(), NULL, 0);
 
   case wuss_EVENT_MENU_SELECT:
@@ -687,6 +710,19 @@ result_t filing_handle(wuss_window_t      *window,
     {
       if (event->data.menu_select.index == FILING_IB_MENU_OPEN_ROOT)
         return filing_open_path(task, filing_root(), NULL, 0);
+      if (event->data.menu_select.index == FILING_IB_MENU_CLOSE_ALL)
+      {
+        int i;
+
+        for (i = 0; i < task->nwindows; i++)
+          if (task->windows[i].window != NULL)
+            (void) wuss_window_try_close(task->windows[i].window);
+        return result_OK;
+      }
+      if (event->data.menu_select.index == FILING_IB_MENU_HIDE)
+      {
+        return filing_set_hidden(task, !task->hidden);
+      }
       return result_OK;
     }
     if (event->data.menu_select.menu != &task->menu)

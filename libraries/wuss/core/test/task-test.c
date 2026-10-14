@@ -306,6 +306,58 @@ result_t wuss_task_test(const char *resources)
     mk_task_count = 0; /* all three tasks reaped themselves; drop stale entries */
   }
 
+  printf("test: wuss_task_set_hidden hides a task and its children and reveals only what it hid\n");
+  {
+    static test_task_t tc_h, tc_hc;
+    wuss_task_t       *parent_h, *child_h;
+    box_t              box_h;
+    wuss_window_t     *win_p, *win_c, *win_own;
+
+    reap_test_tasks();
+    memset(&tc_h, 0, sizeof(tc_h));
+    memset(&tc_hc, 0, sizeof(tc_hc));
+    parent_h = mk_task(wuss, test_handle, &tc_h);
+    if (parent_h == NULL) goto Failure;
+    wuss_set_task_parent(wuss, parent_h);
+    child_h = mk_task(wuss, test_handle, &tc_hc);
+    wuss_set_task_parent(wuss, NULL);
+    if (child_h == NULL) goto Failure;
+
+    box_h.x0 = 0;  box_h.y0 = 0;
+    box_h.x1 = 40; box_h.y1 = 40;
+    rc = wuss_window_create(parent_h, &box_h, "P", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            box_size(&box_h), SIZE2D(0, 0), &win_p);
+    if (rc != result_OK) goto Failure;
+    rc = wuss_window_create(child_h, &box_h, "C", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP,
+                            box_size(&box_h), SIZE2D(0, 0), &win_c);
+    if (rc != result_OK) goto Failure;
+    rc = wuss_window_create(parent_h, &box_h, "O",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_HIDDEN,
+                            wuss_NO_BACKDROP,
+                            box_size(&box_h), SIZE2D(0, 0), &win_own);
+    if (rc != result_OK) goto Failure;
+
+    rc = wuss_task_set_hidden(wuss, parent_h, 1);
+    if (rc != result_OK) goto Failure;
+    if (!(win_p->flags & wuss_WINDOW_HIDDEN) ||
+        !(win_c->flags & wuss_WINDOW_HIDDEN))
+      goto Failure; /* parent and child both hidden */
+
+    rc = wuss_task_set_hidden(wuss, parent_h, 0);
+    if (rc != result_OK) goto Failure;
+    if ((win_p->flags & wuss_WINDOW_HIDDEN) ||
+        (win_c->flags & wuss_WINDOW_HIDDEN))
+      goto Failure; /* both back */
+    if (!(win_own->flags & wuss_WINDOW_HIDDEN))
+      goto Failure; /* a window hidden in its own right stays so */
+
+    wuss_task_destroy(parent_h); /* takes child_h with it */
+    mk_task_count = 0;
+    rc = result_OK;
+  }
+
   wuss_fixture_close(&fixture);
 
   return result_TEST_PASSED;

@@ -96,7 +96,8 @@
 typedef enum wuss_window_state
 {
   wuss_WINDOW_STATE_NONE    = 0,
-  wuss_WINDOW_STATE_TOGGLED = 1 << 0 /* currently at TOGGLE_SIZE's "full" size */
+  wuss_WINDOW_STATE_TOGGLED = 1 << 0, /* currently at TOGGLE_SIZE's "full" size */
+  wuss_WINDOW_STATE_TASK_HIDDEN = 1 << 1 /* hidden by wuss_task_set_hidden */
 }
 wuss_window_state_t;
 
@@ -446,9 +447,7 @@ struct wuss_window
   size2d_t            doc;    /* virtual document extent, set at creation */
   size2d_t            min_doc; /* resize floor, set at creation; see
                                 * wuss__min_content */
-#ifdef WUSS_FURNITURE
   wuss_window_state_t state;        /* see wuss_window_state_t */
-#endif
 #ifdef WUSS_FURNITURE
   box_t               pre_toggle;   /* visible bounds to restore on the next toggle */
   char                title[WUSS_TITLE_MAX + 1];

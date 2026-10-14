@@ -37,6 +37,8 @@ enum
 {
   FILING_IB_MENU_INFO,
   FILING_IB_MENU_OPEN_ROOT,
+  FILING_IB_MENU_CLOSE_ALL,
+  FILING_IB_MENU_HIDE,
   FILING_IB_MENU__LIMIT
 };
 
@@ -103,6 +105,7 @@ struct filing_task
   wuss_menu_t            menu;
   wuss_menu_item_t       ib_menu_items[FILING_IB_MENU__LIMIT];
   wuss_menu_t            ib_menu;
+  int                    hidden; /* windows hidden by Hide */
 };
 
 wuss_window_fn_t filing_handle;

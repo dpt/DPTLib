@@ -486,6 +486,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/task/destroy.c
     libraries/wuss/core/task/raise-children.c
     libraries/wuss/core/task/set-autoclose.c
+    libraries/wuss/core/task/set-hidden.c
     libraries/wuss/core/task/set-parent.c
     libraries/wuss/core/task/deliver.c
     libraries/wuss/core/window/at.c

@@ -33,7 +33,8 @@
  * by calling its X_create (or opens its new-instance dialogue, if it has
  * one); MENU opens the app menu, whose "Info" row shows the program
  * information dialogue, whose optional "New..." row opens that dialogue and
- * whose "Quit" row removes the icon and shuts down every instance. Each
+ * whose "Hide" row hides every window of the app until it is "Show"n again
+ * (or the icon is used to open another instance) and whose "Quit" row removes the icon and shuts down every instance. Each
  * instance is a task of its own, parented to the app task
  * (wuss_set_task_parent) so Quit can find it. */
 
@@ -42,7 +43,7 @@
 enum
 {
   APP_MENU_INFO,
-  APP_MENU_MAX = 5
+  APP_MENU_MAX = 6
 };
 
 typedef struct app app_t;
@@ -60,11 +61,24 @@ struct app
   int                   new_row;  /* menu row of "New...", or -1 */
   int                   create_row; /* menu rows of the create and adjust */
   int                   adjust_row; /* entries, or -1 when no adjust */
+  int                   hide_row; /* menu row of "Hide" / "Show" */
   int                   quit_row; /* menu row of "Quit" */
+  bool                  hidden; /* every window hidden by wuss_task_set_hidden */
   bool                  quit; /* Quit picked; taskapp_reap destroys the task */
 };
 
 static app_t *g_apps; /* every installed app */
+
+static result_t app_set_hidden(app_t *app, bool hidden)
+{
+  app->hidden = hidden;
+
+  app->menu_items[app->hide_row].text = hidden ? "Show" : "Hide";
+  wuss_menu_set_item_text_live(app->menu_handle, &app->menu, app->hide_row,
+                               app->menu_items[app->hide_row].text);
+
+  return wuss_task_set_hidden(app->wuss, app->task, hidden);
+}
 
 static result_t app_spawn(app_t             *app,
                           taskapp_spawn_fn_t fn,
@@ -72,6 +86,9 @@ static result_t app_spawn(app_t             *app,
                           void             **out)
 {
   result_t rc;
+
+  if (app->hidden)
+    (void) app_set_hidden(app, false);
 
   wuss_set_task_parent(app->wuss, app->task);
   rc = fn(app->wuss, param, out);
@@ -111,6 +128,9 @@ static result_t app_adjust_adapter(wuss_t *wuss, void *param, void **out)
 static result_t app_new(app_t *app)
 {
   result_t rc;
+
+  if (app->hidden)
+    (void) app_set_hidden(app, false);
 
   if (app->desc->singleton &&
       wuss_task_raise_children(app->wuss, app->task))
@@ -219,6 +239,8 @@ static result_t app_handle(wuss_window_t      *window,
       return result_OK;
     if (event->data.iconbar_icon.button & wuss_BUTTON_MENU)
       return app_menu_open(app);
+    if (app->hidden) /* the click only reveals; it opens nothing new */
+      return app_set_hidden(app, false);
     if (event->data.iconbar_icon.button & wuss_BUTTON_SELECT)
       return app->desc->drop_only ? result_OK : app_new(app);
     if ((event->data.iconbar_icon.button & wuss_BUTTON_ADJUST) &&
@@ -236,6 +258,8 @@ static result_t app_handle(wuss_window_t      *window,
       return result_OK;
     if (event->data.menu_select.index == app->quit_row)
       app->quit = true;
+    else if (event->data.menu_select.index == app->hide_row)
+      return app_set_hidden(app, !app->hidden);
     else if (event->data.menu_select.index == app->new_row)
       return app_new(app);
     else if (event->data.menu_select.index == app->create_row)
@@ -339,6 +363,9 @@ result_t taskapp_install(wuss_t *wuss, const taskapp_desc_t *desc)
                    wuss_MENU_ITEM_NONE);
     n++;
   }
+  app->hide_row = n;
+  WUSS_MENU_ITEM(app->menu_items, n, "Hide", wuss_MENU_ITEM_NONE);
+  n++;
   app->quit_row = n;
   WUSS_MENU_ITEM_SHORTCUT(app->menu_items, n, "Quit", 0, NULL);
   n++;

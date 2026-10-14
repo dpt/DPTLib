@@ -493,6 +493,26 @@ void wuss_menu_disable_item_live(wuss_menu_handle_t handle,
                                  int                disabled);
 
 /**
+ * Relabel a single item on a currently open menu level in place, so an
+ * ADJUST pick that changes what a row does (Hide to Show) shows at once.
+ * Only the open row changes: set the item's \c text as well, for the next
+ * wuss_menu_open. The menu keeps the width it opened at, so a longer label
+ * may be clipped. A no-op if \p handle is stale/closed or \p menu is not an
+ * open level of its chain.
+ *
+ * \param[in] handle Chain handle from wuss_menu_open.
+ * \param[in] menu   The (sub)menu level to update; matched by pointer
+ *                   against the description passed to wuss_menu_open or
+ *                   reached via a wuss_menu_item_t.submenu.
+ * \param[in] index  Row to update. A no-op if out of range.
+ * \param[in] text   New label; copied. NULL is treated as "".
+ */
+void wuss_menu_set_item_text_live(wuss_menu_handle_t handle,
+                                  const wuss_menu_t *menu,
+                                  int                index,
+                                  const char        *text);
+
+/**
  * Retitle a currently open menu level in place. Only the open level changes:
  * set \c menu->title as well, for the next wuss_menu_open. The menu keeps
  * the width it opened at, so a longer title may be clipped. A no-op if \p

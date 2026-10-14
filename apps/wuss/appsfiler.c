@@ -43,6 +43,14 @@ typedef struct
 }
 apps_window_t;
 
+enum
+{
+  APPS_MENU_INFO,
+  APPS_MENU_CLOSE_ALL,
+  APPS_MENU_HIDE,
+  APPS_MENU__LIMIT
+};
+
 struct apps_task
 {
   wuss_t               *wuss;
@@ -55,8 +63,9 @@ struct apps_task
   const bitmap_t       *glyph_apps;
 
   wuss_menu_handle_t    menu_handle;
-  wuss_menu_item_t      menu_items[1]; /* "Info" */
+  wuss_menu_item_t      menu_items[APPS_MENU__LIMIT];
   wuss_menu_t           menu;
+  int                   hidden; /* windows hidden by Hide */
 };
 
 static int apps_count(const apps_window_t *aw)
@@ -94,6 +103,21 @@ static void apps_activate(wuss_gridview_t *gridview,
 /* Opens the window for category (-1: the root), or brings it to the front
  * if open. A new window cascades from parent, or with over set takes
  * parent's place (top-left) for a parent that is about to close. */
+/* hide or show every window, relabelling the icon bar menu's row to match */
+static result_t apps_set_hidden(apps_task_t *task, int hidden)
+{
+  wuss_menu_item_t *item;
+
+  task->hidden = hidden;
+
+  item       = &task->menu_items[APPS_MENU_HIDE];
+  item->text = hidden ? "Show" : "Hide";
+  wuss_menu_set_item_text_live(task->menu_handle, &task->menu, APPS_MENU_HIDE,
+                               item->text);
+
+  return wuss_task_set_hidden(task->wuss, task->delegate, hidden);
+}
+
 static result_t apps_open(apps_task_t         *task,
                           int                  category,
                           const wuss_window_t *parent,
@@ -104,6 +128,9 @@ static result_t apps_open(apps_task_t         *task,
   const char    *title;
   wuss_place_t   place;
   wuss_window_t *window;
+
+  if (task->hidden)
+    (void) apps_set_hidden(task, 0);
 
   aw = &task->windows[category + 1];
   if (aw->window != NULL)
@@ -194,7 +221,7 @@ static result_t apps_menu_open(apps_task_t *task)
     TASK_PROGINFO_DESC("AppsFiler", "Launcher for demo apps");
 
   wuss_proginfo_set_desc(&desc);
-  task->menu_items[0].window = wuss_proginfo_window(task->delegate);
+  task->menu_items[APPS_MENU_INFO].window = wuss_proginfo_window(task->delegate);
 
   return wuss_iconbar_menu_open(task->delegate, &task->menu,
                                 &task->menu_handle);
@@ -226,7 +253,27 @@ static result_t apps_handle(wuss_window_t      *window,
       return result_OK;
     if (event->data.iconbar_icon.button & wuss_BUTTON_MENU)
       return apps_menu_open(task);
+    if (task->hidden) /* the click only reveals; it opens nothing new */
+      return apps_set_hidden(task, 0);
     return apps_open(task, -1, NULL, 0);
+
+  case wuss_EVENT_MENU_SELECT:
+    if (event->data.menu_select.menu != &task->menu)
+      return result_OK;
+
+    if (event->data.menu_select.index == APPS_MENU_CLOSE_ALL)
+    {
+      int i;
+
+      for (i = 0; i < (int) NELEMS(task->windows); i++)
+        if (task->windows[i].window != NULL)
+          (void) wuss_window_try_close(task->windows[i].window);
+      return result_OK;
+    }
+    if (event->data.menu_select.index != APPS_MENU_HIDE)
+      return result_OK;
+
+    return apps_set_hidden(task, !task->hidden);
 
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL;
@@ -236,7 +283,7 @@ static result_t apps_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == task->menu_items[0].window)
+    if (window == task->menu_items[APPS_MENU_INFO].window)
       rc = wuss_proginfo_handle_pre_show();
     else
       rc = result_OK;
@@ -320,7 +367,11 @@ result_t appsfiler_create(wuss_t *wuss)
     task->windows[i].category = i - 1;
   }
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, 0, "Info",
+  WUSS_MENU_ITEM(task->menu_items, APPS_MENU_CLOSE_ALL, "Close all",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->menu_items, APPS_MENU_HIDE, "Hide",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, APPS_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo
                                 * singleton in apps_menu_open */

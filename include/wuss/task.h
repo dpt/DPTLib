@@ -487,6 +487,25 @@ void wuss_task_set_autoclose(wuss_task_t *task, int on);
 int wuss_task_raise_children(wuss_t *wuss, wuss_task_t *parent);
 
 /**
+ * Hide or show every window of \p task and of its child tasks (see
+ * wuss_set_task_parent), so an app is out of the way until revealed.
+ *
+ * Hiding hides each window that is visible, as wuss_window_set_hidden does,
+ * and remembers which it hid. Showing reveals only those: a window that was
+ * already hidden for its own reasons (a borrowed dialogue, say) stays so.
+ * Revealing fires wuss_EVENT_PRE_SHOW per window, which a handler may leave
+ * unrevealed. Windows created while the task is hidden are not affected.
+ *
+ * \param[in] wuss   Window manager.
+ * \param[in] task   Task whose windows, and its children's, to hide or show.
+ * \param[in] hidden Non-zero to hide, zero to show.
+ * \return \ref result_OK, or the first non-OK result from a
+ *         wuss_EVENT_PRE_SHOW handler (the remaining windows are still
+ *         processed).
+ */
+result_t wuss_task_set_hidden(wuss_t *wuss, wuss_task_t *task, int hidden);
+
+/**
  * Make every task created from now on a child of \p parent: destroying \p
  * parent (wuss_task_destroy) first destroys its children, each firing its
  * own wuss_EVENT_QUIT. Lets a launcher task start tasks it did not create
