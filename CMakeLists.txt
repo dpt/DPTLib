@@ -839,6 +839,9 @@ if(BUILD_TESTS)
         libraries/datastruct/vector/test/vector-test.c
         libraries/wuss/test/gridview-bench-test.c
         libraries/wuss/test/painting-doc-test.c
+        libraries/wuss/test/harness.c
+        libraries/wuss/test/harness.h
+        libraries/wuss/menu/test/menu-test.c
         libraries/wuss/tasks/painting-doc.c
         libraries/wuss/tasks/painting-doc.h
         libraries/wuss/test/wuss-test.c)

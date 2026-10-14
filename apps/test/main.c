@@ -88,6 +88,7 @@ static const test_t tests[] =
   { "gridview-bench", gridview_bench_test },
   { "paintingdoc",   paintingdoc_test   },
   { "wuss",       wuss_test       },
+  { "wuss-menu",  wuss_menu_test  },
 };
 
 static const int ntests = NELEMS(tests);
