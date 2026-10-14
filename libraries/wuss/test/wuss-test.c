@@ -1531,12 +1531,12 @@ result_t wuss_test(const char *resources)
   printf("test: window_resize caps the size at the screen edge\n");
 
   /* screen is 200x200; win_a sits at (0,0), chromeless. asking for a
-   * 500x500 content area is honoured verbatim. */
+   * 500x500 content area is capped to the whole screen. */
   rc = wuss_window_resize(win_a, SIZE2D(500, 500));
   if (rc != result_OK)
     goto Failure;
   wuss_window_get_content_bounds(win_a, &content);
-  if (content.x1 - content.x0 != 500 || content.y1 - content.y0 != 500)
+  if (content.x1 - content.x0 != 200 || content.y1 - content.y0 != 200)
     goto Failure;
 
   /* a smaller request is likewise honoured verbatim */
@@ -1547,13 +1547,13 @@ result_t wuss_test(const char *resources)
   if (content.x1 - content.x0 != 120 || content.y1 - content.y0 != 90)
     goto Failure;
 
-  /* an offset top-left does not clip the size either */
+  /* an offset top-left caps the size to the room left on screen */
   wuss_window_move(win_a, POINT(60, 40));
   rc = wuss_window_resize(win_a, SIZE2D(500, 500));
   if (rc != result_OK)
     goto Failure;
   wuss_window_get_content_bounds(win_a, &content);
-  if (content.x1 - content.x0 != 500 || content.y1 - content.y0 != 500)
+  if (content.x1 - content.x0 != 140 || content.y1 - content.y0 != 160)
     goto Failure;
   wuss_window_move(win_a, POINT(0, 0));
   rc = wuss_window_resize(win_a, SIZE2D(100, 100));
@@ -1598,6 +1598,10 @@ result_t wuss_test(const char *resources)
   if (tc_b.mouse_count != 1 || tc_a.mouse_count != 0)
     goto Failure;
 
+  /* a press is captured until released; release so the next press re-routes */
+  wuss_mouse_click(wuss, POINT(75, 75), wuss_BUTTON_SELECT, wuss_MOUSE_UP,
+                   NULL);
+
   wuss_window_restack(win_a, wuss_ZORDER_FRONT);
   rc = wuss_mouse_click(wuss, POINT(75, 75), wuss_BUTTON_SELECT,
                         wuss_MOUSE_DOWN, &hit);
@@ -1605,6 +1609,8 @@ result_t wuss_test(const char *resources)
     goto Failure;
   if (tc_a.mouse_count != 1)
     goto Failure;
+  wuss_mouse_click(wuss, POINT(75, 75), wuss_BUTTON_SELECT, wuss_MOUSE_UP,
+                   NULL);
 
   printf("test: mouse point is in document coordinates\n");
 
@@ -1631,6 +1637,8 @@ result_t wuss_test(const char *resources)
     goto Failure;
   if (tc_a.last_x != 10 || tc_a.last_y != 5)
     goto Failure;
+  wuss_mouse_click(wuss, POINT(20, 20), wuss_BUTTON_SELECT, wuss_MOUSE_UP,
+                   NULL);
 
   printf("test: wheel scroll routes to the window but a NO_VSCROLL window "
          "does not move\n");

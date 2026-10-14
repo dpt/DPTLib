@@ -1159,7 +1159,9 @@ MoveFail:
 
       wuss_mouse_click(qwuss, title, wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
       wuss_idle(qwuss); /* drag over: the titlebar collapse applies again */
+#ifdef WUSS_FURNITURE /* the collapse needs a titlebar to hover */
       if (wuss__menu_level_child(root) != NULL)                 goto QuitCheckFail;
+#endif
 
       wuss_menu_close(qmt.menu_handle);
       reap_test_tasks();
