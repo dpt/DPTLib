@@ -71,6 +71,7 @@ result_t test_handle(wuss_window_t      *window,
     tc->pre_show_count++;
     if (tc->veto_pre_show)
       break; /* not calling wuss_window_reveal_now still shows: default proceed */
+#ifdef WUSS_MENUS
     if (tc->open_window_via_handle)
     {
       /* the correct guard: a plain window's PRE_SHOW carries handle == NULL
@@ -83,6 +84,7 @@ result_t test_handle(wuss_window_t      *window,
       return wuss_menu_open_window_now(event->data.pre_show.handle,
                                        event->data.pre_show.index);
     }
+#endif
     return wuss_window_reveal_now(window);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
@@ -90,9 +92,13 @@ result_t test_handle(wuss_window_t      *window,
     if (tc->submenu_to_open == NULL)
       break; /* this only fires for a flagged row; not calling
               * wuss_menu_open_submenu_now leaves it inert */
+#ifdef WUSS_MENUS
     return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle,
                                       event->data.pre_submenu_open.index,
                                       tc->submenu_to_open);
+#else
+    break;
+#endif
 
   case wuss_EVENT_MENU_SELECT:
     tc->menu_select_count++;
