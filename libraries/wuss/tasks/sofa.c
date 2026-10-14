@@ -65,6 +65,7 @@ static const char *sofa_shape_names[sofa_SHAPE__LIMIT] =
 #define SOFA_ZOOM_MIN        0.2
 #define SOFA_ZOOM_MAX        4.0
 #define SOFA_ZOOM_PER_NOTCH  0.1
+#define SOFA_KEY_STEP        0.1 /* radians per Up/Down press while paused */
 
 /* one 3D point */
 typedef struct vec3 { double x, y, z; } vec3_t;
@@ -669,14 +670,22 @@ static result_t sofa_mouse(wuss_window_t *window,
   return result_OK;
 }
 
-/* Left/Right step to the previous/next model. Anything else is passed back
- * unclaimed. */
+/* Left/Right step to the previous/next model; Up/Down step the rotation
+ * back/forward while paused. Anything else is passed back unclaimed. */
 static result_t sofa_key(sofa_task_t *sc, int code)
 {
   int dir;
 
   switch (code)
   {
+  case wuss_KEY_UP:
+  case wuss_KEY_DOWN:
+    if (sc->spinning)
+      return result_WUSS_KEY_UNCLAIMED;
+    sc->angle += (code == wuss_KEY_UP ? -1 : 1) * SOFA_KEY_STEP;
+    wuss_window_invalidate_visible(sc->window);
+    return result_OK;
+
   case wuss_KEY_LEFT:  dir = sofa_SHAPE__LIMIT - 1; break;
   case wuss_KEY_RIGHT: dir = 1;                     break;
   default:             return result_WUSS_KEY_UNCLAIMED;

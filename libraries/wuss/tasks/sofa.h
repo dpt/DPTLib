@@ -37,8 +37,8 @@ sofa_shape_t;
  * Menu > Reset (R) restores the starting view and Menu > Save PNG opens a
  * Save As dialogue (drag its icon onto a Filer window, or Save with a full
  * path already typed) that writes the window's content out. Once a click has given the window the
- * input focus, Space pauses/resumes and Left/Right step the model
- * back/forward */
+ * input focus, Space pauses/resumes, Left/Right step the model
+ * back/forward and, while paused, Up/Down step the rotation */
 typedef struct sofa_task
 {
   wuss_t             *wuss;   /* borrowed; for wuss_get_pointer on MENU click */
