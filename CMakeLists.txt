@@ -865,6 +865,7 @@ if(BUILD_TESTS)
         libraries/wuss/core/test/message-test.c
         libraries/wuss/core/test/drag-test.c
         libraries/wuss/core/test/task-test.c
+        libraries/wuss/core/test/placement-test.c
         libraries/wuss/core/test/focus-test.c
         libraries/wuss/core/test/hidden-test.c
         libraries/wuss/core/test/move-test.c
