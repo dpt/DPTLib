@@ -81,7 +81,7 @@ typedef struct saturn_task
   saturn_config_t    config;
   wuss_menu_handle_t menu_handle; /* live only between open and a SELECT pick */
   saturn_conf_t      conf;
-  wuss_colourpair_t  colours; /* per-instance: Foreground/Background rows */
+  wuss_colourlist_t  colours; /* per-instance: Foreground/Background rows */
   wuss_menu_item_t   menu_items[4];
   wuss_menu_t        menu;
   int                animate; /* Menu > Animate: re-seed on every idle */

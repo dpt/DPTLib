@@ -46,7 +46,7 @@ typedef struct oscillating_task
   wuss_menu_t         ratio_menu;
   wuss_menu_item_t    easing_items[OSCILLATING_NEASINGS]; /* one per curve */
   wuss_menu_t         easing_menu;
-  wuss_colourpair_t   colours; /* Foreground, Background */
+  wuss_colourlist_t   colours; /* Foreground, Background */
   wuss_menu_item_t    decay_items[OSCILLATING_NDECAYS]; /* one per length */
   wuss_menu_t         decay_menu;
   int                 decay_index; /* index into oscillating_decays */

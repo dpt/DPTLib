@@ -125,7 +125,7 @@ result_t fern_create(wuss_t *wuss, fern_task_t **out)
   if (rc != result_OK)
     goto fail_delegate;
 
-  wuss_colourpair_init(&task->colours, wuss, &task->fg, &task->bg);
+  wuss_colourlist_init_pair(&task->colours, wuss, &task->fg, &task->bg);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, FERN_MENU_COLOURS, "Colours",
                       wuss_MENU_ITEM_NONE, &task->colours.menu);
@@ -314,7 +314,7 @@ static result_t fern_pre_submenu_open(fern_task_t        *task,
   result_t rc;
   int      index;
 
-  if (wuss_colourpair_pre_open(&task->colours, task->wuss, event, &rc))
+  if (wuss_colourlist_pre_open(&task->colours, task->wuss, event, &rc))
     return rc;
 
   index = event->data.pre_submenu_open.index;
@@ -624,7 +624,7 @@ static result_t fern_menu_select(fern_task_t        *task,
       event->data.menu_select.index == FERN_MENU_SAVE)
     return wuss_saveas_open(task->saveas);
 
-  if (wuss_colourpair_selected(&task->colours, event))
+  if (wuss_colourlist_selected(&task->colours, event))
     wuss_window_invalidate_visible(task->window);
 
   return result_OK;

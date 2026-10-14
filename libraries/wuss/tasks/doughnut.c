@@ -213,7 +213,7 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
     return rc;
   }
 
-  wuss_colourpair_init(&task->colours, wuss, &task->fg, &task->bg);
+  wuss_colourlist_init_pair(&task->colours, wuss, &task->fg, &task->bg);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_COLOURS, "Colours",
                       wuss_MENU_ITEM_NONE, &task->colours.menu);
@@ -517,7 +517,7 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
     return result_OK;
   }
 
-  if (wuss_colourpair_selected(&task->colours, event))
+  if (wuss_colourlist_selected(&task->colours, event))
   {
     doughnut_palette_build(task);
     wuss_window_invalidate_visible(task->window);
@@ -534,7 +534,7 @@ static result_t doughnut_pre_submenu_open(doughnut_task_t    *task,
   result_t rc;
   int      index;
 
-  if (wuss_colourpair_pre_open(&task->colours, task->wuss, event, &rc))
+  if (wuss_colourlist_pre_open(&task->colours, task->wuss, event, &rc))
     return rc;
 
   index = event->data.pre_submenu_open.index;

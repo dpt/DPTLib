@@ -169,7 +169,7 @@ result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, OSCILLATING_MENU_EASING, "Easing",
                       wuss_MENU_ITEM_NONE, &task->easing_menu);
 
-  wuss_colourpair_init(&task->colours, wuss, &task->fg, &task->bg);
+  wuss_colourlist_init_pair(&task->colours, wuss, &task->fg, &task->bg);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, OSCILLATING_MENU_COLOURS, "Colours",
                       wuss_MENU_ITEM_NONE, &task->colours.menu);
@@ -400,7 +400,7 @@ static result_t oscillating_pre_submenu_open(oscillating_task_t *lc,
 {
   result_t rc;
 
-  if (wuss_colourpair_pre_open(&lc->colours, lc->wuss, event, &rc))
+  if (wuss_colourlist_pre_open(&lc->colours, lc->wuss, event, &rc))
     return rc;
 
   return result_OK;
@@ -433,7 +433,7 @@ static result_t oscillating_menu_select(oscillating_task_t *lc,
     return result_OK;
   }
 
-  if (wuss_colourpair_selected(&lc->colours, event))
+  if (wuss_colourlist_selected(&lc->colours, event))
     wuss_window_invalidate_visible(lc->window);
 
   return result_OK;

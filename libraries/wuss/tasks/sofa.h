@@ -49,7 +49,7 @@ typedef struct sofa_task
   wuss_menu_t         menu;
   wuss_menu_item_t    model_items[sofa_SHAPE__LIMIT]; /* one row per shape */
   wuss_menu_t         model_menu;
-  wuss_colourpair_t   colours; /* Foreground (line), Background */
+  wuss_colourlist_t   colours; /* Foreground (line), Background */
   wuss_window_t *window;
   colour_t       bg, line, dot;
   double         angle;

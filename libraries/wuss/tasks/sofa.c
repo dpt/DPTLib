@@ -449,7 +449,7 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
     return rc;
   }
 
-  wuss_colourpair_init(&task->colours, wuss, &task->line, &task->bg);
+  wuss_colourlist_init_pair(&task->colours, wuss, &task->line, &task->bg);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, SOFA_MENU_COLOURS, "Colours",
                       wuss_MENU_ITEM_NONE, &task->colours.menu);
@@ -752,7 +752,7 @@ static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
     return result_OK;
   }
 
-  if (wuss_colourpair_selected(&sc->colours, event))
+  if (wuss_colourlist_selected(&sc->colours, event))
     wuss_window_invalidate_visible(sc->window);
 
   return result_OK;
@@ -766,7 +766,7 @@ static result_t sofa_pre_submenu_open(sofa_task_t        *sc,
   result_t rc;
   int      index;
 
-  if (wuss_colourpair_pre_open(&sc->colours, sc->wuss, event, &rc))
+  if (wuss_colourlist_pre_open(&sc->colours, sc->wuss, event, &rc))
     return rc;
 
   index = event->data.pre_submenu_open.index;

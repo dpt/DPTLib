@@ -444,9 +444,9 @@ ColourMenuFail:
 ColourMenuOK: ;
   }
 
-  printf("test: wuss_colourpair names two rows and applies a pick to its target\n");
+  printf("test: wuss_colourlist names its rows and applies a pick to its target\n");
   {
-    wuss_colourpair_t  pair;
+    wuss_colourlist_t  pair;
     colour_t           fg, bg;
     wuss_event_t       ev;
     const wuss_menu_t *cpm;
@@ -455,7 +455,7 @@ ColourMenuOK: ;
     fg = colour_rgb(1, 2, 3);
     bg = colour_rgb(4, 5, 6);
 
-    wuss_colourpair_init(&pair, wuss, &fg, &bg);
+    wuss_colourlist_init_pair(&pair, wuss, &fg, &bg);
     if (pair.menu.nitems != 2)                           goto ColourPairFail;
     if (strcmp(pair.items[0].text, "Foreground") != 0)   goto ColourPairFail;
     if (strcmp(pair.items[1].text, "Background") != 0)   goto ColourPairFail;
@@ -470,14 +470,14 @@ ColourMenuOK: ;
     ev.data.menu_select.menu   = cpm;
     ev.data.menu_select.index  = 1;
     ev.data.menu_select.button = wuss_BUTTON_SELECT;
-    if (wuss_colourpair_selected(&pair, &ev))            goto ColourPairFail;
+    if (wuss_colourlist_selected(&pair, &ev))            goto ColourPairFail;
 
     /* a PRE_SUBMENU_OPEN for some other menu is declined */
     ev.kind                          = wuss_EVENT_PRE_SUBMENU_OPEN;
     ev.data.pre_submenu_open.handle  = NULL;
     ev.data.pre_submenu_open.index   = 0;
     cprc = result_OK;
-    if (wuss_colourpair_pre_open(&pair, wuss, &ev, &cprc))
+    if (wuss_colourlist_pre_open(&pair, wuss, &ev, &cprc))
       goto ColourPairFail;
 
     /* once targeted, a pick lands in that field only */
@@ -485,19 +485,44 @@ ColourMenuOK: ;
     ev.kind                    = wuss_EVENT_MENU_SELECT;
     ev.data.menu_select.menu   = cpm;
     ev.data.menu_select.index  = 1;
-    if (!wuss_colourpair_selected(&pair, &ev))           goto ColourPairFail;
+    if (!wuss_colourlist_selected(&pair, &ev))           goto ColourPairFail;
     if (bg.primary != wuss_get_palette(wuss, NULL)[1].primary)
       goto ColourPairFail;
     if (fg.primary != colour_rgb(1, 2, 3).primary)       goto ColourPairFail;
 
     /* a foreign menu is not a colour pick */
     ev.data.menu_select.menu = NULL;
-    if (wuss_colourpair_selected(&pair, &ev))            goto ColourPairFail;
+    if (wuss_colourlist_selected(&pair, &ev))            goto ColourPairFail;
+
+    /* N named rows: labels carried through, bad counts refused */
+    {
+      static const char *const names3[3] = { "Sphere", "Light", "Sky" };
+      colour_t          c3[3], *f3[3];
+      wuss_colourlist_t list3;
+      int               k;
+
+      for (k = 0; k < 3; k++)
+        f3[k] = &c3[k];
+
+      if (wuss_colourlist_init(&list3, wuss, 3, f3, names3) != result_OK)
+        goto ColourPairFail;
+      if (list3.menu.nitems != 3)                        goto ColourPairFail;
+      if (strcmp(list3.items[2].text, "Sky") != 0)       goto ColourPairFail;
+      if (list3.items[2].submenu == NULL)                goto ColourPairFail;
+
+      if (wuss_colourlist_init(&list3, wuss, 3, f3, NULL) == result_OK)
+        goto ColourPairFail; /* default names only cover two rows */
+      if (wuss_colourlist_init(&list3, wuss, 0, f3, names3) == result_OK)
+        goto ColourPairFail;
+      if (wuss_colourlist_init(&list3, wuss, WUSS_COLOURLIST_MAX + 1, f3,
+                               names3) == result_OK)
+        goto ColourPairFail;
+    }
 
     goto ColourPairOK;
 
 ColourPairFail:
-    printf("wuss_test: colourpair check failed\n");
+    printf("wuss_test: colourlist check failed\n");
     return result_TEST_FAILED;
 ColourPairOK: ;
   }

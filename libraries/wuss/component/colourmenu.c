@@ -290,63 +290,87 @@ int wuss_colourmenu_selected_rgb(const wuss_event_t *ev, colour_t *colour)
   return 1;
 }
 
-/* ----- Foreground/Background pair ------------------------------------- */
+/* ----- colour list ----------------------------------------------------- */
 
-enum { COLOURPAIR_FOREGROUND = 0, COLOURPAIR_BACKGROUND };
-
-void wuss_colourpair_init(wuss_colourpair_t *pair,
-                          const wuss_t      *wuss,
-                          colour_t          *fg,
-                          colour_t          *bg)
+static const char *const colourlist_pair_names[2] =
 {
-  pair->fg     = fg;
-  pair->bg     = bg;
-  pair->target = NULL;
+  "Foreground", "Background"
+};
 
-  /* the rows' .submenu only gives each an arrow and a hover target; which
-   * menu opens is decided by wuss_colourpair_pre_open */
-  WUSS_MENU_ITEM_MENU(pair->items, COLOURPAIR_FOREGROUND, "Foreground",
-                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
-  WUSS_MENU_ITEM_MENU(pair->items, COLOURPAIR_BACKGROUND, "Background",
-                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+result_t wuss_colourlist_init(wuss_colourlist_t *list,
+                              const wuss_t      *wuss,
+                              int                n,
+                              colour_t *const    fields[],
+                              const char *const  names[])
+{
+  int i;
 
-  WUSS_MENU_TITLE(pair->menu, "Colours", pair->items,
-                  (int) (sizeof(pair->items) / sizeof(pair->items[0])));
+  if (n < 1 || n > WUSS_COLOURLIST_MAX || fields == NULL)
+    return result_BAD_ARG;
+  if (names == NULL)
+  {
+    if (n > 2)
+      return result_BAD_ARG;
+    names = colourlist_pair_names;
+  }
+
+  list->target = NULL;
+
+  for (i = 0; i < n; i++)
+  {
+    list->names[i]  = names[i];
+    list->fields[i] = fields[i];
+
+    /* the rows' .submenu only gives each an arrow and a hover target; which
+     * menu opens is decided by wuss_colourlist_pre_open */
+    WUSS_MENU_ITEM_MENU(list->items, i, names[i], wuss_MENU_ITEM_PRE_OPEN,
+                        wuss_colourmenu_menu(wuss));
+  }
+
+  WUSS_MENU_TITLE(list->menu, "Colours", list->items, n);
+
+  return result_OK;
 }
 
-int wuss_colourpair_pre_open(wuss_colourpair_t  *pair,
+void wuss_colourlist_init_pair(wuss_colourlist_t *list,
+                               const wuss_t      *wuss,
+                               colour_t          *fg,
+                               colour_t          *bg)
+{
+  colour_t *fields[2];
+
+  fields[0] = fg;
+  fields[1] = bg;
+
+  (void) wuss_colourlist_init(list, wuss, 2, fields, NULL);
+}
+
+int wuss_colourlist_pre_open(wuss_colourlist_t  *list,
                              const wuss_t       *wuss,
                              const wuss_event_t *ev,
                              result_t           *rc)
 {
-  int         index;
-  const char *title;
+  int index;
 
   if (ev->kind != wuss_EVENT_PRE_SUBMENU_OPEN ||
-      wuss_menu_handle_menu(ev->data.pre_submenu_open.handle) != &pair->menu)
+      wuss_menu_handle_menu(ev->data.pre_submenu_open.handle) != &list->menu)
     return 0;
 
   index = ev->data.pre_submenu_open.index;
-  if (index == COLOURPAIR_FOREGROUND)
-  {
-    pair->target = pair->fg;
-    title        = "Foreground";
-  }
-  else
-  {
-    pair->target = pair->bg;
-    title        = "Background";
-  }
+  if (index < 0 || index >= list->menu.nitems)
+    return 0;
 
-  *rc = wuss_colourmenu_open_rgb(wuss, ev, title, *pair->target);
+  list->target = list->fields[index];
+
+  *rc = wuss_colourmenu_open_rgb(wuss, ev, list->names[index], *list->target);
   return 1;
 }
 
-int wuss_colourpair_selected(wuss_colourpair_t  *pair,
+int wuss_colourlist_selected(wuss_colourlist_t  *list,
                              const wuss_event_t *ev)
 {
-  if (pair->target == NULL)
+  if (list->target == NULL)
     return 0;
 
-  return wuss_colourmenu_selected_rgb(ev, pair->target);
+  return wuss_colourmenu_selected_rgb(ev, list->target);
 }

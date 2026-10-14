@@ -34,7 +34,7 @@ typedef struct doughnut_task
   wuss_menu_item_t   tube_items[4]; /* "Tube" submenu: one row per radius */
   wuss_menu_t        tube_menu;
   int                tube;    /* index into doughnut_tubes */
-  wuss_colourpair_t  colours; /* Foreground/Background submenu */
+  wuss_colourlist_t  colours; /* Foreground/Background submenu */
   colour_t           fg, bg;  /* picked from the shared colourmenu */
   colour_t           palette[256]; /* shade bitmap's palette: 0 = bg,
                                     * 1..255 = ramp from black up to fg */

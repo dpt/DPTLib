@@ -214,7 +214,7 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
   if (rc != result_OK)
     goto fail_delegate;
 
-  wuss_colourpair_init(&task->colours, wuss, &task->fg, &task->bg);
+  wuss_colourlist_init_pair(&task->colours, wuss, &task->fg, &task->bg);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, SATURN_MENU_COLOURS, "Colours",
                       wuss_MENU_ITEM_NONE, &task->colours.menu);
@@ -794,7 +794,7 @@ static result_t saturn_pre_submenu_open(saturn_task_t      *task,
   result_t rc;
   int      index;
 
-  if (wuss_colourpair_pre_open(&task->colours, task->wuss, event, &rc))
+  if (wuss_colourlist_pre_open(&task->colours, task->wuss, event, &rc))
     return rc;
 
   index = event->data.pre_submenu_open.index;
@@ -804,7 +804,7 @@ static result_t saturn_pre_submenu_open(saturn_task_t      *task,
 }
 
 /* A pick from the shared colour submenu, applied to whichever field it was
- * last retargeted at (see wuss_colourpair_pre_open). "Configuration" is a wuss_menu_item_t::window
+ * last retargeted at (see wuss_colourlist_pre_open). "Configuration" is a wuss_menu_item_t::window
  * leaf, not a leaf pick, so it never reaches here -- see
  * saturn_conf_dialogue_icon and saturn_sizedlg_pre_show. */
 /* Menu > Animate: a fresh sketch every null event. The
@@ -839,7 +839,7 @@ static result_t saturn_menu_select(saturn_task_t      *task,
     return wuss_saveas_open(task->saveas);
   }
 
-  if (wuss_colourpair_selected(&task->colours, event))
+  if (wuss_colourlist_selected(&task->colours, event))
     wuss_window_invalidate_visible(task->window);
 
   return result_OK;
