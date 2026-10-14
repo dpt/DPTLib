@@ -282,6 +282,9 @@ static result_t effecting_add(effecting_task_t *ec, effecting_type_t type)
     effecting_fit_list(ec);
   }
 
+  /* the new element is selected only now */
+  effecting_menu_update(ec);
+
   effecting_update(ec, 1);
 
   return result_OK;
