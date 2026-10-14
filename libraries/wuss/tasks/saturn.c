@@ -233,7 +233,7 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
                 wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_ANIMATE, "Animate",
-                          wuss_MENU_ITEM_NONE, "A");
+                          wuss_MENU_ITEM_NONE, "SPACE");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_RANDOMISE,
                           "Randomise", wuss_MENU_ITEM_NONE, "^R");

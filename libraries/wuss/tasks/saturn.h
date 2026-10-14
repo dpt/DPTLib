@@ -29,8 +29,8 @@
  * Menu > Save PNG opens a Save As dialogue (drag its
  * icon onto a Filer window, or Save with a full path already typed) that
  * writes the window's content out. Once a click has given the window the
- * input focus, Left/Right step back and forward through the sketches and A
- * toggles Animate. The plot is deterministic in the seed. */
+ * input focus, Left/Right step back and forward through the sketches and
+ * Space toggles Animate. The plot is deterministic in the seed. */
 /* iteration counts for the three rejection-sampling loops, plus the window's
  * size, in document pixels (the window is always square); saturn_create
  * fills in SATURN_CONFIG_DEFAULT values when the caller passes NULL */

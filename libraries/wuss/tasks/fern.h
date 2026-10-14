@@ -21,7 +21,7 @@
  * and the curl (a percentage scaling the small shear terms of the main frond
  * transform: 100 is Barnsley's fern, 0 a straight stem, higher bends it
  * over). Select re-seeds for a fresh fern and Adjust steps back; Left/Right
- * step back and forward once the window has the input focus, and A toggles
+ * step back and forward once the window has the input focus, and Space toggles
  * Menu > Animate, which re-seeds every null event. Menu > Colours sets the
  * foreground and background. Menu > Randomise (^R) picks a fresh seed,
  * curl and colours; Menu > Reset (R) restores the starting configuration,

@@ -144,7 +144,7 @@ result_t fern_create(wuss_t *wuss, fern_task_t **out)
                  wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FERN_MENU_ANIMATE, "Animate",
-                          wuss_MENU_ITEM_NONE, "A");
+                          wuss_MENU_ITEM_NONE, "SPACE");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FERN_MENU_RANDOMISE, "Randomise",
                           wuss_MENU_ITEM_NONE, "^R");
