@@ -7,6 +7,7 @@
 
 #include "framebuf/colour.h"
 #include "wuss/component/colourmenu.h"
+#include "wuss/component/saveas.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
@@ -30,14 +31,17 @@ ball_t;
  * view; Menu > Clear removes all but the first; Menu > Gravity pulls them
  * downward; Menu > Damping makes wall bounces lose speed. Once a click has
  * given the window the input focus, Space pauses/resumes, A adds a ball, G
- * toggles gravity, D toggles damping and C clears. */
+ * toggles gravity, D toggles damping and C clears. Menu > Save PNG opens a
+ * Save As dialogue (drag its icon onto a Filer window, or Save with a full
+ * path already typed) that writes the window's content out. */
 typedef struct ball_task
 {
   wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
   wuss_task_t        *delegate; /* the task that owns the menu */
+  wuss_saveas_t      *saveas;
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[6]; /* per-instance, not a shared static */
+  wuss_menu_item_t    menu_items[7]; /* per-instance, not a shared static */
   wuss_menu_t         menu;
   int                 paused; /* Menu > Pause; idle does nothing while set */
   int                 gravity; /* Menu > Gravity; dy grows each tick */

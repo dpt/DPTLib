@@ -12,12 +12,15 @@
 #include "framebuf/palettes.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "io/filetype.h"
 
 #include "ball.h"
+#include "snapshot.h"
 #include "taskapp.h"
 #include "common.h"
 
 #define BALL_BASE_RADIUS 8 /* +/-50% at spawn -> 4..12 */
+#define BALL_SAVE_NAME "ball.png" /* Save As's initial leafname */
 #define BALL_MAX_DY     16 /* cap on vertical speed under gravity */
 
 /* with damping on, a wall bounce keeps 3/4 of the speed, truncated towards
@@ -34,7 +37,8 @@ enum
   BALL_MENU_ADD,
   BALL_MENU_CLEAR,
   BALL_MENU_GRAVITY,
-  BALL_MENU_DAMPING
+  BALL_MENU_DAMPING,
+  BALL_MENU_SAVE
 };
 
 /* a fresh radius in [BALL_BASE_RADIUS/2, BALL_BASE_RADIUS*3/2] */
@@ -71,9 +75,20 @@ static box_t ball_local_box(int vx0, int vy0, int vx1, int vy1, int radius)
   return local;
 }
 
+/* wuss_saveas_save_fn_t: opaque is the ball_task_t */
+static result_t ball_saveas_save(const char *path, void *opaque)
+{
+  ball_task_t *bc;
+
+  bc = opaque;
+
+  return snapshot_save_png(bc->window, ball_handle, bc, path);
+}
+
 result_t ball_create(wuss_t *wuss, ball_task_t **out)
 {
   result_t         rc;
+  filetype_t       png_type;
   ball_task_t     *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
@@ -118,6 +133,15 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
     return rc;
   }
 
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
+                          BALL_SAVE_NAME, ball_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
   WUSS_MENU_ITEM_MENU(task->menu_items, BALL_MENU_BACKGROUND, "Background",
                       wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
 
@@ -135,6 +159,11 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_DAMPING, "Damping",
                           wuss_MENU_ITEM_NONE, "D");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
+  /* hover opens the Save As dialogue as a submenu; ^S shows it standalone */
+  task->menu_items[BALL_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Bouncing Ball", task->menu_items,
                  NELEMS(task->menu_items));
@@ -159,6 +188,7 @@ result_t ball_app_create(wuss_t *wuss)
 
 void ball_destroy(ball_task_t *task)
 {
+  wuss_saveas_destroy(task->saveas);
   free(task);
 }
 
@@ -495,6 +525,9 @@ result_t ball_handle(wuss_window_t      *window,
     if (event->data.menu_select.menu == &bc->menu &&
         event->data.menu_select.index == BALL_MENU_CLEAR)
       return ball_clear(bc);
+    if (event->data.menu_select.menu == &bc->menu &&
+        event->data.menu_select.index == BALL_MENU_SAVE)
+      return wuss_saveas_open(bc->saveas);
     return ball_menu_select(bc, event);
 
   case wuss_EVENT_MENU_CLOSED:
