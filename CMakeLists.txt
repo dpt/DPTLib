@@ -862,6 +862,7 @@ if(BUILD_TESTS)
         libraries/wuss/core/test/pointer-test.c
         libraries/wuss/core/test/message-test.c
         libraries/wuss/core/test/drag-test.c
+        libraries/wuss/core/test/task-test.c
         libraries/wuss/tasks/painting-doc.c
         libraries/wuss/tasks/painting-doc.h
         libraries/wuss/test/wuss-test.c)
