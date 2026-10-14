@@ -449,6 +449,15 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/get-screen-size.c
     libraries/wuss/core/idle.c
     libraries/wuss/core/impl.h
+    libraries/wuss/core/alloc.h
+    libraries/wuss/core/dispatch.h
+    libraries/wuss/core/geometry.h
+    libraries/wuss/core/input.h
+    libraries/wuss/core/invalidate.h
+    libraries/wuss/core/layers.h
+    libraries/wuss/core/palette.h
+    libraries/wuss/core/types.h
+    libraries/wuss/core/windows.h
     libraries/wuss/core/invalidate.c
     libraries/wuss/core/is-dragging.c
     libraries/wuss/core/key.c

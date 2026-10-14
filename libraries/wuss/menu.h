@@ -154,6 +154,19 @@ wuss_icon_t       *wuss__menu_level_icon(const struct wuss__menu *level,
                                          int                      index);
 int                wuss__menu_level_flashing(const struct wuss__menu *level);
 
+/* Tear down the whole open menu chain because wuss decided to (not the
+ * client): unlinks wuss->menu_chain, delivers wuss_EVENT_MENU_CLOSED to its
+ * owner so a stored handle is dropped, then frees the nodes. No-op if no
+ * chain is open. Defined in menu/menu.c. */
+void wuss__menu_abandon(wuss_t *wuss);
+
+/* True if `window` is one of the open menu chain's windows, including a
+ * borrowed-window level -- lets a component shown as a leaf dismiss the
+ * whole chain (wuss__menu_abandon) rather than just hide itself, and
+ * wuss_window_close tear the chain down before freeing a window in it.
+ * Defined in menu/menu.c. */
+int wuss__menu_contains(wuss_t *wuss, const wuss_window_t *window);
+
 #else /* !WUSS_MENUS */
 
 static inline result_t wuss__menu_session_create(wuss_t *wuss)
