@@ -93,6 +93,7 @@ static const test_t tests[] =
   { "wuss-message", wuss_message_test },
   { "wuss-drag", wuss_drag_test },
   { "wuss-task", wuss_task_test },
+  { "wuss-hidden", wuss_hidden_test },
   { "wuss-move", wuss_move_test },
   { "wuss-resize", wuss_resize_test },
   { "wuss-scroll", wuss_scroll_test },
