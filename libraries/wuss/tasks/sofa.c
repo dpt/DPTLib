@@ -27,12 +27,14 @@
  * just before wuss_menu_open */
 enum
 {
-  SOFA_MENU_BACKGROUND = 0,
+  SOFA_MENU_COLOURS = 0,
   SOFA_MENU_MODEL,
   SOFA_MENU_PAUSE,
   SOFA_MENU_CYCLE,
   SOFA_MENU_SAVE
 };
+
+enum { SOFA_COLOURS_MENU_FOREGROUND = 0, SOFA_COLOURS_MENU_BACKGROUND };
 
 #define SOFA_SAVE_NAME "sofa.png" /* Save As's initial leafname */
 
@@ -449,8 +451,21 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, SOFA_MENU_BACKGROUND, "Background",
-                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+  /* both rows share the colourmenu singleton, retitled/retargeted per hover
+   * by sofa_pre_submenu_open; .submenu only gives each an arrow */
+  WUSS_MENU_ITEM_MENU(task->colours_items, SOFA_COLOURS_MENU_FOREGROUND,
+                      "Foreground", wuss_MENU_ITEM_PRE_OPEN,
+                      wuss_colourmenu_menu(wuss));
+
+  WUSS_MENU_ITEM_MENU(task->colours_items, SOFA_COLOURS_MENU_BACKGROUND,
+                      "Background", wuss_MENU_ITEM_PRE_OPEN,
+                      wuss_colourmenu_menu(wuss));
+
+  WUSS_MENU_TITLE(task->colours_menu, "Colours", task->colours_items,
+                  NELEMS(task->colours_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, SOFA_MENU_COLOURS, "Colours",
+                      wuss_MENU_ITEM_NONE, &task->colours_menu);
 
   for (i = 0; i < sofa_SHAPE__LIMIT; i++)
     WUSS_MENU_ITEM(task->model_items, i, sofa_shape_names[i],
@@ -750,10 +765,46 @@ static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
     return result_OK;
   }
 
-  if (wuss_colourmenu_selected_rgb(event, &sc->bg))
+  if (sc->colourmenu_target == NULL)
+    return result_OK;
+
+  if (wuss_colourmenu_selected_rgb(event, sc->colourmenu_target))
     wuss_window_invalidate_visible(sc->window);
 
   return result_OK;
+}
+
+/* Every submenu leaf fires wuss_EVENT_PRE_SUBMENU_OPEN -- "Colours" and
+ * "Model" too, which open unchanged. Only the Foreground/Background level
+ * retitles and retargets the shared colourmenu before opening it. The
+ * foreground is the wireframe's edge colour. */
+static result_t sofa_pre_submenu_open(sofa_task_t        *sc,
+                                      const wuss_event_t *event)
+{
+  wuss_menu_handle_t handle;
+  int                index;
+  const char        *title;
+
+  handle = event->data.pre_submenu_open.handle;
+  index  = event->data.pre_submenu_open.index;
+
+  if (wuss_menu_handle_menu(handle) != &sc->colours_menu)
+    return wuss_menu_open_submenu_now(handle, index,
+                                      sc->menu_items[index].submenu);
+
+  if (index == SOFA_COLOURS_MENU_FOREGROUND)
+  {
+    sc->colourmenu_target = &sc->line;
+    title                 = "Foreground";
+  }
+  else
+  {
+    sc->colourmenu_target = &sc->bg;
+    title                 = "Background";
+  }
+
+  return wuss_colourmenu_open_rgb(sc->wuss, event, title,
+                                  *sc->colourmenu_target);
 }
 
 result_t sofa_handle(wuss_window_t      *window,
@@ -797,8 +848,7 @@ result_t sofa_handle(wuss_window_t      *window,
   }
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
-    /* the "Background" row: the shared colourmenu, set up per open */
-    return wuss_colourmenu_open_rgb(sc->wuss, event, "Background", sc->bg);
+    return sofa_pre_submenu_open(sc, event);
 
   case wuss_EVENT_MENU_SELECT:
     return sofa_menu_select(sc, event);
