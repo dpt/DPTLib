@@ -88,6 +88,8 @@ enum
   SATURN_MENU_COLOURS = 0,
   SATURN_MENU_SIZE,
   SATURN_MENU_ANIMATE,
+  SATURN_MENU_RANDOMISE,
+  SATURN_MENU_RESET,
   SATURN_MENU_SAVE
 };
 
@@ -169,10 +171,20 @@ static result_t saturn_saveas_save(const char *path, void *opaque)
   return snapshot_save_png(task->window, saturn_handle, task, path);
 }
 
-result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
+/* the starting sketch, as saturn_create and Reset restore it */
+static void saturn_defaults(saturn_task_t *task)
 {
   static const saturn_config_t default_config = SATURN_CONFIG_DEFAULT;
 
+  task->bg      = colour_rgb(0x00, 0x00, 0x00);
+  task->fg      = colour_rgb(0xFF, 0xFF, 0xFF);
+  task->seed    = 1;
+  task->config  = default_config;
+  task->animate = 0;
+}
+
+result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
+{
   result_t         rc;
   saturn_task_t   *task;
   wuss_task_t     *delegate;
@@ -184,10 +196,8 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
     return result_OOM;
 
   task->wuss             = wuss;
-  task->bg               = colour_rgb(0x00, 0x00, 0x00);
-  task->fg               = colour_rgb(0xFF, 0xFF, 0xFF);
-  task->seed             = 1;
-  task->config           = default_config;
+  rng_seed(&task->rng, (uint32_t) rand());
+  saturn_defaults(task);
   task->menu_handle      = NULL;
   task->conf.dialogue    = NULL;
   memset(task->conf.rows, 0, sizeof(task->conf.rows));
@@ -224,6 +234,12 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_ANIMATE, "Animate",
                           wuss_MENU_ITEM_NONE, "A");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_RANDOMISE,
+                          "Randomise", wuss_MENU_ITEM_NONE, "^R");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_RESET, "Reset",
+                          wuss_MENU_ITEM_NONE, "R");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_NONE, "^S");
@@ -663,17 +679,12 @@ static result_t saturn_conf_fillout(void *opaque)
   return rc;
 }
 
-/* Applies the slider's current value to task->window (resize + doc extent),
- * shared by a Select and an Adjust click on Apply. */
-static result_t saturn_conf_apply(saturn_task_t *task)
+/* Resizes task->window (size + doc extent) if config.size has moved off
+ * old_size, else just redraws. */
+static result_t saturn_resize(saturn_task_t *task, int old_size)
 {
   result_t rc;
-  int      row, size_value, old_size;
-
-  old_size = task->config.size;
-  for (row = 0; row < SATURN_SIZEDLG_NROWS; row++)
-    *saturn_sizedlg_field(task, row) =
-      wuss_icon_get_value(task->conf.rows[row].slider);
+  int      size_value;
 
   if (task->window == NULL)
     return result_OK; /* planet window closed while the dialogue lingers */
@@ -689,6 +700,20 @@ static result_t saturn_conf_apply(saturn_task_t *task)
   if (rc != result_OK)
     return rc;
   return wuss_window_set_doc(task->window, SIZE2D(size_value, size_value));
+}
+
+/* Applies the slider's current value to task->window (resize + doc extent),
+ * shared by a Select and an Adjust click on Apply. */
+static result_t saturn_conf_apply(saturn_task_t *task)
+{
+  int row, old_size;
+
+  old_size = task->config.size;
+  for (row = 0; row < SATURN_SIZEDLG_NROWS; row++)
+    *saturn_sizedlg_field(task, row) =
+      wuss_icon_get_value(task->conf.rows[row].slider);
+
+  return saturn_resize(task, old_size);
 }
 
 /* Dialogue action callback for Cancel, split by button per the RISC OS
@@ -837,6 +862,28 @@ static result_t saturn_menu_select(saturn_task_t      *task,
       event->data.menu_select.index == SATURN_MENU_SAVE)
   {
     return wuss_saveas_open(task->saveas);
+  }
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == SATURN_MENU_RANDOMISE)
+  {
+    task->seed = rng_xorshift32(&task->rng);
+    task->bg   = colour_random(&task->rng);
+    task->fg   = colour_random_contrast(&task->rng, task->bg);
+    wuss_window_invalidate_visible(task->window);
+    return result_OK;
+  }
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == SATURN_MENU_RESET)
+  {
+    int old_size;
+
+    old_size = task->config.size;
+    saturn_defaults(task);
+    wuss_menu_tick_item_live(task->menu_handle, &task->menu,
+                             SATURN_MENU_ANIMATE, task->animate);
+    return saturn_resize(task, old_size);
   }
 
   if (wuss_colourlist_selected(&task->colours, event))

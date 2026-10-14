@@ -8,6 +8,7 @@
 /* ponytail: no #ifdef WUSS_COMPONENTS guard -- it is PUBLIC on DPTLib and ON
  * by default, so the wuss app always has the colourmenu component. */
 #include "framebuf/colour.h"
+#include "utils/rng.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/dialogue.h"
 #include "wuss/component/saveas.h"
@@ -23,7 +24,9 @@
  * ring of dots, a sheared streak across it and a filled disc for the
  * planet body. Select re-seeds the RNG for a fresh sketch and Adjust
  * steps back to the previous one; Menu > Animate re-seeds every null
- * event so it churns; Menu > Save PNG opens a Save As dialogue (drag its
+ * event so it churns; Menu > Randomise (^R) picks a fresh seed and colours;
+ * Menu > Reset (R) restores the starting configuration, colours and seed;
+ * Menu > Save PNG opens a Save As dialogue (drag its
  * icon onto a Filer window, or Save with a full path already typed) that
  * writes the window's content out. Once a click has given the window the
  * input focus, Left/Right step back and forward through the sketches and A
@@ -82,9 +85,10 @@ typedef struct saturn_task
   wuss_menu_handle_t menu_handle; /* live only between open and a SELECT pick */
   saturn_conf_t      conf;
   wuss_colourlist_t  colours; /* per-instance: Foreground/Background rows */
-  wuss_menu_item_t   menu_items[4];
+  wuss_menu_item_t   menu_items[6];
   wuss_menu_t        menu;
   int                animate; /* Menu > Animate: re-seed on every idle */
+  rng_t              rng;     /* Randomise */
 }
 saturn_task_t;
 
