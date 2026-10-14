@@ -31,6 +31,8 @@ enum
   CHECKER_MENU_COLOURS = 0,
   CHECKER_MENU_PATTERN,
   CHECKER_MENU_SWAP,
+  CHECKER_MENU_RANDOMISE,
+  CHECKER_MENU_RESET,
   CHECKER_MENU_SAVE
 };
 
@@ -58,6 +60,27 @@ static result_t checker_saveas_save(const char *path, void *opaque)
   return snapshot_save_png(cc->window, checker_handle, cc, path);
 }
 
+/* the starting pattern, as checker_create and Reset restore it */
+static void checker_defaults(checker_task_t *task)
+{
+  task->black   = colour_rgb(0x00, 0x00, 0x00);
+  task->white   = colour_rgb(0xFF, 0xFF, 0xFF);
+  task->pattern = checker_PATTERN_CHECKERBOARD;
+  task->band    = CHECKER_BAND_DEFAULT;
+}
+
+/* pick the pattern, band width and both colours afresh */
+static void checker_randomise(checker_task_t *task)
+{
+  task->pattern = (checker_pattern_t) rng_range(&task->rng,
+                                                checker_PATTERN__COUNT);
+  task->band    = CHECKER_BAND_MIN +
+                  rng_range(&task->rng,
+                            CHECKER_BAND_MAX - CHECKER_BAND_MIN + 1);
+  task->black   = colour_random(&task->rng);
+  task->white   = colour_random_contrast(&task->rng, task->black);
+}
+
 result_t checker_create(wuss_t *wuss, checker_task_t **out)
 {
   result_t         rc;
@@ -73,10 +96,8 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
     return result_OOM;
 
   task->wuss     = wuss;
-  task->black    = colour_rgb(0x00, 0x00, 0x00);
-  task->white    = colour_rgb(0xFF, 0xFF, 0xFF);
-  task->pattern  = checker_PATTERN_CHECKERBOARD;
-  task->band     = CHECKER_BAND_DEFAULT;
+  rng_seed(&task->rng, (uint32_t) rand());
+  checker_defaults(task);
 
   /* checker_redraw paints every pixel itself */
   delegate_desc.handle    = checker_handle;
@@ -138,6 +159,12 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
 
   WUSS_MENU_ITEM(task->menu_items, CHECKER_MENU_SWAP, "Swap colours",
                  wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CHECKER_MENU_RANDOMISE,
+                          "Randomise", wuss_MENU_ITEM_NONE, "^R");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CHECKER_MENU_RESET, "Reset",
+                          wuss_MENU_ITEM_NONE, "R");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CHECKER_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_NONE, "^S");
@@ -293,6 +320,21 @@ static result_t checker_menu_select(checker_task_t     *cc,
       event->data.menu_select.index == CHECKER_MENU_SAVE)
   {
     return wuss_saveas_open(cc->saveas);
+  }
+
+  if (event->data.menu_select.menu == &cc->menu &&
+      (event->data.menu_select.index == CHECKER_MENU_RANDOMISE ||
+       event->data.menu_select.index == CHECKER_MENU_RESET))
+  {
+    if (event->data.menu_select.index == CHECKER_MENU_RANDOMISE)
+      checker_randomise(cc);
+    else
+      checker_defaults(cc);
+
+    wuss_menu_tick_exclusive_live(cc->menu_handle, &cc->pattern_menu,
+                                  cc->pattern);
+    wuss_window_invalidate_visible(cc->window);
+    return result_OK;
   }
 
   if (event->data.menu_select.menu == &cc->menu &&
