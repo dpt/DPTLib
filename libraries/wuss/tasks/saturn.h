@@ -30,7 +30,8 @@
  * icon onto a Filer window, or Save with a full path already typed) that
  * writes the window's content out. Once a click has given the window the
  * input focus, Left/Right step back and forward through the sketches and
- * Space toggles Animate. The plot is deterministic in the seed. */
+ * Space toggles Animate. The wheel zooms in and out about the centre. The plot
+ * is deterministic in the seed. */
 /* iteration counts for the three rejection-sampling loops, plus the window's
  * size, in document pixels (the window is always square); saturn_create
  * fills in SATURN_CONFIG_DEFAULT values when the caller passes NULL */
@@ -73,6 +74,12 @@ typedef struct saturn_conf
 }
 saturn_conf_t;
 
+/* zoom range/step for the wheel: 1.0 fits the window, larger zooms in about
+ * the centre */
+#define SATURN_ZOOM_MIN  0.3
+#define SATURN_ZOOM_MAX  4.0
+#define SATURN_ZOOM_STEP 0.1
+
 typedef struct saturn_task
 {
   wuss_t            *wuss;     /* for wuss_get_pointer/wuss_get_palette */
@@ -88,6 +95,7 @@ typedef struct saturn_task
   wuss_menu_item_t   menu_items[6];
   wuss_menu_t        menu;
   int                animate; /* Menu > Animate: re-seed on every idle */
+  double             zoom;    /* wheel-adjustable */
   rng_t              rng;     /* Randomise */
 }
 saturn_task_t;

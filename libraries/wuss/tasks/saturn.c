@@ -181,6 +181,7 @@ static void saturn_defaults(saturn_task_t *task)
   task->seed    = 1;
   task->config  = default_config;
   task->animate = 0;
+  task->zoom    = 1.0;
 }
 
 result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
@@ -302,8 +303,12 @@ static void saturn_plot(screen_t      *scr,
                         int            size,
                         int            x,
                         int            y,
+                        double         zoom,
                         pixelfmt_any_t pxl)
 {
+  x = (int) ((x - size / 2.0) * zoom + size / 2.0);
+  y = (int) ((y - size / 2.0) * zoom + size / 2.0);
+
   if (x < 0 || x >= size || y < 0 || y >= size)
     return;
 
@@ -361,7 +366,8 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
     y = SATURN_SAMPLE(half, range);
     p = (x * x + y * y) / energy_shift;
     if (p > stars_p)
-      saturn_plot(scr, ox, oy, size, x + half, flip - (y + half), fgpix);
+      saturn_plot(scr, ox, oy, size, x + half, flip - (y + half), task->zoom,
+                  fgpix);
   }
 
   /* loop 2 - the ring: sheared sample with a banded energy gate */
@@ -377,7 +383,7 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
     p  = (x * x + y * y) / energy_shift;
     e  = ((r6 + r7) * (r6 + r7) + r5 * r5 + r6 * r6) / energy_shift;
     if (e >= e_lo && e < e_hi && (r5 < 0 || p > ring_p))
-      saturn_plot(scr, ox, oy, size, x + half, y + half, fgpix);
+      saturn_plot(scr, ox, oy, size, x + half, y + half, task->zoom, fgpix);
   }
 
   /* loop 3 - planet body: filled half-disc offset right */
@@ -393,9 +399,24 @@ static result_t saturn_redraw(const wuss_event_t *event, saturn_task_t *task)
     {
       x = (int) (sqrt((double) (body_r2 - p)) / 2.0) + half;
       y = flip - (r2 / 2 + half);
-      saturn_plot(scr, ox, oy, size, x, y, fgpix);
+      saturn_plot(scr, ox, oy, size, x, y, task->zoom, fgpix);
     }
   }
+
+  return result_OK;
+}
+
+static result_t saturn_scroll(saturn_task_t *task,
+                              wuss_window_t *window,
+                              int            delta)
+{
+  if (window != task->window)
+    return result_OK;
+
+  task->zoom += (delta > 0 ? 1 : -1) * SATURN_ZOOM_STEP;
+  task->zoom  = CLAMP(task->zoom, SATURN_ZOOM_MIN, SATURN_ZOOM_MAX);
+
+  wuss_window_invalidate_visible(task->window);
 
   return result_OK;
 }
@@ -908,6 +929,9 @@ result_t saturn_handle(wuss_window_t      *window,
   case wuss_EVENT_MOUSE:
     return saturn_mouse(task, event->data.mouse.action,
                         event->data.mouse.button, window);
+
+  case wuss_EVENT_SCROLL:
+    return saturn_scroll(task, window, event->data.scroll.delta);
 
   case wuss_EVENT_KEY:
   {
