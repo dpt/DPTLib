@@ -12,6 +12,7 @@
 #include "wuss/wuss.h"
 
 #include "../core/types.h"
+#include "../core/dispatch.h"
 
 /* ----------------------------------------------------------------------- */
 

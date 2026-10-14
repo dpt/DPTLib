@@ -439,6 +439,7 @@ set(UTILS_SOURCES
 set(WUSS_CORE_SOURCES
     libraries/wuss/core/backdrop.c
     libraries/wuss/core/capture.c
+    libraries/wuss/core/copy-text.c
     libraries/wuss/core/create.c
     libraries/wuss/core/destroy.c
     libraries/wuss/core/drag.c

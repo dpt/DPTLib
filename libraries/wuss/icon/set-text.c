@@ -6,6 +6,7 @@
 
 #include "../core/types.h"
 #include "../core/alloc.h"
+#include "../core/windows.h"
 
 result_t wuss_icon_set_text(wuss_window_t *window,
                             wuss_icon_t   *icon,

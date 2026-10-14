@@ -8,6 +8,7 @@
 
 #include "../core/types.h"
 #include "../core/alloc.h"
+#include "../core/windows.h"
 
 result_t wuss_icon_create(wuss_window_t          *window,
                           const wuss_icon_spec_t *spec,

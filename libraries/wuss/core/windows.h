@@ -53,4 +53,9 @@ result_t wuss__window_set_hidden_ex(wuss_window_t     *window,
 result_t wuss__window_set_hidden_ex(wuss_window_t *window, int hidden);
 #endif
 
+/* Copy "text" into a "size"-byte buffer "buf", truncating without splitting a
+ * UTF-8 codepoint. Used for window titles and writable icons. Defined in
+ * copy-text.c. */
+void wuss__writable_copy(char *buf, int size, const char *text);
+
 #endif /* WUSS_CORE_WINDOWS_H */

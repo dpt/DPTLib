@@ -297,9 +297,6 @@ int wuss__writable_index_for_x(const wuss_t      *wuss,
                                const wuss_icon_t *icon,
                                int                doc_x);
 
-/* Copy "text" into a writable's "size"-byte buffer "buf", truncating. */
-void wuss__writable_copy(char *buf, int size, const char *text);
-
 /* Remove the caret, invalidating its icon. No-op when there is none. */
 void wuss__caret_clear(wuss_t *wuss);
 
