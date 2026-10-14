@@ -501,9 +501,7 @@ static void effecting_build_menus(effecting_task_t *task)
   WUSS_MENU_ITEM(task->menu_items, EFFECTING_MENU_CANCEL, "Cancel",
                  wuss_MENU_ITEM_NONE);
   WUSS_MENU_ITEM_WINDOW(task->menu_items, EFFECTING_MENU_SAVE, "Save PNG",
-                        wuss_MENU_ITEM_DASHED |
-                        wuss_MENU_ITEM_BORROWED_SUBMENU |
-                        wuss_MENU_ITEM_PRE_OPEN,
+                        wuss_MENU_ITEM_DASHED,
                         wuss_saveas_window(task->saveas));
   WUSS_MENU_TITLE(task->menu, "Effects", task->menu_items,
                   NELEMS(task->menu_items));
@@ -884,16 +882,12 @@ result_t effecting_handle(wuss_window_t      *window,
       return result_OK;
 
     which = effecting_edit_find(ec->edit, window);
-    if (which >= 0)
-    {
-      rc = effecting_edit_pre_show(ec->edit, (effecting_edit_which_t) which);
-      if (rc != result_OK)
-        return rc;
-    }
-    else if (window != wuss_saveas_window(ec->saveas))
-    {
+    if (which < 0)
       return result_OK;
-    }
+
+    rc = effecting_edit_pre_show(ec->edit, (effecting_edit_which_t) which);
+    if (rc != result_OK)
+      return rc;
 
     return wuss_menu_open_window_now(event->data.pre_show.handle,
                                      event->data.pre_show.index);
