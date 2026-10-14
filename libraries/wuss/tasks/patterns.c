@@ -29,6 +29,8 @@
 enum
 {
   PATTERNS_MENU_COLOURS,
+  PATTERNS_MENU_RANDOMISE,
+  PATTERNS_MENU_RESET,
   PATTERNS_MENU_SAVE
 };
 
@@ -36,17 +38,6 @@ enum
 
 /* Colours submenu rows: the a and b fields, in that order */
 static const char *const patterns_colour_names[] = { "Colour A", "Colour B" };
-
-static colour_t patterns_random_colour(rng_t *rng)
-{
-  int r, g, b;
-
-  r = rng_range(rng, 256);
-  g = rng_range(rng, 256);
-  b = rng_range(rng, 256);
-
-  return colour_rgb(r, g, b);
-}
 
 /* channel c0 -> c1, f of n frames into the blend */
 static int patterns_lerp(unsigned int c0, unsigned int c1, int f, int n)
@@ -85,6 +76,14 @@ static result_t patterns_saveas_save(const char *path, void *opaque)
   return snapshot_save_png(bc->window, patterns_handle, bc, path);
 }
 
+/* pick both ends of the gradient afresh, the second standing out from the
+ * first */
+static void patterns_randomise(patterns_task_t *task)
+{
+  task->a = colour_random(&task->rng);
+  task->b = colour_random_contrast(&task->rng, task->a);
+}
+
 result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
 {
   result_t         rc;
@@ -93,16 +92,14 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
   wuss_task_desc_t delegate_desc;
   filetype_t       png_type;
   colour_t        *fields[2];
-  rng_t            rng;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
     return result_OOM;
 
   task->wuss = wuss;
-  rng_seed(&rng, (uint32_t) time(NULL));
-  task->a    = patterns_random_colour(&rng);
-  task->b    = patterns_random_colour(&rng);
+  rng_seed(&task->rng, (uint32_t) time(NULL));
+  patterns_randomise(task);
 
   /* patterns_redraw paints every pixel itself */
   delegate_desc.handle    = patterns_handle;
@@ -148,6 +145,12 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
 
   WUSS_MENU_ITEM_MENU(task->menu_items, PATTERNS_MENU_COLOURS, "Colours",
                       wuss_MENU_ITEM_NONE, &task->colours.menu);
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_RANDOMISE,
+                          "Randomise", wuss_MENU_ITEM_NONE, "^R");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_RESET, "Reset",
+                          wuss_MENU_ITEM_NONE, "R");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_NONE, "^S");
@@ -296,6 +299,19 @@ result_t patterns_handle(wuss_window_t      *window,
           event->data.menu_select.index == PATTERNS_MENU_SAVE)
       {
         rc = wuss_saveas_open(bc->saveas);
+      }
+      else if (event->data.menu_select.menu == &bc->menu &&
+               event->data.menu_select.index == PATTERNS_MENU_RANDOMISE)
+      {
+        patterns_randomise(bc);
+        wuss_window_invalidate_visible(bc->window);
+      }
+      else if (event->data.menu_select.menu == &bc->menu &&
+               event->data.menu_select.index == PATTERNS_MENU_RESET)
+      {
+        bc->a = colour_rgb(0x00, 0x00, 0x00);
+        bc->b = colour_rgb(0xFF, 0xFF, 0xFF);
+        wuss_window_invalidate_visible(bc->window);
       }
       else if (wuss_colourlist_selected(&bc->colours, event))
       {

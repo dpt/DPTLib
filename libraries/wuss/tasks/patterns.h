@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "framebuf/colour.h"
+#include "utils/rng.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/saveas.h"
 #include "wuss/menu.h"
@@ -17,7 +18,8 @@
  * colour a to colour b in PATTERNS_STEP-pixel steps, each step an
  * ordered-dither pattern from pattern_from_colour against the system
  * palette. a and b start random and are chosen from the Colour A / Colour B
- * menu rows; Menu > Save PNG opens a Save As dialogue (drag its icon onto a
+ * menu rows; Menu > Randomise (^R) picks both afresh and Menu > Reset (R)
+ * makes it black to white; Menu > Save PNG opens a Save As dialogue (drag its icon onto a
  * Filer window, or Save with a full path already typed) that writes the
  * window's content out */
 
@@ -28,12 +30,13 @@ typedef struct patterns_task
   wuss_saveas_t       *saveas;
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[2]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[4]; /* per-instance: a shared static would
                                        * leak state between instances */
   wuss_menu_t         menu;
   colour_t            a;            /* left edge */
   colour_t            b;            /* right edge */
   wuss_colourlist_t   colours;      /* Colour A/Colour B submenu */
+  rng_t               rng;          /* Randomise */
 }
 patterns_task_t;
 
