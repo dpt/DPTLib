@@ -85,44 +85,7 @@ static result_t mouse_click(wuss_t             *wuss,
   }
 
   if (action == wuss_MOUSE_DOWN)
-  {
-    wuss_window_t *hit_now;
-    int            dx, dy;
-
-    /* Hit-test now, ahead of the real one below, purely to compare against
-     * the window the previous DOWN landed on -- the result is discarded
-     * otherwise, the real hit test still runs its own course further down. */
-    hit_now = wuss__window_at(wuss, p);
-
-    dx = x - wuss->last_down.point.x;
-    dy = y - wuss->last_down.point.y;
-    if (dx < 0)
-      dx = -dx;
-    if (dy < 0)
-      dy = -dy;
-
-    if (wuss->last_down.window == hit_now &&
-        wuss->last_down.button == button &&
-        (wuss->now_ms - wuss->last_down.ms) <=
-          (unsigned int) wuss->input.double_click_ms &&
-        dx <= wuss->input.double_click_px &&
-        dy <= wuss->input.double_click_px)
-    {
-      button |= wuss_BUTTON_DOUBLE;
-
-      /* Consumed: a third press starts a fresh pair, it does not chain into
-       * another double. Reset the button, not the window: NULL is also the
-       * backdrop's hit, so a backdrop press would still match. */
-      wuss->last_down.button = wuss_BUTTON_NONE;
-    }
-    else
-    {
-      wuss->last_down.window = hit_now;
-      wuss->last_down.button = button;
-      wuss->last_down.point  = p;
-      wuss->last_down.ms     = wuss->now_ms;
-    }
-  }
+    button = wuss__double_click(wuss, wuss__window_at(wuss, p), p, button);
 
 #ifdef WUSS_ICONS
   /* Release a held button icon on a MOUSE_UP that will NOT reach it through the

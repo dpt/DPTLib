@@ -569,6 +569,14 @@ void wuss__drag_end(wuss_t        *wuss,
 void wuss__drag_forget_window(wuss_t *wuss, wuss_window_t *window);
 void wuss__drag_draw(wuss_t *wuss);
 
+/* Double-click detection (double-click.c): called for each MOUSE_DOWN with the
+ * window it hit. Returns "button" with wuss_BUTTON_DOUBLE added when this press
+ * completes a double-click, else unchanged; owns the wuss_t::last_down record. */
+wuss_button_t wuss__double_click(wuss_t        *wuss,
+                                 wuss_window_t *hit,
+                                 point_t        p,
+                                 wuss_button_t  button);
+
 /* Mouse capture (capture.c): called from mouse-move.c and mouse-click.c while
  * wuss_t::capture is set, and from window/close.c. */
 result_t wuss__capture_deliver(wuss_t             *wuss,

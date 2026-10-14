@@ -453,6 +453,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/is-dragging.c
     libraries/wuss/core/key.c
     libraries/wuss/core/message.c
+    libraries/wuss/core/double-click.c
     libraries/wuss/core/mouse-click.c
     libraries/wuss/core/mouse-move.c
     libraries/wuss/core/nearest-colour.c
