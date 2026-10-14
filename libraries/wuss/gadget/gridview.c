@@ -49,6 +49,8 @@ struct wuss_gridview
   wuss_gridview_activate_fn_t   *activate;
   wuss_gridview_drag_fn_t       *drag;    /* NULL: items are not draggable */
   int                            press_index; /* item pressed, -1 for none */
+  int                            menu_index; /* item selected only for an
+                                              * open menu, -1 for none */
   point_t                        press_point; /* its document point */
   void                          *opaque;
   bitvec_t                      *selected;
@@ -183,6 +185,7 @@ result_t wuss_gridview_create(wuss_gridview_t            **out,
   gv->activate    = activate;
   gv->drag        = NULL;
   gv->press_index = -1;
+  gv->menu_index  = -1;
   gv->opaque      = opaque;
   gv->label_chars = label_chars;
   gv->columns     = 0;
@@ -381,6 +384,7 @@ static void gridview_clear_selected(wuss_gridview_t *gv)
     gridview_invalidate_cell(gv, i);
 
   bitvec_clear_all(gv->selected);
+  gv->menu_index = -1;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -549,7 +553,20 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
 
     gv->press_index = -1;
 
-    /* a MENU click leaves the selection and the display alone */
+    if (event->data.mouse.button & wuss_BUTTON_MENU)
+    {
+      /* a MENU click over an unselected item, with nothing selected, selects
+       * it until the menu closes; otherwise it leaves the selection alone */
+      index = gridview_hit_test(gv, event->data.mouse.point);
+      if (gv->selectable && index >= 0 && bitvec_count(gv->selected) == 0)
+      {
+        (void) bitvec_set(gv->selected, (bitvec_index_t) index);
+        gv->menu_index = index;
+        gridview_invalidate_cell(gv, index);
+      }
+      return 0;
+    }
+
     if (!(event->data.mouse.button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
       return 0;
 
@@ -607,6 +624,17 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
     }
 
     return 1;
+
+  case wuss_EVENT_MENU_CLOSED:
+    /* undo the selection a MENU click made, unless the menu changed it */
+    if (gv->menu_index >= 0)
+    {
+      if (bitvec_count(gv->selected) == 1 &&
+          bitvec_get(gv->selected, (bitvec_index_t) gv->menu_index))
+        gridview_clear_selected(gv);
+      gv->menu_index = -1;
+    }
+    return 0;
 
   case wuss_EVENT_POINTER_EXIT:
     /* no button state reaches a hover move, so a press the pointer leaves the

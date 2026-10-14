@@ -794,8 +794,18 @@ result_t filing_handle(wuss_window_t      *window,
   }
 
   case wuss_EVENT_MENU_CLOSED:
+  {
+    int i;
+
     task->menu_handle = NULL;
+    for (i = 0; i < task->nwindows; i++)
+    {
+      if (task->windows[i].gridview != NULL)
+        (void) wuss_gridview_handle_event(task->windows[i].gridview, event);
+    }
+
     return result_OK;
+  }
 
   case wuss_EVENT_MESSAGE:
     return filing_message(task, window, event);

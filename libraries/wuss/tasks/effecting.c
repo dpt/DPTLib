@@ -859,6 +859,11 @@ result_t effecting_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_CLOSED:
     ec->menu_handle = NULL; /* wuss closed the chain under us */
+    if (ec->list != NULL)
+    {
+      (void) wuss_gridview_handle_event(ec->list, event);
+      effecting_menu_update(ec);
+    }
     return result_OK;
 
   case wuss_EVENT_CLOSE:
