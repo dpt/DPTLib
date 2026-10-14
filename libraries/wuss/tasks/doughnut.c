@@ -33,15 +33,16 @@
 
 #define DOUGHNUT_R2   2.0  /* ring radius */
 #define DOUGHNUT_K2   5.0  /* viewer distance */
-#define DOUGHNUT_P1 314.15 /* points around the tube */
-#define DOUGHNUT_P2  90.0  /* points around the ring */
 #define DOUGHNUT_KEY_STEP 0.1 /* radians per arrow press while paused */
 
 enum
 {
   DOUGHNUT_MENU_COLOURS = 0,
   DOUGHNUT_MENU_TUBE,
+  DOUGHNUT_MENU_MAJOR,
+  DOUGHNUT_MENU_MINOR,
   DOUGHNUT_MENU_PAUSE,
+  DOUGHNUT_MENU_RANDOMISE,
   DOUGHNUT_MENU_RESET,
   DOUGHNUT_MENU_SAVE
 };
@@ -64,6 +65,24 @@ doughnut_tubes[] =
 };
 
 #define DOUGHNUT_TUBE_CLASSIC 1
+
+/* "Major density" / "Minor density" submenu rows: samples round the ring
+ * (phi) and round the tube (theta) */
+static const struct
+{
+  const char *name;
+  int         major, minor;
+}
+doughnut_densities[] =
+{
+  { "Sparse",  40,  12 },
+  { "Low",     80,  24 },
+  { "Medium", 160,  48 },
+  { "High",   314,  90 }, /* the original donut.c */
+  { "Max",    628, 180 }
+};
+
+#define DOUGHNUT_DENSITY_DEFAULT 3
 
 /* one theta/phi surface sample, projected and shaded into out_x/out_y/
  * out_z/out_lum; returns 0 if the projected point falls outside [0,width)x
@@ -158,6 +177,45 @@ static result_t doughnut_saveas_save(const char *path, void *opaque)
   return snapshot_save_png(task->window, doughnut_handle, task, path);
 }
 
+/* the starting view, as doughnut_create and Reset restore it */
+static void doughnut_defaults(doughnut_task_t *task)
+{
+  task->a     = 1.0;
+  task->b     = 1.0;
+  task->zoom  = 1.0;
+  task->tube  = DOUGHNUT_TUBE_CLASSIC;
+  task->major = DOUGHNUT_DENSITY_DEFAULT;
+  task->minor = DOUGHNUT_DENSITY_DEFAULT;
+  task->bg    = colour_rgb(0x20, 0x20, 0x20);
+  task->fg    = colour_rgb(0xFF, 0xFF, 0xFF);
+  doughnut_palette_build(task);
+}
+
+/* a colour with each channel picked at random */
+static colour_t doughnut_random_colour(rng_t *rng)
+{
+  unsigned int r, g, b;
+
+  r = (unsigned int) rng_range(rng, 256);
+  g = (unsigned int) rng_range(rng, 256);
+  b = (unsigned int) rng_range(rng, 256);
+
+  return colour_rgb(r, g, b);
+}
+
+/* pick the angles, tube, densities and colours afresh; zoom stays */
+static void doughnut_randomise(doughnut_task_t *task)
+{
+  task->a     = rng_range(&task->rng, 628) / 100.0;
+  task->b     = rng_range(&task->rng, 628) / 100.0;
+  task->tube  = rng_range(&task->rng, NELEMS(doughnut_tubes));
+  task->major = rng_range(&task->rng, NELEMS(doughnut_densities));
+  task->minor = rng_range(&task->rng, NELEMS(doughnut_densities));
+  task->fg    = doughnut_random_colour(&task->rng);
+  task->bg    = doughnut_random_colour(&task->rng);
+  doughnut_palette_build(task);
+}
+
 result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
 {
   result_t         rc;
@@ -172,14 +230,8 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
     return result_OOM;
 
   task->wuss = wuss;
-  task->a    = 1.0;
-  task->b    = 1.0;
-  task->zoom = 1.0;
-  task->tube = DOUGHNUT_TUBE_CLASSIC;
-
-  task->bg = colour_rgb(0x20, 0x20, 0x20);
-  task->fg = colour_rgb(0xFF, 0xFF, 0xFF);
-  doughnut_palette_build(task);
+  rng_seed(&task->rng, (uint32_t) rand());
+  doughnut_defaults(task);
 
   /* doughnut_redraw paints its own background every frame */
   delegate_desc.handle    = doughnut_handle;
@@ -228,11 +280,35 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_TUBE, "Tube",
                       wuss_MENU_ITEM_NONE, &task->tube_menu);
 
+  for (i = 0; i < NELEMS(task->major_items); i++)
+  {
+    WUSS_MENU_ITEM(task->major_items, i, doughnut_densities[i].name,
+                   wuss_MENU_ITEM_NONE);
+    WUSS_MENU_ITEM(task->minor_items, i, doughnut_densities[i].name,
+                   wuss_MENU_ITEM_NONE);
+  }
+
+  WUSS_MENU_TITLE(task->major_menu, "Major density", task->major_items,
+                  NELEMS(task->major_items));
+  WUSS_MENU_TITLE(task->minor_menu, "Minor density", task->minor_items,
+                  NELEMS(task->minor_items));
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_MAJOR, "Major density",
+                      wuss_MENU_ITEM_NONE, &task->major_menu);
+  WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_MINOR, "Minor density",
+                      wuss_MENU_ITEM_NONE, &task->minor_menu);
+  task->menu_items[DOUGHNUT_MENU_TUBE].shortcut  = "- +";
+  task->menu_items[DOUGHNUT_MENU_MAJOR].shortcut = "[ ]";
+  task->menu_items[DOUGHNUT_MENU_MINOR].shortcut = ", .";
+
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, DOUGHNUT_MENU_PAUSE, "Pause",
                           wuss_MENU_ITEM_NONE, "SPACE");
 
-  WUSS_MENU_ITEM(task->menu_items, DOUGHNUT_MENU_RESET, "Reset view",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, DOUGHNUT_MENU_RANDOMISE,
+                          "Randomise", wuss_MENU_ITEM_NONE, "^R");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, DOUGHNUT_MENU_RESET, "Reset",
+                          wuss_MENU_ITEM_NONE, "R");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, DOUGHNUT_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_NONE, "^S");
@@ -283,7 +359,7 @@ static result_t doughnut_redraw(const wuss_event_t *event,
   int            x, y;
   double         r1;
   double         k1;
-  double         theta, phi;
+  double         theta, phi, dtheta, dphi;
   double         z, lum;
   bitmap_t       bm;
 
@@ -332,14 +408,17 @@ static result_t doughnut_redraw(const wuss_event_t *event,
   r1 = doughnut_tubes[task->tube].r1;
   k1 = width * DOUGHNUT_K2 * 3.0 / (8.0 * (r1 + DOUGHNUT_R2)) * task->zoom;
 
-  for (theta = 0.0; theta < 2.0 * M_PI; theta += 2.0 * M_PI / DOUGHNUT_P2)
+  dtheta = 2.0 * M_PI / doughnut_densities[task->minor].minor;
+  dphi   = 2.0 * M_PI / doughnut_densities[task->major].major;
+
+  for (theta = 0.0; theta < 2.0 * M_PI; theta += dtheta)
   {
     double costheta, sintheta;
 
     costheta = cos(theta);
     sintheta = sin(theta);
 
-    for (phi = 0.0; phi < 2.0 * M_PI; phi += 2.0 * M_PI / DOUGHNUT_P1)
+    for (phi = 0.0; phi < 2.0 * M_PI; phi += dphi)
     {
       int cell;
 
@@ -389,6 +468,8 @@ static result_t doughnut_mouse(doughnut_task_t    *task,
     if (button & wuss_BUTTON_MENU)
     {
       wuss_menu_tick_exclusive(&task->tube_menu, task->tube);
+      wuss_menu_tick_exclusive(&task->major_menu, task->major);
+      wuss_menu_tick_exclusive(&task->minor_menu, task->minor);
       wuss_menu_tick_item(&task->menu, DOUGHNUT_MENU_PAUSE, task->paused);
 
       return wuss_menu_open_at_pointer(task->delegate, &task->menu,
@@ -457,11 +538,53 @@ static result_t doughnut_idle(doughnut_task_t *task)
   return result_OK;
 }
 
-/* While paused, the arrow keys step the rotation: Up/Down about x (a),
+/* set *field (task->major, ->minor or ->tube) to index, clamped below
+ * count, refreshing the live menu tick and the picture */
+static result_t doughnut_density_set(doughnut_task_t *task,
+                                     int             *field,
+                                     wuss_menu_t     *menu,
+                                     int              count,
+                                     int              index)
+{
+  *field = CLAMP(index, 0, count - 1);
+
+  if (task->menu_handle != NULL)
+    wuss_menu_tick_exclusive_live(task->menu_handle, menu, *field);
+  wuss_window_invalidate_visible(task->window);
+
+  return result_OK;
+}
+
+/* '[' ']' step the major density, ',' '.' the minor and '-' '+' the tube,
+ * spinning or not. While paused, the arrow keys step the rotation: Up/Down about x (a),
  * Left/Right about z (b). Anything else, or an arrow while spinning, is
  * passed back unclaimed. */
 static result_t doughnut_key(doughnut_task_t *task, int code)
 {
+  switch (code)
+  {
+  case '[': return doughnut_density_set(task, &task->major, &task->major_menu,
+                                         NELEMS(doughnut_densities),
+                                         task->major - 1);
+  case ']': return doughnut_density_set(task, &task->major, &task->major_menu,
+                                         NELEMS(doughnut_densities),
+                                         task->major + 1);
+  case ',': return doughnut_density_set(task, &task->minor, &task->minor_menu,
+                                         NELEMS(doughnut_densities),
+                                         task->minor - 1);
+  case '.': return doughnut_density_set(task, &task->minor, &task->minor_menu,
+                                         NELEMS(doughnut_densities),
+                                         task->minor + 1);
+  case '-': return doughnut_density_set(task, &task->tube, &task->tube_menu,
+                                         NELEMS(doughnut_tubes),
+                                         task->tube - 1);
+  case '=':
+  case '+': return doughnut_density_set(task, &task->tube, &task->tube_menu,
+                                         NELEMS(doughnut_tubes),
+                                         task->tube + 1);
+  default:  break;
+  }
+
   if (!task->paused)
     return result_WUSS_KEY_UNCLAIMED;
 
@@ -492,12 +615,23 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
   }
 
   if (event->data.menu_select.menu == &task->menu &&
-      event->data.menu_select.index == DOUGHNUT_MENU_RESET)
+      (event->data.menu_select.index == DOUGHNUT_MENU_RANDOMISE ||
+       event->data.menu_select.index == DOUGHNUT_MENU_RESET))
   {
-    /* same as doughnut_create */
-    task->a    = 1.0;
-    task->b    = 1.0;
-    task->zoom = 1.0;
+    if (event->data.menu_select.index == DOUGHNUT_MENU_RANDOMISE)
+      doughnut_randomise(task);
+    else
+      doughnut_defaults(task);
+
+    if (task->menu_handle != NULL)
+    {
+      wuss_menu_tick_exclusive_live(task->menu_handle, &task->tube_menu,
+                                    task->tube);
+      wuss_menu_tick_exclusive_live(task->menu_handle, &task->major_menu,
+                                    task->major);
+      wuss_menu_tick_exclusive_live(task->menu_handle, &task->minor_menu,
+                                    task->minor);
+    }
     wuss_window_invalidate_visible(task->window);
     return result_OK;
   }
@@ -508,14 +642,20 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
     return wuss_saveas_open(task->saveas);
   }
 
+  if (event->data.menu_select.menu == &task->major_menu)
+    return doughnut_density_set(task, &task->major, &task->major_menu,
+                                NELEMS(doughnut_densities),
+                                event->data.menu_select.index);
+
+  if (event->data.menu_select.menu == &task->minor_menu)
+    return doughnut_density_set(task, &task->minor, &task->minor_menu,
+                                NELEMS(doughnut_densities),
+                                event->data.menu_select.index);
+
   if (event->data.menu_select.menu == &task->tube_menu)
-  {
-    task->tube = event->data.menu_select.index;
-    wuss_menu_tick_exclusive_live(task->menu_handle, &task->tube_menu,
-                                  task->tube);
-    wuss_window_invalidate_visible(task->window);
-    return result_OK;
-  }
+    return doughnut_density_set(task, &task->tube, &task->tube_menu,
+                                NELEMS(doughnut_tubes),
+                                event->data.menu_select.index);
 
   if (wuss_colourlist_selected(&task->colours, event))
   {

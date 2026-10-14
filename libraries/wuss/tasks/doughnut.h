@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "framebuf/colour.h"
+#include "utils/rng.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/saveas.h"
 #include "wuss/menu.h"
@@ -18,8 +19,12 @@
  * takes the input focus); the wheel zooms in/out; an Adjust drag spins the
  * torus directly, overriding the idle auto-rotation for as long as it's
  * held. Space also toggles pause; while paused the arrow keys step the
- * rotation. Menu > Tube picks the tube's thickness; Menu > Reset view
- * restores the starting angles and zoom; Menu > Save PNG opens a Save As
+ * rotation. Menu > Tube picks the tube's thickness; Menu > Major density
+ * and Minor density pick how many points are sampled round the ring and
+ * the tube ([ and ] step the major density, comma and full stop the
+ * minor, minus and plus the tube); Menu > Randomise (^R)
+ * picks every setting afresh; Menu > Reset (R) restores the starting
+ * angles, zoom, tube, densities and colours; Menu > Save PNG opens a Save As
  * dialogue (drag its icon onto a Filer window, or Save with a full path
  * already typed) that writes the window's content out. */
 typedef struct doughnut_task
@@ -29,11 +34,17 @@ typedef struct doughnut_task
   wuss_saveas_t     *saveas;
   wuss_window_t     *window;
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t   menu_items[5]; /* per-instance, not a shared static */
+  wuss_menu_item_t   menu_items[8]; /* per-instance, not a shared static */
   wuss_menu_t        menu;
   wuss_menu_item_t   tube_items[4]; /* "Tube" submenu: one row per radius */
   wuss_menu_t        tube_menu;
   int                tube;    /* index into doughnut_tubes */
+  wuss_menu_item_t   major_items[5]; /* "Major density": ring samples */
+  wuss_menu_t        major_menu;
+  wuss_menu_item_t   minor_items[5]; /* "Minor density": tube samples */
+  wuss_menu_t        minor_menu;
+  int                major, minor; /* indices into doughnut_densities */
+  rng_t              rng;     /* Randomise */
   wuss_colourlist_t  colours; /* Foreground/Background submenu */
   colour_t           fg, bg;  /* picked from the shared colourmenu */
   colour_t           palette[256]; /* shade bitmap's palette: 0 = bg,
