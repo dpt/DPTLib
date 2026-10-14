@@ -7,6 +7,8 @@
 #include "wuss/task.h"
 #include "wuss/window.h"
 #include "wuss/menu.h"
+#include "framebuf/bitmap.h"
+#include "framebuf/screen.h"
 
 typedef struct test_task
 {
@@ -67,5 +69,26 @@ extern void reap_test_tasks(void);
 
 /* Drop the registry without destroying anything. */
 extern void forget_test_tasks(void);
+
+/* A bitmap-backed screen with a default wuss on it, for tests that each
+ * want a fresh instance. */
+typedef struct wuss_fixture
+{
+  void     *pixels;
+  bitmap_t  bm;
+  screen_t  scr;
+  wuss_t   *wuss;
+}
+wuss_fixture_t;
+
+/* Make a width x height bgrx8888 screen and a default wuss on it, and forget
+ * any tasks left over from an earlier test. */
+extern result_t wuss_fixture_open(wuss_fixture_t *fixture,
+                                  int             width,
+                                  int             height);
+
+/* Destroy the wuss (sweeping its tasks) and free the screen. Safe after a
+ * failed open. */
+extern void wuss_fixture_close(wuss_fixture_t *fixture);
 
 #endif /* WUSS_TEST_HARNESS_H */

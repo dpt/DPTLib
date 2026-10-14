@@ -11,6 +11,7 @@
 #include "wuss/task.h"
 #include "wuss/window.h"
 #include "wuss/message.h"
+#include "framebuf/pixelfmt.h"
 #ifdef WUSS_MENUS
 #include "wuss/menu.h"
 #endif
@@ -197,4 +198,45 @@ void reap_test_tasks(void)
 void forget_test_tasks(void)
 {
   mk_task_count = 0;
+}
+
+/* ----------------------------------------------------------------------- */
+
+result_t wuss_fixture_open(wuss_fixture_t *fixture,
+                           int             width,
+                           int             height)
+{
+  result_t rc;
+  int      rowbytes;
+
+  fixture->wuss = NULL;
+
+  forget_test_tasks();
+
+  rowbytes        = width * 4;
+  fixture->pixels = malloc((size_t) rowbytes * height);
+  if (fixture->pixels == NULL)
+    return result_OOM;
+
+  rc = bitmap_init(&fixture->bm, SIZE2D(width, height), pixelfmt_bgrx8888,
+                   rowbytes, NULL, fixture->pixels);
+  if (rc != result_OK)
+    return rc;
+
+  screen_for_bitmap(&fixture->scr, &fixture->bm);
+
+  return wuss_create(&fixture->scr, NULL, 0, NULL, 0, NULL, NULL, NULL,
+                     &fixture->wuss);
+}
+
+void wuss_fixture_close(wuss_fixture_t *fixture)
+{
+  if (fixture->wuss != NULL)
+    wuss_destroy(fixture->wuss);
+  fixture->wuss = NULL;
+
+  forget_test_tasks();
+
+  free(fixture->pixels);
+  fixture->pixels = NULL;
 }
