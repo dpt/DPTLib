@@ -242,7 +242,7 @@ wuss_colour_t wuss_colourmenu_selected(const wuss_event_t *ev, int *ok)
    * next open and on the rows of a chain an ADJUST pick left open (a no-op
    * once a SELECT pick has torn the chain down) */
   wuss_colourmenu_set_ticked(g.menu->items[index].swatch);
-  wuss_menu_tick_exclusive_live(g.wuss->menu.chain, g.menu, index);
+  wuss_menu_tick_exclusive_live(wuss__menu_chain(g.wuss), g.menu, index);
 
   if (ok != NULL)
     *ok = 1;

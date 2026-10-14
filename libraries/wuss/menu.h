@@ -3,6 +3,7 @@
 #ifndef WUSS_MENU_IMPL_H
 #define WUSS_MENU_IMPL_H
 
+#include "base/utils.h"
 #include "geom/point.h"
 
 #include "wuss/wuss.h"
@@ -21,8 +22,9 @@ enum
 };
 
 /* One open level of a menu chain: its window and per-item icon handles, plus a
- * link to the level it opened from. The head (root) is wuss->menu.chain; each
- * child points at its parent so wuss_menu_close can walk leaf-to-root. */
+ * link to the level it opened from. The head (root) is the session chain
+ * (wuss__menu_chain); each child points at its parent so wuss_menu_close can
+ * walk leaf-to-root. */
 struct wuss__menu
 {
   unsigned int           flags;
@@ -94,15 +96,112 @@ struct wuss__menu
   flash;
 };
 
-/* Called from wuss_mouse_click on a MOUSE_DOWN before the window hit-test: if a
- * menu chain is open and `hit` is not one of its windows, close the whole chain
- * and return 1 (the click is spent on dismissal). Returns 0 otherwise. */
-int wuss__menu_click_outside(wuss_t *wuss, const wuss_window_t *hit);
+#ifdef WUSS_MENUS
+
+/* ----- menu session entry points (core calls only these) ----- */
+
+/* Allocate / free the per-wuss_t menu session (wuss->menu). Create runs in
+ * wuss_create, free as the last step of wuss_destroy: window closes during the
+ * z_order sweep still consult the session. */
+result_t wuss__menu_session_create(wuss_t *wuss);
+void     wuss__menu_session_free(wuss_t *wuss);
+
+/* wuss_destroy: close any chain a client QUIT left open, then QUIT and free
+ * the internal menu task. Run after every client task is gone. */
+void wuss__menu_teardown(wuss_t *wuss);
+
+/* True if `task` is the internal task owning the menu windows; wuss_destroy's
+ * client sweep skips it so it outlives every client QUIT. */
+int wuss__menu_is_task(const wuss_t *wuss, const wuss_task_t *task);
+
+/* Head of the open chain, NULL when none. */
+struct wuss__menu *wuss__menu_chain(const wuss_t *wuss);
+
+/* Called from wuss_mouse_click for every press/release before the window
+ * hit-test. Returns 1 if the event is spent -- the tail of the press that
+ * opened the chain, or a MOUSE_DOWN outside every chain window (which closes
+ * the chain, unless it is a MENU press landing on another window) -- else 0. */
+int wuss__menu_press(wuss_t              *wuss,
+                     wuss_mouse_action_t  action,
+                     wuss_button_t        button,
+                     const wuss_window_t *hit);
+
+/* Called from wuss_key_press: Escape dismisses an open chain. Returns 1 if the
+ * key was claimed. */
+int wuss__menu_key(wuss_t *wuss, int code);
+
+/* wuss_window_close: `doomed` is about to go. Forgets it as a focus lender and
+ * abandons the chain if it is one of the chain's windows. */
+void wuss__menu_window_closing(wuss_t *wuss, wuss_window_t *doomed);
+
+/* A task is about to get its QUIT: abandon the chain if the task owns it. */
+void wuss__menu_task_closing(wuss_t *wuss, const wuss_task_t *task);
 
 /* True if `icon` is a parent row on an open menu chain whose submenu is open --
  * i.e. some chain level's `open_index` row. Such a row keeps its hover
  * highlight while the pointer is in a deeper level; wuss__icon_set_hover asks
  * before dropping a row's highlight. */
 int wuss__menu_row_pinned(const wuss_t *wuss, const wuss_icon_t *icon);
+
+#else /* !WUSS_MENUS */
+
+static inline result_t wuss__menu_session_create(wuss_t *wuss)
+{
+  NOT_USED(wuss);
+  return result_OK;
+}
+
+static inline void wuss__menu_session_free(wuss_t *wuss)
+{
+  NOT_USED(wuss);
+}
+
+static inline void wuss__menu_teardown(wuss_t *wuss)
+{
+  NOT_USED(wuss);
+}
+
+static inline int wuss__menu_is_task(const wuss_t      *wuss,
+                                     const wuss_task_t *task)
+{
+  NOT_USED(wuss);
+  NOT_USED(task);
+  return 0;
+}
+
+static inline int wuss__menu_press(wuss_t              *wuss,
+                                   wuss_mouse_action_t  action,
+                                   wuss_button_t        button,
+                                   const wuss_window_t *hit)
+{
+  NOT_USED(wuss);
+  NOT_USED(action);
+  NOT_USED(button);
+  NOT_USED(hit);
+  return 0;
+}
+
+static inline int wuss__menu_key(wuss_t *wuss, int code)
+{
+  NOT_USED(wuss);
+  NOT_USED(code);
+  return 0;
+}
+
+static inline void wuss__menu_window_closing(wuss_t        *wuss,
+                                             wuss_window_t *doomed)
+{
+  NOT_USED(wuss);
+  NOT_USED(doomed);
+}
+
+static inline void wuss__menu_task_closing(wuss_t            *wuss,
+                                           const wuss_task_t *task)
+{
+  NOT_USED(wuss);
+  NOT_USED(task);
+}
+
+#endif /* WUSS_MENUS */
 
 #endif /* WUSS_MENU_IMPL_H */

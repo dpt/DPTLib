@@ -6494,7 +6494,7 @@ FontMenuOK: ;
       rc = wuss_redraw_dirty(cmwuss);
       if (rc != result_OK) goto ColourMenuFail;
 
-      wuss_menu_close(cmwuss->menu.chain);
+      wuss_menu_close(wuss__menu_chain(cmwuss));
       wuss_destroy(cmwuss);
       free(cmpixels);
       bmfont_destroy(cmfont);
@@ -6596,11 +6596,11 @@ ColourMenuOK: ;
     ev.data.icon.value   = 0;
     if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || ssrc != result_OK)
       goto StringSetFail;
-    if (sswuss->menu.chain == NULL) goto StringSetFail;
+    if (wuss__menu_chain(sswuss) == NULL) goto StringSetFail;
 
     /* a pick of another entry updates the index and fires the callback */
     ev.kind                    = wuss_EVENT_MENU_SELECT;
-    ev.data.menu_select.menu   = wuss_menu_handle_menu(sswuss->menu.chain);
+    ev.data.menu_select.menu   = wuss_menu_handle_menu(wuss__menu_chain(sswuss));
     ev.data.menu_select.index  = 2;
     ev.data.menu_select.button = wuss_BUTTON_ADJUST;
     if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || ssrc != result_OK)
@@ -6618,7 +6618,7 @@ ColourMenuOK: ;
 
     /* destroying it closes the menu */
     wuss_stringset_destroy(ss);
-    if (sswuss->menu.chain != NULL) goto StringSetFail;
+    if (wuss__menu_chain(sswuss) != NULL) goto StringSetFail;
 
     /* once the chain is freed behind the gadget -- after a Select pick, or
      * a wuss-initiated close reported by MENU_CLOSED -- destroying it must
@@ -6637,20 +6637,20 @@ ColourMenuOK: ;
       ev.data.icon.value  = 0;
       if (!wuss_stringset_handle_event(ss, &ev, &ssrc) || ssrc != result_OK)
         goto StringSetFail;
-      if (sswuss->menu.chain == NULL) goto StringSetFail;
+      if (wuss__menu_chain(sswuss) == NULL) goto StringSetFail;
 
       if (i == 0)
       {
         ev.kind                    = wuss_EVENT_MENU_SELECT;
-        ev.data.menu_select.menu   = wuss_menu_handle_menu(sswuss->menu.chain);
+        ev.data.menu_select.menu   = wuss_menu_handle_menu(wuss__menu_chain(sswuss));
         ev.data.menu_select.index  = 1;
         ev.data.menu_select.button = wuss_BUTTON_SELECT;
         if (!wuss_stringset_handle_event(ss, &ev, &ssrc)) goto StringSetFail;
-        wuss_menu_close(sswuss->menu.chain); /* as wuss does after Select */
+        wuss_menu_close(wuss__menu_chain(sswuss)); /* as wuss does after Select */
       }
       else
       {
-        wuss_menu_close(sswuss->menu.chain); /* as a click outside does */
+        wuss_menu_close(wuss__menu_chain(sswuss)); /* as a click outside does */
         ev.kind = wuss_EVENT_MENU_CLOSED;
         if (wuss_stringset_handle_event(ss, &ev, &ssrc)) goto StringSetFail;
       }
@@ -7118,12 +7118,12 @@ RelayoutOK: ;
     ev.data.icon.value   = 0;
     if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
       goto ColourSetFail;
-    if (cswuss->menu.chain == NULL) goto ColourSetFail;
+    if (wuss__menu_chain(cswuss) == NULL) goto ColourSetFail;
 
     /* an Adjust pick of another colour refills the field and fires the
      * callback, keeping the menu open */
     ev.kind                    = wuss_EVENT_MENU_SELECT;
-    ev.data.menu_select.menu   = wuss_menu_handle_menu(cswuss->menu.chain);
+    ev.data.menu_select.menu   = wuss_menu_handle_menu(wuss__menu_chain(cswuss));
     ev.data.menu_select.index  = 1;
     ev.data.menu_select.button = wuss_BUTTON_ADJUST;
     if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
@@ -7145,7 +7145,7 @@ RelayoutOK: ;
 
     /* a Select pick: wuss closes the chain and delivers MENU_CLOSED (picked)
      * before MENU_SELECT, which is still the gadget's */
-    wuss_menu_close(cswuss->menu.chain);
+    wuss_menu_close(wuss__menu_chain(cswuss));
     ev.kind                    = wuss_EVENT_MENU_CLOSED;
     ev.data.menu_closed.picked = 1;
     if (wuss_colourset_handle_event(cs, &ev, &csrc)) goto ColourSetFail;
@@ -7168,7 +7168,7 @@ RelayoutOK: ;
     ev.data.icon.value   = 0;
     if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
       goto ColourSetFail;
-    wuss_menu_close(cswuss->menu.chain); /* as a click outside does */
+    wuss_menu_close(wuss__menu_chain(cswuss)); /* as a click outside does */
     ev.kind                    = wuss_EVENT_MENU_CLOSED;
     ev.data.menu_closed.picked = 0;
     if (wuss_colourset_handle_event(cs, &ev, &csrc)) goto ColourSetFail;
@@ -7187,7 +7187,7 @@ RelayoutOK: ;
     if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
       goto ColourSetFail;
     wuss_colourset_destroy(cs);
-    if (cswuss->menu.chain != NULL) goto ColourSetFail;
+    if (wuss__menu_chain(cswuss) != NULL) goto ColourSetFail;
 
     reap_test_tasks();
     wuss_destroy(cswuss);

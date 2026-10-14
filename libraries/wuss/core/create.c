@@ -109,12 +109,6 @@ result_t wuss_create(screen_t               *scr,
   w->icon.bitmaps       = NULL;
   w->icon.nbitmaps      = 0;
 #endif
-#ifdef WUSS_MENUS
-  w->menu.chain         = NULL;
-  w->menu.task          = NULL;
-  w->menu.eat_up        = 0;
-  w->menu.bottom_gap    = 0;
-#endif
 #ifdef WUSS_ICONBAR
   w->iconbar.window         = NULL;
   w->iconbar.task           = NULL;
@@ -167,8 +161,19 @@ result_t wuss_create(screen_t               *scr,
     (void) wuss_iconpool_load_resource(w, resources);
 #endif
 
+  if (wuss__menu_session_create(w) != result_OK)
+  {
+#ifdef WUSS_ICONS
+    wuss__iconpool_clear(w, &w->icon);
+#endif
+    wuss__free(w, w->palette);
+    wuss__free(w, w);
+    return result_OOM;
+  }
+
   if (bmfontcache_create(&w->font_cache) != result_OK)
   {
+    wuss__menu_session_free(w);
 #ifdef WUSS_ICONS
     wuss__iconpool_clear(w, &w->icon);
 #endif

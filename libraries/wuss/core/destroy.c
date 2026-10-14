@@ -12,17 +12,11 @@ void wuss_destroy(wuss_t *doomed)
 {
   list_t      *e;
   int          s;
-  wuss_task_t *menu_task;
   wuss_task_t *iconbar_task;
 
   if (doomed == NULL)
     return;
 
-#ifdef WUSS_MENUS
-  menu_task = doomed->menu.task;
-#else
-  menu_task = NULL;
-#endif
 #ifdef WUSS_ICONBAR
   iconbar_task = doomed->iconbar.task;
 #else
@@ -50,7 +44,7 @@ void wuss_destroy(wuss_t *doomed)
    * leave the saved `next` node open to that. Same guard wuss_task_destroy
    * sets for its own internal QUIT. */
   for (e = doomed->tasks.next; e != NULL; e = e->next)
-    if (wuss__task_from_link(e) != menu_task &&
+    if (!wuss__menu_is_task(doomed, wuss__task_from_link(e)) &&
         wuss__task_from_link(e) != iconbar_task)
       wuss__task_from_link(e)->flags |= wuss_TASK__REAPING;
 
@@ -61,21 +55,18 @@ void wuss_destroy(wuss_t *doomed)
     wuss_event_t event;
 
     next = e->next;
-    if (wuss__task_from_link(e) != menu_task &&
+    if (!wuss__menu_is_task(doomed, wuss__task_from_link(e)) &&
         wuss__task_from_link(e) != iconbar_task)
     {
       wuss_task_t *task = wuss__task_from_link(e);
 
-#ifdef WUSS_MENUS
       /* If this task owns the live menu chain, abandon it before QUIT, same
        * as wuss_task_destroy does for a standalone task teardown: this also
        * delivers wuss_EVENT_MENU_CLOSED to `task`, nulling any
        * wuss_menu_handle_t it holds, so a QUIT handler's own
        * wuss_menu_close on that handle doesn't walk an already-freed chain
        * -- the leftover-chain close below then just finds nothing to do. */
-      if (doomed->menu.chain != NULL && doomed->menu.chain->owner == task)
-        wuss__menu_abandon(doomed);
-#endif
+      wuss__menu_task_closing(doomed, task);
 
       event.kind = wuss_EVENT_QUIT;
       (void) wuss__deliver(task, NULL, &event);
@@ -94,30 +85,10 @@ void wuss_destroy(wuss_t *doomed)
     e = next;
   }
 
-#ifdef WUSS_MENUS
-  /* Drop any menu chain a QUIT handler left open: its windows are freed by
-   * the z_order sweep below, but the chain nodes and their icon-handle
-   * arrays are not. NULL (the common case now) is a no-op. Still runs
-   * against a live wuss__menu_task.
-   *
-   * ponytail: a bare wuss_menu_close, not wuss__menu_abandon -- every client
-   * task is already freed by the sweep above, so the chain's owner (and any
-   * flashing pick's owner) is dangling and must not be delivered to. No path
-   * leaves a mid-flash pick standing at wuss_destroy today; track the flash
-   * owner per task if one ever does. */
-  wuss_menu_close(doomed->menu.chain);
-
-  /* Now the menu task has nothing left to own -- QUIT and free it. */
-  if (menu_task != NULL)
-  {
-    wuss_event_t event;
-
-    event.kind = wuss_EVENT_QUIT;
-    (void) wuss__deliver(menu_task, NULL, &event);
-    wuss__free(doomed, &menu_task->link);
-    doomed->menu.task = NULL;
-  }
-#endif
+  /* Close any chain a QUIT handler left open, then free the menu task: it
+   * outlived every client QUIT above so such a handler could close its own
+   * chain against live menu windows. */
+  wuss__menu_teardown(doomed);
 
 #ifdef WUSS_ICONBAR
   /* The bar's window is freed by the z_order sweep below like any window;
@@ -163,6 +134,7 @@ void wuss_destroy(wuss_t *doomed)
                                             * every acquired font has already
                                             * been released */
   wuss__free(doomed, doomed->msg.queue);
+  wuss__menu_session_free(doomed);
   wuss__free(doomed, doomed->palette);
   wuss__free(doomed, doomed); /* reads doomed->alloc.free before freeing */
 }

@@ -34,9 +34,7 @@
 #ifdef WUSS_ICONS
 #include "../icon.h"
 #endif
-#ifdef WUSS_MENUS
 #include "../menu.h"
-#endif
 
 #define WUSS_TITLE_MAX               255
 #define WUSS_DEFAULT_TITLEBAR_HEIGHT 20
@@ -370,22 +368,8 @@ struct wuss
   struct wuss_iconpool       icon;
 #endif
 #ifdef WUSS_MENUS
-  struct
-  {
-    /* Head (root) of the open pop-up menu chain, NULL when none open;
-     * consulted by mouse-click.c to dismiss on a click-away. */
-    struct wuss__menu *chain;
-    /* Internal task owning every borderless menu window; created lazily on
-     * first wuss_menu_open, freed by wuss_destroy's task sweep. */
-    wuss_task_t       *task;
-    /* Non-zero only during wuss_menu_open_above: the root menu's bottom edge
-     * sits this far above the screen bottom and it is centred on x. */
-    int                bottom_gap;
-    /* A menu opened on the last MOUSE_DOWN; swallow its matching MOUSE_UP so
-     * the release does not immediately pick row 0. */
-    int                eat_up;
-  }
-  menu;
+  /* Opaque; defined in menu/menu.c, reached only via wuss__menu_* (menu.h). */
+  struct wuss__menu_session *menu;
 #endif
 #ifdef WUSS_ICONBAR
   struct

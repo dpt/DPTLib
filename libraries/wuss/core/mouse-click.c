@@ -182,30 +182,8 @@ static result_t mouse_click(wuss_t             *wuss,
    * (window opened under it, or a synthetic tap); keep enter/exit balanced. */
   wuss__pointer_set_window(wuss, win);
 
-#ifdef WUSS_MENUS
-  /* The MOUSE_UP that follows the MENU press which opened the chain is spent:
-   * without this it would land on the new menu's row 0 and pick it. */
-  if (action == wuss_MOUSE_UP && wuss->menu.eat_up)
-  {
-    wuss->menu.eat_up = 0;
+  if (wuss__menu_press(wuss, action, button, win))
     return result_OK;
-  }
-
-  /* Any fresh press ends the eat-up window: the release it pairs with is a
-   * real click, not the tail of the menu-opening press. */
-  if (action == wuss_MOUSE_DOWN)
-    wuss->menu.eat_up = 0;
-
-  /* A press outside every window in the open menu chain dismisses the chain.
-   * Presses inside the chain fall through to the menu window's own delegate.
-   * A MENU press that lands on another window is not spent by the dismissal:
-   * it falls through so that window's delegate can open its own menu at the
-   * new spot, matching the RISC OS "MENU moves the menu" feel. */
-  if (action == wuss_MOUSE_DOWN               &&
-      wuss__menu_click_outside(wuss, win)     &&
-      !(win != NULL && (button & wuss_BUTTON_MENU)))
-    return result_OK;
-#endif
 
   if (win == NULL)
     return result_OK;

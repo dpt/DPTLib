@@ -206,7 +206,7 @@ result_t wuss_menu_test(const char *resources)
     rc = wuss_menu_open(fowner, &flash_menu, POINT(40, 40), NULL);
     if (rc != result_OK) goto FlashDestroy;
 
-    chain = fwuss->menu.chain;
+    chain = wuss__menu_chain(fwuss);
     if (chain == NULL || chain->menu != &flash_menu) goto FlashCheckFail;
 
     flash_pick_row(fwuss, chain, 1, wuss_BUTTON_SELECT);
@@ -219,12 +219,12 @@ result_t wuss_menu_test(const char *resources)
 
     if (ftc.menu_select_count != 1)  goto FlashCheckFail;
     if (ftc.last_menu_index != 1)    goto FlashCheckFail;
-    if (fwuss->menu.chain != NULL)   goto FlashCheckFail; /* SELECT tore it down */
+    if (wuss__menu_chain(fwuss) != NULL)   goto FlashCheckFail; /* SELECT tore it down */
 
     /* --- fast ADJUST re-picks: row 0, then row 2 mid-flash --- */
     rc = wuss_menu_open(fowner, &flash_menu, POINT(40, 40), NULL);
     if (rc != result_OK) goto FlashDestroy;
-    chain = fwuss->menu.chain;
+    chain = wuss__menu_chain(fwuss);
     ftc.menu_select_count = 0;
 
     flash_pick_row(fwuss, chain, 0, wuss_BUTTON_ADJUST);
@@ -246,9 +246,9 @@ result_t wuss_menu_test(const char *resources)
     /* ADJUST keeps the chain open. The flash ends un-highlit, but the pointer
      * is still parked on row 2 (flash_pick_row left it there) so that row --
      * and only that row -- comes back highlit. */
-    if (fwuss->menu.chain == NULL)  goto FlashCheckFail;
+    if (wuss__menu_chain(fwuss) == NULL)  goto FlashCheckFail;
     for (i = 0; i < flash_menu.nitems; i++)
-      if (wuss__icon_hovered(fwuss->menu.chain->icons[i]) != (i == 2))
+      if (wuss__icon_hovered(wuss__menu_chain(fwuss)->icons[i]) != (i == 2))
         goto FlashCheckFail;
 
     /* --- the chain lives in the top stack, so a window opened meanwhile
@@ -276,7 +276,7 @@ FlashCheckFail:
     printf("wuss_test: menu flash check failed "
            "(select_count=%d last_index=%d chain=%p)\n",
            ftc.menu_select_count, ftc.last_menu_index,
-           (void *) fwuss->menu.chain);
+           (void *) wuss__menu_chain(fwuss));
     rc = result_TEST_FAILED;
 
 FlashDestroy:
@@ -354,7 +354,7 @@ FlashFail:
     rc = wuss_menu_open(sowner, &sm_menu, POINT(40, 40), NULL);
     if (rc != result_OK) goto SubHiDestroy;
 
-    root = swuss->menu.chain;
+    root = wuss__menu_chain(swuss);
     if (root == NULL || root->menu != &sm_menu) goto SubHiCheckFail;
 
     /* pointer onto row 1's arrow gutter: its submenu opens */
@@ -494,7 +494,7 @@ SubHiFail:
     rc = wuss_menu_open(powner, &po_menu, POINT(40, 40), NULL);
     if (rc != result_OK) goto PreOpenDestroy;
 
-    proot = pwuss->menu.chain;
+    proot = wuss__menu_chain(pwuss);
     if (proot == NULL || proot->menu != &po_menu) goto PreOpenCheckFail;
 
     /* row 0 unflagged: opens po_sub_a directly, no PRE_SUBMENU_OPEN fired */
@@ -618,7 +618,7 @@ PreOpenFail:
     rc = wuss_menu_open(powner, &pw_menu, POINT(40, 40), NULL);
     if (rc != result_OK) goto PwDestroy;
 
-    proot = pwuss->menu.chain;
+    proot = wuss__menu_chain(pwuss);
     if (proot == NULL || proot->menu != &pw_menu) goto PwCheckFail;
 
     /* row 0 unflagged: still goes through the plain wuss_window_set_hidden
@@ -721,8 +721,8 @@ PwFail:
 
     rc = wuss_menu_open(sowner, &sc_menu, POINT(10, 20), NULL);
     if (rc != result_OK) goto ScDestroy;
-    plain_w = swuss->menu.chain->window->doc.w;
-    wuss_menu_close(swuss->menu.chain);
+    plain_w = wuss__menu_chain(swuss)->window->doc.w;
+    wuss_menu_close(wuss__menu_chain(swuss));
 
     /* one font only, so the "bold" shortcut measures in the system font */
     sc_items[0].shortcut = "WWW";
@@ -731,7 +731,7 @@ PwFail:
 
     rc = wuss_menu_open(sowner, &sc_menu, POINT(10, 20), NULL);
     if (rc != result_OK) goto ScDestroy;
-    sroot = swuss->menu.chain;
+    sroot = wuss__menu_chain(swuss);
     if (sroot->window->doc.w < plain_w + (int) shortcut_w)
     {
       printf("wuss_test: shortcut menu width %d, want >= %d + %d\n",
@@ -899,8 +899,8 @@ ScFail:
                      wuss_MOUSE_UP, NULL);
 
     if (mta.menu_press_count != 1)            goto MoveCheckFail;
-    if (mwuss->menu.chain == NULL ||
-        mwuss->menu.chain->menu != &menu_a)   goto MoveCheckFail;
+    if (wuss__menu_chain(mwuss) == NULL ||
+        wuss__menu_chain(mwuss)->menu != &menu_a)   goto MoveCheckFail;
 
     /* MENU over B while menu A is still open: the old chain must close AND
      * task B must get the press so menu B opens in its place. Regression:
@@ -912,8 +912,8 @@ ScFail:
                      wuss_MOUSE_UP, NULL);
 
     if (mtb.menu_press_count != 1)            goto MoveCheckFail;
-    if (mwuss->menu.chain == NULL ||
-        mwuss->menu.chain->menu != &menu_b)   goto MoveCheckFail;
+    if (wuss__menu_chain(mwuss) == NULL ||
+        wuss__menu_chain(mwuss)->menu != &menu_b)   goto MoveCheckFail;
 
     /* replacing menu A's chain told task A its handle was gone */
     if (mta.menu_closed_count != 1)           goto MoveCheckFail;
@@ -922,7 +922,7 @@ ScFail:
     /* a plain SELECT press on bare backdrop still just dismisses */
     wuss_mouse_click(mwuss, POINT(4, 196), wuss_BUTTON_SELECT,
                      wuss_MOUSE_DOWN, NULL);
-    if (mwuss->menu.chain != NULL)            goto MoveCheckFail;
+    if (wuss__menu_chain(mwuss) != NULL)            goto MoveCheckFail;
 
     /* the click-outside dismissal told task B too. Regression: before the
      * MENU_CLOSED fix wuss freed the chain here without telling task B, so
@@ -931,7 +931,7 @@ ScFail:
     if (mtb.menu_closed_count != 1)           goto MoveCheckFail;
     if (mtb.menu_handle != NULL)              goto MoveCheckFail;
     wuss_menu_close(mtb.menu_handle); /* NULL now: safe no-op */
-    if (mwuss->menu.chain != NULL)            goto MoveCheckFail;
+    if (wuss__menu_chain(mwuss) != NULL)            goto MoveCheckFail;
 
     {
       int claimed;
@@ -943,11 +943,11 @@ ScFail:
                        wuss_MOUSE_DOWN, NULL);
       wuss_mouse_click(mwuss, POINT(20, 20), wuss_BUTTON_MENU,
                        wuss_MOUSE_UP, NULL);
-      if (mwuss->menu.chain == NULL)          goto MoveCheckFail;
+      if (wuss__menu_chain(mwuss) == NULL)          goto MoveCheckFail;
 
       wuss_key(mwuss, wuss_KEY_ESCAPE, wuss_KEY_MOD_NONE, &claimed);
       if (!claimed)                           goto MoveCheckFail;
-      if (mwuss->menu.chain != NULL)          goto MoveCheckFail;
+      if (wuss__menu_chain(mwuss) != NULL)          goto MoveCheckFail;
       if (mta.menu_closed_count != 2)         goto MoveCheckFail;
       if (mta.menu_handle != NULL)            goto MoveCheckFail;
     }
@@ -959,7 +959,7 @@ MoveCheckFail:
     printf("wuss_test: menu-move check failed "
            "(a_press=%d b_press=%d chain=%p)\n",
            mta.menu_press_count, mtb.menu_press_count,
-           (void *) mwuss->menu.chain);
+           (void *) wuss__menu_chain(mwuss));
     rc = result_TEST_FAILED;
 
 MoveDestroy:
@@ -1042,7 +1042,7 @@ MoveFail:
                      wuss_MOUSE_DOWN, NULL);
     wuss_mouse_click(qwuss, POINT(20, 20), wuss_BUTTON_MENU,
                      wuss_MOUSE_UP, NULL);
-    if (qwuss->menu.chain == NULL)           goto QuitCheckFail;
+    if (wuss__menu_chain(qwuss) == NULL)           goto QuitCheckFail;
     if (qmt.menu_handle == NULL)             goto QuitCheckFail;
 
     /* Phase 1: wuss_task_destroy on the chain's owner. It abandons the chain
@@ -1052,7 +1052,7 @@ MoveFail:
      * chain (ASan: heap-use-after-free in wuss_menu_close). */
     reap_test_tasks();
     if (qmt.menu_handle != NULL)             goto QuitCheckFail;
-    if (qwuss->menu.chain != NULL)           goto QuitCheckFail;
+    if (wuss__menu_chain(qwuss) != NULL)           goto QuitCheckFail;
 
     /* Phase 1b: an autoclose task losing its last window with its chain
      * still open. Its self-reap must abandon the chain before QUIT, as
@@ -1073,13 +1073,13 @@ MoveFail:
                      wuss_MOUSE_DOWN, NULL);
     wuss_mouse_click(qwuss, POINT(20, 20), wuss_BUTTON_MENU,
                      wuss_MOUSE_UP, NULL);
-    if (qwuss->menu.chain == NULL)           goto QuitCheckFail;
+    if (wuss__menu_chain(qwuss) == NULL)           goto QuitCheckFail;
 
     forget_test_tasks(); /* the autoclose reap below frees task_q */
     wuss_window_close(wq);
     if (qmt.menu_closed_count != 1)          goto QuitCheckFail;
     if (qmt.menu_handle != NULL)             goto QuitCheckFail;
-    if (qwuss->menu.chain != NULL)           goto QuitCheckFail;
+    if (wuss__menu_chain(qwuss) != NULL)           goto QuitCheckFail;
 
     /* Phase 1c: a window opened as a menu of its own (wuss_menu_open_window,
      * as a Save As dialogue from ^S) and then closed by its client. The close
@@ -1100,13 +1100,13 @@ MoveFail:
     if (rc != result_OK) goto QuitDestroy;
     rc = wuss_menu_open_window(task_q, wq, POINT(20, 20), &qmt.menu_handle);
     if (rc != result_OK) goto QuitDestroy;
-    if (qwuss->menu.chain == NULL)           goto QuitCheckFail;
+    if (wuss__menu_chain(qwuss) == NULL)           goto QuitCheckFail;
     if (wq->flags & wuss_WINDOW_HIDDEN)      goto QuitCheckFail;
 
     wuss_window_close(wq);
     if (qmt.menu_closed_count != 1)          goto QuitCheckFail;
     if (qmt.menu_handle != NULL)             goto QuitCheckFail;
-    if (qwuss->menu.chain != NULL)           goto QuitCheckFail;
+    if (wuss__menu_chain(qwuss) != NULL)           goto QuitCheckFail;
     reap_test_tasks();
 
     /* Phase 1d: a core drag started from a window leaf (a Save As file icon)
@@ -1139,7 +1139,7 @@ MoveFail:
       WUSS_MENU_TITLE(d_menu, "D", d_items, NELEMS(d_items));
       rc = wuss_menu_open(task_q, &d_menu, POINT(20, 40), &qmt.menu_handle);
       if (rc != result_OK) goto QuitDestroy;
-      root = qwuss->menu.chain;
+      root = wuss__menu_chain(qwuss);
 
       /* hover the row's arrow (its rightmost pixel) to open the leaf */
       wuss__content_box(root->window, &content);
@@ -1185,7 +1185,7 @@ MoveFail:
                      wuss_MOUSE_DOWN, NULL);
     wuss_mouse_click(qwuss, POINT(20, 20), wuss_BUTTON_MENU,
                      wuss_MOUSE_UP, NULL);
-    if (qwuss->menu.chain == NULL)           goto QuitCheckFail;
+    if (wuss__menu_chain(qwuss) == NULL)           goto QuitCheckFail;
 
     forget_test_tasks(); /* drop task_q from the registry; wuss_destroy frees it */
     wuss_destroy(qwuss); /* QUIT -> task_q closes the chain; must not fault */
@@ -1196,7 +1196,7 @@ MoveFail:
 
 QuitCheckFail:
     printf("wuss_test: menu-quit check failed (chain=%p handle=%p)\n",
-           (void *) qwuss->menu.chain, (void *) qmt.menu_handle);
+           (void *) wuss__menu_chain(qwuss), (void *) qmt.menu_handle);
     rc = result_TEST_FAILED;
     goto QuitDestroy;
 
