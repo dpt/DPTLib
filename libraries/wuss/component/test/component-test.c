@@ -444,6 +444,64 @@ ColourMenuFail:
 ColourMenuOK: ;
   }
 
+  printf("test: wuss_colourpair names two rows and applies a pick to its target\n");
+  {
+    wuss_colourpair_t  pair;
+    colour_t           fg, bg;
+    wuss_event_t       ev;
+    const wuss_menu_t *cpm;
+    result_t           cprc;
+
+    fg = colour_rgb(1, 2, 3);
+    bg = colour_rgb(4, 5, 6);
+
+    wuss_colourpair_init(&pair, wuss, &fg, &bg);
+    if (pair.menu.nitems != 2)                           goto ColourPairFail;
+    if (strcmp(pair.items[0].text, "Foreground") != 0)   goto ColourPairFail;
+    if (strcmp(pair.items[1].text, "Background") != 0)   goto ColourPairFail;
+    if (pair.items[0].submenu == NULL)                   goto ColourPairFail;
+    if (pair.target != NULL)                             goto ColourPairFail;
+
+    /* a pick before any row has been hovered changes nothing */
+    wuss_colourmenu_set_none(0);
+    cpm = wuss_colourmenu_menu(wuss);
+    if (cpm == NULL)                                     goto ColourPairFail;
+    ev.kind                    = wuss_EVENT_MENU_SELECT;
+    ev.data.menu_select.menu   = cpm;
+    ev.data.menu_select.index  = 1;
+    ev.data.menu_select.button = wuss_BUTTON_SELECT;
+    if (wuss_colourpair_selected(&pair, &ev))            goto ColourPairFail;
+
+    /* a PRE_SUBMENU_OPEN for some other menu is declined */
+    ev.kind                          = wuss_EVENT_PRE_SUBMENU_OPEN;
+    ev.data.pre_submenu_open.handle  = NULL;
+    ev.data.pre_submenu_open.index   = 0;
+    cprc = result_OK;
+    if (wuss_colourpair_pre_open(&pair, wuss, &ev, &cprc))
+      goto ColourPairFail;
+
+    /* once targeted, a pick lands in that field only */
+    pair.target                = &bg;
+    ev.kind                    = wuss_EVENT_MENU_SELECT;
+    ev.data.menu_select.menu   = cpm;
+    ev.data.menu_select.index  = 1;
+    if (!wuss_colourpair_selected(&pair, &ev))           goto ColourPairFail;
+    if (bg.primary != wuss_get_palette(wuss, NULL)[1].primary)
+      goto ColourPairFail;
+    if (fg.primary != colour_rgb(1, 2, 3).primary)       goto ColourPairFail;
+
+    /* a foreign menu is not a colour pick */
+    ev.data.menu_select.menu = NULL;
+    if (wuss_colourpair_selected(&pair, &ev))            goto ColourPairFail;
+
+    goto ColourPairOK;
+
+ColourPairFail:
+    printf("wuss_test: colourpair check failed\n");
+    return result_TEST_FAILED;
+ColourPairOK: ;
+  }
+
   printf("test: wuss_colourset fills its field and tracks colour picks\n");
   {
     const char       *csfontfile;

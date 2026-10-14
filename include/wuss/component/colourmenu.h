@@ -153,6 +153,65 @@ result_t wuss_colourmenu_open_rgb(const wuss_t       *wuss,
  */
 int wuss_colourmenu_selected_rgb(const wuss_event_t *ev, colour_t *colour);
 
+/* ----------------------------------------------------------------------- */
+
+/**
+ * A "Colours" submenu of two rows, Foreground and Background, both answered
+ * by the shared colourmenu singleton retitled and retargeted per hover --
+ * the pattern the demo tasks all want. Embed one in the task block, call
+ * wuss_colourpair_init, add a row to the task's own menu naming \c menu as
+ * its submenu, and route two events through the functions below.
+ */
+typedef struct wuss_colourpair
+{
+  wuss_menu_item_t items[2]; /* Foreground, Background */
+  wuss_menu_t      menu;     /* titled "Colours"; the task's row names it */
+  colour_t        *fg, *bg;  /* borrowed from the task */
+  colour_t        *target;   /* the field the open colourmenu picks; NULL
+                              * until a row has been hovered */
+}
+wuss_colourpair_t;
+
+/**
+ * Set up \p pair over the task's two colour fields.
+ *
+ * \param[out] pair  Filled in; must stay at a fixed address while in use.
+ * \param[in]  wuss  Owner, as for wuss_colourmenu_menu.
+ * \param[in]  fg    The foreground colour field, borrowed.
+ * \param[in]  bg    The background colour field, borrowed.
+ */
+void wuss_colourpair_init(wuss_colourpair_t *pair,
+                          const wuss_t      *wuss,
+                          colour_t          *fg,
+                          colour_t          *bg);
+
+/**
+ * Answer a wuss_EVENT_PRE_SUBMENU_OPEN if it is for one of \p pair's rows:
+ * retarget the pair and open the colourmenu as that row's submenu.
+ *
+ * \param[in]  pair Initialised pair.
+ * \param[in]  wuss Owner, as for wuss_colourmenu_menu.
+ * \param[in]  ev   The PRE_SUBMENU_OPEN event.
+ * \param[out] rc   Set to the open's result when the event was the pair's.
+ * \return Non-zero if the event was the pair's and has been answered; zero
+ *         if the caller should handle it (any other submenu of the task).
+ */
+int wuss_colourpair_pre_open(wuss_colourpair_t  *pair,
+                             const wuss_t       *wuss,
+                             const wuss_event_t *ev,
+                             result_t           *rc);
+
+/**
+ * Apply a wuss_EVENT_MENU_SELECT to whichever field \p pair last targeted.
+ *
+ * \param[in] pair Initialised pair.
+ * \param[in] ev   The MENU_SELECT event.
+ * \return Non-zero if a colour changed, so the task can redraw or rebuild
+ *         from it; zero if the event was not a colour pick.
+ */
+int wuss_colourpair_selected(wuss_colourpair_t  *pair,
+                             const wuss_event_t *ev);
+
 #ifdef __cplusplus
 }
 #endif

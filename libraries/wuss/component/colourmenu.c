@@ -289,3 +289,64 @@ int wuss_colourmenu_selected_rgb(const wuss_event_t *ev, colour_t *colour)
   *colour = palette[picked];
   return 1;
 }
+
+/* ----- Foreground/Background pair ------------------------------------- */
+
+enum { COLOURPAIR_FOREGROUND = 0, COLOURPAIR_BACKGROUND };
+
+void wuss_colourpair_init(wuss_colourpair_t *pair,
+                          const wuss_t      *wuss,
+                          colour_t          *fg,
+                          colour_t          *bg)
+{
+  pair->fg     = fg;
+  pair->bg     = bg;
+  pair->target = NULL;
+
+  /* the rows' .submenu only gives each an arrow and a hover target; which
+   * menu opens is decided by wuss_colourpair_pre_open */
+  WUSS_MENU_ITEM_MENU(pair->items, COLOURPAIR_FOREGROUND, "Foreground",
+                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+  WUSS_MENU_ITEM_MENU(pair->items, COLOURPAIR_BACKGROUND, "Background",
+                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+
+  WUSS_MENU_TITLE(pair->menu, "Colours", pair->items,
+                  (int) (sizeof(pair->items) / sizeof(pair->items[0])));
+}
+
+int wuss_colourpair_pre_open(wuss_colourpair_t  *pair,
+                             const wuss_t       *wuss,
+                             const wuss_event_t *ev,
+                             result_t           *rc)
+{
+  int         index;
+  const char *title;
+
+  if (ev->kind != wuss_EVENT_PRE_SUBMENU_OPEN ||
+      wuss_menu_handle_menu(ev->data.pre_submenu_open.handle) != &pair->menu)
+    return 0;
+
+  index = ev->data.pre_submenu_open.index;
+  if (index == COLOURPAIR_FOREGROUND)
+  {
+    pair->target = pair->fg;
+    title        = "Foreground";
+  }
+  else
+  {
+    pair->target = pair->bg;
+    title        = "Background";
+  }
+
+  *rc = wuss_colourmenu_open_rgb(wuss, ev, title, *pair->target);
+  return 1;
+}
+
+int wuss_colourpair_selected(wuss_colourpair_t  *pair,
+                             const wuss_event_t *ev)
+{
+  if (pair->target == NULL)
+    return 0;
+
+  return wuss_colourmenu_selected_rgb(ev, pair->target);
+}
