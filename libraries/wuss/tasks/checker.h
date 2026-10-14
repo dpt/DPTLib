@@ -23,7 +23,7 @@ typedef enum checker_pattern
 checker_pattern_t;
 
 /* fills the whole content area with a two-tone pattern, black and white
- * until Menu > Ink/Paper recolours it (Menu > Swap colours exchanges the
+ * until Menu > Colours recolours it (Menu > Swap colours exchanges the
  * two); the pattern cycles forward on a Select click and back on Adjust, or
  * is picked from Menu > Pattern; Menu > Save PNG opens a Save As dialogue
  * (drag its icon onto a Filer window, or Save with a full path already
@@ -37,15 +37,14 @@ typedef struct checker_task
   wuss_saveas_t       *saveas;
   wuss_window_t       *window;
   wuss_menu_handle_t   menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t     menu_items[5]; /* per-instance: a shared static would
+  wuss_menu_item_t     menu_items[4]; /* per-instance: a shared static would
                                         * leak one instance's .window pointer
                                         * into another's menu */
   wuss_menu_t          menu;
   wuss_menu_item_t     pattern_items[checker_PATTERN__COUNT];
   wuss_menu_t          pattern_menu;
   colour_t             black, white;
-  colour_t            *colourmenu_target; /* black or white: whichever row
-                                            * last opened the colourmenu */
+  wuss_colourlist_t    colours; /* Ink/Paper submenu */
   checker_pattern_t    pattern;
   int                  band; /* pixels per band, scroll-adjustable */
 }
