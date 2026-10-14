@@ -28,12 +28,14 @@
  * per-instance in patterns_task_t, not as a file-scope static */
 enum
 {
-  PATTERNS_MENU_COLOUR_A,
-  PATTERNS_MENU_COLOUR_B,
+  PATTERNS_MENU_COLOURS,
   PATTERNS_MENU_SAVE
 };
 
 #define PATTERNS_SAVE_NAME "patterns.png" /* Save As's initial leafname */
+
+/* Colours submenu rows: the a and b fields, in that order */
+static const char *const patterns_colour_names[] = { "Colour A", "Colour B" };
 
 static colour_t patterns_random_colour(rng_t *rng)
 {
@@ -90,6 +92,7 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   filetype_t       png_type;
+  colour_t        *fields[2];
   rng_t            rng;
 
   task = calloc(1, sizeof(*task));
@@ -133,12 +136,18 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
     return rc;
   }
 
-  /* both rows open the shared colourmenu; patterns_pre_submenu_open retitles
-   * it and picks which colour a pick lands in */
-  WUSS_MENU_ITEM_MENU(task->menu_items, PATTERNS_MENU_COLOUR_A, "Colour A",
-                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
-  WUSS_MENU_ITEM_MENU(task->menu_items, PATTERNS_MENU_COLOUR_B, "Colour B",
-                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+  fields[0] = &task->a;
+  fields[1] = &task->b;
+  rc = wuss_colourlist_init(&task->colours, wuss, NELEMS(fields), fields,
+                            patterns_colour_names);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, PATTERNS_MENU_COLOURS, "Colours",
+                      wuss_MENU_ITEM_NONE, &task->colours.menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_NONE, "^S");
@@ -173,26 +182,21 @@ void patterns_destroy(patterns_task_t *task)
   free(task);
 }
 
-/* The Colour A and Colour B rows' submenu: the shared colourmenu singleton,
- * retitled and retargeted at the matching colour each time it opens. */
+/* Every submenu leaf fires wuss_EVENT_PRE_SUBMENU_OPEN; only the colour
+ * rows retarget the shared colourmenu. */
 static result_t patterns_pre_submenu_open(patterns_task_t    *bc,
                                           const wuss_event_t *event)
 {
-  const char *title;
+  result_t rc;
+  int      index;
 
-  if (event->data.pre_submenu_open.index == PATTERNS_MENU_COLOUR_A)
-  {
-    bc->colourmenu_target = &bc->a;
-    title                 = "Colour A";
-  }
-  else
-  {
-    bc->colourmenu_target = &bc->b;
-    title                 = "Colour B";
-  }
+  if (wuss_colourlist_pre_open(&bc->colours, bc->wuss, event, &rc))
+    return rc;
 
-  return wuss_colourmenu_open_rgb(bc->wuss, event, title,
-                                  *bc->colourmenu_target);
+  index = event->data.pre_submenu_open.index;
+
+  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle, index,
+                                    bc->menu_items[index].submenu);
 }
 
 static result_t patterns_redraw(const wuss_event_t *event, void *task_data)
@@ -293,8 +297,7 @@ result_t patterns_handle(wuss_window_t      *window,
       {
         rc = wuss_saveas_open(bc->saveas);
       }
-      else if (bc->colourmenu_target != NULL &&
-               wuss_colourmenu_selected_rgb(event, bc->colourmenu_target))
+      else if (wuss_colourlist_selected(&bc->colours, event))
       {
         wuss_window_invalidate_visible(bc->window);
       }

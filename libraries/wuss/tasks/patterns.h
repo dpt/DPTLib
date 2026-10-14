@@ -28,13 +28,12 @@ typedef struct patterns_task
   wuss_saveas_t       *saveas;
   wuss_window_t      *window;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[3]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[2]; /* per-instance: a shared static would
                                        * leak state between instances */
   wuss_menu_t         menu;
   colour_t            a;            /* left edge */
   colour_t            b;            /* right edge */
-  colour_t           *colourmenu_target; /* a or b: whichever row last
-                                          * opened the colourmenu */
+  wuss_colourlist_t   colours;      /* Colour A/Colour B submenu */
 }
 patterns_task_t;
 
