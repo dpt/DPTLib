@@ -66,11 +66,9 @@ typedef struct fern_task
   fern_config_t      config;
   colour_t           bg, fg;
   unsigned long      seed;        /* RNG state; Select/Adjust step it */
-  colour_t          *colourmenu_target; /* &fg or &bg, set per hover */
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
   fern_conf_t        conf;
-  wuss_menu_item_t   colours_items[2]; /* per-instance, see saturn.h */
-  wuss_menu_t        colours_menu;
+  wuss_colourpair_t  colours; /* per-instance, see saturn.h */
   wuss_menu_item_t   menu_items[4];
   wuss_menu_t        menu;
   int                animate;     /* Menu > Animate: re-seed on every idle */

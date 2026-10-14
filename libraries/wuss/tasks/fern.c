@@ -42,8 +42,6 @@ enum
   FERN_MENU_SAVE
 };
 
-enum { FERN_COLOURS_MENU_FOREGROUND = 0, FERN_COLOURS_MENU_BACKGROUND };
-
 enum
 {
   FERN_ICON_LABEL1 = 0, FERN_ICON_SLIDER1, FERN_ICON_VALUE1,
@@ -127,21 +125,10 @@ result_t fern_create(wuss_t *wuss, fern_task_t **out)
   if (rc != result_OK)
     goto fail_delegate;
 
-  /* both rows share the colourmenu singleton; fern_pre_submenu_open
-   * retargets it per hover */
-  WUSS_MENU_ITEM_MENU(task->colours_items, FERN_COLOURS_MENU_FOREGROUND,
-                      "Foreground", wuss_MENU_ITEM_PRE_OPEN,
-                      wuss_colourmenu_menu(wuss));
-
-  WUSS_MENU_ITEM_MENU(task->colours_items, FERN_COLOURS_MENU_BACKGROUND,
-                      "Background", wuss_MENU_ITEM_PRE_OPEN,
-                      wuss_colourmenu_menu(wuss));
-
-  WUSS_MENU_TITLE(task->colours_menu, "Colours", task->colours_items,
-                  NELEMS(task->colours_items));
+  wuss_colourpair_init(&task->colours, wuss, &task->fg, &task->bg);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, FERN_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_NONE, &task->colours_menu);
+                      wuss_MENU_ITEM_NONE, &task->colours.menu);
 
   WUSS_MENU_ITEM(task->menu_items, FERN_MENU_SIZE, "Configuration",
                  wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
@@ -319,35 +306,21 @@ static result_t fern_idle(fern_task_t *task)
   return result_OK;
 }
 
-/* Every submenu leaf fires wuss_EVENT_PRE_SUBMENU_OPEN; only the
- * Foreground/Background level retargets the shared colourmenu. */
+/* Every submenu leaf fires wuss_EVENT_PRE_SUBMENU_OPEN; only the colour
+ * pair's retargets the shared colourmenu. */
 static result_t fern_pre_submenu_open(fern_task_t        *task,
                                       const wuss_event_t *event)
 {
-  wuss_menu_handle_t handle;
-  int                index;
-  const char        *title;
+  result_t rc;
+  int      index;
 
-  handle = event->data.pre_submenu_open.handle;
-  index  = event->data.pre_submenu_open.index;
+  if (wuss_colourpair_pre_open(&task->colours, task->wuss, event, &rc))
+    return rc;
 
-  if (wuss_menu_handle_menu(handle) != &task->colours_menu)
-    return wuss_menu_open_submenu_now(handle, index,
-                                      task->menu_items[index].submenu);
+  index = event->data.pre_submenu_open.index;
 
-  if (index == FERN_COLOURS_MENU_FOREGROUND)
-  {
-    task->colourmenu_target = &task->fg;
-    title                   = "Foreground";
-  }
-  else
-  {
-    task->colourmenu_target = &task->bg;
-    title                   = "Background";
-  }
-
-  return wuss_colourmenu_open_rgb(task->wuss, event, title,
-                                  *task->colourmenu_target);
+  return wuss_menu_open_submenu_now(event->data.pre_submenu_open.handle, index,
+                                    task->menu_items[index].submenu);
 }
 
 /* ----- configuration dialogue ----- */
@@ -651,10 +624,7 @@ static result_t fern_menu_select(fern_task_t        *task,
       event->data.menu_select.index == FERN_MENU_SAVE)
     return wuss_saveas_open(task->saveas);
 
-  if (task->colourmenu_target == NULL)
-    return result_OK;
-
-  if (wuss_colourmenu_selected_rgb(event, task->colourmenu_target))
+  if (wuss_colourpair_selected(&task->colours, event))
     wuss_window_invalidate_visible(task->window);
 
   return result_OK;
