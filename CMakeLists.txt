@@ -870,6 +870,7 @@ if(BUILD_TESTS)
         libraries/wuss/core/test/task-test.c
         libraries/wuss/core/test/content-test.c
         libraries/wuss/core/test/stack-test.c
+        libraries/wuss/core/test/lifecycle-test.c
         libraries/wuss/core/test/invalidate-test.c
         libraries/wuss/core/test/placement-test.c
         libraries/wuss/core/test/focus-test.c
