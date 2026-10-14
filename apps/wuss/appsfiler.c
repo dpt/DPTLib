@@ -151,7 +151,7 @@ static result_t apps_open(apps_task_t         *task,
   rc = wuss_gridview_window_create(&aw->gridview, task->delegate, &place,
                                    title, apps_count(aw), apps_item,
                                    APPS_LABEL_CHARS, apps_activate, aw,
-                                   &window);
+                                   0, &window);
   if (rc != result_OK)
     return rc;
 

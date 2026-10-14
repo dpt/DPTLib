@@ -311,7 +311,7 @@ static result_t filing_open_path(filing_task_t       *task,
   rc = wuss_gridview_window_create(&fw->gridview, task->delegate, &place,
                                    path, dirlist_count(listing), filing_item,
                                    FILING_LABEL_CHARS, filing_activate, fw,
-                                   &window);
+                                   0, &window);
   if (rc != result_OK)
   {
     dirlist_destroy(listing);

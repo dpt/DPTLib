@@ -576,7 +576,7 @@ result_t effecting_create(wuss_t *wuss, effecting_task_t **out)
   rc = wuss_gridview_window_create(&task->list, delegate, &place,
                                    "Effect stack", 0, effecting_item,
                                    EFFECTING_LABEL_CHARS, NULL, task,
-                                   &task->list_window);
+                                   wuss_WINDOW_CLOSE, &task->list_window);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);

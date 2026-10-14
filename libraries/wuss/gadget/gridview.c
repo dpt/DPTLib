@@ -873,6 +873,7 @@ result_t wuss_gridview_window_create(wuss_gridview_t            **out,
                                      int                          label_chars,
                                      wuss_gridview_activate_fn_t *activate,
                                      void                        *opaque,
+                                     wuss_window_flags_t          omit,
                                      wuss_window_t              **window)
 {
   static const wuss_place_t spare = { wuss_PLACE_SPARE, wuss_ALIGN_CENTRE,
@@ -889,7 +890,7 @@ result_t wuss_gridview_window_create(wuss_gridview_t            **out,
 
   /* No horizontal scrollbar: the grid reflows to the width instead. */
   rc = wuss_window_create_at(task, place, SIZE2D(320, 240), title,
-                             (wuss_WINDOW_DEFAULT & ~wuss_WINDOW_HSCROLL) |
+                             (wuss_WINDOW_DEFAULT & ~(wuss_WINDOW_HSCROLL | omit)) |
                              wuss_WINDOW_FOCUSABLE,
                              wuss_NO_BACKDROP, SIZE2D(320, 240),
                              SIZE2D(0, 0), &win);

@@ -175,6 +175,8 @@ result_t wuss_gridview_create(wuss_gridview_t            **out,
  * \param[in]  label_chars As \ref wuss_gridview_create.
  * \param[in]  activate    As \ref wuss_gridview_create.
  * \param[in]  opaque      As \ref wuss_gridview_create.
+ * \param[in]  omit        Default furniture to leave off, e.g.
+ *                         wuss_WINDOW_CLOSE; 0 for the default set.
  * \param[out] window      Filled with the new window on success.
  * \return \ref result_OK on success, or a result code from
  *         wuss_window_create_at or \ref wuss_gridview_create; no window is
@@ -189,6 +191,7 @@ result_t wuss_gridview_window_create(wuss_gridview_t            **out,
                                      int                          label_chars,
                                      wuss_gridview_activate_fn_t *activate,
                                      void                        *opaque,
+                                     wuss_window_flags_t          omit,
                                      wuss_window_t              **window);
 
 /**
