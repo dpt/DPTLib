@@ -444,6 +444,23 @@ result_t wuss_furniture_test(const char *resources)
     wuss_window_close(win_dv);
   }
 
+  printf("test: every furniture element has a hit box and a press handler\n");
+  {
+    const wuss__furniture_element_t *element;
+    int                              i;
+
+    for (i = 0; i < wuss__furniture_nelements; i++)
+    {
+      element = &wuss__furniture_elements[i];
+
+      if (element->hit_box == NULL || element->press == NULL)
+        goto Failure;
+
+      if (wuss__furniture_element(element->region) != element)
+        goto Failure;
+    }
+  }
+
   wuss_fixture_close(&fixture);
 
   return result_TEST_PASSED;

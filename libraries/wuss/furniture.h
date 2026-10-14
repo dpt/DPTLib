@@ -141,13 +141,24 @@ struct wuss__furniture
 
 /* Furniture element table ------------------------------------------------- */
 
+typedef struct wuss__furniture_element wuss__furniture_element_t;
+
 typedef void (wuss__furniture_box_fn_t)(const wuss_window_t *window,
                                         box_t               *out);
 
+/* A press on "element" at screen point "p". Called for every click that lands
+ * on the element, whatever the button or action; the handler ignores the ones
+ * it has no use for. Returns the result of any delivery or close. */
+typedef result_t (wuss__furniture_press_fn_t)(wuss_window_t                   *window,
+                                              const wuss__furniture_element_t *element,
+                                              point_t                          p,
+                                              wuss_button_t                    button,
+                                              wuss_mouse_action_t              action);
+
 /* One hit-testable piece of window furniture. The table drives hit testing,
- * the cached layout's per-element pieces, the pressed-box lookup and the
- * scroll-arrow step direction. */
-typedef struct wuss__furniture_element
+ * the cached layout's per-element pieces, the pressed-box lookup, the
+ * scroll-arrow step direction and click handling. */
+struct wuss__furniture_element
 {
   wuss_furniture_region_t        region;
   wuss_window_flags_t            flag;      /* window flag that enables it; 0: always */
@@ -157,8 +168,8 @@ typedef struct wuss__furniture_element
   wuss__furniture_paint_class_t  paint;     /* colour of the cached piece */
   wuss_furniture_drag_kind_t     drag_kind; /* drag a press here starts */
   point_t                        step;      /* scroll arrows: unit scroll direction */
-}
-wuss__furniture_element_t;
+  wuss__furniture_press_fn_t    *press;     /* click handler (furniture/press.h) */
+};
 
 /* In hit-test priority order -- see furniture/elements.c. */
 extern const wuss__furniture_element_t wuss__furniture_elements[];

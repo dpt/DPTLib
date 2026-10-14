@@ -520,6 +520,9 @@ set(WUSS_FURNITURE_SOURCES
     libraries/wuss/furniture/draw.c
     libraries/wuss/furniture/elements.c
     libraries/wuss/furniture/hit-test.c
+    libraries/wuss/furniture/press-drag.c
+    libraries/wuss/furniture/press-icons.c
+    libraries/wuss/furniture/press-scroll.c
     libraries/wuss/furniture/invalidate.c
     libraries/wuss/furniture/layout.c
     libraries/wuss/furniture/ops.c
