@@ -16,7 +16,7 @@
 #include "wuss/component/info.h"
 #include "wuss/component/proginfo.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
 
 /* ----------------------------------------------------------------------- */
 

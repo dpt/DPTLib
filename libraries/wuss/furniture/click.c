@@ -1,6 +1,9 @@
 /* wuss/furniture/click.c -- wuss - pointer clicks on window furniture */
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/dispatch.h"
+#include "../core/geometry.h"
+#include "../core/invalidate.h"
 
 /* Move the held-down highlight to "region" (NONE to clear it), repainting
  * the drawn box of whichever region it leaves and whichever it lands on. */

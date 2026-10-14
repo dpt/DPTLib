@@ -14,7 +14,8 @@
 #include "framebuf/screen.h"
 #include "text/utf8.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/palette.h"
 
 /* ----------------------------------------------------------------------- */
 

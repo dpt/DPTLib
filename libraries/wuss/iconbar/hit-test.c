@@ -3,7 +3,8 @@
 #include "geom/box.h"
 #include "geom/point.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/dispatch.h"
 
 #ifdef WUSS_ICONBAR
 

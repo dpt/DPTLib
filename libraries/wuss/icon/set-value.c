@@ -2,7 +2,7 @@
 
 #include <assert.h>
 
-#include "../core/impl.h"
+#include "../core/types.h"
 
 void wuss__icon_set_value(wuss_window_t *window,
                           wuss_icon_t   *icon,

@@ -1,6 +1,7 @@
 /* wuss/furniture/content-box.c -- wuss - minimal window manager */
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/geometry.h"
 
 void wuss__content_box(const wuss_window_t *window, box_t *out)
 {

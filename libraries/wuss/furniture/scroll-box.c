@@ -7,7 +7,8 @@
  * the ten public wuss__vscroll_ / wuss__hscroll_ entry points are thin
  * wrappers that pin the flag. */
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/geometry.h"
 
 /* The scrollbar strip: full breadth, running between the titlebar (v) or left
  * outline (h) and the resize corner. "long" axis is y when vertical, x when

@@ -22,7 +22,9 @@
  * keep our own copy. Bounded by that buffer's own DPTLIB_MAXPATH. */
 #define ICONS_DIR_MAX 256
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/alloc.h"
+#include "../core/windows.h"
 
 #ifdef WUSS_ICONS
 

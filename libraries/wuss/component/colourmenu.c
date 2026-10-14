@@ -18,7 +18,8 @@
 
 #include "wuss/component/colourmenu.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 

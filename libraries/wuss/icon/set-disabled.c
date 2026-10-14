@@ -1,6 +1,6 @@
 /* wuss/icon/set-disabled.c -- shade or unshade a work-area icon */
 
-#include "../core/impl.h"
+#include "../core/types.h"
 
 void wuss_icon_set_disabled(wuss_window_t *window,
                             wuss_icon_t   *icon,

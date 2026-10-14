@@ -1,6 +1,7 @@
 /* wuss/furniture/hit-test.c -- wuss - minimal window manager */
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/geometry.h"
 
 /* Attribute a point that is inside window->visible but outside the content box
  * and outside every furniture hit box above to the nearest furniture. Such a

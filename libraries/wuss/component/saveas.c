@@ -25,7 +25,7 @@
 #include "wuss/component/dialogue.h"
 #include "wuss/component/saveas.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
 #include "../icon.h"
 
 /* ----------------------------------------------------------------------- */

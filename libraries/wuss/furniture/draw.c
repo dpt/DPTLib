@@ -16,7 +16,8 @@
 
 #include <limits.h>
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/geometry.h"
 
 /* Titlebar text is drawn with a one-pixel drop shadow in the button-shadow
  * bevel colour, matching the existing bevel/relief look of furniture icons

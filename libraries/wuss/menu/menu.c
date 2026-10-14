@@ -22,7 +22,10 @@
 #include "wuss/window.h"
 #include "wuss/wuss.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/alloc.h"
+#include "../core/geometry.h"
+#include "../core/input.h"
 
 /* Row padding above/below the glyph, in pixels. The tick and submenu-arrow
  * gutters come from wuss__menu_entry_gutter_left/right, shared with the row

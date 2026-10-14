@@ -9,7 +9,8 @@
 
 #include <assert.h>
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/geometry.h"
 
 /* Append one rect/paint-class pair, unless it would overflow the fixed store
  * (WUSS__FURNITURE_MAX_PIECES is sized to the worst case, so this is a guard

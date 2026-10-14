@@ -1,6 +1,6 @@
 /* wuss/icon/set-flag.c -- set or clear a single work-area icon flag */
 
-#include "../core/impl.h"
+#include "../core/types.h"
 
 void wuss__icon_set_flag(wuss_window_t    *window,
                          wuss_icon_t      *icon,

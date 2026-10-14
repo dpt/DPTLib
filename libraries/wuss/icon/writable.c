@@ -7,7 +7,7 @@
 #include "framebuf/bmfont.h"
 #include "text/utf8.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
 
 /* ----------------------------------------------------------------------- */
 

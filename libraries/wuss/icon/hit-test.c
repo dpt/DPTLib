@@ -2,7 +2,7 @@
 
 #include "geom/box.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
 
 wuss_icon_t *wuss__icon_hit_test(wuss_window_t *window, point_t doc_point)
 {

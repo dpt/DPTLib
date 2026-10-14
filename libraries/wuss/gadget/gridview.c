@@ -23,7 +23,7 @@
 
 #include "wuss/gadget/gridview.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
 #include "../font/font.h"
 #include "../icon.h"
 

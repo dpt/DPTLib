@@ -1,6 +1,6 @@
 /* wuss/iconbar/menu-open.c -- open a menu for an icon bar icon */
 
-#include "../core/impl.h"
+#include "../core/types.h"
 
 #if defined(WUSS_ICONBAR) && defined(WUSS_MENUS)
 

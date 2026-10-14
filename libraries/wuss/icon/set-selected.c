@@ -2,7 +2,7 @@
 
 #include <assert.h>
 
-#include "../core/impl.h"
+#include "../core/types.h"
 
 /* the exclusive-selection group of a radio or latching bitmap, else 0 */
 static int icon_group(const wuss_icon_t *icon)

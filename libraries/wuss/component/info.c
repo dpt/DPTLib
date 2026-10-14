@@ -21,7 +21,7 @@
 
 #include "wuss/component/info.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
 
 /* ----------------------------------------------------------------------- */
 

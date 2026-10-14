@@ -7,7 +7,9 @@
 #include "geom/box.h"
 #include "framebuf/screen.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/invalidate.h"
+#include "../core/palette.h"
 #include "../font/font.h"
 
 #ifdef WUSS_ICONBAR

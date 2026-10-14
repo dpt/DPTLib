@@ -1,6 +1,6 @@
 /* wuss/furniture/ops.c -- wuss - core-to-furniture dispatch table */
 
-#include "../core/impl.h"
+#include "../core/types.h"
 
 /* The built-in furniture: wuss_create points every window's furniture_ops
  * here unless a caller overrides it. */

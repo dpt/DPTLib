@@ -22,7 +22,8 @@
 #include "wuss/component/colourmenu.h"
 #include "wuss/gadget/colourset.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/palette.h"
 #include "../font/font.h"
 #include "../icon.h"
 

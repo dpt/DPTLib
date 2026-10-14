@@ -4,7 +4,8 @@
 
 #include "base/utils.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/geometry.h"
 
 /* In hit-test priority order. Grown hit boxes overlap where they meet, so
  * the order is load-bearing:

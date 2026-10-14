@@ -1,6 +1,7 @@
 /* wuss/icon/click.c -- wuss - pointer clicks on icons */
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/input.h"
 
 void wuss__icon_release_held(wuss_t             *wuss,
                              point_t             p,

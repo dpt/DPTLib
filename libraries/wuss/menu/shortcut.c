@@ -11,7 +11,7 @@
 #include "wuss/task.h"
 #include "wuss/wuss.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
 
 /* ----------------------------------------------------------------------- */
 
