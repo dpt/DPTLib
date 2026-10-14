@@ -39,6 +39,8 @@ enum
   FERN_MENU_COLOURS = 0,
   FERN_MENU_SIZE,
   FERN_MENU_ANIMATE,
+  FERN_MENU_RANDOMISE,
+  FERN_MENU_RESET,
   FERN_MENU_SAVE
 };
 
@@ -87,10 +89,20 @@ static result_t fern_saveas_save(const char *path, void *opaque)
   return snapshot_save_png(task->window, fern_handle, task, path);
 }
 
-result_t fern_create(wuss_t *wuss, fern_task_t **out)
+/* the starting fern, as fern_create and Reset restore it */
+static void fern_defaults(fern_task_t *task)
 {
   static const fern_config_t default_config = FERN_CONFIG_DEFAULT;
 
+  task->config  = default_config;
+  task->bg      = colour_rgb(0x00, 0x00, 0x00);
+  task->fg      = colour_rgb(0x40, 0xE0, 0x40);
+  task->seed    = 1;
+  task->animate = 0;
+}
+
+result_t fern_create(wuss_t *wuss, fern_task_t **out)
+{
   result_t         rc;
   fern_task_t     *task;
   wuss_task_t     *delegate;
@@ -102,10 +114,8 @@ result_t fern_create(wuss_t *wuss, fern_task_t **out)
     return result_OOM;
 
   task->wuss   = wuss;
-  task->config = default_config;
-  task->bg     = colour_rgb(0x00, 0x00, 0x00);
-  task->fg     = colour_rgb(0x40, 0xE0, 0x40);
-  task->seed   = 1;
+  rng_seed(&task->rng, (uint32_t) rand());
+  fern_defaults(task);
 
   delegate_desc.handle    = fern_handle;
   delegate_desc.task_data = task;
@@ -135,6 +145,12 @@ result_t fern_create(wuss_t *wuss, fern_task_t **out)
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FERN_MENU_ANIMATE, "Animate",
                           wuss_MENU_ITEM_NONE, "A");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FERN_MENU_RANDOMISE, "Randomise",
+                          wuss_MENU_ITEM_NONE, "^R");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FERN_MENU_RESET, "Reset",
+                          wuss_MENU_ITEM_NONE, "R");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FERN_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_NONE, "^S");
@@ -505,15 +521,11 @@ static result_t fern_conf_fillout(void *opaque)
   return rc;
 }
 
-/* sliders to task->config, then resize and redraw the window */
-static result_t fern_conf_apply(fern_task_t *task)
+/* resize the window if config.size has moved off old_size, then redraw */
+static result_t fern_resize(fern_task_t *task, int old_size)
 {
   result_t rc;
-  int      row, size, old_size;
-
-  old_size = task->config.size;
-  for (row = 0; row < FERN_NROWS; row++)
-    *fern_field(task, row) = wuss_icon_get_value(task->conf.rows[row].slider);
+  int      size;
 
   if (task->window == NULL)
     return result_OK; /* fern window closed while the dialogue lingers */
@@ -532,6 +544,18 @@ static result_t fern_conf_apply(fern_task_t *task)
   wuss_window_invalidate_visible(task->window);
 
   return result_OK;
+}
+
+/* sliders to task->config, then resize and redraw the window */
+static result_t fern_conf_apply(fern_task_t *task)
+{
+  int row, old_size;
+
+  old_size = task->config.size;
+  for (row = 0; row < FERN_NROWS; row++)
+    *fern_field(task, row) = wuss_icon_get_value(task->conf.rows[row].slider);
+
+  return fern_resize(task, old_size);
 }
 
 /* Select dismisses the menu chain; Adjust resets the sliders instead */
@@ -623,6 +647,29 @@ static result_t fern_menu_select(fern_task_t        *task,
   if (event->data.menu_select.menu == &task->menu &&
       event->data.menu_select.index == FERN_MENU_SAVE)
     return wuss_saveas_open(task->saveas);
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == FERN_MENU_RANDOMISE)
+  {
+    task->seed        = rng_xorshift32(&task->rng);
+    task->config.curl = rng_range(&task->rng, 601) - 300;
+    task->bg          = colour_random(&task->rng);
+    task->fg          = colour_random_contrast(&task->rng, task->bg);
+    wuss_window_invalidate_visible(task->window);
+    return result_OK;
+  }
+
+  if (event->data.menu_select.menu == &task->menu &&
+      event->data.menu_select.index == FERN_MENU_RESET)
+  {
+    int old_size;
+
+    old_size = task->config.size;
+    fern_defaults(task);
+    wuss_menu_tick_item_live(task->menu_handle, &task->menu,
+                             FERN_MENU_ANIMATE, task->animate);
+    return fern_resize(task, old_size);
+  }
 
   if (wuss_colourlist_selected(&task->colours, event))
     wuss_window_invalidate_visible(task->window);

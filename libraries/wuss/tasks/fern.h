@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "framebuf/colour.h"
+#include "utils/rng.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/dialogue.h"
 #include "wuss/component/saveas.h"
@@ -22,7 +23,9 @@
  * over). Select re-seeds for a fresh fern and Adjust steps back; Left/Right
  * step back and forward once the window has the input focus, and A toggles
  * Menu > Animate, which re-seeds every null event. Menu > Colours sets the
- * foreground and background. Menu > Save PNG writes the window's content
+ * foreground and background. Menu > Randomise (^R) picks a fresh seed,
+ * curl and colours; Menu > Reset (R) restores the starting configuration,
+ * colours and seed. Menu > Save PNG writes the window's content
  * out. The plot is deterministic in the seed. */
 typedef struct fern_config
 {
@@ -69,9 +72,10 @@ typedef struct fern_task
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
   fern_conf_t        conf;
   wuss_colourlist_t  colours; /* per-instance, see saturn.h */
-  wuss_menu_item_t   menu_items[4];
+  wuss_menu_item_t   menu_items[6];
   wuss_menu_t        menu;
   int                animate;     /* Menu > Animate: re-seed on every idle */
+  rng_t              rng;         /* Randomise */
 }
 fern_task_t;
 
