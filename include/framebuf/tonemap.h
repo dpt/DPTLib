@@ -20,6 +20,9 @@ extern "C"
 
 #include <stdint.h>
 
+#include "framebuf/screen.h"
+#include "geom/box.h"
+
 /* ----------------------------------------------------------------------- */
 
 /** An opaque tone map. */
@@ -144,6 +147,27 @@ void tonemap_get_tables(tonemap_t              *map,
                         const tonemap_table_t **green,
                         const tonemap_table_t **blue,
                         const tonemap_table_t **alpha);
+
+/**
+ * Plot the curves of a tone map.
+ *
+ * Fills `area` white, draws a quarter-way grid, then one curve per selected
+ * channel (input level along the x axis, output level up the y axis): red,
+ * green and blue in their own colours and alpha in grey. Later channels draw
+ * over earlier ones. Clipped to the screen's clip region. Nothing is drawn
+ * if `area` is smaller than 2x2.
+ *
+ * \param[in]     map      Tone map to plot.
+ * \param[in]     channels Channels to plot.
+ * \param[in,out] scr      Screen to draw upon.
+ * \param[in]     area     Box to plot into.
+ * \param[in]     stroke   Curve thickness in pixels.
+ */
+void tonemap_plot(tonemap_t         *map,
+                  tonemap_channels_t channels,
+                  screen_t          *scr,
+                  const box_t       *area,
+                  int                stroke);
 
 /* ----------------------------------------------------------------------- */
 

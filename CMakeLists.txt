@@ -312,6 +312,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/octree/octree.c
     libraries/framebuf/palettes/palettes.c
     libraries/framebuf/pattern/pattern.c
+    libraries/framebuf/tonemap/plot.c
     libraries/framebuf/tonemap/tonemap.c
     libraries/framebuf/pixelfmt/log2bpp.c
     libraries/framebuf/pixelfmt/paletted-nentries.c
