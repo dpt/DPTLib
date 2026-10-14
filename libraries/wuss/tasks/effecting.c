@@ -27,6 +27,7 @@
 #include "common.h"
 
 #define EFFECTING_LABEL_CHARS 22
+#define EFFECTING_LIST_MIN_W  150 /* content width that fits the title */
 #define EFFECTING_LIST_ROWS   8
 
 static const char *const g_names[EFFECTING__LIMIT] =
@@ -218,6 +219,22 @@ static void effecting_list_changed(effecting_task_t *ec)
   effecting_menu_update(ec);
 }
 
+/* Sizes the list window to its rows, but never too narrow for its title. */
+static void effecting_fit_list(effecting_task_t *ec)
+{
+  box_t    bounds;
+  size2d_t sz;
+
+  wuss_gridview_fit_window(ec->list, 1, EFFECTING_LIST_ROWS);
+
+  wuss_window_get_content_bounds(ec->list_window, &bounds);
+  if (bounds.x1 - bounds.x0 < EFFECTING_LIST_MIN_W)
+  {
+    sz = SIZE2D(EFFECTING_LIST_MIN_W, bounds.y1 - bounds.y0);
+    (void) wuss_window_resize(ec->list_window, sz);
+  }
+}
+
 /* Appends an element of the given type, selects it and re-runs. */
 static result_t effecting_add(effecting_task_t *ec, effecting_type_t type)
 {
@@ -262,7 +279,7 @@ static result_t effecting_add(effecting_task_t *ec, effecting_type_t type)
   if (ec->list != NULL)
   {
     wuss_gridview_select(ec->list, ec->nelements - 1);
-    wuss_gridview_fit_window(ec->list, 1, EFFECTING_LIST_ROWS);
+    effecting_fit_list(ec);
   }
 
   effecting_update(ec, 1);
@@ -567,7 +584,7 @@ result_t effecting_create(wuss_t *wuss, effecting_task_t **out)
 
   wuss_gridview_set_layout(task->list, 1, 0, 4);
   wuss_gridview_set_drag(task->list, effecting_drag);
-  wuss_gridview_fit_window(task->list, 1, EFFECTING_LIST_ROWS);
+  effecting_fit_list(task);
 
   if (out)
     *out = task;
