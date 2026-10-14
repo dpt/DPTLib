@@ -99,6 +99,7 @@ static void fern_defaults(fern_task_t *task)
   task->fg      = colour_rgb(0x40, 0xE0, 0x40);
   task->seed    = 1;
   task->animate = 0;
+  task->zoom    = 1.0;
 }
 
 result_t fern_create(wuss_t *wuss, fern_task_t **out)
@@ -253,11 +254,28 @@ static result_t fern_redraw(const wuss_event_t *event, fern_task_t *task)
     x = nx;
     y = ny;
 
-    px = (int) ((x - FERN_X_MIN) * scale);
-    py = size - 1 - (int) (y * scale);
+    px = (int) (((x - FERN_X_MIN) * scale - size / 2.0) * task->zoom +
+                size / 2.0);
+    py = (int) ((size - 1 - y * scale - size / 2.0) * task->zoom +
+                size / 2.0);
     if (px >= 0 && px < size && py >= 0 && py < size)
       screen_set_pixel_value(scr, ox + px, oy + py, pix);
   }
+
+  return result_OK;
+}
+
+static result_t fern_scroll(fern_task_t   *task,
+                            wuss_window_t *window,
+                            int            delta)
+{
+  if (window != task->window)
+    return result_OK;
+
+  task->zoom += (delta > 0 ? 1 : -1) * FERN_ZOOM_STEP;
+  task->zoom  = CLAMP(task->zoom, FERN_ZOOM_MIN, FERN_ZOOM_MAX);
+
+  wuss_window_invalidate_visible(task->window);
 
   return result_OK;
 }
@@ -693,6 +711,9 @@ result_t fern_handle(wuss_window_t      *window,
   case wuss_EVENT_MOUSE:
     return fern_mouse(task, event->data.mouse.action,
                       event->data.mouse.button, window);
+
+  case wuss_EVENT_SCROLL:
+    return fern_scroll(task, window, event->data.scroll.delta);
 
   case wuss_EVENT_KEY:
   {

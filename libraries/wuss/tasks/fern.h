@@ -22,7 +22,8 @@
  * transform: 100 is Barnsley's fern, 0 a straight stem, higher bends it
  * over). Select re-seeds for a fresh fern and Adjust steps back; Left/Right
  * step back and forward once the window has the input focus, and Space toggles
- * Menu > Animate, which re-seeds every null event. Menu > Colours sets the
+ * Menu > Animate, which re-seeds every null event. The wheel zooms in and out
+ * about the centre. Menu > Colours sets the
  * foreground and background. Menu > Randomise (^R) picks a fresh seed,
  * curl and colours; Menu > Reset (R) restores the starting configuration,
  * colours and seed. Menu > Save PNG writes the window's content
@@ -60,6 +61,12 @@ typedef struct fern_conf
 }
 fern_conf_t;
 
+/* zoom range/step for the wheel: 1.0 fits the window, larger zooms in about
+ * the centre */
+#define FERN_ZOOM_MIN  0.3
+#define FERN_ZOOM_MAX  4.0
+#define FERN_ZOOM_STEP 0.1
+
 typedef struct fern_task
 {
   wuss_t            *wuss;
@@ -75,6 +82,7 @@ typedef struct fern_task
   wuss_menu_item_t   menu_items[6];
   wuss_menu_t        menu;
   int                animate;     /* Menu > Animate: re-seed on every idle */
+  double             zoom;        /* wheel-adjustable */
   rng_t              rng;         /* Randomise */
 }
 fern_task_t;
