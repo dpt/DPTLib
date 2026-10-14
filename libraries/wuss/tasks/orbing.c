@@ -1057,18 +1057,6 @@ static void orbing_mutate(orbing_task_t *task)
   orbing_turn_hue(&task->sphere, &task->rng);
 }
 
-/* a colour with each channel picked at random */
-static colour_t orbing_random_colour(rng_t *rng)
-{
-  unsigned int r, g, b;
-
-  r = (unsigned int) rng_range(rng, 256);
-  g = (unsigned int) rng_range(rng, 256);
-  b = (unsigned int) rng_range(rng, 256);
-
-  return colour_rgb(r, g, b);
-}
-
 /* pick every setting afresh: sliders across their full ranges, which lights
  * are on (at least one), their directions and every colour */
 static void orbing_randomise(orbing_task_t *task)
@@ -1101,15 +1089,15 @@ static void orbing_randomise(orbing_task_t *task)
     while (x * x + y * y + z * z > 1.0 || x * x + y * y + z * z < 0.01);
 
     orbing_set_light(light, rng_range(&task->rng, 2), x, y, z,
-                       orbing_random_colour(&task->rng), light->intensity);
+                       colour_random(&task->rng), light->intensity);
     lit |= light->on;
   }
 
   if (!lit)
     task->lights[rng_range(&task->rng, ORBING_NLIGHTS)].on = 1;
 
-  task->sphere     = orbing_random_colour(&task->rng);
-  task->background = orbing_random_colour(&task->rng);
+  task->background = colour_random(&task->rng);
+  task->sphere     = colour_random_contrast(&task->rng, task->background);
 }
 
 /* write the sphere alone, sized to its current diameter, as an RGBA PNG:

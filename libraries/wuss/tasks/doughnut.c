@@ -191,18 +191,6 @@ static void doughnut_defaults(doughnut_task_t *task)
   doughnut_palette_build(task);
 }
 
-/* a colour with each channel picked at random */
-static colour_t doughnut_random_colour(rng_t *rng)
-{
-  unsigned int r, g, b;
-
-  r = (unsigned int) rng_range(rng, 256);
-  g = (unsigned int) rng_range(rng, 256);
-  b = (unsigned int) rng_range(rng, 256);
-
-  return colour_rgb(r, g, b);
-}
-
 /* pick the angles, tube, densities and colours afresh; zoom stays */
 static void doughnut_randomise(doughnut_task_t *task)
 {
@@ -211,8 +199,8 @@ static void doughnut_randomise(doughnut_task_t *task)
   task->tube  = rng_range(&task->rng, NELEMS(doughnut_tubes));
   task->major = rng_range(&task->rng, NELEMS(doughnut_densities));
   task->minor = rng_range(&task->rng, NELEMS(doughnut_densities));
-  task->fg    = doughnut_random_colour(&task->rng);
-  task->bg    = doughnut_random_colour(&task->rng);
+  task->bg    = colour_random(&task->rng);
+  task->fg    = colour_random_contrast(&task->rng, task->bg);
   doughnut_palette_build(task);
 }
 

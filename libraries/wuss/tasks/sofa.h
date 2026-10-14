@@ -8,6 +8,7 @@
 #include <stdbool.h>
 
 #include "framebuf/colour.h"
+#include "utils/rng.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/saveas.h"
 #include "wuss/menu.h"
@@ -32,9 +33,10 @@ sofa_shape_t;
  * spinning about its vertical axis; a Select click or Menu > Pause
  * pauses/resumes the spin, an Adjust click or Menu > Model changes the
  * model, Menu > Auto-cycle turns the automatic change of model after a few
- * turns on or off and Menu > Save PNG opens a Save As dialogue (drag its
- * icon onto a Filer window, or Save with a full path already typed) that
- * writes the window's content out. Once a click has given the window the
+ * turns on or off, Menu > Randomise (^R) picks a model and colours afresh,
+ * Menu > Reset (R) restores the starting view and Menu > Save PNG opens a
+ * Save As dialogue (drag its icon onto a Filer window, or Save with a full
+ * path already typed) that writes the window's content out. Once a click has given the window the
  * input focus, Space pauses/resumes and Left/Right step the model
  * back/forward */
 typedef struct sofa_task
@@ -43,7 +45,7 @@ typedef struct sofa_task
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_saveas_t       *saveas;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[5]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[7]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer
                                        * into another's menu */
   wuss_menu_t         menu;
@@ -58,6 +60,7 @@ typedef struct sofa_task
   sofa_shape_t   shape;
   int            turns; /* completed rotations of the current model */
   bool           cycling; /* advance the model every few turns */
+  rng_t          rng;     /* Randomise */
 }
 sofa_task_t;
 

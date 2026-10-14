@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stddef.h>
 #include <limits.h>
+#include <stdlib.h>
 
 #include "framebuf/pixelfmt.h"
 #include "framebuf/colour.h"
@@ -10,6 +11,45 @@
 colour_t colour_rgb(unsigned int r, unsigned int g, unsigned int b)
 {
   return colour_rgba(r, g, b, PIXELFMT_OPAQUE);
+}
+
+colour_t colour_random(rng_t *rng)
+{
+  unsigned int r, g, b;
+
+  r = (unsigned int) rng_range(rng, 256);
+  g = (unsigned int) rng_range(rng, 256);
+  b = (unsigned int) rng_range(rng, 256);
+
+  return colour_rgb(r, g, b);
+}
+
+/* Rec.601 luma, 0..255 */
+static int colour_luma(colour_t c)
+{
+  unsigned int r, g, b;
+
+  colour_get_rgb(&c, &r, &g, &b);
+
+  return (int) ((77 * r + 150 * g + 29 * b) >> 8);
+}
+
+colour_t colour_random_contrast(rng_t *rng, colour_t against)
+{
+  colour_t c;
+  int      ref;
+  int      i;
+
+  ref = colour_luma(against);
+
+  for (i = 0; i < 16; i++)
+  {
+    c = colour_random(rng);
+    if (abs(colour_luma(c) - ref) >= 96)
+      return c;
+  }
+
+  return ref < 128 ? colour_rgb(255, 255, 255) : colour_rgb(0, 0, 0);
 }
 
 colour_t colour_rgba(unsigned int r,

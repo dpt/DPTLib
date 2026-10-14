@@ -32,6 +32,8 @@ enum
   OSCILLATING_MENU_DECAY,
   OSCILLATING_MENU_COLOURS,
   OSCILLATING_MENU_PAUSE,
+  OSCILLATING_MENU_RANDOMISE,
+  OSCILLATING_MENU_RESET,
   OSCILLATING_MENU_SAVE
 };
 
@@ -79,6 +81,38 @@ static result_t oscillating_saveas_save(const char *path, void *opaque)
   return snapshot_save_png(lc->window, oscillating_handle, lc, path);
 }
 
+/* the starting figure, as oscillating_create and Reset restore it */
+static void oscillating_defaults(oscillating_task_t *task)
+{
+  task->bg           = colour_rgb(0x00, 0x00, 0x00);
+  task->fg           = colour_rgb(0x00, 0xFF, 0x00);
+  task->freq_index   = 0;
+  task->a            = oscillating_freqs[0].a;
+  task->b            = oscillating_freqs[0].b;
+  task->phase        = 0.0;
+  task->drift        = 0.01;
+  task->reversals    = 1;
+  task->reversing    = 0.0;
+  task->easing_index = easing_LINEAR; /* row 0, "None" */
+  task->decay_index  = 0;             /* row 0, "Off" */
+  task->trail_count  = 0;
+}
+
+/* pick the ratio, easing, decay, drift direction and colours afresh */
+static void oscillating_randomise(oscillating_task_t *task)
+{
+  task->freq_index   = rng_range(&task->rng, OSCILLATING_NFREQS);
+  task->a            = oscillating_freqs[task->freq_index].a;
+  task->b            = oscillating_freqs[task->freq_index].b;
+  task->easing_index = rng_range(&task->rng, OSCILLATING_NEASINGS);
+  task->decay_index  = rng_range(&task->rng, OSCILLATING_NDECAYS);
+  task->drift        = rng_range(&task->rng, 2) ? task->drift : -task->drift;
+  task->reversing    = 0.0;
+  task->trail_count  = 0;
+  task->bg           = colour_random(&task->rng);
+  task->fg           = colour_random_contrast(&task->rng, task->bg);
+}
+
 result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
 {
   result_t            rc;
@@ -93,16 +127,8 @@ result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
     return result_OOM;
 
   task->wuss       = wuss;
-  task->bg         = colour_rgb(0x00, 0x00, 0x00);
-  task->fg         = colour_rgb(0x00, 0xFF, 0x00);
-  task->freq_index = 0;
-  task->a          = oscillating_freqs[0].a;
-  task->b          = oscillating_freqs[0].b;
-  task->phase      = 0.0;
-  task->drift      = 0.01;
-  task->reversals  = 1;
-  task->easing_index = easing_LINEAR; /* row 0, "None" */
-  task->decay_index  = 0;             /* row 0, "Off" */
+  rng_seed(&task->rng, (uint32_t) rand());
+  oscillating_defaults(task);
 
   /* redraw paints its own background every frame */
   delegate_desc.handle    = oscillating_handle;
@@ -176,6 +202,12 @@ result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, OSCILLATING_MENU_PAUSE, "Pause",
                           wuss_MENU_ITEM_NONE, "SPACE");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, OSCILLATING_MENU_RANDOMISE,
+                          "Randomise", wuss_MENU_ITEM_NONE, "^R");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, OSCILLATING_MENU_RESET, "Reset",
+                          wuss_MENU_ITEM_NONE, "R");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, OSCILLATING_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_NONE, "^S");
@@ -409,6 +441,27 @@ static result_t oscillating_pre_submenu_open(oscillating_task_t *lc,
 static result_t oscillating_menu_select(oscillating_task_t *lc,
                                         const wuss_event_t *event)
 {
+  if (event->data.menu_select.menu == &lc->menu &&
+      (event->data.menu_select.index == OSCILLATING_MENU_RANDOMISE ||
+       event->data.menu_select.index == OSCILLATING_MENU_RESET))
+  {
+    if (event->data.menu_select.index == OSCILLATING_MENU_RANDOMISE)
+      oscillating_randomise(lc);
+    else
+      oscillating_defaults(lc);
+
+    wuss_menu_tick_exclusive_live(lc->menu_handle, &lc->ratio_menu,
+                                  lc->freq_index);
+    wuss_menu_tick_exclusive_live(lc->menu_handle, &lc->easing_menu,
+                                  lc->easing_index);
+    wuss_menu_tick_exclusive_live(lc->menu_handle, &lc->decay_menu,
+                                  lc->decay_index);
+    wuss_menu_tick_item_live(lc->menu_handle, &lc->menu,
+                             OSCILLATING_MENU_REVERSALS, lc->reversals);
+    wuss_window_invalidate_visible(lc->window);
+    return result_OK;
+  }
+
   if (event->data.menu_select.menu == &lc->ratio_menu)
   {
     oscillating_set_freq(lc, event->data.menu_select.index);

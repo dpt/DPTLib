@@ -31,6 +31,8 @@ enum
   SOFA_MENU_MODEL,
   SOFA_MENU_PAUSE,
   SOFA_MENU_CYCLE,
+  SOFA_MENU_RANDOMISE,
+  SOFA_MENU_RESET,
   SOFA_MENU_SAVE
 };
 
@@ -396,6 +398,30 @@ static result_t sofa_saveas_save(const char *path, void *opaque)
   return snapshot_save_png(sc->window, sofa_handle, sc, path);
 }
 
+/* the starting view, as sofa_create and Reset restore it */
+static void sofa_defaults(sofa_task_t *task)
+{
+  task->bg       = colour_rgb(0x7E, 0x25, 0x53);
+  task->line     = colour_rgb(0xFF, 0xA3, 0x00);
+  task->dot      = colour_rgb(0xFF, 0xFF, 0xFF);
+  task->angle    = 0.0;
+  task->zoom     = 1.0;
+  task->spinning = true;
+  task->shape    = sofa_SHAPE_SOFA;
+  task->turns    = 0;
+  task->cycling  = true;
+}
+
+/* pick the model and every colour afresh */
+static void sofa_randomise(sofa_task_t *task)
+{
+  task->shape = (sofa_shape_t) rng_range(&task->rng, sofa_SHAPE__LIMIT);
+  task->turns = 0;
+  task->bg    = colour_random(&task->rng);
+  task->line  = colour_random_contrast(&task->rng, task->bg);
+  task->dot   = colour_random_contrast(&task->rng, task->bg);
+}
+
 result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
 {
   result_t         rc;
@@ -410,15 +436,8 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
     return result_OOM;
 
   task->wuss     = wuss;
-  task->bg       = colour_rgb(0x7E, 0x25, 0x53);
-  task->line     = colour_rgb(0xFF, 0xA3, 0x00);
-  task->dot      = colour_rgb(0xFF, 0xFF, 0xFF);
-  task->angle    = 0.0;
-  task->zoom     = 1.0;
-  task->spinning = true;
-  task->shape    = sofa_SHAPE_SOFA;
-  task->turns    = 0;
-  task->cycling  = true;
+  rng_seed(&task->rng, (uint32_t) rand());
+  sofa_defaults(task);
 
   /* sofa_redraw paints its own background every frame */
   delegate_desc.handle    = sofa_handle;
@@ -468,6 +487,10 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
                           wuss_MENU_ITEM_NONE, "SPACE");
   WUSS_MENU_ITEM(task->menu_items, SOFA_MENU_CYCLE, "Auto-cycle",
                  wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SOFA_MENU_RANDOMISE, "Randomise",
+                          wuss_MENU_ITEM_NONE, "^R");
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SOFA_MENU_RESET, "Reset",
+                          wuss_MENU_ITEM_NONE, "R");
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SOFA_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_NONE, "^S");
   /* hover opens the Save As dialogue as a submenu; ^S shows it standalone */
@@ -732,6 +755,24 @@ static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
     sc->turns   = 0; /* a re-enabled cycle gives the model its full turns */
     wuss_menu_tick_item_live(sc->menu_handle, &sc->menu, SOFA_MENU_CYCLE,
                              sc->cycling);
+    return result_OK;
+  }
+
+  if (event->data.menu_select.menu == &sc->menu &&
+      (event->data.menu_select.index == SOFA_MENU_RANDOMISE ||
+       event->data.menu_select.index == SOFA_MENU_RESET))
+  {
+    if (event->data.menu_select.index == SOFA_MENU_RANDOMISE)
+      sofa_randomise(sc);
+    else
+      sofa_defaults(sc);
+
+    wuss_menu_tick_exclusive_live(sc->menu_handle, &sc->model_menu, sc->shape);
+    wuss_menu_tick_item_live(sc->menu_handle, &sc->menu, SOFA_MENU_PAUSE,
+                             !sc->spinning);
+    wuss_menu_tick_item_live(sc->menu_handle, &sc->menu, SOFA_MENU_CYCLE,
+                             sc->cycling);
+    wuss_window_invalidate_visible(sc->window);
     return result_OK;
   }
 

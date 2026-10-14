@@ -6,6 +6,7 @@
 #ifdef WUSS_APP
 
 #include "framebuf/colour.h"
+#include "utils/rng.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/component/saveas.h"
 #include "wuss/menu.h"
@@ -25,7 +26,8 @@
  * picks how many previous frames trail behind, dimmed (Off by default); its
  * Colours
  * row has Foreground and Background rows that pick fg and bg from the shared
- * colourmenu; Save PNG
+ * colourmenu; Randomise (^R) picks every setting afresh and Reset (R)
+ * restores the starting ones; Save PNG
  * opens a Save As dialogue (drag its icon onto a Filer window, or Save with
  * a full path already typed) that writes the window's content out. Once a
  * click has given the window the input focus, Space pauses/resumes and
@@ -36,7 +38,7 @@ typedef struct oscillating_task
   wuss_task_t        *delegate; /* the task that owns the menu */
   wuss_saveas_t       *saveas;
   wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t    menu_items[7]; /* per-instance: a shared static would
+  wuss_menu_item_t    menu_items[9]; /* per-instance: a shared static would
                                        * leak one instance's .window pointer
                                        * into another's menu */
   wuss_menu_t         menu;
@@ -61,6 +63,7 @@ typedef struct oscillating_task
   double         drift;
   double         reversing; /* fraction of the backwards run still to do */
   double         reverse_from; /* phase at the start of the backwards run */
+  rng_t          rng;     /* Randomise */
   int            freq_index; /* index into oscillating_freqs */
 }
 oscillating_task_t;
