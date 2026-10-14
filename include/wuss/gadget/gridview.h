@@ -267,6 +267,15 @@ void wuss_gridview_clear_selection(wuss_gridview_t *gridview);
 void wuss_gridview_select_all(wuss_gridview_t *gridview);
 
 /**
+ * Select only item \p index, invalidating the cells whose state changes. An
+ * out-of-range index is ignored.
+ *
+ * \param[in] gridview Handle.
+ * \param[in] index    Item index, 0..count-1.
+ */
+void wuss_gridview_select(wuss_gridview_t *gridview, int index);
+
+/**
  * \param[in] gridview Handle.
  * \return Number of items selected.
  */

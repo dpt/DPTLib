@@ -649,6 +649,16 @@ void wuss_gridview_select_all(wuss_gridview_t *gv)
   }
 }
 
+void wuss_gridview_select(wuss_gridview_t *gv, int index)
+{
+  if (index < 0 || index >= gv->count)
+    return;
+
+  gridview_clear_selected(gv);
+  (void) bitvec_set(gv->selected, (bitvec_index_t) index);
+  gridview_invalidate_cell(gv, index);
+}
+
 int wuss_gridview_selected_count(const wuss_gridview_t *gv)
 {
   return (int) bitvec_count(gv->selected);

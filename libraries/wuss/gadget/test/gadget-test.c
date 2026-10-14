@@ -523,6 +523,17 @@ StringSetOK: ;
     wuss_gridview_clear_selection(gv);
     if (wuss_gridview_selected_count(gv) != 0) goto GridViewFail;
 
+    /* select replaces the selection; out of range is ignored */
+    wuss_gridview_select(gv, 1);
+    wuss_gridview_select(gv, 2);
+    if (wuss_gridview_selected_count(gv) != 1 ||
+        wuss_gridview_is_selected(gv, 1) || !wuss_gridview_is_selected(gv, 2))
+      goto GridViewFail;
+    wuss_gridview_select(gv, -1);
+    wuss_gridview_select(gv, (int) NELEMS(gridview_test_labels));
+    if (!wuss_gridview_is_selected(gv, 2)) goto GridViewFail;
+    wuss_gridview_clear_selection(gv);
+
     /* a changed item list re-measures the cell: dropping the long label
      * narrows it, bringing the label back widens it again */
     rc = wuss_gridview_set_count(gv, 2);
