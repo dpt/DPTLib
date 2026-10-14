@@ -207,10 +207,15 @@ static void effecting_item(int                   index,
   out->label = ec->label;
 }
 
+static void effecting_menu_update(effecting_task_t *ec);
+
 static void effecting_list_changed(effecting_task_t *ec)
 {
   if (ec->list != NULL)
     (void) wuss_gridview_set_count(ec->list, ec->nelements);
+
+  /* an open menu must reflect the new stack and selection */
+  effecting_menu_update(ec);
 }
 
 /* Appends an element of the given type, selects it and re-runs. */
@@ -633,6 +638,8 @@ static void effecting_menu_enable(effecting_task_t *ec, int row, int enabled)
       (wuss_menu_item_flags_t) ~wuss_MENU_ITEM_DISABLED;
   else
     ec->menu_items[row].flags |= wuss_MENU_ITEM_DISABLED;
+
+  wuss_menu_disable_item_live(ec->menu_handle, &ec->menu, row, !enabled);
 }
 
 /* Sets the rows to match the selection and the stack. */
@@ -673,6 +680,8 @@ static void effecting_menu_update(effecting_task_t *ec)
     }
   }
 
+  wuss_menu_disable_item_live(ec->menu_handle, &ec->menu, EFFECTING_MENU_EDIT,
+                              edit_row->flags & wuss_MENU_ITEM_DISABLED);
   effecting_menu_enable(ec, EFFECTING_MENU_DELETE, el != NULL);
   effecting_menu_enable(ec, EFFECTING_MENU_DELETE_ALL, ec->nelements > 0);
   effecting_menu_enable(ec, EFFECTING_MENU_APPLY, ec->nelements > 0);
