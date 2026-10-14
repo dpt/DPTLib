@@ -78,6 +78,12 @@ extern result_t paint_handle(wuss_window_t      *window,
                              const wuss_event_t *event,
                              void               *task_data);
 
+/* Redraw handler that floods its whole content box with the colour_t
+ * task_data points to, ignoring the clip so wuss-core must clip it. */
+extern result_t flood_full_bounds_handle(wuss_window_t      *window,
+                                         const wuss_event_t *event,
+                                         void               *task_data);
+
 /* A bitmap-backed screen with a default wuss on it, for tests that each
  * want a fresh instance. */
 typedef struct wuss_fixture

@@ -244,6 +244,35 @@ void wuss_fixture_close(wuss_fixture_t *fixture)
 
 /* ----------------------------------------------------------------------- */
 
+/* A redraw handler that ignores "clip" and always floods its whole content
+ * box with the colour_t task_data points to, relying entirely on wuss-core's
+ * own clipping (scr->clip during the redraw dispatch) to keep the fill
+ * inside the window -- matching a task such as saturn.c that redraws its
+ * full fixed sample space every call rather than restricting itself to the
+ * dirty piece it was handed. */
+result_t flood_full_bounds_handle(wuss_window_t      *window,
+                                  const wuss_event_t *event,
+                                  void               *task_data)
+{
+  const box_t    *bounds;
+  const colour_t *colour;
+
+  NOT_USED(window);
+
+  if (event->kind != wuss_EVENT_REDRAW)
+    return result_OK;
+
+  bounds = event->data.redraw.bounds;
+  colour = task_data;
+  screen_fill_rect(event->data.redraw.scr, bounds->x0, bounds->y0,
+                   SIZE2D(bounds->x1 - bounds->x0, bounds->y1 - bounds->y0),
+                   *colour);
+
+  return result_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+
 /* A redraw handler that paints its content as one-pixel horizontal lines
  * whose colour encodes the document-space Y of each row, so a test can read
  * the framebuffer back and tell not just whose pixels are where but whether
