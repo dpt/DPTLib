@@ -842,6 +842,7 @@ if(BUILD_TESTS)
         libraries/wuss/test/harness.c
         libraries/wuss/test/harness.h
         libraries/wuss/menu/test/menu-test.c
+        libraries/wuss/core/test/pointer-test.c
         libraries/wuss/tasks/painting-doc.c
         libraries/wuss/tasks/painting-doc.h
         libraries/wuss/test/wuss-test.c)

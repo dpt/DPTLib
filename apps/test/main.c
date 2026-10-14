@@ -89,6 +89,7 @@ static const test_t tests[] =
   { "paintingdoc",   paintingdoc_test   },
   { "wuss",       wuss_test       },
   { "wuss-menu",  wuss_menu_test  },
+  { "wuss-pointer", wuss_pointer_test },
 };
 
 static const int ntests = NELEMS(tests);

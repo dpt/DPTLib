@@ -71,6 +71,7 @@ extern testfn_t array_test,
 extern testfn_t gridview_bench_test,
                 paintingdoc_test,
                 wuss_menu_test,
+                wuss_pointer_test,
                 wuss_test;
 
 #endif /* TESTS_ALL_TESTS_H */
