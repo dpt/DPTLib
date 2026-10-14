@@ -14,9 +14,11 @@
 #include "geom/box.h"
 #include "geom/size.h"
 #include "geom/stack.h"
+#include "io/filetype.h"
 
 #include "common.h"
 #include "fireworks.h"
+#include "snapshot.h"
 #include "taskapp.h"
 
 #define FIREWORKS_WIDTH     480
@@ -29,6 +31,8 @@
 #define FIREWORKS_TRAIL_MAX     10    /* cap per idle tick */
 #define FIREWORKS_TRAIL_DAMPING 0.25f /* fraction of pointer velocity kept */
 
+#define FIREWORKS_SAVE_NAME "fireworks.png" /* Save As's initial leafname */
+
 /* MENU click pops this menu; the item table and wuss_menu_t live
  * per-instance in fireworks_task_t, not as a file-scope static */
 enum
@@ -39,7 +43,8 @@ enum
   FIREWORKS_MENU_GRAVITY,
   FIREWORKS_MENU_WALLS,
   FIREWORKS_MENU_MARKERS,
-  FIREWORKS_MENU_CLEAR
+  FIREWORKS_MENU_CLEAR,
+  FIREWORKS_MENU_SAVE
 };
 
 /* "Add" submenu rows */
@@ -283,9 +288,20 @@ static void fireworks_render(int   x,
 
 /* ----------------------------------------------------------------------- */
 
+/* wuss_saveas_save_fn_t: opaque is the fireworks_task_t */
+static result_t fireworks_saveas_save(const char *path, void *opaque)
+{
+  fireworks_task_t *pt;
+
+  pt = opaque;
+
+  return snapshot_save_png(pt->window, fireworks_handle, pt, path);
+}
+
 result_t fireworks_create(wuss_t *wuss, fireworks_task_t **out)
 {
   result_t          rc;
+  filetype_t        png_type;
   fireworks_task_t *task;
   wuss_task_t      *delegate;
   wuss_task_desc_t  delegate_desc;
@@ -388,6 +404,21 @@ result_t fireworks_create(wuss_t *wuss, fireworks_task_t **out)
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_CLEAR, "Clear",
                           wuss_MENU_ITEM_NONE, "C");
 
+  png_type = filetype_from_ext(".png");
+  rc = wuss_saveas_create(&task->saveas, wuss, &png_type,
+                          FIREWORKS_SAVE_NAME, fireworks_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_SAVE, "Save PNG",
+                          wuss_MENU_ITEM_NONE, "^S");
+  /* hover opens the Save As dialogue as a submenu; ^S shows it standalone */
+  task->menu_items[FIREWORKS_MENU_SAVE].window =
+    wuss_saveas_window(task->saveas);
+
   WUSS_MENU_TITLE(task->menu, "Fireworks", task->menu_items,
                  NELEMS(task->menu_items));
 
@@ -424,6 +455,7 @@ result_t fireworks_app_create(wuss_t *wuss)
 
 void fireworks_destroy(fireworks_task_t *task)
 {
+  wuss_saveas_destroy(task->saveas);
   wuss_dialogue_destroy(task->strength_dialogue);
   free(task);
 }
@@ -1033,6 +1065,9 @@ result_t fireworks_handle(wuss_window_t      *window,
       fireworks_clear(pt);
       return result_OK;
     }
+    if (event->data.menu_select.menu == &pt->menu &&
+        event->data.menu_select.index == FIREWORKS_MENU_SAVE)
+      return wuss_saveas_open(pt->saveas);
     if (event->data.menu_select.menu == &pt->menu)
       return fireworks_toggle(pt, event);
     return fireworks_menu_select(pt, event);
