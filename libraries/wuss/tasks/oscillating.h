@@ -46,8 +46,7 @@ typedef struct oscillating_task
   wuss_menu_t         ratio_menu;
   wuss_menu_item_t    easing_items[OSCILLATING_NEASINGS]; /* one per curve */
   wuss_menu_t         easing_menu;
-  wuss_menu_item_t    colours_items[2]; /* Foreground, Background */
-  wuss_menu_t         colours_menu;
+  wuss_colourpair_t   colours; /* Foreground, Background */
   wuss_menu_item_t    decay_items[OSCILLATING_NDECAYS]; /* one per length */
   wuss_menu_t         decay_menu;
   int                 decay_index; /* index into oscillating_decays */
@@ -57,8 +56,6 @@ typedef struct oscillating_task
   int                 easing_index; /* easing_kind_t; easing_LINEAR = None */
   wuss_window_t *window;
   colour_t       bg, fg;
-  colour_t      *colourmenu_target; /* &bg or &fg: whichever row last
-                                     * opened the colourmenu */
   int            a, b;    /* frequency ratio */
   double         phase;
   double         drift;

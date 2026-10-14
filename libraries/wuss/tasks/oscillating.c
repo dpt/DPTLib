@@ -35,13 +35,6 @@ enum
   OSCILLATING_MENU_SAVE
 };
 
-/* rows of the Colours submenu */
-enum
-{
-  OSCILLATING_COLOURS_FOREGROUND = 0,
-  OSCILLATING_COLOURS_BACKGROUND
-};
-
 #define OSCILLATING_SAVE_NAME "oscillating.png" /* Save As's initial leafname */
 
 /* frequency pairs cycled by a Select click and listed in Menu > Ratio */
@@ -176,19 +169,10 @@ result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, OSCILLATING_MENU_EASING, "Easing",
                       wuss_MENU_ITEM_NONE, &task->easing_menu);
 
-  WUSS_MENU_ITEM_MENU(task->colours_items, OSCILLATING_COLOURS_FOREGROUND,
-                      "Foreground", wuss_MENU_ITEM_PRE_OPEN,
-                      wuss_colourmenu_menu(wuss));
-
-  WUSS_MENU_ITEM_MENU(task->colours_items, OSCILLATING_COLOURS_BACKGROUND,
-                      "Background", wuss_MENU_ITEM_PRE_OPEN,
-                      wuss_colourmenu_menu(wuss));
-
-  WUSS_MENU_TITLE(task->colours_menu, "Colours", task->colours_items,
-                 NELEMS(task->colours_items));
+  wuss_colourpair_init(&task->colours, wuss, &task->fg, &task->bg);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, OSCILLATING_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_NONE, &task->colours_menu);
+                      wuss_MENU_ITEM_NONE, &task->colours.menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, OSCILLATING_MENU_PAUSE, "Pause",
                           wuss_MENU_ITEM_NONE, "SPACE");
@@ -410,29 +394,16 @@ static result_t oscillating_idle(void *task_data)
   return result_OK;
 }
 
-/* The "Background" and "Foreground" rows' submenu: the shared colourmenu
- * singleton, reconfigured here rather than at create time since other tasks
- * retitle it and toggle its None row too; also notes which colour a pick
- * lands in. */
+/* Only the Colours rows are PRE_OPEN, so the event is the pair's. */
 static result_t oscillating_pre_submenu_open(oscillating_task_t *lc,
                                              const wuss_event_t *event)
 {
-  const char *title;
+  result_t rc;
 
-  /* only the Colours rows are PRE_OPEN, so the index is theirs */
-  if (event->data.pre_submenu_open.index == OSCILLATING_COLOURS_FOREGROUND)
-  {
-    lc->colourmenu_target = &lc->fg;
-    title                 = "Foreground";
-  }
-  else
-  {
-    lc->colourmenu_target = &lc->bg;
-    title                 = "Background";
-  }
+  if (wuss_colourpair_pre_open(&lc->colours, lc->wuss, event, &rc))
+    return rc;
 
-  return wuss_colourmenu_open_rgb(lc->wuss, event, title,
-                                  *lc->colourmenu_target);
+  return result_OK;
 }
 
 static result_t oscillating_menu_select(oscillating_task_t *lc,
@@ -462,8 +433,7 @@ static result_t oscillating_menu_select(oscillating_task_t *lc,
     return result_OK;
   }
 
-  if (lc->colourmenu_target != NULL &&
-      wuss_colourmenu_selected_rgb(event, lc->colourmenu_target))
+  if (wuss_colourpair_selected(&lc->colours, event))
     wuss_window_invalidate_visible(lc->window);
 
   return result_OK;
