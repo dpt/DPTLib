@@ -1578,3 +1578,30 @@ void wuss__menu_task_closing(wuss_t *wuss, const wuss_task_t *task)
   if (wuss->menu->chain != NULL && wuss->menu->chain->owner == task)
     wuss__menu_abandon(wuss);
 }
+
+/* ----------------------------------------------------------------------- */
+
+struct wuss__menu *wuss__menu_level_child(const struct wuss__menu *level)
+{
+  return level->child;
+}
+
+int wuss__menu_level_open_index(const struct wuss__menu *level)
+{
+  return level->open_index;
+}
+
+wuss_window_t *wuss__menu_level_window(const struct wuss__menu *level)
+{
+  return level->window;
+}
+
+wuss_icon_t *wuss__menu_level_icon(const struct wuss__menu *level, int index)
+{
+  return level->icons != NULL ? level->icons[index] : NULL;
+}
+
+int wuss__menu_level_flashing(const struct wuss__menu *level)
+{
+  return level->flash.frames > 0;
+}

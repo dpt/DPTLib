@@ -26,8 +26,9 @@
 
 #if defined(WUSS_MENUS) && defined(WUSS_ICONS)
 
-/* white-box for now: picks are driven through the icon layer and the open
- * chain is read back from struct wuss__menu / struct wuss_icon */
+/* picks are driven through the icon layer and the open chain is read back
+ * through the wuss__menu_level_* queries; core/impl.h is still needed for
+ * non-menu internals (z-order, icon hover, content boxes) */
 #include "../../core/impl.h"
 #include "wuss/icon-spec.h"
 #include "../../icon.h"
@@ -51,9 +52,9 @@ static void flash_pick_row(wuss_t            *wuss,
   point_t scroll;
   point_t at;
 
-  wuss_window_get_content_bounds(level->window, &content);
-  wuss_window_get_scroll(level->window, &scroll);
-  wuss_icon_get_bbox(level->icons[row], &bbox);
+  wuss_window_get_content_bounds(wuss__menu_level_window(level), &content);
+  wuss_window_get_scroll(wuss__menu_level_window(level), &scroll);
+  wuss_icon_get_bbox(wuss__menu_level_icon(level, row), &bbox);
   wuss__icon_box_to_screen(&content, scroll, &bbox, &screen_box);
 
   at.x = (screen_box.x0 + screen_box.x1) / 2;
@@ -77,9 +78,9 @@ static void menu_move_over_row(wuss_t            *wuss,
   point_t scroll;
   point_t at;
 
-  wuss_window_get_content_bounds(level->window, &content);
-  wuss_window_get_scroll(level->window, &scroll);
-  wuss_icon_get_bbox(level->icons[row], &bbox);
+  wuss_window_get_content_bounds(wuss__menu_level_window(level), &content);
+  wuss_window_get_scroll(wuss__menu_level_window(level), &scroll);
+  wuss_icon_get_bbox(wuss__menu_level_icon(level, row), &bbox);
   wuss__icon_box_to_screen(&content, scroll, &bbox, &screen_box);
 
   at.x = over_arrow ? screen_box.x1 - 4
@@ -207,12 +208,12 @@ result_t wuss_menu_test(const char *resources)
     if (rc != result_OK) goto FlashDestroy;
 
     chain = wuss__menu_chain(fwuss);
-    if (chain == NULL || chain->menu != &flash_menu) goto FlashCheckFail;
+    if (chain == NULL || wuss_menu_handle_menu(chain) != &flash_menu) goto FlashCheckFail;
 
     flash_pick_row(fwuss, chain, 1, wuss_BUTTON_SELECT);
 
     if (ftc.menu_select_count != 0) goto FlashCheckFail; /* deferred, not yet */
-    if (chain->flash.frames <= 0)   goto FlashCheckFail; /* flash was armed */
+    if (!wuss__menu_level_flashing(chain))   goto FlashCheckFail; /* flash was armed */
 
     for (i = 0; i < 64; i++) /* longer than any plausible flash */
       wuss_idle(fwuss);
@@ -236,7 +237,7 @@ result_t wuss_menu_test(const char *resources)
     if (ftc.menu_select_count != 1) goto FlashCheckFail;
     if (ftc.last_menu_index != 0)   goto FlashCheckFail;
     /* and row 0 must not be left highlit */
-    if (wuss__icon_hovered(chain->icons[0])) goto FlashCheckFail;
+    if (wuss__icon_hovered(wuss__menu_level_icon(chain, 0))) goto FlashCheckFail;
 
     for (i = 0; i < 64; i++) /* longer than any plausible flash */
       wuss_idle(fwuss);
@@ -248,7 +249,7 @@ result_t wuss_menu_test(const char *resources)
      * and only that row -- comes back highlit. */
     if (wuss__menu_chain(fwuss) == NULL)  goto FlashCheckFail;
     for (i = 0; i < flash_menu.nitems; i++)
-      if (wuss__icon_hovered(wuss__menu_chain(fwuss)->icons[i]) != (i == 2))
+      if (wuss__icon_hovered(wuss__menu_level_icon(wuss__menu_chain(fwuss), i)) != (i == 2))
         goto FlashCheckFail;
 
     /* --- the chain lives in the top stack, so a window opened meanwhile
@@ -258,7 +259,7 @@ result_t wuss_menu_test(const char *resources)
                             "cover", wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
                             SIZE2D(40, 40), SIZE2D(40, 40), &fcover);
     if (rc != result_OK) goto FlashDestroy;
-    if (wuss__z_first(fwuss) != chain->window)
+    if (wuss__z_first(fwuss) != wuss__menu_level_window(chain))
       goto FlashCheckFail; /* new window starts behind the menu */
 
     flash_pick_row(fwuss, chain, 1, wuss_BUTTON_ADJUST);
@@ -266,7 +267,7 @@ result_t wuss_menu_test(const char *resources)
       wuss_idle(fwuss);
 
     if (ftc.menu_select_count != 3) goto FlashCheckFail;
-    if (wuss__z_first(fwuss) != chain->window)
+    if (wuss__z_first(fwuss) != wuss__menu_level_window(chain))
       goto FlashCheckFail;
 
     rc = result_OK;
@@ -355,22 +356,22 @@ FlashFail:
     if (rc != result_OK) goto SubHiDestroy;
 
     root = wuss__menu_chain(swuss);
-    if (root == NULL || root->menu != &sm_menu) goto SubHiCheckFail;
+    if (root == NULL || wuss_menu_handle_menu(root) != &sm_menu) goto SubHiCheckFail;
 
     /* pointer onto row 1's arrow gutter: its submenu opens */
     menu_move_over_row(swuss, root, 1, 1);
-    if (root->child == NULL)             goto SubHiCheckFail;
-    if (root->open_index != 1)           goto SubHiCheckFail;
-    sub = root->child;
-    if (sub->menu != &sm_sub)            goto SubHiCheckFail;
-    if (!wuss__icon_hovered(root->icons[1])) goto SubHiCheckFail; /* parent lit */
+    if (wuss__menu_level_child(root) == NULL)             goto SubHiCheckFail;
+    if (wuss__menu_level_open_index(root) != 1)           goto SubHiCheckFail;
+    sub = wuss__menu_level_child(root);
+    if (wuss_menu_handle_menu(sub) != &sm_sub)            goto SubHiCheckFail;
+    if (!wuss__icon_hovered(wuss__menu_level_icon(root, 1))) goto SubHiCheckFail; /* parent lit */
 
     /* pointer travels into the submenu, onto its row 0. The parent row that
      * spawned it must keep its highlight; the submenu row gets one too. */
     menu_move_over_row(swuss, sub, 0, 0);
-    if (root->child != sub)                  goto SubHiCheckFail; /* still open */
-    if (!wuss__icon_hovered(root->icons[1])) goto SubHiCheckFail; /* retained */
-    if (!wuss__icon_hovered(sub->icons[0]))  goto SubHiCheckFail;
+    if (wuss__menu_level_child(root) != sub)                  goto SubHiCheckFail; /* still open */
+    if (!wuss__icon_hovered(wuss__menu_level_icon(root, 1))) goto SubHiCheckFail; /* retained */
+    if (!wuss__icon_hovered(wuss__menu_level_icon(sub, 0)))  goto SubHiCheckFail;
 
     /* and while parked over the submenu's own title strip (no row under the
      * pointer, so no ICON event) the parent highlight still holds */
@@ -378,28 +379,28 @@ FlashFail:
       box_t   cb;
       point_t p;
 
-      wuss_window_get_content_bounds(sub->window, &cb);
+      wuss_window_get_content_bounds(wuss__menu_level_window(sub), &cb);
       p.x = (cb.x0 + cb.x1) / 2;
       p.y = cb.y0 - 3; /* just above the content: the titlebar */
       wuss_mouse_move(swuss, p, NULL);
-      if (!wuss__icon_hovered(root->icons[1])) goto SubHiCheckFail;
+      if (!wuss__icon_hovered(wuss__menu_level_icon(root, 1))) goto SubHiCheckFail;
     }
 
     /* pointer re-enters the parent on a different row (row 2, off the arrow):
      * the submenu closes and row 1 must go dark, row 2 lit */
     menu_move_over_row(swuss, root, 2, 0);
-    if (root->child != NULL)                 goto SubHiCheckFail; /* closed */
-    if (root->open_index != -1)              goto SubHiCheckFail;
-    if (wuss__icon_hovered(root->icons[1]))  goto SubHiCheckFail; /* dropped */
-    if (!wuss__icon_hovered(root->icons[2])) goto SubHiCheckFail;
+    if (wuss__menu_level_child(root) != NULL)                 goto SubHiCheckFail; /* closed */
+    if (wuss__menu_level_open_index(root) != -1)              goto SubHiCheckFail;
+    if (wuss__icon_hovered(wuss__menu_level_icon(root, 1)))  goto SubHiCheckFail; /* dropped */
+    if (!wuss__icon_hovered(wuss__menu_level_icon(root, 2))) goto SubHiCheckFail;
 
     /* re-open, then re-enter the parent on the *same* row's text (off the
      * arrow): submenu closes, and row 1 stays lit because the pointer is on it */
     menu_move_over_row(swuss, root, 1, 1);
-    if (root->child == NULL)                 goto SubHiCheckFail;
+    if (wuss__menu_level_child(root) == NULL)                 goto SubHiCheckFail;
     menu_move_over_row(swuss, root, 1, 0);
-    if (root->child != NULL)                 goto SubHiCheckFail;
-    if (!wuss__icon_hovered(root->icons[1])) goto SubHiCheckFail;
+    if (wuss__menu_level_child(root) != NULL)                 goto SubHiCheckFail;
+    if (!wuss__icon_hovered(wuss__menu_level_icon(root, 1))) goto SubHiCheckFail;
 
     wuss_menu_close(root);
     rc = result_OK;
@@ -495,22 +496,22 @@ SubHiFail:
     if (rc != result_OK) goto PreOpenDestroy;
 
     proot = wuss__menu_chain(pwuss);
-    if (proot == NULL || proot->menu != &po_menu) goto PreOpenCheckFail;
+    if (proot == NULL || wuss_menu_handle_menu(proot) != &po_menu) goto PreOpenCheckFail;
 
     /* row 0 unflagged: opens po_sub_a directly, no PRE_SUBMENU_OPEN fired */
     menu_move_over_row(pwuss, proot, 0, 1);
     if (ptc.pre_submenu_open_count != 0)     goto PreOpenCheckFail;
-    if (proot->child == NULL)                goto PreOpenCheckFail;
-    if (proot->child->menu != &po_sub_a)     goto PreOpenCheckFail;
+    if (wuss__menu_level_child(proot) == NULL)                goto PreOpenCheckFail;
+    if (wuss_menu_handle_menu(wuss__menu_level_child(proot)) != &po_sub_a)     goto PreOpenCheckFail;
 
     menu_move_over_row(pwuss, proot, 0, 0); /* off the arrow: closes the child */
-    if (proot->child != NULL)                goto PreOpenCheckFail;
+    if (wuss__menu_level_child(proot) != NULL)                goto PreOpenCheckFail;
 
     /* row 1 flagged, not opting in: PRE_SUBMENU_OPEN fires but nobody calls
      * wuss_menu_open_submenu_now, so the row stays inert */
     menu_move_over_row(pwuss, proot, 1, 1);
     if (ptc.pre_submenu_open_count != 1)     goto PreOpenCheckFail;
-    if (proot->child != NULL)                goto PreOpenCheckFail;
+    if (wuss__menu_level_child(proot) != NULL)                goto PreOpenCheckFail;
 
     /* move off and back on, this time opting in with po_sub_b -- a
      * different menu from the row's own static .submenu (po_sub_a) --
@@ -520,8 +521,8 @@ SubHiFail:
     ptc.submenu_to_open = &po_sub_b;
     menu_move_over_row(pwuss, proot, 1, 1);
     if (ptc.pre_submenu_open_count != 2)     goto PreOpenCheckFail;
-    if (proot->child == NULL)                goto PreOpenCheckFail;
-    if (proot->child->menu != &po_sub_b)     goto PreOpenCheckFail;
+    if (wuss__menu_level_child(proot) == NULL)                goto PreOpenCheckFail;
+    if (wuss_menu_handle_menu(wuss__menu_level_child(proot)) != &po_sub_b)     goto PreOpenCheckFail;
 
     wuss_menu_close(proot);
     rc = result_OK;
@@ -530,7 +531,7 @@ SubHiFail:
 PreOpenCheckFail:
     printf("wuss_test: PRE_SUBMENU_OPEN check failed "
            "(count=%d child=%p)\n",
-           ptc.pre_submenu_open_count, (void *) proot->child);
+           ptc.pre_submenu_open_count, (void *) wuss__menu_level_child(proot));
     rc = result_TEST_FAILED;
 
 PreOpenDestroy:
@@ -619,7 +620,7 @@ PreOpenFail:
     if (rc != result_OK) goto PwDestroy;
 
     proot = wuss__menu_chain(pwuss);
-    if (proot == NULL || proot->menu != &pw_menu) goto PwCheckFail;
+    if (proot == NULL || wuss_menu_handle_menu(proot) != &pw_menu) goto PwCheckFail;
 
     /* row 0 unflagged: still goes through the plain wuss_window_set_hidden
      * path, so PRE_SHOW fires with handle == NULL (default-proceed, no
@@ -721,7 +722,7 @@ PwFail:
 
     rc = wuss_menu_open(sowner, &sc_menu, POINT(10, 20), NULL);
     if (rc != result_OK) goto ScDestroy;
-    plain_w = wuss__menu_chain(swuss)->window->doc.w;
+    plain_w = wuss__menu_level_window(wuss__menu_chain(swuss))->doc.w;
     wuss_menu_close(wuss__menu_chain(swuss));
 
     /* one font only, so the "bold" shortcut measures in the system font */
@@ -732,10 +733,10 @@ PwFail:
     rc = wuss_menu_open(sowner, &sc_menu, POINT(10, 20), NULL);
     if (rc != result_OK) goto ScDestroy;
     sroot = wuss__menu_chain(swuss);
-    if (sroot->window->doc.w < plain_w + (int) shortcut_w)
+    if (wuss__menu_level_window(sroot)->doc.w < plain_w + (int) shortcut_w)
     {
       printf("wuss_test: shortcut menu width %d, want >= %d + %d\n",
-             sroot->window->doc.w, plain_w, (int) shortcut_w);
+             wuss__menu_level_window(sroot)->doc.w, plain_w, (int) shortcut_w);
       rc = result_TEST_FAILED;
     }
     wuss_menu_close(sroot);
@@ -900,7 +901,7 @@ ScFail:
 
     if (mta.menu_press_count != 1)            goto MoveCheckFail;
     if (wuss__menu_chain(mwuss) == NULL ||
-        wuss__menu_chain(mwuss)->menu != &menu_a)   goto MoveCheckFail;
+        wuss_menu_handle_menu(wuss__menu_chain(mwuss)) != &menu_a)   goto MoveCheckFail;
 
     /* MENU over B while menu A is still open: the old chain must close AND
      * task B must get the press so menu B opens in its place. Regression:
@@ -913,7 +914,7 @@ ScFail:
 
     if (mtb.menu_press_count != 1)            goto MoveCheckFail;
     if (wuss__menu_chain(mwuss) == NULL ||
-        wuss__menu_chain(mwuss)->menu != &menu_b)   goto MoveCheckFail;
+        wuss_menu_handle_menu(wuss__menu_chain(mwuss)) != &menu_b)   goto MoveCheckFail;
 
     /* replacing menu A's chain told task A its handle was gone */
     if (mta.menu_closed_count != 1)           goto MoveCheckFail;
@@ -1142,23 +1143,23 @@ MoveFail:
       root = wuss__menu_chain(qwuss);
 
       /* hover the row's arrow (its rightmost pixel) to open the leaf */
-      wuss__content_box(root->window, &content);
-      wuss_icon_get_bbox(root->icons[0], &row);
+      wuss__content_box(wuss__menu_level_window(root), &content);
+      wuss_icon_get_bbox(wuss__menu_level_icon(root, 0), &row);
       arrow = POINT(content.x0 + row.x1 - 1, content.y0 + (row.y0 + row.y1) / 2);
       title = POINT(content.x0 + 2, content.y0 - 2);
       wuss_mouse_move(qwuss, arrow, NULL);
-      if (root->child == NULL || root->child->window != leaf)
+      if (wuss__menu_level_child(root) == NULL || wuss__menu_level_window(wuss__menu_level_child(root)) != leaf)
         goto QuitCheckFail;
 
       rc = wuss_drag_start(qwuss, leaf, SIZE2D(8, 8), POINT(4, 4));
       if (rc != result_OK) goto QuitDestroy;
       wuss_mouse_move(qwuss, title, NULL);
       wuss_idle(qwuss);
-      if (root->child == NULL)                 goto QuitCheckFail;
+      if (wuss__menu_level_child(root) == NULL)                 goto QuitCheckFail;
 
       wuss_mouse_click(qwuss, title, wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
       wuss_idle(qwuss); /* drag over: the titlebar collapse applies again */
-      if (root->child != NULL)                 goto QuitCheckFail;
+      if (wuss__menu_level_child(root) != NULL)                 goto QuitCheckFail;
 
       wuss_menu_close(qmt.menu_handle);
       reap_test_tasks();

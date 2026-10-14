@@ -143,6 +143,17 @@ void wuss__menu_task_closing(wuss_t *wuss, const wuss_task_t *task);
  * before dropping a row's highlight. */
 int wuss__menu_row_pinned(const wuss_t *wuss, const wuss_icon_t *icon);
 
+/* Read-only views of one chain level, for tests and diagnostics: the submenu
+ * level it has open (NULL when none), the index of the row that opened it (-1
+ * when none), its window, the icon of row `index` (NULL for a borrowed-window
+ * level) and whether an ADJUST/SELECT pick flash is running on it. */
+struct wuss__menu *wuss__menu_level_child(const struct wuss__menu *level);
+int                wuss__menu_level_open_index(const struct wuss__menu *level);
+wuss_window_t     *wuss__menu_level_window(const struct wuss__menu *level);
+wuss_icon_t       *wuss__menu_level_icon(const struct wuss__menu *level,
+                                         int                      index);
+int                wuss__menu_level_flashing(const struct wuss__menu *level);
+
 #else /* !WUSS_MENUS */
 
 static inline result_t wuss__menu_session_create(wuss_t *wuss)
