@@ -64,3 +64,28 @@ result_t wuss_task_set_hidden(wuss_t *wuss, wuss_task_t *task, int hidden)
 
   return first;
 }
+
+int wuss_task_has_windows(wuss_t *wuss, wuss_task_t *task)
+{
+  list_t        *t;
+  list_t        *w;
+  wuss_task_t   *each;
+  wuss_window_t *window;
+
+  for (t = wuss->tasks.next; t != NULL; t = t->next)
+  {
+    each = wuss__task_from_link(t);
+    if (each != task && each->parent != task)
+      continue;
+
+    for (w = each->windows.next; w != NULL; w = w->next)
+    {
+      window = wuss__window_from_task_link(w);
+      if (!(window->flags & wuss_WINDOW_HIDDEN) ||
+          (window->state & wuss_WINDOW_STATE_TASK_HIDDEN))
+        return 1;
+    }
+  }
+
+  return 0;
+}

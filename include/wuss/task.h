@@ -506,6 +506,17 @@ int wuss_task_raise_children(wuss_t *wuss, wuss_task_t *parent);
 result_t wuss_task_set_hidden(wuss_t *wuss, wuss_task_t *task, int hidden);
 
 /**
+ * Whether \p task or any of its child tasks has a window that
+ * wuss_task_set_hidden would act on: one that is visible, or that it hid. A
+ * window hidden in its own right (a borrowed dialogue, say) does not count.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] task Task to test, with its children.
+ * \return Non-zero if there is such a window, else zero.
+ */
+int wuss_task_has_windows(wuss_t *wuss, wuss_task_t *task);
+
+/**
  * Make every task created from now on a child of \p parent: destroying \p
  * parent (wuss_task_destroy) first destroys its children, each firing its
  * own wuss_EVENT_QUIT. Lets a launcher task start tasks it did not create

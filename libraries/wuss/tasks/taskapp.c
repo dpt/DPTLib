@@ -219,6 +219,11 @@ static result_t app_menu_open(app_t *app)
 
   wuss_proginfo_set_desc(&desc);
   app->menu_items[APP_MENU_INFO].window = wuss_proginfo_window(app->task);
+  if (wuss_task_has_windows(app->wuss, app->task))
+    app->menu_items[app->hide_row].flags &=
+      (wuss_menu_item_flags_t) ~wuss_MENU_ITEM_DISABLED;
+  else
+    app->menu_items[app->hide_row].flags |= wuss_MENU_ITEM_DISABLED;
 
   return wuss_iconbar_menu_open(app->task, &app->menu, &app->menu_handle);
 }

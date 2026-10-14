@@ -583,6 +583,20 @@ static result_t filing_iconbar_menu_open(filing_task_t *task)
   wuss_proginfo_set_desc(&desc);
   task->ib_menu_items[FILING_IB_MENU_INFO].window =
     wuss_proginfo_window(task->delegate);
+  if (wuss_task_has_windows(task->wuss, task->delegate))
+  {
+    task->ib_menu_items[FILING_IB_MENU_CLOSE_ALL].flags &=
+      (wuss_menu_item_flags_t) ~wuss_MENU_ITEM_DISABLED;
+    task->ib_menu_items[FILING_IB_MENU_HIDE].flags &=
+      (wuss_menu_item_flags_t) ~wuss_MENU_ITEM_DISABLED;
+  }
+  else
+  {
+    task->ib_menu_items[FILING_IB_MENU_CLOSE_ALL].flags |=
+      wuss_MENU_ITEM_DISABLED;
+    task->ib_menu_items[FILING_IB_MENU_HIDE].flags |= wuss_MENU_ITEM_DISABLED;
+  }
+
   return wuss_iconbar_menu_open(task->delegate, &task->ib_menu,
                                 &task->menu_handle);
 }

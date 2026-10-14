@@ -339,6 +339,8 @@ result_t wuss_task_test(const char *resources)
                             box_size(&box_h), SIZE2D(0, 0), &win_own);
     if (rc != result_OK) goto Failure;
 
+    if (!wuss_task_has_windows(wuss, parent_h)) goto Failure;
+
     rc = wuss_task_set_hidden(wuss, parent_h, 1);
     if (rc != result_OK) goto Failure;
     if (!(win_p->flags & wuss_WINDOW_HIDDEN) ||
@@ -352,6 +354,11 @@ result_t wuss_task_test(const char *resources)
       goto Failure; /* both back */
     if (!(win_own->flags & wuss_WINDOW_HIDDEN))
       goto Failure; /* a window hidden in its own right stays so */
+
+    wuss_window_close(win_p);
+    wuss_window_close(win_c);
+    if (wuss_task_has_windows(wuss, parent_h))
+      goto Failure; /* only the window hidden in its own right is left */
 
     wuss_task_destroy(parent_h); /* takes child_h with it */
     mk_task_count = 0;
