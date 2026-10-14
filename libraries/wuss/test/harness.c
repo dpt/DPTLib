@@ -11,6 +11,7 @@
 #include "wuss/task.h"
 #include "wuss/window.h"
 #include "wuss/message.h"
+#include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
 #ifdef WUSS_MENUS
 #include "wuss/menu.h"
@@ -239,4 +240,49 @@ void wuss_fixture_close(wuss_fixture_t *fixture)
 
   free(fixture->pixels);
   fixture->pixels = NULL;
+}
+
+/* ----------------------------------------------------------------------- */
+
+/* A redraw handler that paints its content as one-pixel horizontal lines
+ * whose colour encodes the document-space Y of each row, so a test can read
+ * the framebuffer back and tell not just whose pixels are where but whether
+ * a blit slid them by the right amount. task_data points to a colour_t used
+ * only as a base hue (its blue channel is replaced per row). NULL task_data
+ * means flood with a single fixed colour instead. */
+result_t paint_handle(wuss_window_t      *window,
+                      const wuss_event_t *event,
+                      void               *task_data)
+{
+  const box_t *clip;
+  const box_t *bounds;
+  point_t      scroll;
+  int          y, doc_y;
+
+  NOT_USED(window);
+
+  if (event->kind != wuss_EVENT_REDRAW)
+    return result_OK;
+
+  clip   = event->data.redraw.content;
+  bounds = event->data.redraw.bounds;
+  scroll = event->data.redraw.scroll;
+
+  if (task_data == NULL)
+  {
+    screen_fill_rect(event->data.redraw.scr, clip->x0, clip->y0,
+                     SIZE2D(clip->x1 - clip->x0, clip->y1 - clip->y0),
+                     colour_rgb(0xcc, 0xdd, 0xee));
+    return result_OK;
+  }
+
+  for (y = clip->y0; y < clip->y1; y++)
+  {
+    doc_y = y - bounds->y0 + scroll.y;
+    screen_fill_rect(event->data.redraw.scr, clip->x0, y,
+                     SIZE2D(clip->x1 - clip->x0, 1),
+                     colour_rgb(0x20, 0x40, doc_y & 0xff));
+  }
+
+  return result_OK;
 }

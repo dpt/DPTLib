@@ -70,6 +70,14 @@ extern void reap_test_tasks(void);
 /* Drop the registry without destroying anything. */
 extern void forget_test_tasks(void);
 
+/* Redraw handler that paints one-pixel rows whose colour encodes the
+ * document-space Y, so a test can read the framebuffer back and check a blit
+ * slid pixels by the right amount. task_data is non-NULL to select that
+ * mode; NULL floods the content with a single fixed colour instead. */
+extern result_t paint_handle(wuss_window_t      *window,
+                             const wuss_event_t *event,
+                             void               *task_data);
+
 /* A bitmap-backed screen with a default wuss on it, for tests that each
  * want a fresh instance. */
 typedef struct wuss_fixture
