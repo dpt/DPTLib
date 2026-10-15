@@ -584,6 +584,7 @@ set(WUSS_MENU_SOURCES
 
 set(WUSS_GADGET_SOURCES
     libraries/wuss/gadget/stringset.c
+    libraries/wuss/gadget/popup.c
     libraries/wuss/gadget/gridview.c)
 
 set(WUSS_COMPONENT_SOURCES
