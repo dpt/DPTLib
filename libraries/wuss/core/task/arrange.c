@@ -13,6 +13,11 @@ static wuss_task_t *task_root(const wuss_task_t *t)
   return t->parent != NULL ? t->parent : (wuss_task_t *) t;
 }
 
+wuss_task_t *wuss_task_get_root(const wuss_task_t *task)
+{
+  return task_root(task);
+}
+
 /* A window the cycling keys can land on: a visible, focusable regular
  * window. */
 static int window_cycles(const wuss_window_t *window)
@@ -149,7 +154,6 @@ int wuss_task_cycle_windows(wuss_t *wuss, wuss_task_t *task, int step)
 int wuss_cycle_tasks(wuss_t *wuss, int step)
 {
   const wuss_task_t *current;
-  const wuss_task_t *next;
   wuss_window_t     *window;
   list_t            *l;
   int                n;

@@ -369,6 +369,7 @@ result_t filing_create(wuss_t *wuss, filing_task_t **out)
                  "Clear selection", wuss_MENU_ITEM_NONE);
   WUSS_MENU_ITEM(task->menu_items, FILING_MENU_OPEN_PARENT, "Open parent",
                  wuss_MENU_ITEM_NONE);
+  task->menu_items[FILING_MENU_OPEN_PARENT].shortcut = "^" WUSS_MENU_SHIFT "UP";
 #ifdef __EMSCRIPTEN__
   WUSS_MENU_ITEM(task->menu_items, FILING_MENU_DOWNLOAD, "Download",
                  wuss_MENU_ITEM_NONE);
@@ -859,7 +860,9 @@ result_t filing_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_KEY:
-    return result_WUSS_KEY_UNCLAIMED;
+    task->menu_window = window;
+    filing_menu_update(task);
+    return wuss_menu_dispatch_shortcut(task->delegate, &task->menu, event);
 
   default:
     return result_OK;

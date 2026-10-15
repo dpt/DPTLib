@@ -775,6 +775,12 @@ PwFail:
         { "^" WUSS_MENU_SHIFT "F1",
                    wuss_KEY_F1,     wuss_KEY_MOD_CTRL | wuss_KEY_MOD_SHIFT,
                                                         wuss_MENU_ITEM_NONE,     1 },
+        { "^" WUSS_MENU_SHIFT "UP",
+                   wuss_KEY_UP,     wuss_KEY_MOD_CTRL | wuss_KEY_MOD_SHIFT,
+                                                        wuss_MENU_ITEM_NONE,     1 },
+        { "^" WUSS_MENU_SHIFT "UP",
+                   wuss_KEY_UP,     wuss_KEY_MOD_CTRL,  wuss_MENU_ITEM_NONE,     0 },
+        { "LEFT",  wuss_KEY_RIGHT,  wuss_KEY_MOD_NONE,  wuss_MENU_ITEM_NONE,     0 },
       };
 
       result_t     drc;

@@ -267,6 +267,30 @@ struct wuss_frame_ctx
 /* file scope so app_set_mode (called from the Display task, long after
  * run_wuss's own locals are gone) can update pixels/rowbytes/scr_width/
  * scr_height on the very instance the main loop below is reading */
+#ifndef __EMSCRIPTEN__
+/* Save the framebuffer as wuss-N.png in the current directory, N being the
+ * first number not already taken. */
+static void save_screenshot(void)
+{
+  char  name[32];
+  FILE *f;
+  int   n;
+
+  for (n = 1; n < 10000; n++)
+  {
+    snprintf(name, sizeof(name), "wuss-%d.png", n);
+    f = fopen(name, "rb");
+    if (f == NULL)
+      break;
+
+    fclose(f);
+  }
+
+  if (script_save_png(&g_bm, name) != result_OK)
+    logf_error("screenshot save failed: %s", name);
+}
+#endif
+
 static struct wuss_frame_ctx g_frame_ctx;
 
 /* --script given: script_poll feeds input ahead of the frontend's own */
@@ -384,6 +408,16 @@ static void wuss_frame(void *arg)
          * shortcuts */
         if (tasks_system_key(ev.key, ev.mods))
           break;
+
+#ifndef __EMSCRIPTEN__
+        /* Ctrl-Shift-3: save the screen as wuss-N.png */
+        if ((ev.mods & wuss_KEY_MOD_CTRL) && (ev.mods & wuss_KEY_MOD_SHIFT) &&
+            (ev.key == '3' || ev.key == '#'))
+        {
+          save_screenshot();
+          break;
+        }
+#endif
 
         /* paste reads the host clipboard; copy/cut publish to it */
         if ((ev.mods & wuss_KEY_MOD_CTRL) && (ev.key == 'v' || ev.key == 'V'))

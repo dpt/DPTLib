@@ -46,6 +46,9 @@ result_t script_open(const char *filename);
  * dump/png held over until input already sent has been redrawn). */
 bool script_poll(wuss_t *wuss, const bitmap_t *bm, wuss_input_t *ev);
 
+/* Save a framebuffer as a PNG, whatever its pixel format. */
+result_t script_save_png(const bitmap_t *bm, const char *filename);
+
 /* Returns result_OK if the script ran to its end without error. */
 result_t script_close(void);
 

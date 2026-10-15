@@ -541,6 +541,15 @@ int wuss_task_has_windows(wuss_t *wuss, wuss_task_t *task);
 int wuss_task_front(wuss_t *wuss, wuss_task_t *task);
 
 /**
+ * Fetch the root task of the app that \p task belongs to: its parent, else
+ * itself. Destroying it ends the whole app.
+ *
+ * \param[in] task Any task of the app.
+ * \return The root task. Never NULL.
+ */
+wuss_task_t *wuss_task_get_root(const wuss_task_t *task);
+
+/**
  * Cycle the focus through the windows of \p task's app. A positive \p step
  * brings the rearmost window to the front; otherwise the front window goes
  * to the back and the next one comes forward. Only visible focusable regular

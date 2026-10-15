@@ -184,16 +184,18 @@ Used only where the guide is silent.
 | Ctrl-E          | Use selection for find |                                                                                                           |
 | Ctrl-=          | Increase size          | Zoom in, larger text or brush. Ctrl-Plus also works. Unclaimed, it zooms the whole desktop (replaces F2). |
 | Ctrl--          | Decrease size          | As above (replaces Shift-F2).                                                                             |
-| Ctrl-0          | Actual size            |                                                                                                           |
+| Ctrl-0          | Actual size            | Done.                                                                                                     |
 | Ctrl-,          | Choices                |                                                                                                           |
 | Ctrl-[ / Ctrl-] | Back / forward         |                                                                                                           |
-| Ctrl-Shift-Up   | Parent directory       | Filer only.                                                                                               |
+| Ctrl-Shift-Up   | Parent directory       | Filer only. Done, as the Open parent row.                                                                 |
 | Ctrl-Shift-N    | New directory          | Filer only.                                                                                               |
 | Ctrl-D          | Duplicate              | Text editors use Ctrl-D for Insert date instead.                                                          |
 | Ctrl-I          | Get info               | Text editors use Ctrl-I for Italic instead.                                                               |
-| Ctrl-Shift-F    | Toggle maximise        |                                                                                                           |
-| Ctrl-Shift-3    | Save framebuffer PNG   |                                                                                                           |
-| Ctrl-Shift-Esc  | Kill the focused task  | No unsaved-data prompt.                                                                                   |
+| Ctrl-Shift-F    | Toggle maximise        | Done.                                                                                                     |
+| Ctrl-Shift-3    | Save framebuffer PNG   | Done: writes wuss-N.png to the current directory. Not on Emscripten.                                      |
+| Ctrl-Shift-Esc  | Kill the focused task  | No unsaved-data prompt. Done.                                                                             |
+
+Deferred, because no task has a function for them yet: Ctrl-N, Ctrl-G, Ctrl-Shift-G, Ctrl-E, Ctrl-, (opening Configuring only installs its icon), Ctrl-[ and Ctrl-], Ctrl-Shift-N (the filer has no make directory), Ctrl-D and Ctrl-I (the filer has Info only on the icon bar menu).
 
 Dropped, because the guide already covers them: Ctrl-O (F2), Ctrl-F (F4), Ctrl-L (F5), Ctrl-Shift-S (F3 opens the save dialogue), Ctrl-Shift-Z and Ctrl-Y (F9), Ctrl-W (Ctrl-F2), Ctrl-/ (F1) and Ctrl-Backspace for trash (Ctrl-K).
 
@@ -248,4 +250,4 @@ The guide is silent on these, so macOS chords lead. Each has a function-key fall
 - **Cycle and raise**: done as `wuss_task_front`, `wuss_task_cycle_windows` and `wuss_cycle_tasks`, with no recency list. Next app raises the rearmost other app and previous app sends the front app behind the rest, so repeated presses walk the whole z-order. Only visible focusable regular windows take part, and an app is a task together with its child tasks.
 - **Quit app**: done as `wuss_task_close_windows`.
 
-Build order: every step is done except the macOS fill-ins and the remaining function keys.
+Build order: every step is done except the deferred macOS fill-ins and the remaining function keys.

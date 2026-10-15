@@ -236,6 +236,15 @@ void wuss_window_close(wuss_window_t *doomed);
 result_t wuss_window_try_close(wuss_window_t *window);
 
 /**
+ * Toggle a window between its normal and its full size, as a click on its
+ * toggle-size icon does.
+ *
+ * \param[in] window Window to toggle. NULL, or a window created without
+ *                   wuss_WINDOW_TOGGLE_SIZE, is a no-op.
+ */
+void wuss_window_toggle_size(wuss_window_t *window);
+
+/**
  * Fetch the task that owns a window.
  *
  * \param[in] window Window to query.

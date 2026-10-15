@@ -432,6 +432,21 @@ int tasks_system_key(int code, wuss_key_modifiers_t modifiers)
     return 1;
   }
 
+  /* Ctrl-Shift-Esc: kill the focused app, without unsaved-data prompts */
+  if (code == wuss_KEY_ESCAPE && shift)
+  {
+    if (task != NULL)
+      wuss_task_destroy(wuss_task_get_root(task));
+    return 1;
+  }
+
+  /* Ctrl-Shift-F: toggle the focused window's size */
+  if ((code == 'f' || code == 'F') && shift)
+  {
+    wuss_window_toggle_size(focus);
+    return 1;
+  }
+
   if (code == 'h' || code == 'H')
   {
     if (task != NULL)
@@ -478,6 +493,14 @@ result_t tasks_launcher_key(int code, wuss_key_modifiers_t modifiers)
       (code == '=' || code == '+' || code == '-'))
   {
     wuss_frontend_zoom(g_tasks.frontend, code == '-' ? -1 : 1);
+    return result_OK;
+  }
+
+  /* Ctrl-0: actual size */
+  if ((modifiers & wuss_KEY_MOD_CTRL) && code == '0')
+  {
+    while (wuss_frontend_get_zoom(g_tasks.frontend) > 1)
+      wuss_frontend_zoom(g_tasks.frontend, -1);
     return result_OK;
   }
 

@@ -293,7 +293,7 @@ static void dump(wuss_t *wuss)
 }
 
 /* PNG save handles paletted and bgrx8888; take anything else via bgrx8888. */
-static void save_png(const bitmap_t *bm, const char *filename)
+result_t script_save_png(const bitmap_t *bm, const char *filename)
 {
   result_t  rc;
   bitmap_t *deep;
@@ -315,8 +315,7 @@ static void save_png(const bitmap_t *bm, const char *filename)
     }
   }
 
-  if (rc != result_OK)
-    script_error("png save failed", filename);
+  return rc;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -464,7 +463,8 @@ bool script_poll(wuss_t *wuss, const bitmap_t *bm, wuss_input_t *ev)
         if (arg == NULL)
           script_error("png needs a filename", NULL);
         else
-          save_png(bm, arg);
+          if (script_save_png(bm, arg) != result_OK)
+            script_error("png save failed", arg);
       }
     }
     else if (strcmp(cmd, "move") == 0)

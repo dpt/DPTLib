@@ -25,8 +25,9 @@ static int fold(int c)
 }
 
 /* The key code "name" (a label with any '^' and shift prefix removed) stands
- * for: a single character, "SPACE" or "F1".."F12". -1 for anything else.
- * "*named" is set for SPACE and Fn, whose Shift state matters. */
+ * for: a single character, "SPACE", "UP", "DOWN", "LEFT", "RIGHT" or
+ * "F1".."F12". -1 for anything else. "*named" is set for all but a single
+ * character, as their Shift state matters. */
 static int shortcut_code(const char *name, int *named)
 {
   int n;
@@ -40,6 +41,18 @@ static int shortcut_code(const char *name, int *named)
 
   if (strcmp(name, "SPACE") == 0)
     return ' ';
+
+  if (strcmp(name, "UP") == 0)
+    return wuss_KEY_UP;
+
+  if (strcmp(name, "DOWN") == 0)
+    return wuss_KEY_DOWN;
+
+  if (strcmp(name, "LEFT") == 0)
+    return wuss_KEY_LEFT;
+
+  if (strcmp(name, "RIGHT") == 0)
+    return wuss_KEY_RIGHT;
 
   if (name[0] == 'F' && name[1] >= '1' && name[1] <= '9')
   {
