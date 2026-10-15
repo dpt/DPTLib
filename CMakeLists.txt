@@ -486,6 +486,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/font/registry.c
     libraries/wuss/font/text.c
     libraries/wuss/core/task/create.c
+    libraries/wuss/core/task/arrange.c
     libraries/wuss/core/task/close-windows.c
     libraries/wuss/core/task/destroy.c
     libraries/wuss/core/task/raise-children.c

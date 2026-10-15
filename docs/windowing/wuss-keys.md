@@ -244,8 +244,8 @@ The guide is silent on these, so macOS chords lead. Each has a function-key fall
 
 - **Clipboard**: done. `wuss_clipboard_set`, `wuss_clipboard_get` and `wuss_clipboard_generation` hold the text, and the SDL frontend syncs it with the host clipboard around each key press. The RISC OS frontend has no host bridge.
 - **Selection**: done for writables, as an anchor beside the caret index. There is no mouse drag, double-click or Shift-arrow selection yet.
-- **Hide and restore**: hiding exists as `wuss_task_set_hidden`. The Ctrl-H, Ctrl-Shift-H and Ctrl-F11 keys are not wired yet.
-- **Cycle and raise**: z-order is kept by `wuss_window_restack`. Add `wuss_task_front(wuss, task)` (generalising `wuss_task_raise_children`) and a task recency list for Ctrl-Tab.
+- **Hide and restore**: done. `wuss_task_set_hidden` hides an app's windows (never the back stack, which holds the icon bar). `wuss_task_hide_app`, `wuss_task_hide_others` and `wuss_task_show_all` sit behind Ctrl-H, Ctrl-Shift-H and Ctrl-F11, and the F11 forms. Show all focuses the frontmost window rather than the last one hidden.
+- **Cycle and raise**: done as `wuss_task_front`, `wuss_task_cycle_windows` and `wuss_cycle_tasks`, with no recency list. Next app raises the rearmost other app and previous app sends the front app behind the rest, so repeated presses walk the whole z-order. Only visible focusable regular windows take part, and an app is a task together with its child tasks.
 - **Quit app**: done as `wuss_task_close_windows`.
 
-Build order: key moves, Ctrl-F2 close, Ctrl-Q quit app, clipboard and selection are done. Raise and cycle, then the hide keys, remain.
+Build order: every step is done except the macOS fill-ins and the remaining function keys.

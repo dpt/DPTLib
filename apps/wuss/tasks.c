@@ -359,11 +359,86 @@ result_t tasks_open_menu(void)
 int tasks_system_key(int code, wuss_key_modifiers_t modifiers)
 {
   wuss_window_t *focus;
+  wuss_task_t   *task;
+  int            shift;
+  int            ctrl;
 
-  if (!(modifiers & wuss_KEY_MOD_CTRL) || (modifiers & wuss_KEY_MOD_ALT))
+  if (modifiers & wuss_KEY_MOD_ALT)
     return 0;
 
   focus = wuss_get_focus(g_tasks.wuss);
+  task  = (focus != NULL) ? wuss_window_get_task(focus) : NULL;
+  shift = (modifiers & wuss_KEY_MOD_SHIFT) != 0;
+  ctrl  = (modifiers & wuss_KEY_MOD_CTRL) != 0;
+
+  /* F7 next / Shift-F7 previous window, F10 / Shift-F10 app, F11 hide,
+   * Shift-F11 hide others, Ctrl-F11 show all, Ctrl-F10 app to front,
+   * Ctrl-F9 quit app: the function-key forms of the chords below */
+  if (code == wuss_KEY_F1 + 6 && !ctrl)
+  {
+    if (task != NULL)
+      (void) wuss_task_cycle_windows(g_tasks.wuss, task, shift ? -1 : 1);
+    return 1;
+  }
+
+  if (code == wuss_KEY_F1 + 9)
+  {
+    if (ctrl)
+    {
+      if (task != NULL)
+        (void) wuss_task_front(g_tasks.wuss, task);
+    }
+    else
+    {
+      (void) wuss_cycle_tasks(g_tasks.wuss, shift ? -1 : 1);
+    }
+    return 1;
+  }
+
+  if (code == wuss_KEY_F1 + 10)
+  {
+    if (ctrl)
+      (void) wuss_task_show_all(g_tasks.wuss);
+    else if (task != NULL)
+      (void) (shift ? wuss_task_hide_others(g_tasks.wuss, task)
+                    : wuss_task_hide_app(g_tasks.wuss, task));
+    return 1;
+  }
+
+  if (code == wuss_KEY_F1 + 8 && ctrl && !shift)
+  {
+    if (task != NULL)
+      (void) wuss_task_close_windows(g_tasks.wuss, task);
+    return 1;
+  }
+
+  if (!ctrl)
+    return 0;
+
+  /* Ctrl-` / Ctrl-Shift-`: next / previous window of the app. Shift-` types
+   * ~ on a US keyboard. Ctrl-Tab / Ctrl-Shift-Tab: next / previous app.
+   * Ctrl-H hides the app, Ctrl-Shift-H the others. */
+  if (code == '`' || code == '~')
+  {
+    if (task != NULL)
+      (void) wuss_task_cycle_windows(g_tasks.wuss, task,
+                                     (shift || code == '~') ? -1 : 1);
+    return 1;
+  }
+
+  if (code == 9)
+  {
+    (void) wuss_cycle_tasks(g_tasks.wuss, shift ? -1 : 1);
+    return 1;
+  }
+
+  if (code == 'h' || code == 'H')
+  {
+    if (task != NULL)
+      (void) (shift ? wuss_task_hide_others(g_tasks.wuss, task)
+                    : wuss_task_hide_app(g_tasks.wuss, task));
+    return 1;
+  }
 
   /* Ctrl-F2: close window, as its close icon does */
   if (code == wuss_KEY_F1 + 1 && !(modifiers & wuss_KEY_MOD_SHIFT))

@@ -530,6 +530,71 @@ result_t wuss_task_set_hidden(wuss_t *wuss, wuss_task_t *task, int hidden);
 int wuss_task_has_windows(wuss_t *wuss, wuss_task_t *task);
 
 /**
+ * Bring every window of the app that \p task belongs to (its root task: the
+ * parent, else itself) to the front of the regular windows, keeping their
+ * order, and focus the frontmost.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] task Any task of the app.
+ * \return Non-zero if a window took the focus, else zero.
+ */
+int wuss_task_front(wuss_t *wuss, wuss_task_t *task);
+
+/**
+ * Cycle the focus through the windows of \p task's app. A positive \p step
+ * brings the rearmost window to the front; otherwise the front window goes
+ * to the back and the next one comes forward. Only visible focusable regular
+ * windows take part.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] task Any task of the app.
+ * \param[in] step Positive for next, else previous.
+ * \return Non-zero if the app has two or more such windows, else zero.
+ */
+int wuss_task_cycle_windows(wuss_t *wuss, wuss_task_t *task, int step);
+
+/**
+ * Cycle through the apps: a positive \p step raises the rearmost app (see
+ * wuss_task_front); otherwise the front app goes behind the rest.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] step Positive for next, else previous.
+ * \return Non-zero if there is more than one app to cycle, else zero.
+ */
+int wuss_cycle_tasks(wuss_t *wuss, int step);
+
+/**
+ * Hide the app that \p task belongs to, as wuss_task_set_hidden does for its
+ * root task, then focus the frontmost visible window.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] task Any task of the app.
+ * \return As wuss_task_set_hidden.
+ */
+result_t wuss_task_hide_app(wuss_t *wuss, wuss_task_t *task);
+
+/**
+ * Hide every app that has a window on screen except the one \p task belongs
+ * to. Apps with only back-stack windows (the icon bar) are left alone.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] task Any task of the app to keep.
+ * \return The first non-OK result from wuss_task_set_hidden, else \ref
+ *         result_OK.
+ */
+result_t wuss_task_hide_others(wuss_t *wuss, wuss_task_t *task);
+
+/**
+ * Reveal every window wuss_task_set_hidden hid, in every app, and focus the
+ * frontmost window if nothing has the focus.
+ *
+ * \param[in] wuss Window manager.
+ * \return The first non-OK result from wuss_task_set_hidden, else \ref
+ *         result_OK.
+ */
+result_t wuss_task_show_all(wuss_t *wuss);
+
+/**
  * Make every task created from now on a child of \p parent: destroying \p
  * parent (wuss_task_destroy) first destroys its children, each firing its
  * own wuss_EVENT_QUIT. Lets a launcher task start tasks it did not create

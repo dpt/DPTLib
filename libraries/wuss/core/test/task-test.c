@@ -365,6 +365,80 @@ result_t wuss_task_test(const char *resources)
     rc = result_OK;
   }
 
+  printf("test: app cycling, hide others and show all\n");
+  {
+    static test_task_t tc_a, tc_b;
+    wuss_task_t       *app_a, *app_b;
+    box_t              box_c;
+    wuss_window_t     *a1, *a2, *b1;
+
+    reap_test_tasks();
+    memset(&tc_a, 0, sizeof(tc_a));
+    memset(&tc_b, 0, sizeof(tc_b));
+    app_a = mk_task(wuss, test_handle, &tc_a);
+    app_b = mk_task(wuss, test_handle, &tc_b);
+    if (app_a == NULL || app_b == NULL) goto Failure;
+
+    box_c.x0 = 0;  box_c.y0 = 0;
+    box_c.x1 = 40; box_c.y1 = 40;
+    rc = wuss_window_create(app_a, &box_c, "A1",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                            wuss_NO_BACKDROP,
+                            box_size(&box_c), SIZE2D(0, 0), &a1);
+    if (rc != result_OK) goto Failure;
+    rc = wuss_window_create(app_a, &box_c, "A2",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                            wuss_NO_BACKDROP,
+                            box_size(&box_c), SIZE2D(0, 0), &a2);
+    if (rc != result_OK) goto Failure;
+    rc = wuss_window_create(app_b, &box_c, "B1",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                            wuss_NO_BACKDROP,
+                            box_size(&box_c), SIZE2D(0, 0), &b1);
+    if (rc != result_OK) goto Failure;
+
+    /* front to back: b1 a2 a1 */
+    if (!wuss_task_cycle_windows(wuss, app_a, 1) ||
+        wuss_get_focus(wuss) != a1)
+      goto Failure; /* rearmost window of A comes forward */
+    if (!wuss_task_cycle_windows(wuss, app_a, -1) ||
+        wuss_get_focus(wuss) != a2)
+      goto Failure; /* front window of A goes back, the next comes forward */
+    if (wuss_task_cycle_windows(wuss, app_b, 1))
+      goto Failure; /* one window: nothing to cycle */
+
+    /* front to back: a2 b1 a1 */
+    if (!wuss_cycle_tasks(wuss, 1) || wuss_get_focus(wuss) != b1)
+      goto Failure; /* rearmost other app comes forward */
+    if (!wuss_cycle_tasks(wuss, -1) || wuss_get_focus(wuss) != a2)
+      goto Failure; /* front app goes behind the rest */
+
+    rc = wuss_task_hide_others(wuss, app_a);
+    if (rc != result_OK) goto Failure;
+    if (!(b1->flags & wuss_WINDOW_HIDDEN) ||
+        (a1->flags & wuss_WINDOW_HIDDEN) || (a2->flags & wuss_WINDOW_HIDDEN))
+      goto Failure;
+    if (wuss_cycle_tasks(wuss, 1))
+      goto Failure; /* a lone visible app */
+
+    rc = wuss_task_hide_app(wuss, app_a);
+    if (rc != result_OK) goto Failure;
+    if (!(a1->flags & wuss_WINDOW_HIDDEN) || wuss_get_focus(wuss) != NULL)
+      goto Failure;
+
+    rc = wuss_task_show_all(wuss);
+    if (rc != result_OK) goto Failure;
+    if ((a1->flags & wuss_WINDOW_HIDDEN) || (b1->flags & wuss_WINDOW_HIDDEN) ||
+        wuss_get_focus(wuss) == NULL)
+      goto Failure;
+
+    wuss_window_close(a1);
+    wuss_window_close(a2);
+    wuss_window_close(b1);
+    reap_test_tasks();
+    rc = result_OK;
+  }
+
   wuss_fixture_close(&fixture);
 
   return result_TEST_PASSED;

@@ -19,6 +19,11 @@ static result_t task_windows_set_hidden(wuss_task_t *task, int hidden)
   {
     window = wuss__window_from_task_link(w);
 
+    /* the back stack holds the icon bar and the like, never hidden with
+     * the app */
+    if (window->stack == wuss_STACK_BACK)
+      continue;
+
     if (hidden)
     {
       if (window->flags & wuss_WINDOW_HIDDEN)
