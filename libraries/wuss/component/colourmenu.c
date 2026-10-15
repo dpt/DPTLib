@@ -228,15 +228,8 @@ wuss_colour_t wuss_colourmenu_selected(const wuss_event_t *ev, int *ok)
   if (ok != NULL)
     *ok = 0;
 
-  if (ev == NULL || g.menu == NULL)
-    return 0;
-  if (ev->kind != wuss_EVENT_MENU_SELECT)
-    return 0;
-  if (ev->data.menu_select.menu != g.menu)
-    return 0;
-
-  index = ev->data.menu_select.index;
-  if (index < 0 || index >= g.menu->nitems)
+  index = wuss_menu_select_index(ev, g.menu);
+  if (index < 0)
     return 0;
 
   /* the pick is now the current colour: move the tick to it, both for the

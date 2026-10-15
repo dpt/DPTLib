@@ -283,15 +283,8 @@ const char *wuss_fontmenu_selected(const wuss_event_t *ev)
 {
   int index;
 
-  if (ev == NULL || g.menu == NULL)
-    return NULL;
-  if (ev->kind != wuss_EVENT_MENU_SELECT)
-    return NULL;
-  if (ev->data.menu_select.menu != g.menu)
-    return NULL;
-
-  index = ev->data.menu_select.index;
-  if (index < 0 || index >= g.menu->nitems)
+  index = wuss_menu_select_index(ev, g.menu);
+  if (index < 0)
     return NULL;
 
   return g.menu->items[index].text;

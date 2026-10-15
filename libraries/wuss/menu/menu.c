@@ -1188,6 +1188,23 @@ int wuss_menu_should_keep_open(const wuss_event_t *ev)
   return (ev->data.menu_select.button & wuss_BUTTON_ADJUST) != 0;
 }
 
+int wuss_menu_select_index(const wuss_event_t *ev, const wuss_menu_t *menu)
+{
+  int index;
+
+  if (ev == NULL || menu == NULL || ev->kind != wuss_EVENT_MENU_SELECT)
+    return -1;
+
+  if (ev->data.menu_select.menu != menu)
+    return -1;
+
+  index = ev->data.menu_select.index;
+  if (index < 0 || index >= menu->nitems)
+    return -1;
+
+  return index;
+}
+
 result_t wuss_menu_open_ticked(wuss_task_t        *task,
                                wuss_menu_t        *menu,
                                unsigned int        ticked,
