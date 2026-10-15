@@ -63,7 +63,6 @@ result_t wuss__furniture_press_back(wuss_window_t                   *win,
   return result_OK;
 }
 
-/* Select-only: Adjust neither toggles nor lights the icon. */
 result_t wuss__furniture_press_toggle(wuss_window_t                   *win,
                                       const wuss__furniture_element_t *element,
                                       point_t                          p,
@@ -72,7 +71,8 @@ result_t wuss__furniture_press_toggle(wuss_window_t                   *win,
 {
   NOT_USED(p);
 
-  if (action == wuss_MOUSE_DOWN && (button & wuss_BUTTON_SELECT))
+  if (action == wuss_MOUSE_DOWN &&
+      (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
   {
     win->wuss->furniture_ops->toggle_size(win);
 
