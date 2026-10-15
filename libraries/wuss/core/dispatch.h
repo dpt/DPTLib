@@ -15,6 +15,18 @@ result_t wuss__deliver(wuss_task_t        *task,
                        wuss_window_t      *win_or_null,
                        const wuss_event_t *ev);
 
+/* wuss__deliver for an event that carries no payload: builds an event of
+ * the given kind and delivers it. */
+static inline result_t wuss__deliver_kind(wuss_task_t      *task,
+                                          wuss_window_t    *win_or_null,
+                                          wuss_event_kind_t kind)
+{
+  wuss_event_t event;
+
+  event.kind = kind;
+  return wuss__deliver(task, win_or_null, &event);
+}
+
 /* Bump dispatch_depth on entry to a public entry point (wuss_mouse_click,
  * wuss_mouse_move, wuss_key, wuss_idle); wuss__message_leave drops it back
  * and, at depth 0, drains the queue (see wuss__message_drain). Call these
@@ -48,10 +60,7 @@ void wuss__message_purge_icon(wuss_t *wuss, const void *icon);
  * drawing and other in-line notifications are treated. */
 static inline void wuss__notify_open(wuss_window_t *window)
 {
-  wuss_event_t event;
-
-  event.kind = wuss_EVENT_OPEN;
-  (void) wuss__deliver(window->task, window, &event);
+  (void) wuss__deliver_kind(window->task, window, wuss_EVENT_OPEN);
 }
 
 #endif /* WUSS_CORE_DISPATCH_H */

@@ -1490,7 +1490,6 @@ void wuss__menu_session_free(wuss_t *wuss)
 
 void wuss__menu_teardown(wuss_t *wuss)
 {
-  wuss_event_t event;
   wuss_task_t *task;
 
   /* Drop any chain a QUIT handler left open: its windows are freed by the
@@ -1508,8 +1507,7 @@ void wuss__menu_teardown(wuss_t *wuss)
   task = wuss->menu->task;
   if (task != NULL)
   {
-    event.kind = wuss_EVENT_QUIT;
-    (void) wuss__deliver(task, NULL, &event);
+    (void) wuss__deliver_kind(task, NULL, wuss_EVENT_QUIT);
     wuss__free(wuss, &task->link);
     wuss->menu->task = NULL;
   }

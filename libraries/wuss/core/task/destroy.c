@@ -12,7 +12,6 @@
 
 void wuss_task_destroy(wuss_task_t *doomed)
 {
-  wuss_event_t event;
   wuss_t      *wuss;
   list_t      *e;
   wuss_task_t *child;
@@ -58,8 +57,7 @@ void wuss_task_destroy(wuss_task_t *doomed)
   while (child != NULL);
 
   /* One QUIT while every window is still alive. */
-  event.kind = wuss_EVENT_QUIT;
-  (void) wuss__deliver(doomed, NULL, &event);
+  (void) wuss__deliver_kind(doomed, NULL, wuss_EVENT_QUIT);
 
   /* Drop anything this task sent before the close loop below bounces
    * messages addressed to its windows, so none bounce back to it. */

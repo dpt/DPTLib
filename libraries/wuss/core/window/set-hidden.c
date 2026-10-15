@@ -105,8 +105,7 @@ result_t wuss__window_set_hidden_ex(wuss_window_t *window, int hidden)
   window->flags &= (wuss_window_flags_t) ~wuss_WINDOW_HIDDEN;
   wuss_invalidate(window->wuss, &window->visible);
 
-  event.kind = wuss_EVENT_SHOW;
-  (void) wuss__deliver(window->task, window, &event);
+  (void) wuss__deliver_kind(window->task, window, wuss_EVENT_SHOW);
 
   return result_OK;
 }

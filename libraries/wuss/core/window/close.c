@@ -11,7 +11,6 @@
 void wuss_window_close(wuss_window_t *doomed)
 {
   wuss_task_t *task;
-  wuss_event_t event;
   wuss_t      *wuss;
 
   if (doomed == NULL)
@@ -95,8 +94,7 @@ void wuss_window_close(wuss_window_t *doomed)
      * so tear it down (delivering MENU_CLOSED) before QUIT. */
     wuss__menu_task_closing(wuss, task);
 
-    event.kind = wuss_EVENT_QUIT;
-    (void) wuss__deliver(task, NULL, &event);
+    (void) wuss__deliver_kind(task, NULL, wuss_EVENT_QUIT);
 
     list_remove(&wuss->tasks, &task->link);
     wuss__free(wuss, task);

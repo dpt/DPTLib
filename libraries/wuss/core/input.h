@@ -47,7 +47,6 @@ void wuss__capture_forget_window(wuss_t *wuss, wuss_window_t *window);
 static inline void wuss__pointer_set_window(wuss_t *wuss, wuss_window_t *now)
 {
   wuss_window_t *was;
-  wuss_event_t   event;
 
   was = wuss->pointer_window;
   if (now == was)
@@ -57,13 +56,11 @@ static inline void wuss__pointer_set_window(wuss_t *wuss, wuss_window_t *now)
 
   if (was != NULL)
   {
-    event.kind = wuss_EVENT_POINTER_EXIT;
-    (void) wuss__deliver(was->task, was, &event);
+    (void) wuss__deliver_kind(was->task, was, wuss_EVENT_POINTER_EXIT);
   }
   if (now != NULL)
   {
-    event.kind = wuss_EVENT_POINTER_ENTER;
-    (void) wuss__deliver(now->task, now, &event);
+    (void) wuss__deliver_kind(now->task, now, wuss_EVENT_POINTER_ENTER);
   }
 }
 

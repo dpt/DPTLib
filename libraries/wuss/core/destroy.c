@@ -52,7 +52,6 @@ void wuss_destroy(wuss_t *doomed)
   while (e != NULL)
   {
     list_t      *next;
-    wuss_event_t event;
 
     next = e->next;
     if (!wuss__menu_is_task(doomed, wuss__task_from_link(e)) &&
@@ -68,8 +67,7 @@ void wuss_destroy(wuss_t *doomed)
        * -- the leftover-chain close below then just finds nothing to do. */
       wuss__menu_task_closing(doomed, task);
 
-      event.kind = wuss_EVENT_QUIT;
-      (void) wuss__deliver(task, NULL, &event);
+      (void) wuss__deliver_kind(task, NULL, wuss_EVENT_QUIT);
 
       /* Close the task's windows before freeing it, as wuss_task_destroy
        * does: left for the z_order sweep, they would point at the freed
@@ -97,10 +95,7 @@ void wuss_destroy(wuss_t *doomed)
    * first. */
   if (iconbar_task != NULL)
   {
-    wuss_event_t event;
-
-    event.kind = wuss_EVENT_QUIT;
-    (void) wuss__deliver(iconbar_task, NULL, &event);
+    (void) wuss__deliver_kind(iconbar_task, NULL, wuss_EVENT_QUIT);
     wuss__free(doomed, &iconbar_task->link);
     doomed->iconbar.task = NULL;
   }
