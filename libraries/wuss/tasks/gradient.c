@@ -46,8 +46,6 @@ static const char *const gradient_shape_names[gradient_NSHAPES] =
 
 #define GRADIENT_DOC_WIDTH  400
 #define GRADIENT_DOC_HEIGHT 400
-#define GRADIENT_OPEN_WIDTH  100
-#define GRADIENT_OPEN_HEIGHT 100
 
 #define GRADIENT_DEFAULT_DITHER   1 /* 4x4, matching the original */
 #define GRADIENT_UNITY          256 /* brightness/saturation of 1.0 */
@@ -93,6 +91,12 @@ gradient_dithers[] =
       63, 31, 55, 23, 61, 29, 53, 21,
     }
   },
+  {
+    1, /* dithering off: plain truncation to the target format */
+    {
+      0,
+    }
+  },
 };
 
 /* offset "v" by the dither cell for (x, y), spread across one "step" of the
@@ -104,6 +108,9 @@ static int dither(int index, int step, int v, int x, int y)
   int dim, n, m;
 
   dim = gradient_dithers[index].dim;
+  if (dim == 1)
+    return CLAMP(v, 0, 255);
+
   n   = dim * dim;
   m   = gradient_dithers[index].cell[(y % dim) * dim + (x % dim)];
 
@@ -270,7 +277,7 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
 
   rc = wuss_window_create_at(delegate,
                              &centred,
-                             SIZE2D(GRADIENT_OPEN_WIDTH, GRADIENT_OPEN_HEIGHT),
+                             SIZE2D(GRADIENT_DOC_WIDTH, GRADIENT_DOC_HEIGHT),
                              "Gradient",
                              wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
                              wuss_NO_BACKDROP,
@@ -384,8 +391,15 @@ static result_t gradient_redraw(const wuss_event_t *event, void *task_data)
     colour_t    ink  = colour_rgb(0xFF, 0xFF, 0xFF);
     colour_t    bg   = colour_rgba(0, 0, 0, 0); /* transparent */
 
-    snprintf(label, sizeof(label), "%dx%d%s b%d%% s%d%%",
-             dim, dim, step[1] == 1 ? " (off)" : "",
+    char        matrix[8];
+
+    if (dim == 1)
+      snprintf(matrix, sizeof(matrix), "off");
+    else
+      snprintf(matrix, sizeof(matrix), "%dx%d", dim, dim);
+
+    snprintf(label, sizeof(label), "%s%s b%d%% s%d%%",
+             matrix, step[1] == 1 ? " (n/a)" : "",
              gc->brightness * 100 / GRADIENT_UNITY,
              gc->saturation * 100 / GRADIENT_UNITY);
 
