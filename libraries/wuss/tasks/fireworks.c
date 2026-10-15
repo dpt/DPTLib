@@ -411,8 +411,8 @@ result_t fireworks_create(wuss_t *wuss, fireworks_task_t **out)
   }
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_NONE, "^S");
-  /* hover opens the Save As dialogue as a submenu; ^S shows it standalone */
+                          wuss_MENU_ITEM_NONE, "F3");
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
   task->menu_items[FIREWORKS_MENU_SAVE].window =
     wuss_saveas_window(task->saveas);
 

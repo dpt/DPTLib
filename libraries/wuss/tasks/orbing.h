@@ -49,7 +49,7 @@ orbing_light_t;
  * palette. Dithering picks how the preview is blitted to a paletted screen.
  * Mutate (M) nudges the sliders, the lit lights' directions and the colours'
  * hues; Randomise (^R) picks every setting afresh, keeping at least one light
- * on; Reset (R) restores the defaults; Save PNG (^S) opens a Save As dialogue
+ * on; Reset (R) restores the defaults; Save PNG (F3) opens a Save As dialogue
  * that writes the sphere alone, transparent outside its edge. */
 typedef struct orbing_task
 {

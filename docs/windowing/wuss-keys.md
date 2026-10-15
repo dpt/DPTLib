@@ -58,7 +58,7 @@ Menu shortcuts (fire when the task has the focus):
 
 | Key    | Action         | Tasks                                                                                                                                    |
 | ------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Ctrl-S | Save / Save as | ball chars checker clock compositing curving doughnut fern fireworks gradient greebling oscillating orbing painting patterns saturn sofa |
+| F3     | Save / Save as | ball chars checker clock compositing curving doughnut fern fireworks gradient greebling oscillating orbing painting patterns saturn sofa |
 | Ctrl-R | Randomise      | checker doughnut fern orbing oscillating patterns saturn sofa                                                                            |
 | Ctrl-Z | Undo           | painting                                                                                                                                 |
 | Ctrl-P | Pause          | zxtask                                                                                                                                   |
@@ -111,7 +111,7 @@ Rules for the proposals below:
 4. Never use F12, Shift-F12, Ctrl-F12 or Ctrl-Shift-F12. RISC OS owns them.
 5. Shift modifies a function key into a related action. Ctrl gives an unrelated one.
 
-Taken today by existing tasks: Ctrl-S R Z P M U; Escape; Return. Ctrl-Z (painting Undo) clashes with the guide and moves to F8 (see below). Ctrl-P and Ctrl-M (zxtask) are safe: the guide uses the Print key and does not define Ctrl-P or Ctrl-M.
+Taken today by existing tasks: F3 (Save) F8 (painting Undo) Ctrl-R P M U; Escape; Return. Ctrl-Z (painting Undo) clashes with the guide and moves to F8 (see below). Ctrl-P and Ctrl-M (zxtask) are safe: the guide uses the Print key and does not define Ctrl-P or Ctrl-M.
 
 ## Standard keys: RISC OS style
 
@@ -132,6 +132,8 @@ Adopt all of these as defined by the guide. Keys marked "new" have no code today
 | F8         | Undo                                     |
 | F9         | Redo                                     |
 | F7 F10 F11 | Free for apps and the system (see below) |
+
+Done: F3 is the Save shortcut on every task with a Save row (Ctrl-S is gone), and painting Undo is F8. The other keys need a function no task has yet: Help (F1), Load (F2), Insert (Shift-F2), Find (F4), Go to (F5), Sort (F6) and Redo (F9). Wire each when a task gains the function: give its menu row the shortcut label and the shortcut dispatcher does the rest.
 
 ### Ctrl keys
 
@@ -234,7 +236,7 @@ The guide is silent on these, so macOS chords lead. Each has a function-key fall
 - Add a system layer in `main.c` ahead of `wuss_key`, matching only the window and task chords above plus Ctrl-F2, Ctrl-=, Ctrl--, Ctrl-Shift-Q and the debug keys. An app cannot swallow them.
 - Standard editing and file keys (F1 to F9, Ctrl-C and friends) go to the focused task first. If it returns `result_WUSS_KEY_UNCLAIMED`, the launcher may handle them (Ctrl-= and Ctrl-- zoom the desktop).
 - Done: writable icons handle Ctrl-A, Ctrl-C, Ctrl-X, Ctrl-V, Ctrl-Z and Insert, and Backspace and Delete remove the selection. The Copy key (End on RISC OS) is not wired, and Shift-arrows still move by word, so a selection comes only from Ctrl-A.
-- **Caret owns Ctrl-D, Ctrl-I, Ctrl-K, Ctrl-T and Ctrl-B.** While a writable holds the caret (for example an inline rename in the filer), it swallows these item-level keys and the task never sees them, so Ctrl-D or Ctrl-I cannot trigger Duplicate or Get info mid-rename. Other Ctrl-letter keys such as Ctrl-R and Ctrl-S still reach the task, so a seed field does not block them. System-layer chords (Ctrl-F2, Ctrl-Q and so on) run before the caret and still work. Done in `icon/writable.c`.
+- **Caret owns Ctrl-D, Ctrl-I, Ctrl-K, Ctrl-T and Ctrl-B.** While a writable holds the caret (for example an inline rename in the filer), it swallows these item-level keys and the task never sees them, so Ctrl-D or Ctrl-I cannot trigger Duplicate or Get info mid-rename. Other Ctrl-letter keys such as Ctrl-R still reach the task, so a seed field does not block them. System-layer chords (Ctrl-F2, Ctrl-Q and so on) run before the caret and still work. Done in `icon/writable.c`.
 - Do not route the system layer through menu shortcut labels. They need a focused window.
 - The RISC OS frontend must pass F12 and its Shift and Ctrl forms to the OS untouched.
 

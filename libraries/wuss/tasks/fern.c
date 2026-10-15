@@ -151,7 +151,7 @@ result_t fern_create(wuss_t *wuss, fern_task_t **out)
                           wuss_MENU_ITEM_NONE, "R");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FERN_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_NONE, "^S");
+                          wuss_MENU_ITEM_NONE, "F3");
   task->menu_items[FERN_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Fern", task->menu_items,

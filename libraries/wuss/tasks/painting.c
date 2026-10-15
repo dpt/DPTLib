@@ -315,7 +315,7 @@ result_t painting_create_with(wuss_t                     *wuss,
                       wuss_MENU_ITEM_NONE, &task->sel_menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PAINTING_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_DASHED, "^S");
+                          wuss_MENU_ITEM_DASHED, "F3");
   WUSS_MENU_TITLE(task->menu, "Painting", task->menu_items,
                   NELEMS(task->menu_items));
 

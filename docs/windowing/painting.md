@@ -44,7 +44,7 @@ makes an instance of its own.
 - Line and rect show a rubber band while the button is down. They draw into
   the canvas when it is released.
 - `Ctrl-Z` or Menu > Undo steps back. There are 20 levels and no redo.
-- Menu > Save PNG (`Ctrl-S`) opens the Save As dialogue.
+- Menu > Save PNG (`F3`) opens the Save As dialogue.
 - Drop a PNG on the canvas window or on the Painting icon to load it.
 
 ## The canvas
