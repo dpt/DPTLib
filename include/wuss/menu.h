@@ -322,6 +322,20 @@ int wuss_menu_should_keep_open(const wuss_event_t *ev);
  */
 int wuss_menu_select_index(const wuss_event_t *ev, const wuss_menu_t *menu);
 
+/**
+ * True when \p ev is a wuss_EVENT_MENU_SELECT picking row \p index of \p
+ * menu itself (not one of its submenus).
+ *
+ * \param[in] ev    The event passed to the task's handle callback; may be
+ *                  NULL.
+ * \param[in] menu  The menu to test against, by pointer.
+ * \param[in] index The row to test for.
+ * \return Non-zero if \p ev picked that row.
+ */
+int wuss_menu_select_is(const wuss_event_t *ev,
+                        const wuss_menu_t  *menu,
+                        int                 index);
+
 /* ----------------------------------------------------------------------- */
 
 /* Pre-open callbacks: called synchronously, from inside a

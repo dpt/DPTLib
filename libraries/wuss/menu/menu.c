@@ -1205,6 +1205,13 @@ int wuss_menu_select_index(const wuss_event_t *ev, const wuss_menu_t *menu)
   return index;
 }
 
+int wuss_menu_select_is(const wuss_event_t *ev,
+                        const wuss_menu_t  *menu,
+                        int                 index)
+{
+  return index >= 0 && wuss_menu_select_index(ev, menu) == index;
+}
+
 result_t wuss_menu_open_ticked(wuss_task_t        *task,
                                wuss_menu_t        *menu,
                                unsigned int        ticked,
