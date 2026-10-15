@@ -44,31 +44,28 @@ g;
 static int proginfo_rows(const wuss_proginfo_desc_t *desc,
                          wuss_info_row_t            *rows)
 {
-  int nrows;
+  static const char *const labels[4] =
+  {
+    "Name", "Purpose", "Author", "Version"
+  };
+
+  const char *values[4];
+  int         nrows;
+  int         i;
+
+  values[0] = desc->name;
+  values[1] = desc->purpose;
+  values[2] = desc->author;
+  values[3] = desc->version;
 
   nrows = 0;
-  if (desc->name != NULL)
+  for (i = 0; i < 4; i++)
   {
-    rows[nrows].label = "Name";
-    rows[nrows].value = desc->name;
-    nrows++;
-  }
-  if (desc->purpose != NULL)
-  {
-    rows[nrows].label = "Purpose";
-    rows[nrows].value = desc->purpose;
-    nrows++;
-  }
-  if (desc->author != NULL)
-  {
-    rows[nrows].label = "Author";
-    rows[nrows].value = desc->author;
-    nrows++;
-  }
-  if (desc->version != NULL)
-  {
-    rows[nrows].label = "Version";
-    rows[nrows].value = desc->version;
+    if (values[i] == NULL)
+      continue;
+
+    rows[nrows].label = labels[i];
+    rows[nrows].value = values[i];
     nrows++;
   }
 
