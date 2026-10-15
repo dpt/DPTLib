@@ -58,7 +58,7 @@ typedef struct greebling_task
   /* cellpal[row][col], the greebling_palettes[] row to draw each cell with;
    * kept in step with grid[][] */
   unsigned char      cellpal[GREEBLING_MAX_ROWS][GREEBLING_MAX_COLS];
-  wuss_menu_item_t   menu_items[4]; /* per-instance: a shared static would
+  wuss_menu_item_t   menu_items[5]; /* per-instance: a shared static would
                                      * leak one instance's .window pointer
                                      * into another's menu */
   wuss_menu_t        menu;

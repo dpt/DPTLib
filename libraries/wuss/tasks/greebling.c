@@ -36,6 +36,7 @@ enum
   GREEBLING_MENU_RANDPAL = 0,
   GREEBLING_MENU_PALETTE,
   GREEBLING_MENU_SIZE,
+  GREEBLING_MENU_RANDOMISE,
   GREEBLING_MENU_SAVE
 };
 
@@ -340,6 +341,25 @@ static result_t greebling_set_size(greebling_task_t *task, int index)
   return wuss_window_resize(task->window, px);
 }
 
+/* Randomise: fresh seed and a random base palette, then regenerate. Shared by
+ * the menu row and its Ctrl-R shortcut. */
+static result_t greebling_randomise(greebling_task_t *task)
+{
+  rng_t s;
+
+  rng_lcg32(&task->seed);
+  if (task->seed == 0)
+    task->seed = 1;
+
+  rng_seed(&s, task->seed);
+  task->palette = (unsigned char) rng_range(&s, GREEBLING_NPALETTE);
+
+  greebling_generate(task);
+  wuss_window_invalidate_extent(task->window);
+
+  return result_OK;
+}
+
 /* Adjust: step to the next base palette. */
 static result_t greebling_adjust(greebling_task_t *task)
 {
@@ -408,6 +428,12 @@ static result_t greebling_menu_select(greebling_task_t   *task,
     wuss_menu_tick_item_live(task->menu_handle, &task->menu,
                              GREEBLING_MENU_RANDPAL,
                              task->random_prefab_palettes);
+  }
+  else if (wuss_menu_select_is(event, &task->menu, GREEBLING_MENU_RANDOMISE))
+  {
+    rc = greebling_randomise(task);
+    wuss_menu_tick_exclusive_live(task->menu_handle, &task->palette_menu,
+                                  task->palette);
   }
   else if (wuss_menu_select_is(event, &task->menu, GREEBLING_MENU_SAVE))
   {
@@ -571,6 +597,9 @@ result_t greebling_create(wuss_t *wuss, greebling_task_t **out)
 
   WUSS_MENU_ITEM_MENU(task->menu_items, GREEBLING_MENU_SIZE, "Size",
                       wuss_MENU_ITEM_NONE, &task->size_menu);
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GREEBLING_MENU_RANDOMISE,
+                          "Randomise", wuss_MENU_ITEM_NONE, "^R");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GREEBLING_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_NONE, "F3");
