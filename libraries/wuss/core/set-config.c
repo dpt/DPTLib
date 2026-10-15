@@ -31,7 +31,7 @@ static result_t validate_bevel_backdrop(const wuss_t *w,
       btnfg       >= w->npalette ||
       btnpressed  >= w->npalette ||
       accent      >= w->npalette ||
-      wuss__validate_backdrop(w, &w->backdrop) != result_OK)
+      wuss__validate_fill(w, &w->backdrop.fill) != result_OK)
     return result_WUSS_BAD_COLOUR;
 
   return result_OK;
@@ -61,16 +61,17 @@ result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config)
   if (config != NULL)
   {
     w->backdrop            = config->backdrop;
-    w->backdrop.colour     = wuss__resolve_colour(w, w->backdrop.colour);
-    w->backdrop.pattern_bg = wuss__resolve_colour(w, w->backdrop.pattern_bg);
+    w->backdrop.fill.colour     = wuss__resolve_colour(w, w->backdrop.fill.colour);
+    w->backdrop.fill.pattern_bg = wuss__resolve_colour(w, w->backdrop.fill.pattern_bg);
     w->body.window           = wuss__resolve_colour(w, config->body.window);
     w->body.menu             = wuss__resolve_colour(w, config->body.menu);
   }
   else
   {
-    w->backdrop.colour     = wuss_NO_BACKGROUND;
-    w->backdrop.pattern    = screen_PATTERN_SOLID;
-    w->backdrop.pattern_bg = wuss_NO_BACKGROUND;
+    w->backdrop.fill.colour     = wuss_NO_BACKGROUND;
+    w->backdrop.fill.pattern    = screen_PATTERN_SOLID;
+    w->backdrop.fill.pattern_bg = wuss_NO_BACKGROUND;
+    w->backdrop.image           = NULL;
     w->body.window           = wuss__resolve_colour(w, wuss_COLOUR_GREY);
     w->body.menu             = wuss__resolve_colour(w, wuss_COLOUR_WHITE);
   }
@@ -216,7 +217,7 @@ result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config)
   w->button.pressed = btnpressed;
   w->accent         = accent;
 #else
-  if (wuss__validate_backdrop(w, &w->backdrop) != result_OK)
+  if (wuss__validate_fill(w, &w->backdrop.fill) != result_OK)
     return result_WUSS_BAD_COLOUR;
 #endif
 #endif /* WUSS_FURNITURE */

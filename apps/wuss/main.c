@@ -62,7 +62,7 @@ static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
   memset(config, 0, sizeof(*config));
 
   config->titlebar_height = 0;
-  config->backdrop.pattern = screen_PATTERN_DOTS;
+  config->backdrop.fill.pattern = screen_PATTERN_DOTS;
 
   if (use_wimp16)
   {
@@ -85,8 +85,8 @@ static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
     config->button.fg                 = palette_WIMP16_BLACK;
     config->button.pressed            = palette_WIMP16_GREY_62;
     config->accent.colour             = palette_WIMP16_ORANGE;
-    config->backdrop.colour           = palette_WIMP16_GREY_37;
-    config->backdrop.pattern_bg       = palette_WIMP16_GREY_50;
+    config->backdrop.fill.colour           = palette_WIMP16_GREY_37;
+    config->backdrop.fill.pattern_bg       = palette_WIMP16_GREY_50;
     config->body.window               = palette_WIMP16_GREY_87;
     config->body.menu                 = palette_WIMP16_WHITE;
     config->slider.track              = palette_WIMP16_WHITE;
@@ -114,8 +114,8 @@ static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
     config->button.fg                 = palette_PICO8_BLACK;
     config->button.pressed            = palette_PICO8_LAVENDER;
     config->accent.colour             = palette_PICO8_ORANGE;
-    config->backdrop.colour           = palette_PICO8_LAVENDER;
-    config->backdrop.pattern_bg       = palette_PICO8_LIGHT_GREY;
+    config->backdrop.fill.colour           = palette_PICO8_LAVENDER;
+    config->backdrop.fill.pattern_bg       = palette_PICO8_LIGHT_GREY;
     config->body.window               = palette_PICO8_LIGHT_GREY;
     config->body.menu                 = palette_PICO8_WHITE;
     config->slider.track              = palette_PICO8_WHITE;

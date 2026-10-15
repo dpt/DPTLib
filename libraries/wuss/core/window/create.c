@@ -99,10 +99,10 @@ result_t wuss_window_create(wuss_task_t        *task,
 
   win->task = task;
 
-  bg.colour     = wuss__resolve_colour(wuss, bg.colour);
-  bg.pattern_bg = wuss__resolve_colour(wuss, bg.pattern_bg);
+  bg.fill.colour     = wuss__resolve_colour(wuss, bg.fill.colour);
+  bg.fill.pattern_bg = wuss__resolve_colour(wuss, bg.fill.pattern_bg);
 
-  if (wuss__validate_backdrop(wuss, &bg) != result_OK)
+  if (wuss__validate_fill(wuss, &bg.fill) != result_OK)
   {
     wuss__free(wuss, win);
     return result_WUSS_BAD_COLOUR;

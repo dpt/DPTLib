@@ -172,6 +172,9 @@ struct wuss
    * stray symbolic still fails a range check. Rebuilt by
    * wuss__rebuild_palettecache on create and every palette/config change. */
   wuss_colour_t               palettecache[128];
+  /* Fill for each palette index (palettes hold at most 128 entries); starts
+   * as a flat fill of the colour itself. See wuss_set_colour_fill. */
+  wuss_fill_t                 fills[128];
 #ifdef WUSS_FURNITURE
   wuss_furniture_palette_t    furniture_colours;
 #endif

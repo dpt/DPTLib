@@ -16,10 +16,10 @@ result_t wuss_set_backdrop(wuss_t *wuss, const wuss_backdrop_t *backdrop)
   assert(backdrop != NULL);
 
   resolved            = *backdrop;
-  resolved.colour     = wuss__resolve_colour(wuss, resolved.colour);
-  resolved.pattern_bg = wuss__resolve_colour(wuss, resolved.pattern_bg);
+  resolved.fill.colour     = wuss__resolve_colour(wuss, resolved.fill.colour);
+  resolved.fill.pattern_bg = wuss__resolve_colour(wuss, resolved.fill.pattern_bg);
 
-  rc = wuss__validate_backdrop(wuss, &resolved);
+  rc = wuss__validate_fill(wuss, &resolved.fill);
   if (rc != result_OK)
     return rc;
 

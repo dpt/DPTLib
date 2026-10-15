@@ -151,7 +151,7 @@ result_t wuss_lifecycle_test(const char *resources)
                             wuss_BACKDROP_COLOUR(wuss_COLOUR_RED),
                             SIZE2D(80, 80), SIZE2D(80, 80), &symwin);
     if (rc != result_OK) { wuss_destroy(symw); goto Failure; }
-    if (symwin->bg.colour != 0) /* wuss_COLOUR_RED -> palette index 0 */
+    if (symwin->bg.fill.colour != 0) /* wuss_COLOUR_RED -> palette index 0 */
     {
       wuss_destroy(symw);
       goto Failure;

@@ -41,6 +41,7 @@ result_t wuss_create(screen_t               *scr,
   wuss_alloc_t al;
   wuss_t      *w;
   int          s;
+  int          i;
 
   assert(scr  != NULL);
   assert(wuss != NULL);
@@ -62,7 +63,7 @@ result_t wuss_create(screen_t               *scr,
     palette  = default_palette;
     npalette = NELEMS(default_palette);
   }
-  else if (npalette <= 0)
+  else if (npalette <= 0 || npalette > NELEMS(w->fills))
   {
     wuss__free(w, w);
     return result_BAD_ARG;
@@ -76,6 +77,13 @@ result_t wuss_create(screen_t               *scr,
   }
   memcpy(w->palette, palette, npalette * sizeof(*w->palette));
   w->npalette = npalette;
+
+  for (i = 0; i < npalette; i++)
+  {
+    w->fills[i].colour     = i;
+    w->fills[i].pattern    = screen_PATTERN_SOLID;
+    w->fills[i].pattern_bg = wuss_NO_BACKGROUND;
+  }
 
   rc = wuss__apply_config(w, config);
   if (rc != result_OK)

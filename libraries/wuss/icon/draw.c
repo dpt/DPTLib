@@ -116,10 +116,10 @@ static colour_t icon_blend_ground(const icon_draw_ctx_t *c,
   if (icon->bg != wuss_NO_BACKGROUND)
     return c->wuss->palette[icon->bg];
 
-  if (c->window->bg.colour != wuss_NO_BACKGROUND)
-    return (c->window->bg.pattern != screen_PATTERN_SOLID)
-         ? c->wuss->palette[c->window->bg.pattern_bg]
-         : c->wuss->palette[c->window->bg.colour];
+  if (c->window->bg.fill.colour != wuss_NO_BACKGROUND)
+    return (c->window->bg.fill.pattern != screen_PATTERN_SOLID)
+         ? c->wuss->palette[c->window->bg.fill.pattern_bg]
+         : c->wuss->palette[c->window->bg.fill.colour];
 
   return fallback;
 }

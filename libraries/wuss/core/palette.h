@@ -29,18 +29,26 @@ static inline wuss_colour_t wuss__resolve_colour(const wuss_t *wuss,
   return c;
 }
 
-/* Range-check a backdrop spec against the palette: its colour, and -- when a
+/* Range-check a fill against the palette: its colour, and -- when a
  * non-solid pattern is set -- its pattern index and background colour.
  * Returns result_OK or result_WUSS_BAD_COLOUR. */
-result_t wuss__validate_backdrop(const wuss_t          *wuss,
-                                 const wuss_backdrop_t *backdrop);
+result_t wuss__validate_fill(const wuss_t      *wuss,
+                             const wuss_fill_t *fill);
 
-/* Paint "backdrop" into "area" on "scr": a flat fill in the SOLID case,
+/* Paint "fill" into "area" on wuss->scr: a flat fill in the SOLID case
+ * (through the colour's own wuss->fills[] entry, which may be a pattern),
  * otherwise the 8x8 pattern tiled in colour over pattern_bg, phased against
  * (origin_x, origin_y). No-op when colour is wuss_NO_BACKGROUND. Caller sets
  * scr->clip. */
-void wuss__fill_backdrop(screen_t              *scr,
-                         const colour_t        *palette,
+void wuss__fill_area(const wuss_t      *wuss,
+                     const wuss_fill_t *fill,
+                     const box_t       *area,
+                     int                origin_x,
+                     int                origin_y);
+
+/* wuss__fill_area for backdrop->fill, then backdrop->image centred on the
+ * screen. */
+void wuss__fill_backdrop(const wuss_t          *wuss,
                          const wuss_backdrop_t *backdrop,
                          const box_t           *area,
                          int                    origin_x,

@@ -30,7 +30,7 @@ void wuss__rebuild_palettecache(wuss_t *wuss)
   /* Default every slot to wuss_COLOUR_SYMBOLIC: always >= npalette (palettes
    * hold at most 128 real entries) so an unmapped symbolic still fails every
    * range check, and -- unlike wuss_NO_BACKGROUND -- it is not mistaken for
-   * "no background" by wuss__validate_backdrop. */
+   * "no background" by wuss__validate_fill. */
   for (i = 0; i < NELEMS(wuss->palettecache); i++)
     cache[i] = wuss_COLOUR_SYMBOLIC;
 
@@ -61,8 +61,9 @@ void wuss__rebuild_palettecache(wuss_t *wuss)
   cache[wuss_COLOUR_SLIDER_VALUE    - wuss_COLOUR_SYMBOLIC] = wuss->slider.value;
   cache[wuss_COLOUR_SLIDER_SURROUND - wuss_COLOUR_SYMBOLIC] = wuss->slider.surround;
 #endif
-  if (wuss->backdrop.colour != wuss_NO_BACKGROUND)
-    cache[wuss_COLOUR_BACKDROP - wuss_COLOUR_SYMBOLIC] = wuss->backdrop.colour;
+  if (wuss->backdrop.fill.colour != wuss_NO_BACKGROUND)
+    cache[wuss_COLOUR_BACKDROP - wuss_COLOUR_SYMBOLIC] =
+      wuss->backdrop.fill.colour;
 
   cache[wuss_COLOUR_WINDOW - wuss_COLOUR_SYMBOLIC] = wuss->body.window;
   cache[wuss_COLOUR_MENU   - wuss_COLOUR_SYMBOLIC] = wuss->body.menu;
