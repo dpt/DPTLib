@@ -160,6 +160,14 @@ int                wuss__menu_level_flashing(const struct wuss__menu *level);
  * chain is open. Defined in menu/menu.c. */
 void wuss__menu_abandon(wuss_t *wuss);
 
+/* Deliver wuss_EVENT_MENU_SELECT / wuss_EVENT_MENU_CLOSED to "task": the one
+ * way either is built. Defined in menu/menu.c. */
+result_t wuss__menu_deliver_select(wuss_task_t       *task,
+                                   const wuss_menu_t *menu,
+                                   int                index,
+                                   wuss_button_t      button);
+result_t wuss__menu_deliver_closed(wuss_task_t *task, int picked);
+
 /* True if `window` is one of the open menu chain's windows, including a
  * borrowed-window level -- lets a component shown as a leaf dismiss the
  * whole chain (wuss__menu_abandon) rather than just hide itself, and

@@ -115,6 +115,29 @@ static struct wuss__menu *wuss__menu_node_for(wuss_t              *wuss,
 
 /* Close `node` and everything it opened, leaf-first. The caller clears any
  * parent's child pointer. */
+result_t wuss__menu_deliver_select(wuss_task_t       *task,
+                                   const wuss_menu_t *menu,
+                                   int                index,
+                                   wuss_button_t      button)
+{
+  wuss_event_t sel;
+
+  sel.kind                    = wuss_EVENT_MENU_SELECT;
+  sel.data.menu_select.menu   = menu;
+  sel.data.menu_select.index  = index;
+  sel.data.menu_select.button = button;
+  return wuss__deliver(task, NULL, &sel);
+}
+
+result_t wuss__menu_deliver_closed(wuss_task_t *task, int picked)
+{
+  wuss_event_t closed;
+
+  closed.kind                    = wuss_EVENT_MENU_CLOSED;
+  closed.data.menu_closed.picked = picked;
+  return wuss__deliver(task, NULL, &closed);
+}
+
 static void wuss__menu_close_from(struct wuss__menu *node)
 {
   if (node == NULL)
@@ -130,14 +153,9 @@ static void wuss__menu_close_from(struct wuss__menu *node)
    * one -- is the only chance the pick has of reaching its owner. */
   if (node->flash.frames > 0)
   {
-    wuss_event_t sel;
-
-    node->flash.frames        = 0;
-    sel.kind                    = wuss_EVENT_MENU_SELECT;
-    sel.data.menu_select.menu   = node->flash.menu;
-    sel.data.menu_select.index  = node->flash.index;
-    sel.data.menu_select.button = node->flash.button;
-    (void) wuss__deliver(node->flash.owner, NULL, &sel);
+    node->flash.frames = 0;
+    (void) wuss__menu_deliver_select(node->flash.owner, node->flash.menu,
+                                     node->flash.index, node->flash.button);
   }
 
   {
@@ -190,13 +208,7 @@ void wuss__menu_abandon(wuss_t *wuss)
   wuss->menu->chain = NULL;
 
   if (owner != NULL)
-  {
-    wuss_event_t ev;
-
-    ev.kind                    = wuss_EVENT_MENU_CLOSED;
-    ev.data.menu_closed.picked = 0;
-    (void) wuss__deliver(owner, NULL, &ev);
-  }
+    (void) wuss__menu_deliver_closed(owner, 0);
 
   wuss__menu_close_from(root);
 }
@@ -683,7 +695,6 @@ static void wuss__menu_flash_finish(struct wuss__menu *self)
 {
   wuss_t            *wuss      = self->wuss;
   struct wuss__menu *root;
-  wuss_event_t       sel;
   wuss_icon_t       *row       = self->icons[self->flash.index];
   wuss_task_t       *owner     = self->flash.owner;
   const wuss_menu_t *menu      = self->flash.menu;
@@ -704,8 +715,6 @@ static void wuss__menu_flash_finish(struct wuss__menu *self)
 
   if (!keep_open)
   {
-    wuss_event_t closed;
-
     wuss->menu->chain = NULL;
     wuss__menu_close_from(root); /* frees `self` */
 
@@ -713,16 +722,10 @@ static void wuss__menu_flash_finish(struct wuss__menu *self)
      * so, same as wuss__menu_abandon, before MENU_SELECT below -- otherwise
      * the handle sits stale until a later wuss_menu_close (e.g. from the
      * owner's own QUIT handler) walks freed nodes. */
-    closed.kind                    = wuss_EVENT_MENU_CLOSED;
-    closed.data.menu_closed.picked = 1;
-    (void) wuss__deliver(owner, NULL, &closed);
+    (void) wuss__menu_deliver_closed(owner, 1);
   }
 
-  sel.kind                    = wuss_EVENT_MENU_SELECT;
-  sel.data.menu_select.menu   = menu;
-  sel.data.menu_select.index  = index;
-  sel.data.menu_select.button = button;
-  (void) wuss__deliver(owner, NULL, &sel);
+  (void) wuss__menu_deliver_select(owner, menu, index, button);
 }
 
 /* Advance a running pick flash by one IDLE frame; hand off to
