@@ -67,7 +67,7 @@ static int info_widen(bmfont_t *font, const char *s, int cur)
   if (font == NULL || s == NULL || *s == '\0')
     return cur;
 
-  wuss__text_measure(font, s, (int) strlen(s), INT_MAX, NULL, &w);
+  w = wuss__text_width(font, s);
   return MAX(cur, (int) w);
 }
 

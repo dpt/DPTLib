@@ -209,7 +209,6 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   colour_t                bg;
   point_t                 pos;
   bmfont_width_t          width;
-  int                     len;
   int                     inset;
 
   if (icon->bg != wuss_NO_BACKGROUND)
@@ -261,8 +260,7 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
 
   /* Measure the whole string, not the box interior: a clipped measurement
    * left the widest label of a right-justified set overhanging the rest. */
-  len = (int) strlen(icon->text);
-  wuss__text_measure(c->font, icon->text, len, INT_MAX, NULL, &width);
+  width = wuss__text_width(c->font, icon->text);
 
   inset = icon_label_text_inset(icon->u.label.border);
   if (icon->flags & wuss_ICON_FLAGS_JUSTIFY_CENTRE)
@@ -274,7 +272,7 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
 
   pos.y = icon_text_baseline_y(c, b);
 
-  wuss__text_draw(c->font, c->scr, icon->text, len, c->fg, bg, &pos, NULL);
+  wuss__text_draw_str(c->font, c->scr, icon->text, c->fg, bg, &pos, NULL);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -705,8 +703,8 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
     if (icon->flags & wuss_ICON_FLAGS_SWATCH)
       pos.x += wuss__menu_entry_swatch_width(c->font_height);
     pos.y = icon_text_baseline_y(c, b);
-    wuss__text_draw(c->font, c->scr, icon->text, (int) strlen(icon->text),
-                    text_ink, text_ground, &pos, NULL);
+    wuss__text_draw_str(c->font, c->scr, icon->text, text_ink, text_ground,
+                        &pos, NULL);
 
     /* shortcut: bold, knocked out of a solid rounded keycap right-aligned
      * against the same one-space inset at text_x1, sharing the label's
@@ -845,8 +843,8 @@ static void wuss__icon_draw_writable(const icon_draw_ctx_t *c)
   bmfont_get_info(c->font, NULL, NULL, &ascent, NULL);
   pos.x = b->x0 + wuss__writable_text_x(c->wuss, icon);
   pos.y = b->y0 + (b->y1 - b->y0 - ascent) / 2 + ascent;
-  wuss__text_draw(c->font, &clipped, icon->spec.text,
-                  (int) strlen(icon->spec.text), ink, bg, &pos, NULL);
+  wuss__text_draw_str(c->font, &clipped, icon->spec.text, ink, bg, &pos,
+                      NULL);
 
   if (c->wuss->caret.icon == icon)
   {

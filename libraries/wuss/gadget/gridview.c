@@ -106,8 +106,7 @@ static void gridview_measure_items(wuss_gridview_t *gv)
   gv->min_label_w = 0;
   if (font != NULL)
   {
-    char_w = 0;
-    wuss__text_measure(font, "M", 1, INT_MAX, NULL, &char_w);
+    char_w = wuss__text_width(font, "M");
     cap_w           = (int) char_w * gv->label_chars;
     gv->min_label_w = (int) char_w * MIN(gv->label_chars,
                                          GRIDVIEW_MIN_LABEL_CHARS);
@@ -124,9 +123,7 @@ static void gridview_measure_items(wuss_gridview_t *gv)
 
     if (item.label != NULL && font != NULL)
     {
-      text_w = 0;
-      wuss__text_measure(font, item.label, (int) strlen(item.label), INT_MAX,
-                        NULL, &text_w);
+      text_w = wuss__text_width(font, item.label);
       label_w = MAX(label_w, MIN((int) text_w, cap_w));
     }
   }

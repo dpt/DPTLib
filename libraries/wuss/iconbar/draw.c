@@ -37,8 +37,7 @@ static int iconbar_icon_width(const wuss_t              *wuss,
 
   if (icon->spec.text[0] != '\0' && wuss->fonts.fonts[0] != NULL)
   {
-    wuss__text_measure(wuss->fonts.fonts[0], icon->spec.text,
-                       (int) strlen(icon->spec.text), INT_MAX, NULL, &width);
+    width = wuss__text_width(wuss->fonts.fonts[0], icon->spec.text);
     w = MAX(w, (int) width);
   }
 
@@ -212,18 +211,16 @@ static void iconbar_draw_icon(wuss_t                    *wuss,
   {
     bmfont_t      *font;
     bmfont_width_t width;
-    int            len, ascent;
+    int            ascent;
     point_t        pos;
 
-    font = wuss->fonts.fonts[0];
-    len  = (int) strlen(icon->spec.text);
-    wuss__text_measure(font, icon->spec.text, len, INT_MAX, NULL, &width);
+    font  = wuss->fonts.fonts[0];
+    width = wuss__text_width(font, icon->spec.text);
     bmfont_get_info(font, NULL, NULL, &ascent, NULL);
 
     pos.x = icon_box->x0 + ((icon_box->x1 - icon_box->x0) - (int) width) / 2;
     pos.y = icon_box->y1 + WUSS_ICONBAR_TEXT_PAD + ascent;
-    wuss__text_draw(font, wuss->scr, icon->spec.text, len, ink, bg, &pos,
-                    NULL);
+    wuss__text_draw_str(font, wuss->scr, icon->spec.text, ink, bg, &pos, NULL);
   }
 }
 

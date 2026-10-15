@@ -12,6 +12,30 @@
 #include "../core/impl.h"
 #include "font.h"
 
+result_t wuss__text_draw_str(bmfont_t      *font,
+                             screen_t      *scr,
+                             const char    *text,
+                             colour_t       fg,
+                             colour_t       bg,
+                             const point_t *pos,
+                             point_t       *end_pos)
+{
+  return wuss__text_draw(font, scr, text, (int) strlen(text), fg, bg, pos,
+                         end_pos);
+}
+
+bmfont_width_t wuss__text_width(bmfont_t *font, const char *text)
+{
+  bmfont_width_t w;
+
+  w = 0;
+  if (font != NULL && text != NULL)
+    (void) wuss__text_measure(font, text, (int) strlen(text), INT_MAX, NULL,
+                              &w);
+
+  return w;
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t wuss__text_measure(bmfont_t       *font,
