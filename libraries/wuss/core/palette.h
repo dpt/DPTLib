@@ -12,6 +12,10 @@
  * indices (resolve config through wuss__resolve_colour before storing). */
 void wuss__rebuild_palettecache(wuss_t *wuss);
 
+/* Deliver wuss_EVENT_PALETTE to every task. Returns the first handler error,
+ * else result_OK; every task is still told. */
+result_t wuss__broadcast_palette(wuss_t *wuss);
+
 /* Resolve, validate and store config's colours (and the titlebar height)
  * into w, then rebuild the palette cache. NULL config means the defaults.
  * Needs w's palette and fonts set. Returns result_WUSS_BAD_COLOUR with w

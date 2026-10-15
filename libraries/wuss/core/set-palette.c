@@ -7,27 +7,11 @@
 
 #include "impl.h"
 
-result_t wuss_set_palette(wuss_t         *wuss,
-                          const colour_t *palette,
-                          int             npalette)
+result_t wuss__broadcast_palette(wuss_t *wuss)
 {
   result_t     rc;
   wuss_event_t event;
   list_t      *e;
-
-  assert(wuss    != NULL);
-  assert(palette != NULL);
-
-  /* Same length only: keeps every stored furniture/bevel/backdrop colour
-   * index in range, and matches the fixed-size framebuffer palette on a
-   * paletted screen. */
-  if (npalette != wuss->npalette)
-    return result_BAD_ARG;
-
-  memcpy(wuss->palette, palette, npalette * sizeof(*wuss->palette));
-
-  wuss__rebuild_palettecache(wuss);
-  wuss__rebuild_fills(wuss);
 
   rc = result_OK;
   event.kind = wuss_EVENT_PALETTE;
@@ -46,6 +30,31 @@ result_t wuss_set_palette(wuss_t         *wuss,
 
     e = next;
   }
+
+  return rc;
+}
+
+result_t wuss_set_palette(wuss_t         *wuss,
+                          const colour_t *palette,
+                          int             npalette)
+{
+  result_t rc;
+
+  assert(wuss    != NULL);
+  assert(palette != NULL);
+
+  /* Same length only: keeps every stored furniture/bevel/backdrop colour
+   * index in range, and matches the fixed-size framebuffer palette on a
+   * paletted screen. */
+  if (npalette != wuss->npalette)
+    return result_BAD_ARG;
+
+  memcpy(wuss->palette, palette, npalette * sizeof(*wuss->palette));
+
+  wuss__rebuild_palettecache(wuss);
+  wuss__rebuild_fills(wuss);
+
+  rc = wuss__broadcast_palette(wuss);
 
   wuss__invalidate_screen(wuss);
 

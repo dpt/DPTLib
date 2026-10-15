@@ -278,10 +278,8 @@ result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config)
 
 result_t wuss_set_config(wuss_t *wuss, const wuss_config_t *config)
 {
-  result_t     rc;
-  wuss_t      *saved;
-  wuss_event_t event;
-  list_t      *e;
+  result_t rc;
+  wuss_t  *saved;
 
   assert(wuss   != NULL);
   assert(config != NULL);
@@ -306,22 +304,7 @@ result_t wuss_set_config(wuss_t *wuss, const wuss_config_t *config)
   if (rc != result_OK)
     return rc;
 
-  event.kind = wuss_EVENT_PALETTE;
-  for (e = wuss->tasks.next; e != NULL; )
-  {
-    result_t     crc;
-    wuss_task_t *task;
-    list_t      *next;
-
-    task = (wuss_task_t *) e;
-    next = e->next; /* an autoclose task may free its own node in the handler */
-
-    crc = wuss__deliver(task, NULL, &event);
-    if (crc != result_OK && rc == result_OK)
-      rc = crc;
-
-    e = next;
-  }
+  rc = wuss__broadcast_palette(wuss);
 
   wuss__invalidate_screen(wuss);
 
