@@ -868,6 +868,11 @@ result_t effecting_handle(wuss_window_t      *window,
     if (window == ec->window)
     {
       ec->window = NULL;
+
+      /* the stack is meaningless without its image; its own CLOSE
+       * tears down the gridview */
+      if (ec->list_window != NULL)
+        wuss_window_close(ec->list_window);
     }
     else if (window == ec->list_window)
     {
