@@ -236,6 +236,14 @@ void wuss_window_close(wuss_window_t *doomed);
 result_t wuss_window_try_close(wuss_window_t *window);
 
 /**
+ * Fetch the task that owns a window.
+ *
+ * \param[in] window Window to query.
+ * \return The owning task. Never NULL.
+ */
+wuss_task_t *wuss_window_get_task(const wuss_window_t *window);
+
+/**
  * Move a window, preserving its size.
  *
  * \param[in] window Window to move.

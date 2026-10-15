@@ -379,7 +379,11 @@ static void wuss_frame(void *arg)
       {
         int claimed;
 
-        /* the focused window first, then the launcher menu's shortcuts */
+        /* system chords, then the focused window, then the launcher menu's
+         * shortcuts */
+        if (tasks_system_key(ev.key, ev.mods))
+          break;
+
         wuss_key(c->wuss, ev.key, ev.mods, &claimed);
         if (!claimed)
           (void) tasks_launcher_key(ev.key, ev.mods);

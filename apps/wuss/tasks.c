@@ -193,9 +193,9 @@ enum
 
 static const wuss_menu_item_t g_debug_items[] =
 {
-  { "Redraw",           wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F1"                 },
-  { "Garbage",          wuss_MENU_ITEM_NONE, NULL, NULL, 0, WUSS_MENU_SHIFT "F1" },
-  { "Pixel Stress",     wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F3"                 }
+  { "Redraw",           wuss_MENU_ITEM_NONE, NULL, NULL, 0, WUSS_MENU_SHIFT "F1"     },
+  { "Garbage",          wuss_MENU_ITEM_NONE, NULL, NULL, 0, "^" WUSS_MENU_SHIFT "F1" },
+  { "Pixel Stress",     wuss_MENU_ITEM_NONE, NULL, NULL, 0, WUSS_MENU_SHIFT "F3"     }
 };
 
 static const wuss_menu_t g_debug_menu =
@@ -224,7 +224,7 @@ static wuss_menu_item_t g_task_items[] =
   { "Debug",            wuss_MENU_ITEM_DASHED,   &g_debug_menu                       }
 #ifndef __EMSCRIPTEN__
   ,
-  { "Quit Wuss",        wuss_MENU_ITEM_DASHED,   NULL, NULL, 0, "F4"                 }
+  { "Quit Wuss",        wuss_MENU_ITEM_DASHED,   NULL, NULL, 0, "^" WUSS_MENU_SHIFT "Q" }
 #endif
 };
 
@@ -356,17 +356,53 @@ result_t tasks_open_menu(void)
 }
 #endif
 
+int tasks_system_key(int code, wuss_key_modifiers_t modifiers)
+{
+  wuss_window_t *focus;
+
+  if (!(modifiers & wuss_KEY_MOD_CTRL) || (modifiers & wuss_KEY_MOD_ALT))
+    return 0;
+
+  focus = wuss_get_focus(g_tasks.wuss);
+
+  /* Ctrl-F2: close window, as its close icon does */
+  if (code == wuss_KEY_F1 + 1 && !(modifiers & wuss_KEY_MOD_SHIFT))
+  {
+    (void) wuss_window_try_close(focus);
+    return 1;
+  }
+
+  if (code == 'q' || code == 'Q')
+  {
+#ifndef __EMSCRIPTEN__
+    /* Ctrl-Shift-Q: quit Wuss */
+    if (modifiers & wuss_KEY_MOD_SHIFT)
+    {
+      g_tasks.quit = true;
+      return 1;
+    }
+#endif
+
+    /* Ctrl-Q: quit the focused app, with unsaved-data prompts */
+    if (focus != NULL)
+      (void) wuss_task_close_windows(g_tasks.wuss, wuss_window_get_task(focus));
+    return 1;
+  }
+
+  return 0;
+}
+
 result_t tasks_launcher_key(int code, wuss_key_modifiers_t modifiers)
 {
   wuss_event_t key;
 
-  /* zoom stays on its F2 / Shift-F2 keys, now that the menu rows are gone;
-   * the CRT and pointer options live only in the Display window, whose
-   * ticks a key could not keep current */
-  if (code == wuss_KEY_F1 + 1)
+  /* zoom stays on Ctrl-= / Ctrl--, now that the menu rows are gone; the CRT
+   * and pointer options live only in the Display window, whose ticks a key
+   * could not keep current. Ctrl-Plus is Ctrl-Shift-= on most keyboards. */
+  if ((modifiers & wuss_KEY_MOD_CTRL) &&
+      (code == '=' || code == '+' || code == '-'))
   {
-    wuss_frontend_zoom(g_tasks.frontend,
-                       (modifiers & wuss_KEY_MOD_SHIFT) ? -1 : 1);
+    wuss_frontend_zoom(g_tasks.frontend, code == '-' ? -1 : 1);
     return result_OK;
   }
 

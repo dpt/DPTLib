@@ -487,6 +487,19 @@ void wuss_task_set_autoclose(wuss_task_t *task, int on);
 int wuss_task_raise_children(wuss_t *wuss, wuss_task_t *parent);
 
 /**
+ * Close every window of \p task via wuss_window_try_close, so each task gets
+ * its wuss_EVENT_PRE_CLOSE veto. Stops at the first veto, leaving the
+ * remaining windows open. A task with autoclose set is destroyed when its
+ * last window closes.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] task Task whose windows to close.
+ * \return \ref result_OK if every window closed, else the result that
+ *         vetoed.
+ */
+result_t wuss_task_close_windows(wuss_t *wuss, wuss_task_t *task);
+
+/**
  * Hide or show every window of \p task and of its child tasks (see
  * wuss_set_task_parent), so an app is out of the way until revealed.
  *

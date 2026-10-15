@@ -301,12 +301,12 @@ result_t painting_create_with(wuss_t                     *wuss,
   }
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PAINTING_MENU_UNDO, "Undo",
-                          wuss_MENU_ITEM_NONE, "^Z");
+                          wuss_MENU_ITEM_NONE, "F8");
 
   WUSS_MENU_ITEM(task->sel_items, PAINTING_SEL_ALL, "Select All",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->sel_items, PAINTING_SEL_NONE, "Deselect",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->sel_items, PAINTING_SEL_NONE, "Deselect",
+                          wuss_MENU_ITEM_NONE, "^Z");
   WUSS_MENU_ITEM(task->sel_items, PAINTING_SEL_INVERT, "Invert",
                  wuss_MENU_ITEM_NONE);
   WUSS_MENU_TITLE(task->sel_menu, "Selection", task->sel_items,

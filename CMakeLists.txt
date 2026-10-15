@@ -485,6 +485,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/font/registry.c
     libraries/wuss/font/text.c
     libraries/wuss/core/task/create.c
+    libraries/wuss/core/task/close-windows.c
     libraries/wuss/core/task/destroy.c
     libraries/wuss/core/task/raise-children.c
     libraries/wuss/core/task/set-autoclose.c
@@ -498,6 +499,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/window/get-content-bounds.c
     libraries/wuss/core/window/get-max-content.c
     libraries/wuss/core/window/get-scroll.c
+    libraries/wuss/core/window/get-task.c
     libraries/wuss/core/window/get-title.c
     libraries/wuss/core/window/get-visible-bounds.c
     libraries/wuss/core/window/invalidate.c

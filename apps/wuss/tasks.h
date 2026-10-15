@@ -92,9 +92,14 @@ result_t tasks_open_menu(void);
 #endif
 
 /* offer a key the focused window passed on to the task launcher's menu
- * shortcuts (e.g. F4 for Quit Wuss); result_WUSS_KEY_UNCLAIMED if none
+ * shortcuts (e.g. Ctrl-Shift-Q for Quit Wuss); result_WUSS_KEY_UNCLAIMED if none
  * matches */
 result_t tasks_launcher_key(int code, wuss_key_modifiers_t modifiers);
+
+/* System key chords (Ctrl-F2 close window, Ctrl-Q quit app, Ctrl-Shift-Q quit
+ * Wuss), offered before the focused window so no task can swallow them.
+ * Returns non-zero if the key was used. */
+int tasks_system_key(int code, wuss_key_modifiers_t modifiers);
 
 /* Destroy every app whose Quit was picked, with all its instances. Call once
  * per frame, after wuss_idle. */
