@@ -313,8 +313,7 @@ static result_t checker_menu_select(checker_task_t     *cc,
   }
 
   /* shows the Save As dialogue */
-  if (event->data.menu_select.menu == &cc->menu &&
-      event->data.menu_select.index == CHECKER_MENU_SAVE)
+  if (wuss_menu_select_is(event, &cc->menu, CHECKER_MENU_SAVE))
   {
     return wuss_saveas_open(cc->saveas);
   }
@@ -334,8 +333,7 @@ static result_t checker_menu_select(checker_task_t     *cc,
     return result_OK;
   }
 
-  if (event->data.menu_select.menu == &cc->menu &&
-      event->data.menu_select.index == CHECKER_MENU_SWAP)
+  if (wuss_menu_select_is(event, &cc->menu, CHECKER_MENU_SWAP))
   {
     tmp       = cc->black;
     cc->black = cc->white;

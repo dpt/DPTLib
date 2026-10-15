@@ -527,8 +527,7 @@ static result_t curving_key(curving_task_t *task,
 static result_t curving_menu_select(curving_task_t     *task,
                                     const wuss_event_t *event)
 {
-  if (event->data.menu_select.menu == &task->menu &&
-      event->data.menu_select.index == CURVING_MENU_HULL)
+  if (wuss_menu_select_is(event, &task->menu, CURVING_MENU_HULL))
   {
     task->hull = !task->hull;
     wuss_menu_tick_item_live(task->menu_handle, &task->menu,
@@ -537,16 +536,14 @@ static result_t curving_menu_select(curving_task_t     *task,
     return result_OK;
   }
 
-  if (event->data.menu_select.menu == &task->menu &&
-      event->data.menu_select.index == CURVING_MENU_RESET)
+  if (wuss_menu_select_is(event, &task->menu, CURVING_MENU_RESET))
   {
     curving_reset_points(task);
     wuss_window_invalidate_visible(task->window);
     return result_OK;
   }
 
-  if (event->data.menu_select.menu == &task->menu &&
-      event->data.menu_select.index == CURVING_MENU_SAVE)
+  if (wuss_menu_select_is(event, &task->menu, CURVING_MENU_SAVE))
   {
     return wuss_saveas_open(task->saveas);
   }

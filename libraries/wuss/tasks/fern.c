@@ -650,8 +650,7 @@ static result_t fern_conf_dialogue_icon(fern_task_t        *task,
 static result_t fern_menu_select(fern_task_t        *task,
                                  const wuss_event_t *event)
 {
-  if (event->data.menu_select.menu == &task->menu &&
-      event->data.menu_select.index == FERN_MENU_ANIMATE)
+  if (wuss_menu_select_is(event, &task->menu, FERN_MENU_ANIMATE))
   {
     task->animate = !task->animate;
     wuss_menu_tick_item_live(task->menu_handle, &task->menu,
@@ -659,12 +658,10 @@ static result_t fern_menu_select(fern_task_t        *task,
     return result_OK;
   }
 
-  if (event->data.menu_select.menu == &task->menu &&
-      event->data.menu_select.index == FERN_MENU_SAVE)
+  if (wuss_menu_select_is(event, &task->menu, FERN_MENU_SAVE))
     return wuss_saveas_open(task->saveas);
 
-  if (event->data.menu_select.menu == &task->menu &&
-      event->data.menu_select.index == FERN_MENU_RANDOMISE)
+  if (wuss_menu_select_is(event, &task->menu, FERN_MENU_RANDOMISE))
   {
     task->seed        = rng_xorshift32(&task->rng);
     task->config.curl = rng_range(&task->rng, 601) - 300;
@@ -674,8 +671,7 @@ static result_t fern_menu_select(fern_task_t        *task,
     return result_OK;
   }
 
-  if (event->data.menu_select.menu == &task->menu &&
-      event->data.menu_select.index == FERN_MENU_RESET)
+  if (wuss_menu_select_is(event, &task->menu, FERN_MENU_RESET))
   {
     int old_size;
 

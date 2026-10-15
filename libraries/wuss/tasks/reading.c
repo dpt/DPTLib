@@ -1108,8 +1108,7 @@ result_t reading_handle(wuss_window_t      *window,
         return reading_set_spacing(tcx, event->data.menu_select.index);
       if (event->data.menu_select.menu == &tcx->align_menu)
         return reading_set_align(tcx, event->data.menu_select.index);
-      if (event->data.menu_select.menu == &tcx->top_menu &&
-          event->data.menu_select.index == READING_MENU_AUTOSIZE)
+      if (wuss_menu_select_is(event, &tcx->top_menu, READING_MENU_AUTOSIZE))
         return reading_toggle_resizing(tcx);
       if (tcx->colourmenu_target == NULL)
         return result_OK;

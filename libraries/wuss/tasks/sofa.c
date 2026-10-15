@@ -745,8 +745,7 @@ static result_t sofa_idle(void *task_data)
 
 static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
 {
-  if (event->data.menu_select.menu == &sc->menu &&
-      event->data.menu_select.index == SOFA_MENU_PAUSE)
+  if (wuss_menu_select_is(event, &sc->menu, SOFA_MENU_PAUSE))
   {
     sc->spinning = !sc->spinning;
     wuss_menu_tick_item_live(sc->menu_handle, &sc->menu, SOFA_MENU_PAUSE,
@@ -754,8 +753,7 @@ static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
     return result_OK;
   }
 
-  if (event->data.menu_select.menu == &sc->menu &&
-      event->data.menu_select.index == SOFA_MENU_CYCLE)
+  if (wuss_menu_select_is(event, &sc->menu, SOFA_MENU_CYCLE))
   {
     sc->cycling = !sc->cycling;
     sc->turns   = 0; /* a re-enabled cycle gives the model its full turns */
@@ -782,8 +780,7 @@ static result_t sofa_menu_select(sofa_task_t *sc, const wuss_event_t *event)
     return result_OK;
   }
 
-  if (event->data.menu_select.menu == &sc->menu &&
-      event->data.menu_select.index == SOFA_MENU_SAVE)
+  if (wuss_menu_select_is(event, &sc->menu, SOFA_MENU_SAVE))
   {
     return wuss_saveas_open(sc->saveas);
   }

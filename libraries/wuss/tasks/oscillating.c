@@ -540,19 +540,16 @@ result_t oscillating_handle(wuss_window_t      *window,
     return oscillating_pre_submenu_open(lc, event);
 
   case wuss_EVENT_MENU_SELECT:
-    if (event->data.menu_select.menu == &lc->menu &&
-        event->data.menu_select.index == OSCILLATING_MENU_PAUSE)
+    if (wuss_menu_select_is(event, &lc->menu, OSCILLATING_MENU_PAUSE))
       return oscillating_toggle_pause(lc, event);
-    if (event->data.menu_select.menu == &lc->menu &&
-        event->data.menu_select.index == OSCILLATING_MENU_REVERSALS)
+    if (wuss_menu_select_is(event, &lc->menu, OSCILLATING_MENU_REVERSALS))
     {
       lc->reversals = !lc->reversals;
       wuss_menu_tick_item_live(lc->menu_handle, &lc->menu,
                                OSCILLATING_MENU_REVERSALS, lc->reversals);
       return result_OK;
     }
-    if (event->data.menu_select.menu == &lc->menu &&
-        event->data.menu_select.index == OSCILLATING_MENU_SAVE)
+    if (wuss_menu_select_is(event, &lc->menu, OSCILLATING_MENU_SAVE))
     {
       return wuss_saveas_open(lc->saveas);
     }

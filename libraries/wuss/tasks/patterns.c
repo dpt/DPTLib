@@ -292,19 +292,16 @@ result_t patterns_handle(wuss_window_t      *window,
       result_t rc;
 
       rc = result_OK;
-      if (event->data.menu_select.menu == &bc->menu &&
-          event->data.menu_select.index == PATTERNS_MENU_SAVE)
+      if (wuss_menu_select_is(event, &bc->menu, PATTERNS_MENU_SAVE))
       {
         rc = wuss_saveas_open(bc->saveas);
       }
-      else if (event->data.menu_select.menu == &bc->menu &&
-               event->data.menu_select.index == PATTERNS_MENU_RANDOMISE)
+      else if (wuss_menu_select_is(event, &bc->menu, PATTERNS_MENU_RANDOMISE))
       {
         patterns_randomise(bc);
         wuss_window_invalidate_visible(bc->window);
       }
-      else if (event->data.menu_select.menu == &bc->menu &&
-               event->data.menu_select.index == PATTERNS_MENU_RESET)
+      else if (wuss_menu_select_is(event, &bc->menu, PATTERNS_MENU_RESET))
       {
         bc->a = colour_rgb(0x00, 0x00, 0x00);
         bc->b = colour_rgb(0xFF, 0xFF, 0xFF);

@@ -516,14 +516,11 @@ result_t ball_handle(wuss_window_t      *window,
          event->data.menu_select.index == BALL_MENU_GRAVITY ||
          event->data.menu_select.index == BALL_MENU_DAMPING))
       return ball_toggle(bc, event);
-    if (event->data.menu_select.menu == &bc->menu &&
-        event->data.menu_select.index == BALL_MENU_ADD)
+    if (wuss_menu_select_is(event, &bc->menu, BALL_MENU_ADD))
       return ball_add(bc);
-    if (event->data.menu_select.menu == &bc->menu &&
-        event->data.menu_select.index == BALL_MENU_CLEAR)
+    if (wuss_menu_select_is(event, &bc->menu, BALL_MENU_CLEAR))
       return ball_clear(bc);
-    if (event->data.menu_select.menu == &bc->menu &&
-        event->data.menu_select.index == BALL_MENU_SAVE)
+    if (wuss_menu_select_is(event, &bc->menu, BALL_MENU_SAVE))
       return wuss_saveas_open(bc->saveas);
     return ball_menu_select(bc, event);
 

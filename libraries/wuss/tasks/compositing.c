@@ -638,8 +638,7 @@ result_t compositing_handle(wuss_window_t      *window,
         (event->data.menu_select.index == COMPOSITING_MENU_PAUSE ||
          event->data.menu_select.index == COMPOSITING_MENU_SWAP))
       return compositing_toggle(pd, event);
-    if (event->data.menu_select.menu == &pd->menu &&
-        event->data.menu_select.index == COMPOSITING_MENU_SAVE)
+    if (wuss_menu_select_is(event, &pd->menu, COMPOSITING_MENU_SAVE))
     {
       return wuss_saveas_open(pd->saveas);
     }

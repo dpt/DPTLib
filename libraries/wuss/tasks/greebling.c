@@ -402,16 +402,14 @@ static result_t greebling_menu_select(greebling_task_t   *task,
     wuss_menu_tick_exclusive_live(task->menu_handle, &task->size_menu,
                                   task->size);
   }
-  else if (event->data.menu_select.menu == &task->menu &&
-           event->data.menu_select.index == GREEBLING_MENU_RANDPAL)
+  else if (wuss_menu_select_is(event, &task->menu, GREEBLING_MENU_RANDPAL))
   {
     rc = greebling_toggle_randpal(task, task->window);
     wuss_menu_tick_item_live(task->menu_handle, &task->menu,
                              GREEBLING_MENU_RANDPAL,
                              task->random_prefab_palettes);
   }
-  else if (event->data.menu_select.menu == &task->menu &&
-           event->data.menu_select.index == GREEBLING_MENU_SAVE)
+  else if (wuss_menu_select_is(event, &task->menu, GREEBLING_MENU_SAVE))
   {
     rc = wuss_saveas_open(task->saveas);
   }

@@ -434,8 +434,7 @@ result_t clock_handle(wuss_window_t      *window,
          event->data.menu_select.index == CLOCK_MENU_SECONDS ||
          event->data.menu_select.index == CLOCK_MENU_12_HOUR))
       return clock_toggle(cc, event);
-    if (event->data.menu_select.menu == &cc->menu &&
-        event->data.menu_select.index == CLOCK_MENU_SAVE)
+    if (wuss_menu_select_is(event, &cc->menu, CLOCK_MENU_SAVE))
     {
       return wuss_saveas_open(cc->saveas);
     }

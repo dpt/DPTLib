@@ -1056,14 +1056,12 @@ result_t fireworks_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
-    if (event->data.menu_select.menu == &pt->menu &&
-        event->data.menu_select.index == FIREWORKS_MENU_CLEAR)
+    if (wuss_menu_select_is(event, &pt->menu, FIREWORKS_MENU_CLEAR))
     {
       fireworks_clear(pt);
       return result_OK;
     }
-    if (event->data.menu_select.menu == &pt->menu &&
-        event->data.menu_select.index == FIREWORKS_MENU_SAVE)
+    if (wuss_menu_select_is(event, &pt->menu, FIREWORKS_MENU_SAVE))
       return wuss_saveas_open(pt->saveas);
     if (event->data.menu_select.menu == &pt->menu)
       return fireworks_toggle(pt, event);

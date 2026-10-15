@@ -590,8 +590,7 @@ static result_t doughnut_key(doughnut_task_t *task, int code)
 static result_t doughnut_menu_select(doughnut_task_t    *task,
                                      const wuss_event_t *event)
 {
-  if (event->data.menu_select.menu == &task->menu &&
-      event->data.menu_select.index == DOUGHNUT_MENU_PAUSE)
+  if (wuss_menu_select_is(event, &task->menu, DOUGHNUT_MENU_PAUSE))
   {
     task->paused = !task->paused;
     wuss_menu_tick_item_live(task->menu_handle, &task->menu,
@@ -621,8 +620,7 @@ static result_t doughnut_menu_select(doughnut_task_t    *task,
     return result_OK;
   }
 
-  if (event->data.menu_select.menu == &task->menu &&
-      event->data.menu_select.index == DOUGHNUT_MENU_SAVE)
+  if (wuss_menu_select_is(event, &task->menu, DOUGHNUT_MENU_SAVE))
   {
     return wuss_saveas_open(task->saveas);
   }

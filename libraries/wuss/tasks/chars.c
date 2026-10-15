@@ -706,8 +706,7 @@ result_t chars_handle(wuss_window_t      *window,
       if (event->data.menu_select.menu == &cc->page_menu)
         return chars_set_page(cc, event);
 
-      if (event->data.menu_select.menu == &cc->menu &&
-          event->data.menu_select.index == CHARS_MENU_SAVE)
+      if (wuss_menu_select_is(event, &cc->menu, CHARS_MENU_SAVE))
       {
         return wuss_saveas_open(cc->saveas);
       }
