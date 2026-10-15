@@ -60,8 +60,7 @@ int wuss__icon_click(wuss_window_t      *window,
   if (icon == NULL)
     return 0;
 
-  if (action == wuss_MOUSE_DOWN &&
-      (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+  if (action == wuss_MOUSE_DOWN && (button & WUSS_BUTTON_CLICK))
   {
     wuss__icon_set_state(icon, wuss_ICON_STATE_PRESSED, 1);
     wuss->pressed.icon   = icon;

@@ -586,7 +586,7 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
       return 0;
     }
 
-    if (!(event->data.mouse.button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+    if (!(event->data.mouse.button & WUSS_BUTTON_CLICK))
       return 0;
 
     index = gridview_hit_test(gv, event->data.mouse.point);

@@ -15,8 +15,7 @@ result_t wuss__furniture_press_arrow(wuss_window_t                   *win,
 
   NOT_USED(p);
 
-  if (action != wuss_MOUSE_DOWN ||
-      !(button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+  if (action != wuss_MOUSE_DOWN || !(button & WUSS_BUTTON_CLICK))
     return result_OK;
 
   wuss = win->wuss;
@@ -50,8 +49,7 @@ result_t wuss__furniture_press_well(wuss_window_t                   *win,
   int   vertical;
   int   sign, page, pos, lo, hi;
 
-  if (action != wuss_MOUSE_DOWN ||
-      !(button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+  if (action != wuss_MOUSE_DOWN || !(button & WUSS_BUTTON_CLICK))
     return result_OK;
 
   /* A click landing in the well itself (not on the sausage) pages the content

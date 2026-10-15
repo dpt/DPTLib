@@ -80,8 +80,8 @@ static result_t mouse_click(wuss_t             *wuss,
 
   /* A Select/Adjust press on a focusable window's content takes the input
    * focus, before the press itself is delivered. Menu never moves it. */
-  if (action == wuss_MOUSE_DOWN                          &&
-      (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)) &&
+  if (action == wuss_MOUSE_DOWN &&
+      (button & WUSS_BUTTON_CLICK) &&
       (win->flags & wuss_WINDOW_FOCUSABLE))
     (void) wuss_set_focus(wuss, win);
 
@@ -106,8 +106,7 @@ static result_t mouse_click(wuss_t             *wuss,
       return rc;
 
     /* Set before delivery: closing the window in the handler clears it. */
-    if (action == wuss_MOUSE_DOWN &&
-        (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+    if (action == wuss_MOUSE_DOWN && (button & WUSS_BUTTON_CLICK))
       wuss->capture = win;
 
     event.kind              = wuss_EVENT_MOUSE;

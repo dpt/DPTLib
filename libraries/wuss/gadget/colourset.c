@@ -238,7 +238,7 @@ int wuss_colourset_handle_event(wuss_colourset_t   *cs,
 
     rc = result_OK;
     if (event->data.icon.action == wuss_MOUSE_UP &&
-        (event->data.icon.button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+        (event->data.icon.button & WUSS_BUTTON_CLICK))
       rc = colourset_open(cs);
     *out_result = rc;
     return 1;

@@ -15,8 +15,7 @@ result_t wuss__furniture_press_title(wuss_window_t                   *win,
 
   NOT_USED(element);
 
-  if (action != wuss_MOUSE_DOWN ||
-      !(button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+  if (action != wuss_MOUSE_DOWN || !(button & WUSS_BUTTON_CLICK))
     return result_OK;
 
   wuss = win->wuss;
@@ -42,8 +41,7 @@ result_t wuss__furniture_press_resize(wuss_window_t                   *win,
   wuss_t *wuss;
   box_t   content;
 
-  if (action != wuss_MOUSE_DOWN ||
-      !(button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+  if (action != wuss_MOUSE_DOWN || !(button & WUSS_BUTTON_CLICK))
     return result_OK;
 
   wuss = win->wuss;

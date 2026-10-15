@@ -66,6 +66,8 @@
 
 #define WUSS_BUTTON_INSET 3  /* shared by close/back/toggle/resize furniture buttons and scrollbar breadth */
 
+#define WUSS_BUTTON_CLICK (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST) /* either click button; excludes MENU */
+
 /* Font slot (see wuss_create's fonts[]) consulted for menu decoration glyphs:
  * the selection tick and the submenu arrow. When the slot is empty those are
  * drawn as vector strokes instead. A font in this slot is expected to carry a

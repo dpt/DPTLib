@@ -57,7 +57,7 @@ result_t wuss__furniture_press_back(wuss_window_t                   *win,
   else if (button & wuss_BUTTON_ADJUST)
     wuss_window_restack(win, wuss_ZORDER_FRONT);
 
-  if (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST))
+  if (button & WUSS_BUTTON_CLICK)
     wuss__furniture_hold(win, element->region);
 
   return result_OK;
@@ -71,8 +71,7 @@ result_t wuss__furniture_press_toggle(wuss_window_t                   *win,
 {
   NOT_USED(p);
 
-  if (action == wuss_MOUSE_DOWN &&
-      (button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+  if (action == wuss_MOUSE_DOWN && (button & WUSS_BUTTON_CLICK))
   {
     win->wuss->furniture_ops->toggle_size(win);
 

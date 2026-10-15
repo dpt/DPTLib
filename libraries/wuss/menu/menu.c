@@ -584,7 +584,7 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 
     button = event->data.icon.button;
 
-    if (!(button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+    if (!(button & WUSS_BUTTON_CLICK))
       return result_OK; /* MENU release picks nothing -- core never arms the
                          * row's press for it, so this UP is unpaired */
 
