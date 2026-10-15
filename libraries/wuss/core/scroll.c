@@ -31,8 +31,7 @@ static result_t wuss__scroll_slider(wuss_window_t *win,
                                     wuss_icon_t   *icon,
                                     int            delta)
 {
-  int          step;
-  wuss_event_t event;
+  int step;
 
   step = icon->spec.u.slider.step ? abs(icon->spec.u.slider.step) : 1;
   if (icon->spec.u.slider.min > icon->spec.u.slider.max)
@@ -40,12 +39,7 @@ static result_t wuss__scroll_slider(wuss_window_t *win,
 
   wuss__icon_set_value(win, icon, icon->value + delta * step);
 
-  event.kind             = wuss_EVENT_ICON;
-  event.data.icon.icon   = icon;
-  event.data.icon.action = wuss_MOUSE_MOVE;
-  event.data.icon.button = wuss_BUTTON_NONE;
-  event.data.icon.value  = icon->value;
-  return wuss__deliver(win->task, win, &event);
+  return wuss__icon_deliver(win, icon, wuss_MOUSE_MOVE, wuss_BUTTON_NONE);
 }
 
 /* The topmost visible, enabled slider of "win" whose full bbox -- groove and

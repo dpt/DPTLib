@@ -206,6 +206,13 @@ int wuss__slider_value_for_point(wuss_window_t     *window,
  * must be an icon of "window". */
 void wuss__icon_invalidate(wuss_window_t *window, const wuss_icon_t *icon);
 
+/* Tell the window's task about "icon" with a wuss_EVENT_ICON carrying the
+ * icon's current value. Returns the handler's result. */
+result_t wuss__icon_deliver(wuss_window_t      *window,
+                            wuss_icon_t        *icon,
+                            wuss_mouse_action_t action,
+                            wuss_button_t       button);
+
 /* Set or clear "flag" in "icon"'s spec.flags and invalidate it. Setting it
  * drops the caret if the icon holds it, as a hidden or shaded icon can no
  * longer take input. Shared by wuss_icon_set_hidden and

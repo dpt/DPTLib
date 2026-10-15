@@ -125,14 +125,8 @@ static int writable_rune_start(const char *text, int len, int index)
 /* Tell the caret icon's task its text changed. */
 static result_t writable_changed(wuss_t *wuss)
 {
-  wuss_event_t event;
-
-  event.kind             = wuss_EVENT_ICON;
-  event.data.icon.icon   = wuss->caret.icon;
-  event.data.icon.action = wuss_MOUSE_UP;
-  event.data.icon.button = wuss_BUTTON_NONE;
-  event.data.icon.value  = wuss->caret.icon->value;
-  return wuss__deliver(wuss->caret.window->task, wuss->caret.window, &event);
+  return wuss__icon_deliver(wuss->caret.window, wuss->caret.icon,
+                            wuss_MOUSE_UP, wuss_BUTTON_NONE);
 }
 
 /* ----------------------------------------------------------------------- */

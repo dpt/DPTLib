@@ -45,7 +45,6 @@ int wuss__icon_click(wuss_window_t      *window,
 {
   wuss_t      *wuss;
   wuss_icon_t *icon;
-  wuss_event_t event;
 
   wuss = window->wuss;
 
@@ -104,12 +103,23 @@ int wuss__icon_click(wuss_window_t      *window,
                           : 1);
   }
 
+  *rc = wuss__icon_deliver(window, icon, action, button);
+
+  return 1;
+}
+
+result_t wuss__icon_deliver(wuss_window_t      *window,
+                            wuss_icon_t        *icon,
+                            wuss_mouse_action_t action,
+                            wuss_button_t       button)
+{
+  wuss_event_t event;
+
   event.kind             = wuss_EVENT_ICON;
   event.data.icon.icon   = icon;
   event.data.icon.action = action;
   event.data.icon.button = button;
   event.data.icon.value  = icon->value;
-  *rc = wuss__deliver(window->task, window, &event);
 
-  return 1;
+  return wuss__deliver(window->task, window, &event);
 }
