@@ -825,17 +825,9 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
   widest = 0;
   for (i = 0; i < menu->nitems; i++)
   {
-    const char    *text;
-    int            len;
-    int            split;
     bmfont_width_t w;
 
-    text = menu->items[i].text ? menu->items[i].text : "";
-    len  = (int) strlen(text);
-    w    = 0;
-    if (len > 0 && wuss__text_measure(wuss->fonts.fonts[0], text, len,
-                                      INT_MAX, &split, &w) != result_OK)
-      w = 0;
+    w = wuss__text_width(wuss->fonts.fonts[0], menu->items[i].text);
 
     /* a swatch row's chip leads its label in the text column */
     if (menu->items[i].flags & wuss_MENU_ITEM_SWATCH)
@@ -882,21 +874,14 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
    * doesn't butt up against the window edges */
   if (menu->title != NULL && menu->title[0] != '\0')
   {
-    bmfont_t      *titlefont;
-    int            titlelen;
-    int            split;
-    bmfont_width_t title_w;
-    int            need;
+    bmfont_t *titlefont;
+    int       need;
 
     titlefont = wuss__bold_font(wuss);
-    titlelen  = (int) strlen(menu->title);
-    if (wuss__text_measure(titlefont, menu->title, titlelen, INT_MAX, &split,
-                           &title_w) == result_OK)
-    {
-      need  = (int) title_w + 2 * WUSS_MENU_TITLE_PAD;
-      need += 2 * (int) wuss__fontset_space_width(&wuss->fonts, titlefont);
-      width = MAX(width, need);
-    }
+    need      = (int) wuss__text_width(titlefont, menu->title) +
+                2 * WUSS_MENU_TITLE_PAD;
+    need     += 2 * (int) wuss__fontset_space_width(&wuss->fonts, titlefont);
+    width     = MAX(width, need);
   }
 
   /* every item is a full row now; a dashed item also gets a sep_h rule above.
