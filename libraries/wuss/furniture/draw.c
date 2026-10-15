@@ -18,6 +18,7 @@
 
 #include "../core/types.h"
 #include "../core/geometry.h"
+#include "../core/palette.h"
 
 /* Titlebar text is drawn with a one-pixel drop shadow in the button-shadow
  * bevel colour, matching the existing bevel/relief look of furniture icons
@@ -39,7 +40,7 @@ static void fill_furniture_rect(wuss_t      *wuss,
     return; /* wholly outside the redraw region */
 
   wuss->scr->clip = clipped;
-  screen_fill_rect(wuss->scr, b->x0, b->y0, box_size(b), colour);
+  wuss__fill_colour(wuss, wuss->scr, b, colour);
 }
 
 /* The titlebar fill: the focus tint while "window" holds the input focus. */
@@ -168,10 +169,15 @@ static void draw_title(wuss_t        *wuss,
    * slot before this redraw. Stops above the bottom divider rule (already
    * painted as its own cached piece, see furniture/layout.c) so the fill
    * doesn't cover it back over. */
-  screen_fill_rect(wuss->scr, text_x0, titlebar->y0,
-                   SIZE2D(text_x1 - text_x0,
-                          titlebar->y1 - titlebar->y0 - WUSS_DIVIDER_PX),
-                   title_bg(wuss, window));
+  {
+    box_t fill;
+
+    fill    = *titlebar;
+    fill.x0 = text_x0;
+    fill.x1 = text_x1;
+    fill.y1 -= WUSS_DIVIDER_PX;
+    wuss__fill_colour(wuss, wuss->scr, &fill, title_bg(wuss, window));
+  }
 
   bmfont_draw_relief(titlefont, wuss->scr, window->title, titlelen,
                      wuss->palette[wuss->furniture_colours.title.fg],

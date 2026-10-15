@@ -24,6 +24,7 @@
 #include "wuss/gadget/gridview.h"
 
 #include "../core/types.h"
+#include "../core/palette.h"
 #include "../font/font.h"
 #include "../icon.h"
 
@@ -439,8 +440,7 @@ static void gridview_draw_cell(wuss_gridview_t    *gv,
   bg = wuss_gridview_is_selected(gv, index)
      ? wuss->palette[wuss->accent]
      : wuss->palette[wuss->body.window];
-  screen_fill_rect(&clipped, screen_box.x0, screen_box.y0,
-                   box_size(&screen_box), bg);
+  wuss__fill_colour(wuss, &clipped, &screen_box, bg);
   if (wuss_gridview_is_selected(gv, index))
   {
     colour_t tmp = fg;
@@ -533,9 +533,9 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
 
     wuss    = gv->window->task->wuss;
     content = *event->data.redraw.content;
-    screen_fill_rect(event->data.redraw.scr, content.x0, content.y0,
-                     box_size(&content),
-                     gv->has_bg ? gv->bg : wuss->palette[wuss->body.window]);
+    wuss__fill_colour(wuss, event->data.redraw.scr, &content,
+                      gv->has_bg ? gv->bg
+                                 : wuss->palette[wuss->body.window]);
 
     /* only the rows the clip reaches */
     clip_y0 = MAX(event->data.redraw.scr->clip.y0, content.y0);

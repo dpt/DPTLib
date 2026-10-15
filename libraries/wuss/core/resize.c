@@ -98,6 +98,7 @@ result_t wuss_resize(wuss_t *wuss, screen_t *scr)
   assert(scr  != NULL);
 
   wuss->scr = scr;
+  wuss__rebuild_fills(wuss); /* new screen, possibly a new physical palette */
 
 #ifdef WUSS_ICONS
   {

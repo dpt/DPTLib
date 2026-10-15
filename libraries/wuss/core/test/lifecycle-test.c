@@ -343,6 +343,44 @@ result_t wuss_lifecycle_test(const char *resources)
   }
 
 
+  printf("test: automatic fills against the physical palette\n");
+  {
+    /* physical 2-entry palette: black, white. Desktop: black (exact, solid),
+     * mid grey (needs a dither) */
+    static colour_t       phys[2]    = { { 0xFF000000 }, { 0xFFFFFFFF } };
+    static const colour_t desktop[2] = { { 0xFF000000 }, { 0xFF808080 } };
+    static unsigned char  pixels[8 * 8];
+
+    screen_t              pscr;
+    wuss_t               *pw;
+
+    screen_init(&pscr, SIZE2D(64, 8), pixelfmt_p1, 8, phys, pixels);
+    rc = wuss_create(&pscr, NULL, 0, desktop, 2, NULL, NULL, NULL, &pw);
+    if (rc != result_OK)
+      goto Failure;
+
+    if (!pw->autosolid[0] || pw->autosolid[1])
+    {
+      wuss_destroy(pw);
+      goto Failure;
+    }
+
+    wuss_destroy(pw);
+
+    /* direct-colour screen: everything is solid */
+    rc = wuss_create(&fixture.scr, NULL, 0, desktop, 2, NULL, NULL, NULL, &pw);
+    if (rc != result_OK)
+      goto Failure;
+
+    if (!pw->autosolid[0] || !pw->autosolid[1])
+    {
+      wuss_destroy(pw);
+      goto Failure;
+    }
+
+    wuss_destroy(pw);
+  }
+
   wuss_fixture_close(&fixture);
 
   return result_TEST_PASSED;

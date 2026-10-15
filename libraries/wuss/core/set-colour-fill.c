@@ -25,9 +25,6 @@ result_t wuss_set_colour_fill(wuss_t            *wuss,
   resolved.colour     = wuss__resolve_colour(wuss, resolved.colour);
   resolved.pattern_bg = wuss__resolve_colour(wuss, resolved.pattern_bg);
 
-  if (resolved.colour == wuss_NO_BACKGROUND)
-    return result_WUSS_BAD_COLOUR;
-
   rc = wuss__validate_fill(wuss, &resolved);
   if (rc != result_OK)
     return rc;

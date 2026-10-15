@@ -28,6 +28,7 @@ result_t wuss_set_palette(wuss_t         *wuss,
   memcpy(wuss->palette, palette, npalette * sizeof(*wuss->palette));
 
   wuss__rebuild_palettecache(wuss);
+  wuss__rebuild_fills(wuss);
 
   rc = result_OK;
   event.kind = wuss_EVENT_PALETTE;

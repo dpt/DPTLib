@@ -773,14 +773,17 @@ result_t wuss_set_backdrop(wuss_t *wuss, const wuss_backdrop_t *backdrop);
 
 /**
  * Give a palette colour a fill of its own. Afterwards every solid fill of \p
- * colour (a backdrop or window background with screen_PATTERN_SOLID) paints
- * \p fill instead, so any desktop colour can be a pattern. Every colour
- * starts as a flat fill of itself. Invalidates the whole screen.
+ * colour (a backdrop or window background with screen_PATTERN_SOLID, and
+ * wuss's own chrome) paints \p fill instead, so any desktop colour can be a
+ * pattern. Without one, a colour fills automatically: solid when the
+ * screen's physical palette can show it (always, on a direct-colour screen),
+ * else a dither of the two nearest physical colours. Invalidates the whole
+ * screen.
  *
  * \param[in] wuss   Window manager.
  * \param[in] colour Palette index (or symbolic colour) to redefine.
- * \param[in] fill   Its fill, copied in. Colour must not be
- *                   wuss_NO_BACKGROUND.
+ * \param[in] fill   Its fill, copied in. A fill whose colour is
+ *                   wuss_NO_BACKGROUND removes the override.
  * \return \ref result_OK on success, \ref result_WUSS_BAD_COLOUR if an index
  *         is out of range.
  */

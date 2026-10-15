@@ -51,13 +51,14 @@ static int icon_text_baseline_y(const icon_draw_ctx_t *c, const box_t *b)
 
 /* ----------------------------------------------------------------------- */
 
-static void icon_fill_bevel(screen_t    *scr,
-                            const box_t *b,
-                            colour_t     fill,
-                            colour_t     light,
-                            colour_t     dark)
+static void icon_fill_bevel(const wuss_t *wuss,
+                            screen_t     *scr,
+                            const box_t  *b,
+                            colour_t      fill,
+                            colour_t      light,
+                            colour_t      dark)
 {
-  screen_fill_rect(scr, b->x0, b->y0, box_size(b), fill);
+  wuss__fill_colour(wuss, scr, b, fill);
   screen_draw_bevel_edge(scr, b, light, dark);
 }
 
@@ -214,7 +215,7 @@ static void wuss__icon_draw_label(const icon_draw_ctx_t *c)
   if (icon->bg != wuss_NO_BACKGROUND)
   {
     bg = c->wuss->palette[icon->bg];
-    screen_fill_rect(c->scr, b->x0, b->y0, box_size(b), bg);
+    wuss__fill_colour(c->wuss, c->scr, b, bg);
   }
   else
   {
@@ -351,13 +352,13 @@ static void wuss__icon_draw_button(const icon_draw_ctx_t *c)
      * "action" surround as wuss_ICON_BORDER_ACTION, distinct from the plain
      * bevelled buttons around it. */
 
-    screen_fill_rect(c->scr, b->x0, b->y0, box_size(b), base);
+    wuss__fill_colour(c->wuss, c->scr, b, base);
     icon_draw_action_border(c->scr, b, light, dark,
                             c->wuss->palette[c->wuss->accent], pressed);
   }
   else
   {
-    icon_fill_bevel(c->scr, b, base, pressed ? dark : light,
+    icon_fill_bevel(c->wuss, c->scr, b, base, pressed ? dark : light,
                     pressed ? light : dark);
   }
 
@@ -440,13 +441,13 @@ static void wuss__icon_draw_radio_option(const icon_draw_ctx_t *c)
   bg = icon_blend_ground(c, glyph);
 
   if (icon->bg != wuss_NO_BACKGROUND)
-    screen_fill_rect(c->scr, b->x0, b->y0, box_size(b), bg);
+    wuss__fill_colour(c->wuss, c->scr, b, bg);
   else
     /* no explicit bg to repaint the whole box, but the state we are about to
      * draw (a smaller radon/radoff swap, or a cleared tick/centre) can leave
      * fewer pixels than last time -- clear just the glyph box so no stale
      * glyph shows through. The label beside it never changes on select. */
-    screen_fill_rect(c->scr, g.x0, g.y0, box_size(&g), bg);
+    wuss__fill_colour(c->wuss, c->scr, &g, bg);
 
   if (bm != NULL)
   {
@@ -535,8 +536,8 @@ static void wuss__icon_draw_bitmap(const icon_draw_ctx_t *c)
     ring   = *b;
 
     if (wuss__icon_selected(c->icon) && c->icon->spec.bg != wuss_NO_BACKGROUND)
-      screen_fill_rect(c->scr, b->x0, b->y0, box_size(b),
-                       c->wuss->palette[c->icon->spec.bg]);
+      wuss__fill_colour(c->wuss, c->scr, b,
+                        c->wuss->palette[c->icon->spec.bg]);
 
     screen_draw_bevel_edge(c->scr, &ring, raised ? light : dark,
                            raised ? dark : light);
@@ -597,10 +598,18 @@ static void wuss__icon_draw_menu_entry(const icon_draw_ctx_t *c)
   text_x1 = b->x1 - wuss__menu_entry_gutter_right(c->font_height);
 
   if (highlit)
-    screen_fill_rect(c->scr, text_x0, b->y0,
-                     SIZE2D(text_x1 - text_x0, b->y1 - b->y0), text_ground);
+  {
+    box_t text_box;
+
+    text_box    = *b;
+    text_box.x0 = text_x0;
+    text_box.x1 = text_x1;
+    wuss__fill_colour(c->wuss, c->scr, &text_box, text_ground);
+  }
   else if (icon->bg != wuss_NO_BACKGROUND)
-    screen_fill_rect(c->scr, b->x0, b->y0, box_size(b), ground);
+  {
+    wuss__fill_colour(c->wuss, c->scr, b, ground);
+  }
 
   /* the label is drawn as if a space padded it either side (see below) */
   space_w = c->have_font ? wuss__fontset_space_width(&c->wuss->fonts, c->font)
@@ -773,8 +782,7 @@ static void wuss__icon_draw_slider(const icon_draw_ctx_t *c)
   dark     = c->wuss->palette[c->wuss->bevel.dark];
 
   surround_box = box_grown(&c->b, -2); /* inset by bevel width to avoid overdraw */
-  screen_fill_rect(c->scr, surround_box.x0, surround_box.y0,
-                   box_size(&surround_box), surround);
+  wuss__fill_colour(c->wuss, c->scr, &surround_box, surround);
 
   screen_draw_bevel_edge(c->scr, &c->b, dark, light);
 
@@ -795,9 +803,9 @@ static void wuss__icon_draw_slider(const icon_draw_ctx_t *c)
   else
     fill.y0 = fill.y1 - px;
 
-  screen_fill_rect(c->scr, groove.x0, groove.y0, box_size(&groove), track);
+  wuss__fill_colour(c->wuss, c->scr, &groove, track);
   if (px > 0)
-    screen_fill_rect(c->scr, fill.x0, fill.y0, box_size(&fill), value);
+    wuss__fill_colour(c->wuss, c->scr, &fill, value);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -819,7 +827,7 @@ static void wuss__icon_draw_writable(const icon_draw_ctx_t *c)
 
   bg = icon_blend_ground(c, c->fg);
   if (icon->spec.bg != wuss_NO_BACKGROUND)
-    screen_fill_rect(c->scr, b->x0, b->y0, box_size(b), bg);
+    wuss__fill_colour(c->wuss, c->scr, b, bg);
 
   ink = (icon->spec.flags & wuss_ICON_FLAGS_DISABLED)
       ? c->wuss->palette[c->wuss->bevel.dark]

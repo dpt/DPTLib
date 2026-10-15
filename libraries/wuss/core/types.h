@@ -3,6 +3,7 @@
 #ifndef WUSS_CORE_TYPES_H
 #define WUSS_CORE_TYPES_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -172,9 +173,16 @@ struct wuss
    * stray symbolic still fails a range check. Rebuilt by
    * wuss__rebuild_palettecache on create and every palette/config change. */
   wuss_colour_t               palettecache[128];
-  /* Fill for each palette index (palettes hold at most 128 entries); starts
-   * as a flat fill of the colour itself. See wuss_set_colour_fill. */
+  /* User fill override for each palette index (palettes hold at most 128
+   * entries); colour==wuss_NO_BACKGROUND: none, use the automatic fill. See
+   * wuss_set_colour_fill. */
   wuss_fill_t                 fills[128];
+  /* Automatic fill for each palette index, matched against the screen's
+   * physical palette (see wuss__rebuild_fills): a dither tile, or -- when
+   * autosolid[i] -- just the solid physical colour in autofill[i].fg. Used
+   * where fills[i].colour is wuss_NO_BACKGROUND. */
+  pattern_t                   autofill[128];
+  bool                        autosolid[128];
 #ifdef WUSS_FURNITURE
   wuss_furniture_palette_t    furniture_colours;
 #endif

@@ -46,6 +46,34 @@ void wuss__fill_area(const wuss_t      *wuss,
                      int                origin_x,
                      int                origin_y);
 
+/* Recompute wuss->autofill/autosolid from wuss->palette (the desktop
+ * palette) against wuss->scr's physical palette: a colour the physical
+ * palette matches exactly -- always so on a direct-colour screen -- or whose
+ * best dither is two identical physical colours gets a solid fast path,
+ * anything else a Bayer dither of the two nearest physical colours. Needs
+ * wuss->scr set; call after the desktop or physical palette changes. */
+void wuss__rebuild_fills(wuss_t *wuss);
+
+/* On "scr" (normally wuss->scr, or a clipped copy), fill "area" with the desktop palette colour "index" (a user fill from
+ * wuss_set_colour_fill if it has one, else its automatic fill), phased
+ * against (origin_x, origin_y). Caller sets scr->clip. */
+void wuss__fill_index(const wuss_t *wuss,
+                      screen_t     *scr,
+                      int           index,
+                      const box_t  *area,
+                      int           origin_x,
+                      int           origin_y);
+
+/* As wuss__fill_index for the desktop colour whose RGB equals "colour"
+ * (screen-phased); a plain screen_fill_rect if no palette entry matches.
+ * For chrome code that holds colour_t values rather than indices.
+ * ponytail: linear reverse lookup, fine for <=128 entries; pass indices
+ * through if it shows in a profile. */
+void wuss__fill_colour(const wuss_t *wuss,
+                       screen_t     *scr,
+                       const box_t  *area,
+                       colour_t      colour);
+
 /* wuss__fill_area for backdrop->fill, then backdrop->image centred on the
  * screen. */
 void wuss__fill_backdrop(const wuss_t          *wuss,

@@ -80,10 +80,13 @@ result_t wuss_create(screen_t               *scr,
 
   for (i = 0; i < npalette; i++)
   {
-    w->fills[i].colour     = i;
+    w->fills[i].colour     = wuss_NO_BACKGROUND;
     w->fills[i].pattern    = screen_PATTERN_SOLID;
     w->fills[i].pattern_bg = wuss_NO_BACKGROUND;
   }
+
+  w->scr = scr;
+  wuss__rebuild_fills(w);
 
   rc = wuss__apply_config(w, config);
   if (rc != result_OK)
