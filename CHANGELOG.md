@@ -657,6 +657,58 @@ _Unreleased_ until one is cut.
   style selection. The Filer gains Select all, Clear selection and Open
   parent menu rows and starts by default.
 - `DPTLIB_TMPPREFIX` places test scratch PNGs under `/tmp`.
+- `wuss` Effecting stack: effects are held in a reorderable stack shown in
+  its own window (without a close icon). The menu adds, edits and deletes
+  elements, sets the blend level (-100% to 200%) and applies or cancels the
+  result. Menu shading updates live as the stack changes.
+- `effects_blend_extrapolate()` blends with alpha from -256 to 512, clamping
+  per byte. `tonemap_plot()` draws a map's per-channel curves over a grid.
+- `wuss_gridview_select()` selects a single item by index. A MENU click over
+  an unselected item (with nothing selected) selects it until the menu
+  closes, so the menu acts on it.
+- `wuss_task_set_hidden()` hides a task's windows and its children's, and
+  reveals only those it hid; `wuss_task_has_windows()` reports whether a task
+  has any. The Tasks, Filing and Apps filer icon bar menus gain a Hide/Show
+  row (relabelled live with `wuss_menu_set_item_text_live()`), and grey out
+  Hide and Close all when nothing is open.
+- An overfull `wuss` icon bar scrolls when the pointer hovers within 40px of
+  either end.
+- `wuss_colourlist` (with `wuss_colourlist_init_pair()` for the
+  Foreground/Background case): a shared submenu of N named colours, used by
+  Doughnut, Sofa, Saturn, Fern, Oscillating, Checker and Patterns.
+- Randomise and Reset menu options in Doughnut, Orbing, Oscillating, Sofa,
+  Fern, Saturn, Checker and Patterns, backed by `colour_random()` and
+  `colour_random_contrast()` in `framebuf/colour.h`. Doughnut gains Major and
+  Minor density submenus and tube keys.
+- Save PNG in the Ball and Fireworks tasks; wheel zoom in Fern and Saturn;
+  Space toggles Animate in Fern and Saturn; Up/Down step rotation in Sofa
+  while paused.
+- `easing()` in `utils/` (linear, quad to quint, sine, expo, circ, back,
+  elastic and bounce, each in in/out/in-out modes) and `colour_mix()`. The
+  Oscillating task uses them for random backwards runs, an Easing menu and a
+  Decay trail.
+- `docs/`: key reference and proposed system shortcuts for `wuss`.
+- `bitmap_resize()` with nearest, bilinear, box and Catmull-Rom filters and
+  an optional linear-light blend, and a `bitresize` test. The `wuss`
+  Resizing task offers Method, Scale, Linear light and Save PNG.
+- `wuss` Fern task: a parameterised Barnsley fern with size, points and curl
+  (-300..300), colour menus, Animate, seed stepping by click or Left/Right
+  and Save PNG.
+- `wuss` Display task: a 256 greys mode (`app_DEPTH_GREY256`). It now holds
+  the Zoom (1x-4x), CRT effect and Software pointer options, moved from the
+  Wuss menu; nothing takes effect until Change. It opens at startup on native
+  builds and is a singleton.
+- Icon bar apps may be singletons: `wuss_task_raise_children()` and a
+  `taskapp_desc` singleton flag make SELECT raise the open instance. Display,
+  Palette, Configure, Icons and Keys use it. SELECT on the Palette icon opens
+  the desktop palette and ADJUST the system palette. The Filer icon bar menu
+  has Info and Open root rows.
+- Every task has its own icon, looked up as `app_<name>` in the icon pool
+  (falling back to `file_app`); icon bar labels are dropped for tasks with
+  icons.
+- Ball Damping option (D). Paint `[` and `]` step the brush size.
+- Double ADJUST on an Apps filer task closes the viewer it was launched
+  from.
 
 ### Changed
 
@@ -1004,6 +1056,24 @@ _Unreleased_ until one is cut.
   rather than folding into the last entry.
 - `screen_copy_rect()` copies packed 1/2/4bpp rects bytewise.
 - Xcode schemes set the working directory for the test and wuss targets.
+- **Breaking:** `wuss_gridview_window_create()` also takes the default
+  furniture to omit.
+- Demo tasks move to `libraries/wuss/tasks`. Renamed: Paint to Painting,
+  Greeble to Greebling, Minesweeper to Minesweeping, Effects to Effecting,
+  Filer to Filing, Porter-Duff to Compositing, Lissajous to Oscillating,
+  Configure to Configuring, Particles to Fireworks and Curve to Curving.
+- `wuss_PLACE_SPARE` starts its search from the corner the alignment names
+  (right and/or bottom). Task windows open in the first free region clear of
+  the icon bar, falling back to centred; the Viewing window opens centred.
+- A gridview window cannot shrink below one cell wide enough for a
+  ten-character label and one row tall.
+- `resources/images` moves to `resources/wuss/images`.
+- `wuss` core: `core/impl.h` splits into per-concern headers; furniture and
+  icon click handling move into their layers (furniture driven from the
+  element table); the menu session is opaque to core. Behaviour is unchanged.
+- The `wuss` tests split out of `wuss-test` into per-layer tests that each
+  run alone on a fresh fixture. The `WUSS_FURNITURE=OFF`, `WUSS_ICONS=OFF`
+  and `WUSS_MENUS=OFF` builds link and pass again.
 
 ### Fixed
 
@@ -1462,3 +1532,16 @@ _Unreleased_ until one is cut.
 - RISC OS: the Filer and Paint use native path separators, and
   `convolve` no longer uses `lroundf`, which the RISC OS libm lacks.
 - The pickle test deletes its temporary files.
+- `bitmap_load_png` honours colour-key tRNS on RGB and grey PNGs.
+- Save As closes after a drag-save (`DataLoadAck` is now sent).
+- A gridview keeps a MENU-click selection until the menu pick has been
+  handled. The Effecting Save PNG row opens as a plain window submenu.
+- Fireball particle style probability was unset, dividing by zero when
+  building the chance table (trapped in the Emscripten build at Minesweeping
+  launch).
+- The Apps filer passes on keys it does not use, so app shortcuts such as F2
+  reach the fallback.
+- Saturn skips the window resize when the size is unchanged.
+- Minesweeping Give Up shades live after it or a reset.
+- Two UBSan signed-arithmetic reports: gridview redraw with an empty clip
+  and bitmap resize with negative origins.
