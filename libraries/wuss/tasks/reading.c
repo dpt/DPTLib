@@ -382,6 +382,14 @@ static result_t reading__load_file(const char *path,
     goto exit;
   }
 
+  /* a NUL byte means binary data, not text */
+  if (memchr(text, '\0', (size_t) len) != NULL)
+  {
+    free(text);
+    rc = result_BAD_ARG;
+    goto exit;
+  }
+
   while (len > 0 && text[len - 1] == '\n')
     len--;
   text[len] = '\0';
@@ -432,8 +440,8 @@ static result_t reading__load_text(reading_task_t *task,
   return result_OK;
 }
 
-/* show the ".md" or ".txt" file at path (e.g. dropped from the Filer),
- * Any other file is refused. */
+/* show the file at path (e.g. dropped from the Filer): parsed as Markdown if
+ * named ".md", else shown as plain text. Binary files are refused. */
 static result_t reading_show(reading_task_t *task, const char *path)
 {
   result_t    rc;
@@ -444,12 +452,7 @@ static result_t reading_show(reading_task_t *task, const char *path)
   leaf = path_leaf(path);
   /* ponytail: on RISC OS every leaf matches ".md", so any file is parsed as
    * Markdown -- check the filetype if that matters */
-  if (path_leaf_strip_ext(leaf, ".md", name, sizeof(name)))
-    markdown = true;
-  else if (path_leaf_strip_ext(leaf, ".txt", name, sizeof(name)))
-    markdown = false;
-  else
-    return result_BAD_ARG;
+  markdown = path_leaf_strip_ext(leaf, ".md", name, sizeof(name));
 
   rc = reading__load_text(task, path, markdown);
   if (rc != result_OK)
@@ -460,6 +463,19 @@ static result_t reading_show(reading_task_t *task, const char *path)
 
   wuss_window_invalidate_visible(task->window);
   return result_OK;
+}
+
+/* a file dropped on the app icon opened a fresh instance: if the file will
+ * not load, close that instance rather than leave an empty window */
+static result_t reading_drop(reading_task_t *task, const char *path)
+{
+  result_t rc;
+
+  rc = reading_show(task, path);
+  if (rc != result_OK)
+    wuss_task_destroy(task->delegate); /* its QUIT frees task */
+
+  return rc;
 }
 
 /* switch the paragraph's foreground to system palette index "picked" */
@@ -751,7 +767,7 @@ result_t reading_app_create(wuss_t *wuss)
     "Reading",
     "Read Markdown and text files",
     (taskapp_create_fn_t) reading_create,
-    (taskapp_data_load_fn_t) reading_show,
+    (taskapp_data_load_fn_t) reading_drop,
     true
   };
 
