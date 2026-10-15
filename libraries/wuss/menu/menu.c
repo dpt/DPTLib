@@ -1083,6 +1083,17 @@ static result_t wuss__menu_spawn(wuss_t             *wuss,
 
 /* ----------------------------------------------------------------------- */
 
+/* Make "root" the open chain and report it to the caller. */
+static void wuss__menu_install(wuss_t             *wuss,
+                               struct wuss__menu  *root,
+                               wuss_menu_handle_t *out)
+{
+  wuss->menu->chain = root;
+
+  if (out != NULL)
+    *out = root;
+}
+
 result_t wuss_menu_open(wuss_task_t        *task,
                         const wuss_menu_t  *menu,
                         point_t             at,
@@ -1097,8 +1108,7 @@ result_t wuss_menu_open(wuss_task_t        *task,
 
   wuss = task->wuss;
 
-  if (wuss->menu->chain != NULL)
-    wuss__menu_abandon(wuss);
+  wuss__menu_abandon(wuss);
 
   /* RISC OS convention: the pointer opens the menu sitting a little inside its
    * first item, not on the top-left corner. Shift the content top-left up and
@@ -1111,16 +1121,13 @@ result_t wuss_menu_open(wuss_task_t        *task,
   if (rc != result_OK)
     return rc;
 
-  wuss->menu->chain = root;
-
   /* A menu is opened from a task's MOUSE_DOWN handler; the matching MOUSE_UP is
    * still to come and would land on the fresh menu's row 0. Mark it to be
    * eaten. wuss_mouse_click clears this on the next MOUSE_UP whether or not it
    * hit the menu. */
   wuss->menu->eat_up = 1;
 
-  if (out != NULL)
-    *out = root;
+  wuss__menu_install(wuss, root, out);
   return result_OK;
 }
 
@@ -1139,8 +1146,7 @@ result_t wuss_menu_open_above(wuss_task_t        *task,
 
   wuss = task->wuss;
 
-  if (wuss->menu->chain != NULL)
-    wuss__menu_abandon(wuss);
+  wuss__menu_abandon(wuss);
 
   wuss->menu->bottom_gap = gap;
   rc = wuss__menu_spawn(wuss, task, menu, POINT(x, 0), NULL, &root);
@@ -1148,10 +1154,7 @@ result_t wuss_menu_open_above(wuss_task_t        *task,
   if (rc != result_OK)
     return rc;
 
-  wuss->menu->chain = root;
-
-  if (out != NULL)
-    *out = root;
+  wuss__menu_install(wuss, root, out);
   return result_OK;
 }
 
@@ -1169,8 +1172,7 @@ result_t wuss_menu_open_window(wuss_task_t        *task,
 
   wuss = task->wuss;
 
-  if (wuss->menu->chain != NULL)
-    wuss__menu_abandon(wuss);
+  wuss__menu_abandon(wuss);
 
   wuss_window_move(window, at);
   wuss__nudge_visible_onscreen(window);
@@ -1186,10 +1188,7 @@ result_t wuss_menu_open_window(wuss_task_t        *task,
     return rc;
   }
 
-  wuss->menu->chain = root;
-
-  if (out != NULL)
-    *out = root;
+  wuss__menu_install(wuss, root, out);
   return result_OK;
 }
 
@@ -1334,6 +1333,7 @@ void wuss_menu_tick_item(wuss_menu_t *menu, int index, int ticked)
 }
 
 /* ----------------------------------------------------------------------- */
+
 /* The live icon for item "index" of "menu" in the open chain "handle", or NULL
  * if the menu is not open or the index is out of range. "node" gets its
  * level. */
@@ -1348,7 +1348,6 @@ static wuss_icon_t *wuss__menu_live_icon(wuss_menu_handle_t  handle,
 
   return (*node)->icons[index];
 }
-
 
 void wuss_menu_tick_exclusive_live(wuss_menu_handle_t handle,
                                    const wuss_menu_t *menu,
@@ -1388,8 +1387,8 @@ void wuss_menu_tick_item_live(wuss_menu_handle_t handle,
                               int                index,
                               int                ticked)
 {
-  wuss_icon_t       *icon;
   struct wuss__menu *node;
+  wuss_icon_t       *icon;
 
   icon = wuss__menu_live_icon(handle, menu, index, &node);
   if (icon != NULL)
@@ -1401,8 +1400,8 @@ void wuss_menu_disable_item_live(wuss_menu_handle_t handle,
                                  int                index,
                                  int                disabled)
 {
-  wuss_icon_t       *icon;
   struct wuss__menu *node;
+  wuss_icon_t       *icon;
 
   icon = wuss__menu_live_icon(handle, menu, index, &node);
   if (icon != NULL)
@@ -1414,8 +1413,8 @@ void wuss_menu_set_item_text_live(wuss_menu_handle_t handle,
                                   int                index,
                                   const char        *text)
 {
-  wuss_icon_t       *icon;
   struct wuss__menu *node;
+  wuss_icon_t       *icon;
 
   icon = wuss__menu_live_icon(handle, menu, index, &node);
   if (icon != NULL)
