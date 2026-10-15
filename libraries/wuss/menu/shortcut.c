@@ -13,6 +13,7 @@
 
 #include "../core/types.h"
 #include "../core/dispatch.h"
+#include "../menu.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -132,7 +133,6 @@ result_t wuss_menu_dispatch_shortcut(wuss_task_t        *task,
 {
   const wuss_menu_t *found;
   int                index;
-  wuss_event_t       sel;
 
   assert(task != NULL);
   assert(menu != NULL);
@@ -145,10 +145,5 @@ result_t wuss_menu_dispatch_shortcut(wuss_task_t        *task,
   if (index < 0)
     return result_WUSS_KEY_UNCLAIMED;
 
-  sel.kind                    = wuss_EVENT_MENU_SELECT;
-  sel.data.menu_select.menu   = found;
-  sel.data.menu_select.index  = index;
-  sel.data.menu_select.button = wuss_BUTTON_SELECT;
-
-  return wuss__deliver(task, NULL, &sel);
+  return wuss__menu_deliver_select(task, found, index, wuss_BUTTON_SELECT);
 }
