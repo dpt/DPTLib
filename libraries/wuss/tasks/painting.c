@@ -58,6 +58,7 @@
 static const char *painting_tool_names[painting_TOOL__COUNT] =
 {
   "draw",
+  "brush",
   "erase",
   "line",
   "rectangle",
@@ -66,6 +67,12 @@ static const char *painting_tool_names[painting_TOOL__COUNT] =
   "spray",
   "select",
   "lasso"
+};
+
+/* the paintbrush's nozzle rows, indexed by paintingdoc_nozzle_t */
+static const char *const painting_nozzle_names[paintingdoc_NOZZLE__COUNT] =
+{
+  "Round", "Square", "Flat", "Tall", "Slash", "Backslash", "Bristles"
 };
 
 /* the tool's button box in toolbox content space */
@@ -228,6 +235,7 @@ result_t painting_create_with(wuss_t                     *wuss,
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   wuss_place_t     place;
+  int              i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -313,6 +321,14 @@ result_t painting_create_with(wuss_t                     *wuss,
                   NELEMS(task->sel_items));
   WUSS_MENU_ITEM_MENU(task->menu_items, PAINTING_MENU_SELECTION, "Selection",
                       wuss_MENU_ITEM_NONE, &task->sel_menu);
+
+  for (i = 0; i < paintingdoc_NOZZLE__COUNT; i++)
+    WUSS_MENU_ITEM(task->nozzle_items, i, painting_nozzle_names[i],
+                   wuss_MENU_ITEM_NONE);
+  WUSS_MENU_TITLE(task->nozzle_menu, "Nozzle", task->nozzle_items,
+                  NELEMS(task->nozzle_items));
+  WUSS_MENU_ITEM_MENU(task->menu_items, PAINTING_MENU_NOZZLE, "Nozzle",
+                      wuss_MENU_ITEM_NONE, &task->nozzle_menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PAINTING_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_DASHED, "F3");
@@ -458,6 +474,19 @@ static colour_t painting_stroke_colour(const painting_task_t *pt)
     return pt->bg;
 
   return pt->fg;
+}
+
+/* paint the segment a to b of a freehand stroke, returning the dirty box */
+static box_t painting_stroke_segment(painting_task_t *pt,
+                                     point_t          a,
+                                     point_t          b)
+{
+  if (pt->tool == painting_TOOL_PAINTBRUSH)
+    return paintingdoc_brush(pt->doc, a, b, pt->nozzle, pt->size,
+                             painting_stroke_colour(pt));
+
+  return paintingdoc_stroke(pt->doc, a, b, pt->size,
+                            painting_stroke_colour(pt));
 }
 
 /* the canvas box the rubber band at its current size may cover */
@@ -765,14 +794,14 @@ static result_t painting_mouse(painting_task_t    *pt,
       break;
 
     case painting_TOOL_BRUSH:
+    case painting_TOOL_PAINTBRUSH:
     case painting_TOOL_ERASER:
       if (paintingdoc_checkpoint(pt->doc) != result_OK)
       {
         pt->held = 0; /* no undo step, so no stroke */
         return result_OK;
       }
-      dirty = paintingdoc_stroke(pt->doc, p, p, pt->size,
-                              painting_stroke_colour(pt));
+      dirty = painting_stroke_segment(pt, p, p);
       break;
 
     default:
@@ -806,8 +835,7 @@ static result_t painting_mouse(painting_task_t    *pt,
     }
     else
     {
-      dirty    = paintingdoc_stroke(pt->doc, pt->last, p, pt->size,
-                                 painting_stroke_colour(pt));
+      dirty    = painting_stroke_segment(pt, pt->last, p);
       pt->last = p;
     }
     break;
@@ -893,7 +921,7 @@ static void painting_step_size(painting_task_t *pt, int delta)
   (void) wuss_slider_row_set(pt->toolbox, &pt->size_row, pt->size);
 }
 
-/* B, E, L, R, X, F, P, S and O pick the matching tool, [ and ] step the
+/* N steps the nozzle. B, H, E, L, R, X, F, P, S and O pick the matching tool, [ and ] step the
  * size down and up, Escape drops the selection. Anything else is passed back
  * unclaimed */
 static result_t painting_key(painting_task_t *pt, int code)
@@ -903,6 +931,11 @@ static result_t painting_key(painting_task_t *pt, int code)
   switch (code)
   {
   case 'b': case 'B': painting_set_tool(pt, painting_TOOL_BRUSH);  break;
+  case 'h': case 'H': painting_set_tool(pt, painting_TOOL_PAINTBRUSH); break;
+  case 'n': case 'N':
+    pt->nozzle = (paintingdoc_nozzle_t) ((pt->nozzle + 1) %
+                                         paintingdoc_NOZZLE__COUNT);
+    break;
   case 'e': case 'E': painting_set_tool(pt, painting_TOOL_ERASER); break;
   case 'l': case 'L': painting_set_tool(pt, painting_TOOL_LINE);   break;
   case 'r': case 'R': painting_set_tool(pt, painting_TOOL_RECT);   break;
@@ -955,6 +988,8 @@ static result_t painting_menu_open(painting_task_t *pt)
 {
   painting_menu_shade(pt);
 
+  wuss_menu_tick_exclusive(&pt->nozzle_menu, pt->nozzle);
+
   return wuss_menu_open_at_pointer(pt->delegate, &pt->menu, &pt->menu_handle);
 }
 
@@ -998,6 +1033,13 @@ result_t painting_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_SELECT:
     if (event->data.menu_select.menu == &pt->sel_menu)
       return painting_selection_op(pt, event->data.menu_select.index);
+    if (event->data.menu_select.menu == &pt->nozzle_menu)
+    {
+      pt->nozzle = (paintingdoc_nozzle_t) event->data.menu_select.index;
+      wuss_menu_tick_exclusive_live(pt->menu_handle, &pt->nozzle_menu,
+                                    pt->nozzle);
+      return result_OK;
+    }
     if (event->data.menu_select.index == PAINTING_MENU_UNDO)
       return painting_undo(pt);
     /* clicking the row, rather than hovering, shows Save As standalone */

@@ -24,6 +24,7 @@
 typedef enum painting_tool
 {
   painting_TOOL_BRUSH,
+  painting_TOOL_PAINTBRUSH, /* stamp the chosen nozzle along the stroke */
   painting_TOOL_ERASER,
   painting_TOOL_LINE,
   painting_TOOL_RECT,
@@ -41,6 +42,7 @@ enum
 {
   PAINTING_MENU_UNDO,
   PAINTING_MENU_SELECTION, /* submenu: PAINTING_SEL_* */
+  PAINTING_MENU_NOZZLE,    /* submenu: one row per paintingdoc_nozzle_t */
   PAINTING_MENU_SAVE,
   PAINTING_MENU__COUNT
 };
@@ -68,6 +70,7 @@ typedef struct painting_task
   wuss_saveas_t     *saveas;
   colour_t           fg, bg;
   painting_tool_t    tool;
+  paintingdoc_nozzle_t nozzle;  /* the paintbrush's current nozzle */
   int                size;      /* brush and outline width in pixels */
   int                held;      /* button of the stroke in progress, or 0 */
   point_t            anchor;    /* where the stroke began */
@@ -84,6 +87,8 @@ typedef struct painting_task
   wuss_menu_t        menu;
   wuss_menu_item_t   sel_items[PAINTING_SEL__COUNT];
   wuss_menu_t        sel_menu;
+  wuss_menu_item_t   nozzle_items[paintingdoc_NOZZLE__COUNT];
+  wuss_menu_t        nozzle_menu;
   char               size_text[WUSS_SLIDER_ROW_BUF];
 }
 painting_task_t;

@@ -478,6 +478,84 @@ box_t paintingdoc_stroke(paintingdoc_t *doc,
 
 /* ----------------------------------------------------------------------- */
 
+/* whether the nozzle of radius r covers the pixel offset (dx, dy) from its
+ * centre; the thin shapes are r / 4 thick (one pixel at size 1) */
+static int nozzle_hits(paintingdoc_nozzle_t nozzle, int r, int dx, int dy)
+{
+  int t;
+
+  t = r / 4;
+
+  switch (nozzle)
+  {
+  case paintingdoc_NOZZLE_SQUARE:
+    return 1;
+
+  case paintingdoc_NOZZLE_HBAR:
+    return abs(dy) <= t;
+
+  case paintingdoc_NOZZLE_VBAR:
+    return abs(dx) <= t;
+
+  case paintingdoc_NOZZLE_SLASH:
+    return abs(dx + dy) <= t;
+
+  case paintingdoc_NOZZLE_BACKSLASH:
+    return abs(dx - dy) <= t;
+
+  case paintingdoc_NOZZLE_BRISTLES:
+    return dx * dx + dy * dy <= r * r && ((dx + dy) & 1) == 0;
+
+  default:
+  case paintingdoc_NOZZLE_ROUND:
+    return dx * dx + dy * dy <= r * r;
+  }
+}
+
+box_t paintingdoc_brush(paintingdoc_t       *doc,
+                        point_t              a,
+                        point_t              b,
+                        paintingdoc_nozzle_t nozzle,
+                        int                  size,
+                        colour_t             colour)
+{
+  box_t dirty;
+  int   r, n, i, dx, dy, cx, cy, x, y;
+
+  r = MAX(size, 1) / 2;
+  n = MAX(abs(b.x - a.x), abs(b.y - a.y));
+
+  for (i = 0; i <= n; i++)
+  {
+    cx = n ? a.x + (b.x - a.x) * i / n : a.x;
+    cy = n ? a.y + (b.y - a.y) * i / n : a.y;
+
+    for (dy = -r; dy <= r; dy++)
+    {
+      y = cy + dy;
+      if (y < 0 || y >= doc->bm.size.h)
+        continue;
+
+      for (dx = -r; dx <= r; dx++)
+      {
+        x = cx + dx;
+        if (x < 0 || x >= doc->bm.size.w)
+          continue;
+
+        if (nozzle_hits(nozzle, r, dx, dy))
+          screen_set_pixel(&doc->scr, x, y, colour);
+      }
+    }
+  }
+
+  dirty = clipped_box(doc, a, b, r);
+  sel_clip(doc, dirty);
+
+  return dirty;
+}
+
+/* ----------------------------------------------------------------------- */
+
 box_t paintingdoc_spray(paintingdoc_t *doc,
                         point_t        p,
                         int            radius,

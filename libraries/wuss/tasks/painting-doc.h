@@ -74,6 +74,30 @@ box_t paintingdoc_stroke(paintingdoc_t *doc,
                          int            width,
                          colour_t       colour);
 
+/* the paintbrush's nozzles: the shape stamped along a stroke */
+typedef enum paintingdoc_nozzle
+{
+  paintingdoc_NOZZLE_ROUND,
+  paintingdoc_NOZZLE_SQUARE,
+  paintingdoc_NOZZLE_HBAR,      /* flat chisel, wide */
+  paintingdoc_NOZZLE_VBAR,      /* flat chisel, tall */
+  paintingdoc_NOZZLE_SLASH,     /* calligraphy pen, rising to the right */
+  paintingdoc_NOZZLE_BACKSLASH, /* calligraphy pen, falling to the right */
+  paintingdoc_NOZZLE_BRISTLES,  /* every other pixel of a disc */
+  paintingdoc_NOZZLE__COUNT
+}
+paintingdoc_nozzle_t;
+
+/* stamp the nozzle, size pixels across, at every pixel step from a to b
+ * (a == b stamps once). the caller takes the checkpoint, as for
+ * paintingdoc_stroke */
+box_t paintingdoc_brush(paintingdoc_t       *doc,
+                        point_t              a,
+                        point_t              b,
+                        paintingdoc_nozzle_t nozzle,
+                        int                  size,
+                        colour_t             colour);
+
 /* scatter dots of colour over the disc of the given radius in pixels centred
  * on p. each call adds a light, even dusting, so repeat it to build up. the
  * caller takes the checkpoint, as for paintingdoc_stroke */
