@@ -556,3 +556,17 @@ void wuss_frontend_close(wuss_frontend_t *fe)
 
 #endif /* __riscos */
 #endif /* WUSS_APP */
+
+/* ----------------------------------------------------------------------- */
+
+void wuss_frontend_clipboard_set(wuss_frontend_t *frontend, const char *utf8)
+{
+  NOT_USED(frontend);
+  NOT_USED(utf8);
+}
+
+void wuss_frontend_clipboard_pull(wuss_frontend_t *frontend, wuss_t *wuss)
+{
+  NOT_USED(frontend);
+  NOT_USED(wuss);
+}

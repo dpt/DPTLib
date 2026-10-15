@@ -170,6 +170,15 @@ struct wuss
   /* Owned. */
   colour_t                   *palette;
   int                         npalette;
+
+  /* ----- clipboard ----- */
+
+  /* Owned UTF-8 text; NULL while empty. See wuss_clipboard_set. */
+  char                       *clipboard;
+  /* Bumped by every wuss_clipboard_set, so a frontend can tell when to push
+   * the text to the host. */
+  unsigned int                clipboard_gen;
+
   /* Concrete 0..npalette-1 index for each symbolic wuss_colour_t, indexed by
    * (c - wuss_COLOUR_SYMBOLIC). Unused slots hold wuss_COLOUR_SYMBOLIC so a
    * stray symbolic still fails a range check. Rebuilt by
@@ -379,6 +388,9 @@ struct wuss
     wuss_window_t *window;
     /* Caret byte offset into icon's text. */
     int            index;
+    /* Other end of the selection: the text between anchor and index is
+     * selected. Equal to index when nothing is. */
+    int            anchor;
   }
   caret;
   /* Shared icon pool loaded by wuss_iconpool_load. */

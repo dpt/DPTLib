@@ -377,14 +377,25 @@ static void wuss_frame(void *arg)
 
     case wuss_INPUT_KEY:
       {
-        int claimed;
+        int          claimed;
+        unsigned int gen;
 
         /* system chords, then the focused window, then the launcher menu's
          * shortcuts */
         if (tasks_system_key(ev.key, ev.mods))
           break;
 
+        /* paste reads the host clipboard; copy/cut publish to it */
+        if ((ev.mods & wuss_KEY_MOD_CTRL) && (ev.key == 'v' || ev.key == 'V'))
+          wuss_frontend_clipboard_pull(c->frontend, c->wuss);
+        else if (ev.key == wuss_KEY_INSERT)
+          wuss_frontend_clipboard_pull(c->frontend, c->wuss);
+
+        gen = wuss_clipboard_generation(c->wuss);
         wuss_key(c->wuss, ev.key, ev.mods, &claimed);
+        if (wuss_clipboard_generation(c->wuss) != gen)
+          wuss_frontend_clipboard_set(c->frontend, wuss_clipboard_get(c->wuss));
+
         if (!claimed)
           (void) tasks_launcher_key(ev.key, ev.mods);
       }

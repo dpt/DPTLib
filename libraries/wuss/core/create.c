@@ -107,6 +107,8 @@ result_t wuss_create(screen_t               *scr,
   w->furniture.pressed_region = wuss_FURNITURE_NONE;
   w->furniture_ops            = &wuss__furniture_default_ops;
 #endif
+  w->clipboard          = NULL;
+  w->clipboard_gen      = 0;
 #ifdef WUSS_ICONS
   w->pressed.icon       = NULL;
   w->pressed.window     = NULL;
@@ -115,6 +117,7 @@ result_t wuss_create(screen_t               *scr,
   w->caret.icon         = NULL;
   w->caret.window       = NULL;
   w->caret.index        = 0;
+  w->caret.anchor       = 0;
   w->icon.names         = NULL;
   w->icon.atoms         = NULL;
   w->icon.bitmaps       = NULL;

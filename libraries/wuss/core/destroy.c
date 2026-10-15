@@ -131,5 +131,6 @@ void wuss_destroy(wuss_t *doomed)
   wuss__free(doomed, doomed->msg.queue);
   wuss__menu_session_free(doomed);
   wuss__free(doomed, doomed->palette);
+  wuss__free(doomed, doomed->clipboard);
   wuss__free(doomed, doomed); /* reads doomed->alloc.free before freeing */
 }

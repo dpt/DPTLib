@@ -1211,6 +1211,36 @@ result_t wuss_set_focus(wuss_t *wuss, wuss_window_t *window);
 wuss_window_t *wuss_get_focus(const wuss_t *wuss);
 
 /**
+ * Replace the clipboard text. Writable icons cut and copy into it and paste
+ * from it. A frontend mirrors it to the host clipboard: push the text out
+ * when wuss_clipboard_generation changes, and call this to pull host text in
+ * before a paste key.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] utf8 New text, copied. NULL clears the clipboard.
+ * \return \ref result_OK on success, \ref result_OOM if the copy failed (the
+ *         clipboard is left as it was).
+ */
+result_t wuss_clipboard_set(wuss_t *wuss, const char *utf8);
+
+/**
+ * Fetch the clipboard text.
+ *
+ * \param[in] wuss Window manager.
+ * \return The UTF-8 text, owned by wuss and valid until the next
+ *         wuss_clipboard_set. Never NULL: an empty clipboard is "".
+ */
+const char *wuss_clipboard_get(const wuss_t *wuss);
+
+/**
+ * Fetch the clipboard change count.
+ *
+ * \param[in] wuss Window manager.
+ * \return A counter bumped by every successful wuss_clipboard_set.
+ */
+unsigned int wuss_clipboard_generation(const wuss_t *wuss);
+
+/**
  * Deliver a keypress (including autorepeats) to the focused window as
  * wuss_EVENT_KEY. Releases are reported separately, by wuss_key_up.
  *

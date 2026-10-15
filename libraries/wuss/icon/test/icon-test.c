@@ -109,7 +109,7 @@ result_t wuss_icon_test(const char *resources)
 
     /* keys the field doesn't use reach the task */
     wuss_key(wuss, 13, wuss_KEY_MOD_NONE, &claimed);
-    wuss_key(wuss, 'z', wuss_KEY_MOD_CTRL, &claimed);
+    wuss_key(wuss, 'w', wuss_KEY_MOD_CTRL, &claimed);
     wuss_key(wuss, wuss_KEY_F1, wuss_KEY_MOD_NONE, &claimed);
     if (tc_w.key_count != 3 || strcmp(wuss_icon_get_text(icons[1]), "b") != 0)
       goto Failure;
@@ -173,6 +173,39 @@ result_t wuss_icon_test(const char *resources)
         wuss->caret.index != 0 || tc_w.icon_count != 1 ||
         tc_w.key_count != 4)
       goto Failure;
+
+    /* clipboard and selection: Ctrl-A selects all, C copies, X cuts, V
+     * pastes over the selection, typing replaces it, and field-owned chords
+     * never reach the task */
+    rc = wuss_icon_set_text(win_w, icons[1], "hello");
+    if (rc != result_OK) goto Failure;
+    tc_w.key_count = 0;
+    wuss_key(wuss, 'a', wuss_KEY_MOD_CTRL, &claimed);
+    wuss_key(wuss, 'c', wuss_KEY_MOD_CTRL, &claimed);
+    if (strcmp(wuss_clipboard_get(wuss), "hello") != 0 ||
+        strcmp(wuss_icon_get_text(icons[1]), "hello") != 0)
+      goto Failure;
+    wuss_key(wuss, 'x', wuss_KEY_MOD_CTRL, &claimed);
+    if (wuss_icon_get_text(icons[1])[0] != '\0' ||
+        strcmp(wuss_clipboard_get(wuss), "hello") != 0)
+      goto Failure;
+    wuss_key(wuss, 'v', wuss_KEY_MOD_CTRL, &claimed);
+    if (strcmp(wuss_icon_get_text(icons[1]), "hello") != 0 ||
+        wuss->caret.index != 5)
+      goto Failure;
+    wuss_key(wuss, 'a', wuss_KEY_MOD_CTRL, &claimed);
+    wuss_key(wuss, 'y', wuss_KEY_MOD_NONE, &claimed);
+    if (strcmp(wuss_icon_get_text(icons[1]), "y") != 0) goto Failure;
+    (void) wuss_clipboard_set(wuss, "a\nb");
+    wuss_key(wuss, wuss_KEY_INSERT, wuss_KEY_MOD_NONE, &claimed);
+    if (strcmp(wuss_icon_get_text(icons[1]), "yab") != 0) goto Failure;
+    wuss_key(wuss, 'a', wuss_KEY_MOD_CTRL, &claimed);
+    wuss_key(wuss, 8, wuss_KEY_MOD_NONE, &claimed);
+    if (wuss_icon_get_text(icons[1])[0] != '\0') goto Failure;
+    wuss_key(wuss, 'd', wuss_KEY_MOD_CTRL, &claimed);
+    if (!claimed || tc_w.key_count != 0) goto Failure;
+    wuss_key(wuss, 9, wuss_KEY_MOD_SHIFT, &claimed);
+    wuss_key(wuss, 9, wuss_KEY_MOD_NONE, &claimed);
 
     /* Tab wraps over the hidden field; Shift-Tab goes back */
     wuss_key(wuss, 9, wuss_KEY_MOD_NONE, &claimed);

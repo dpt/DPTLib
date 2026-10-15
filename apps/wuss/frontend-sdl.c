@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -735,3 +736,29 @@ void wuss_frontend_close(wuss_frontend_t *fe)
 
 #endif /* USE_SDL */
 #endif /* WUSS_APP */
+
+/* ----------------------------------------------------------------------- */
+
+void wuss_frontend_clipboard_set(wuss_frontend_t *frontend, const char *utf8)
+{
+  NOT_USED(frontend);
+  SDL_SetClipboardText(utf8);
+}
+
+void wuss_frontend_clipboard_pull(wuss_frontend_t *frontend, wuss_t *wuss)
+{
+  char *text;
+
+  NOT_USED(frontend);
+  if (!SDL_HasClipboardText())
+    return;
+
+  text = SDL_GetClipboardText();
+  if (text == NULL)
+    return;
+
+  if (strcmp(text, wuss_clipboard_get(wuss)) != 0)
+    (void) wuss_clipboard_set(wuss, text);
+
+  SDL_free(text);
+}

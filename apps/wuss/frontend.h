@@ -148,6 +148,13 @@ void wuss_frontend_capture_mouse(wuss_frontend_t *frontend, bool capture);
  * double-click timing. */
 unsigned int wuss_frontend_ms(wuss_frontend_t *frontend);
 
+/* Host clipboard bridge. Set publishes UTF-8 text to the host; pull copies the
+ * host's text into the wuss clipboard (when it has some and it differs).
+ * No-ops on a backend with no host clipboard (RISC OS). */
+void wuss_frontend_clipboard_set(wuss_frontend_t *frontend,
+                                 const char      *utf8);
+void wuss_frontend_clipboard_pull(wuss_frontend_t *frontend, wuss_t *wuss);
+
 /* Tear down the surface and free everything wuss_frontend_open allocated. */
 void wuss_frontend_close(wuss_frontend_t *frontend);
 

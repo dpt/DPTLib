@@ -233,17 +233,17 @@ The guide is silent on these, so macOS chords lead. Each has a function-key fall
 
 - Add a system layer in `main.c` ahead of `wuss_key`, matching only the window and task chords above plus Ctrl-F2, Ctrl-=, Ctrl--, Ctrl-Shift-Q and the debug keys. An app cannot swallow them.
 - Standard editing and file keys (F1 to F9, Ctrl-C and friends) go to the focused task first. If it returns `result_WUSS_KEY_UNCLAIMED`, the launcher may handle them (Ctrl-= and Ctrl-- zoom the desktop).
-- Writable icons today ignore every Ctrl chord except Ctrl-U and Ctrl-Left / Right. Add Ctrl-X, Ctrl-C, Ctrl-V, Ctrl-A, Insert and the Copy key. Backspace and Delete must cut the selection when there is no caret.
-- **Caret owns Ctrl-letter keys.** While a writable holds the caret (for example an inline rename in the filer), it offers each Ctrl-letter key to itself first. A writable that supports the function (a multi-line editor with Insert date on Ctrl-D) handles it. Otherwise it swallows the key and the task never sees it, so Ctrl-D or Ctrl-I cannot trigger Duplicate or Get info mid-rename. System-layer chords (Ctrl-F2, Ctrl-Q, Ctrl-Tab and so on) run before the caret and still work. This needs a change in `core/key.c`: today a writable returns unclaimed for Ctrl chords it does not know.
+- Done: writable icons handle Ctrl-A, Ctrl-C, Ctrl-X, Ctrl-V, Ctrl-Z and Insert, and Backspace and Delete remove the selection. The Copy key (End on RISC OS) is not wired, and Shift-arrows still move by word, so a selection comes only from Ctrl-A.
+- **Caret owns Ctrl-D, Ctrl-I, Ctrl-K, Ctrl-T and Ctrl-B.** While a writable holds the caret (for example an inline rename in the filer), it swallows these item-level keys and the task never sees them, so Ctrl-D or Ctrl-I cannot trigger Duplicate or Get info mid-rename. Other Ctrl-letter keys such as Ctrl-R and Ctrl-S still reach the task, so a seed field does not block them. System-layer chords (Ctrl-F2, Ctrl-Q and so on) run before the caret and still work. Done in `icon/writable.c`.
 - Do not route the system layer through menu shortcut labels. They need a focused window.
 - The RISC OS frontend must pass F12 and its Shift and Ctrl forms to the OS untouched.
 
 ## Missing library support
 
-- **Clipboard**: wuss has none. Add a `wuss_clipboard_*` pair, with the host clipboard behind it in the SDL frontend. Cut, Copy, Paste, Insert and the Copy key need it.
-- **Selection**: writables have no selection. Select all, Clear selection and the no-caret cut rule need one.
-- **Hide and restore**: wuss has window state `TOGGLED` (maximise) but no hidden state. Add a `wuss__window_*` flag `HIDDEN` that skips the window in draw, hit-test and focus selection, with `wuss_task_hide` / `wuss_task_show` helpers. Hidden tasks stay alive; the AppsFiler or the Show-all key brings them back.
+- **Clipboard**: done. `wuss_clipboard_set`, `wuss_clipboard_get` and `wuss_clipboard_generation` hold the text, and the SDL frontend syncs it with the host clipboard around each key press. The RISC OS frontend has no host bridge.
+- **Selection**: done for writables, as an anchor beside the caret index. There is no mouse drag, double-click or Shift-arrow selection yet.
+- **Hide and restore**: hiding exists as `wuss_task_set_hidden`. The Ctrl-H, Ctrl-Shift-H and Ctrl-F11 keys are not wired yet.
 - **Cycle and raise**: z-order is kept by `wuss_window_restack`. Add `wuss_task_front(wuss, task)` (generalising `wuss_task_raise_children`) and a task recency list for Ctrl-Tab.
-- **Quit app**: add `wuss_task_close_windows(task)` that loops `wuss_window_try_close` and stops at the first veto.
+- **Quit app**: done as `wuss_task_close_windows`.
 
-Build order: key moves and Ctrl-F2 close first (no new state), then Ctrl-Q quit app, then raise and cycle, then clipboard and selection, then hide.
+Build order: key moves, Ctrl-F2 close, Ctrl-Q quit app, clipboard and selection are done. Raise and cycle, then the hide keys, remain.

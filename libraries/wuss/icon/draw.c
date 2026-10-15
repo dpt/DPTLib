@@ -822,6 +822,11 @@ static void wuss__icon_draw_writable(const icon_draw_ctx_t *c)
   int                ascent;
   point_t            pos;
   point_t            caret;
+  int                lo;
+  int                hi;
+  box_t              sel;
+  box_t              sel_clip;
+  screen_t           selscr;
 
   bg = icon_blend_ground(c, c->fg);
   if (icon->spec.bg != wuss_NO_BACKGROUND)
@@ -845,6 +850,25 @@ static void wuss__icon_draw_writable(const icon_draw_ctx_t *c)
   pos.y = b->y0 + (b->y1 - b->y0 - ascent) / 2 + ascent;
   wuss__text_draw_str(c->font, &clipped, icon->spec.text, ink, bg, &pos,
                       NULL);
+
+  if (c->wuss->caret.icon == icon
+      && c->wuss->caret.anchor != c->wuss->caret.index)
+  {
+    lo = MIN(c->wuss->caret.anchor, c->wuss->caret.index);
+    hi = MAX(c->wuss->caret.anchor, c->wuss->caret.index);
+    sel.x0 = pos.x + (int) bmfont_caret_x(c->font, icon->spec.text, lo, NULL);
+    sel.x1 = pos.x + (int) bmfont_caret_x(c->font, icon->spec.text, hi, NULL);
+    sel.y0 = b->y0 + 1;
+    sel.y1 = b->y1 - 1;
+    if (!box_intersection(&clipped.clip, &sel, &sel_clip))
+    {
+      selscr      = clipped;
+      selscr.clip = sel_clip;
+      wuss__fill_colour(c->wuss, &selscr, &sel, ink);
+      wuss__text_draw_str(c->font, &selscr, icon->spec.text, bg, ink, &pos,
+                          NULL);
+    }
+  }
 
   if (c->wuss->caret.icon == icon)
   {
