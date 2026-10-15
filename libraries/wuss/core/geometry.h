@@ -26,6 +26,19 @@ static inline void wuss__content_box(const wuss_window_t *window, box_t *out)
 }
 #endif
 
+/* Map screen point "p" to "window"'s virtual document space: the one place
+ * the content origin and scroll offset are applied, so hit-testing,
+ * delivery and hover cannot drift apart. */
+static inline point_t wuss__screen_to_doc(const wuss_window_t *window,
+                                          point_t              p)
+{
+  box_t content;
+
+  wuss__content_box(window, &content);
+  return POINT(p.x - content.x0 + window->scroll.x,
+               p.y - content.y0 + window->scroll.y);
+}
+
 static inline int wuss__size_ok(int width, int height)
 {
   return width > 0 && height > 0;

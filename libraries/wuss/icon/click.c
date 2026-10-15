@@ -10,7 +10,6 @@ void wuss__icon_release_held(wuss_t             *wuss,
 {
   wuss_icon_t   *pressed;
   wuss_window_t *presswin;
-  box_t          content;
   point_t        doc_point;
   int            still_over;
 
@@ -20,9 +19,7 @@ void wuss__icon_release_held(wuss_t             *wuss,
   pressed  = wuss->pressed.icon;
   presswin = wuss->pressed.window;
 
-  wuss__content_box(presswin, &content);
-  doc_point.x = p.x - content.x0 + presswin->scroll.x;
-  doc_point.y = p.y - content.y0 + presswin->scroll.y;
+  doc_point = wuss__screen_to_doc(presswin, p);
 
   still_over = (wuss__window_at(wuss, p) == presswin &&
                 wuss__icon_hit_test(presswin, doc_point) == pressed);

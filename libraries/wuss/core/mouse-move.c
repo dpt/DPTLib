@@ -156,8 +156,7 @@ static result_t mouse_move(wuss_t *wuss, point_t p, wuss_window_t **hit)
     wuss_event_t event;
 
     wuss__content_box(win, &content);
-    doc_point.x = x - content.x0 + win->scroll.x;
-    doc_point.y = y - content.y0 + win->scroll.y;
+    doc_point = wuss__screen_to_doc(win, POINT(x, y));
 
 #ifdef WUSS_ICONS
     /* a DRAGGABLE starts a core drag once the pointer clears

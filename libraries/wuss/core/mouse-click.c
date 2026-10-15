@@ -12,10 +12,6 @@ static result_t mouse_click(wuss_t             *wuss,
   wuss_window_t *win;
   wuss_window_t *held;
   wuss_event_t   event;
-  int            x, y;
-
-  x = p.x;
-  y = p.y;
 
   wuss->pointer = p;
 
@@ -95,13 +91,9 @@ static result_t mouse_click(wuss_t             *wuss,
 
   if (win->task->handle != NULL)
   {
-    box_t   content;
     point_t doc_point;
 
-    wuss__content_box(win, &content);
-    doc_point.x = x - content.x0 + win->scroll.x;
-    doc_point.y = y - content.y0 + win->scroll.y;
-
+    doc_point = wuss__screen_to_doc(win, p);
     if (wuss__icon_click(win, p, doc_point, button, action, &rc))
       return rc;
 

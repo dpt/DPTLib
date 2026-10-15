@@ -646,16 +646,10 @@ static result_t wuss__menu_handle(wuss_window_t      *window,
 static int wuss__pointer_over_icon(wuss_window_t     *window,
                                    const wuss_icon_t *icon)
 {
-  point_t p;
-  box_t   content;
-  point_t doc;
-
-  p = wuss_get_pointer(window->wuss);
-  wuss__content_box(window, &content);
-  doc.x = p.x - content.x0 + window->scroll.x;
-  doc.y = p.y - content.y0 + window->scroll.y;
-
-  return wuss__icon_hit_test(window, doc) == icon;
+  return wuss__icon_hit_test(window,
+                             wuss__screen_to_doc(window,
+                                                 wuss_get_pointer(window->wuss)))
+      == icon;
 }
 
 /* True if the wuss pointer sits over the submenu-arrow gutter of row `icon`
@@ -665,16 +659,11 @@ static int wuss__pointer_over_icon(wuss_window_t     *window,
 static int wuss__pointer_over_row_arrow(wuss_window_t     *window,
                                         const wuss_icon_t *icon)
 {
-  point_t p;
-  box_t   content;
   point_t doc;
   box_t   bbox;
   int     gutter;
 
-  p = wuss_get_pointer(window->wuss);
-  wuss__content_box(window, &content);
-  doc.x = p.x - content.x0 + window->scroll.x;
-  doc.y = p.y - content.y0 + window->scroll.y;
+  doc = wuss__screen_to_doc(window, wuss_get_pointer(window->wuss));
 
   wuss_icon_get_bbox(icon, &bbox);
   gutter = wuss__menu_entry_gutter_right(
