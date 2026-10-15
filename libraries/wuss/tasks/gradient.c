@@ -235,6 +235,11 @@ static result_t gradient_saveas_save(const char *path, void *opaque)
 
 result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
 {
+  static const wuss_place_t centred =
+  {
+    0, wuss_ALIGN_CENTRE, NULL, { 0, 0 }
+  };
+
   result_t         rc;
   gradient_task_t *task;
   wuss_task_t     *delegate;
@@ -264,7 +269,7 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
   task->delegate = delegate;
 
   rc = wuss_window_create_at(delegate,
-                             &task_place,
+                             &centred,
                              SIZE2D(GRADIENT_OPEN_WIDTH, GRADIENT_OPEN_HEIGHT),
                              "Gradient",
                              wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
