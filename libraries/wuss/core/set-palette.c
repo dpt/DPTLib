@@ -13,7 +13,6 @@ result_t wuss_set_palette(wuss_t         *wuss,
 {
   result_t     rc;
   wuss_event_t event;
-  box_t        screen;
   list_t      *e;
 
   assert(wuss    != NULL);
@@ -48,11 +47,7 @@ result_t wuss_set_palette(wuss_t         *wuss,
     e = next;
   }
 
-  screen.x0 = 0;
-  screen.y0 = 0;
-  screen.x1 = wuss->scr->size.w;
-  screen.y1 = wuss->scr->size.h;
-  wuss_invalidate(wuss, &screen);
+  wuss__invalidate_screen(wuss);
 
   return rc;
 }

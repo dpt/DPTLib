@@ -172,10 +172,7 @@ result_t wuss_redraw(wuss_t *wuss)
   result_t rc;
   box_t    full;
 
-  full.x0 = 0;
-  full.y0 = 0;
-  full.x1 = wuss->scr->size.w;
-  full.y1 = wuss->scr->size.h;
+  wuss__screen_box(wuss, &full);
 
   wuss->scr->clip = full;
   fill_backdrop_excluding_content(wuss, &full);

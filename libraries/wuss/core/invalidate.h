@@ -110,6 +110,12 @@ void            wuss__invalidate_minus(wuss_t      *wuss,
 void            wuss__invalidate_uncovered(wuss_window_t *window);
 void            wuss__touch(wuss_t *wuss, const box_t *box);
 
+/* The whole screen as a box at the origin. */
+void            wuss__screen_box(const wuss_t *wuss, box_t *out);
+
+/* Mark the whole screen dirty. */
+void            wuss__invalidate_screen(wuss_t *wuss);
+
 /* Clip "box" (screen space) down to the parts not already covered by
  * windows above "window" in the z-order, writing the surviving pieces to
  * "out" (capacity WUSS_MAX_INVALIDATE_PIECES) and returning their count.

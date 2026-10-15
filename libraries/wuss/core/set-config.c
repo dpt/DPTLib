@@ -282,7 +282,6 @@ result_t wuss_set_config(wuss_t *wuss, const wuss_config_t *config)
   wuss_t      *saved;
   wuss_event_t event;
   list_t      *e;
-  box_t        screen;
 
   assert(wuss   != NULL);
   assert(config != NULL);
@@ -324,11 +323,7 @@ result_t wuss_set_config(wuss_t *wuss, const wuss_config_t *config)
     e = next;
   }
 
-  screen.x0 = 0;
-  screen.y0 = 0;
-  screen.x1 = wuss->scr->size.w;
-  screen.y1 = wuss->scr->size.h;
-  wuss_invalidate(wuss, &screen);
+  wuss__invalidate_screen(wuss);
 
   {
     result_t lrc;

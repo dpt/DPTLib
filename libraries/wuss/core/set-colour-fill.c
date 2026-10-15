@@ -11,7 +11,6 @@ result_t wuss_set_colour_fill(wuss_t            *wuss,
                               const wuss_fill_t *fill)
 {
   result_t    rc;
-  box_t       screen;
   wuss_fill_t resolved;
 
   assert(wuss != NULL);
@@ -31,11 +30,7 @@ result_t wuss_set_colour_fill(wuss_t            *wuss,
 
   wuss->fills[colour] = resolved;
 
-  screen.x0 = 0;
-  screen.y0 = 0;
-  screen.x1 = wuss->scr->size.w;
-  screen.y1 = wuss->scr->size.h;
-  wuss_invalidate(wuss, &screen);
+  wuss__invalidate_screen(wuss);
 
   return result_OK;
 }
