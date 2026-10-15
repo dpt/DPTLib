@@ -750,6 +750,17 @@ int wuss_iconpool_lookup(const wuss_t *wuss, const char *name);
  */
 const bitmap_t *wuss_iconpool_bitmap(const wuss_t *wuss, int index);
 
+/**
+ * Fetch an icon set entry's name.
+ *
+ * \param[in] wuss  Window manager.
+ * \param[in] index 0-based index, 0..\ref wuss_iconpool_count -1.
+ * \return The entry's leafname sans ".png", owned by the pool and valid
+ *         until the next \ref wuss_iconpool_load or \ref wuss_destroy, or
+ *         NULL if \p index is out of range.
+ */
+const char *wuss_iconpool_name(const wuss_t *wuss, int index);
+
 #endif /* WUSS_ICONS */
 
 #ifdef __cplusplus

@@ -20,6 +20,7 @@
 #include "tasks.h"
 
 #include "tasks/ball.h"
+#include "tasks/pooling.h"
 #include "tasks/chasehq.h"
 #include "tasks/greatescape.h"
 #include "tasks/chars.h"
@@ -150,7 +151,8 @@ g_text_tasks[] =
 g_utilities_tasks[] =
 {
   { "Chars", chars_app_create },
-  { "Clock", clock_app_create }
+  { "Clock", clock_app_create },
+  { "Pooling", pooling_app_create }
 },
 g_visuals_tasks[] =
 {

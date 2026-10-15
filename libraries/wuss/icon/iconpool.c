@@ -430,6 +430,17 @@ const bitmap_t *wuss_iconpool_bitmap(const wuss_t *wuss, int index)
   return &wuss->icon.bitmaps[index];
 }
 
+const char *wuss_iconpool_name(const wuss_t *wuss, int index)
+{
+  assert(wuss != NULL);
+
+  if (index < 0 || index >= wuss->icon.nbitmaps)
+    return NULL;
+
+  return (const char *) atom_get(wuss->icon.names,
+                                 (atom_t) wuss->icon.atoms[index], NULL);
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t wuss_task_iconpool_load(wuss_task_t *task, const char *dir)
