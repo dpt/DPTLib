@@ -402,6 +402,10 @@ result_t filing_create(wuss_t *wuss, filing_task_t **out)
                                 * singleton when the menu opens */
   WUSS_MENU_ITEM(task->ib_menu_items, FILING_IB_MENU_OPEN_ROOT, "Open root",
                  wuss_MENU_ITEM_NONE);
+#ifdef __EMSCRIPTEN__
+  WUSS_MENU_ITEM(task->ib_menu_items, FILING_IB_MENU_OPEN_FILEDROP,
+                 "Open filedrop", wuss_MENU_ITEM_NONE);
+#endif
   WUSS_MENU_ITEM(task->ib_menu_items, FILING_IB_MENU_CLOSE_ALL, "Close all",
                  wuss_MENU_ITEM_NONE);
   WUSS_MENU_ITEM_SHORTCUT(task->ib_menu_items, FILING_IB_MENU_HIDE, "Hide",
@@ -744,6 +748,10 @@ result_t filing_handle(wuss_window_t      *window,
     {
       if (event->data.menu_select.index == FILING_IB_MENU_OPEN_ROOT)
         return filing_open_path(task, filing_root(), NULL, 0);
+#ifdef __EMSCRIPTEN__
+      if (event->data.menu_select.index == FILING_IB_MENU_OPEN_FILEDROP)
+        return filing_open_path(task, "/tmp/filedrop", NULL, 0);
+#endif
       if (event->data.menu_select.index == FILING_IB_MENU_CLOSE_ALL)
       {
         int i;
