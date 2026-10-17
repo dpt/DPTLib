@@ -91,6 +91,14 @@ result_t taskapp_window_data_load(wuss_t                *wuss,
                                   taskapp_data_load_fn_t load,
                                   const wuss_message_t  *msg);
 
+/* Size of the buffer taskapp_glyph_name fills. */
+#define TASKAPP_GLYPH_NAME_MAX 32
+
+/* The icon pool entry name for the app called name: "app_" plus name
+ * lowercased, keeping only its letters and digits ("Chase H.Q." gives
+ * "app_chasehq"). Icon bar builds only. */
+void taskapp_glyph_name(const char *name, char leaf[TASKAPP_GLYPH_NAME_MAX]);
+
 /* The glyph for the app called name: "app_" plus name lowercased, keeping
  * only its letters and digits ("Chase H.Q." finds "app_chasehq"), else the
  * generic "file_app". Looked up through task's pools; NULL if neither is

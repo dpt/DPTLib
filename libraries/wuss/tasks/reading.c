@@ -22,6 +22,7 @@
 #include "text/bmtext.h"
 #include "wuss/menu.h"
 #include "wuss/message.h"
+#include "wuss/component/error.h"
 
 #include "reading.h"
 #include "taskapp.h"
@@ -447,6 +448,8 @@ static result_t reading_show(reading_task_t *task, const char *path)
   result_t    rc;
   const char *leaf;
   char        name[64];
+  char        message[128];
+  char        glyph[TASKAPP_GLYPH_NAME_MAX];
   bool        markdown;
 
   leaf = path_leaf(path);
@@ -458,6 +461,15 @@ static result_t reading_show(reading_task_t *task, const char *path)
   if (rc != result_OK)
   {
     logf_warning("reading: cannot load \"%s\" (rc=0x%X)", path, rc);
+
+    if (rc == result_BAD_ARG)
+      snprintf(message, sizeof(message), "%s is not a text file", leaf);
+    else
+      snprintf(message, sizeof(message), "Cannot read %s", leaf);
+    taskapp_glyph_name("Reading", glyph);
+    (void) wuss_error_report(task->wuss, glyph, "Reading", message,
+                             wuss_ERROR_BUTTONS_OK, NULL, NULL);
+
     return rc;
   }
 

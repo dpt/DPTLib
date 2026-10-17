@@ -324,19 +324,24 @@ static result_t app_handle(wuss_window_t      *window,
   }
 }
 
-const bitmap_t *taskapp_glyph(const wuss_task_t *task, const char *name)
+void taskapp_glyph_name(const char *name, char leaf[TASKAPP_GLYPH_NAME_MAX])
 {
-  char            leaf[32];
-  size_t          n;
-  const bitmap_t *bm;
+  size_t n;
 
   memcpy(leaf, "app_", 4);
   n = 4;
-  for (; *name != '\0' && n < sizeof(leaf) - 1; name++)
+  for (; *name != '\0' && n < TASKAPP_GLYPH_NAME_MAX - 1; name++)
     if (isalnum((unsigned char) *name))
       leaf[n++] = (char) tolower((unsigned char) *name);
   leaf[n] = '\0';
+}
 
+const bitmap_t *taskapp_glyph(const wuss_task_t *task, const char *name)
+{
+  char            leaf[TASKAPP_GLYPH_NAME_MAX];
+  const bitmap_t *bm;
+
+  taskapp_glyph_name(name, leaf);
   bm = wuss_task_iconpool_find(task, leaf);
   if (bm == NULL)
     bm = wuss_task_iconpool_find(task, "file_app");

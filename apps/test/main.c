@@ -112,6 +112,7 @@ static const test_t tests[] =
   { "wuss-gadget", wuss_gadget_test },
   { "wuss-component", wuss_component_test },
   { "wuss-dcs", dcs_test },
+  { "wuss-error", error_test },
 };
 
 static const int ntests = NELEMS(tests);
