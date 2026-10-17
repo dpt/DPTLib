@@ -967,8 +967,6 @@ static result_t reading_redraw(const wuss_event_t *event, void *task_data)
   point_t         origin;
   int             font_height;
   size_t          max;
-  size2d_t        doc;
-  result_t        rc;
 
   tcx = task_data;
   if (tcx->text == NULL)
@@ -1048,23 +1046,63 @@ static result_t reading_redraw(const wuss_event_t *event, void *task_data)
     }
   }
 
-  /* size the scrollable document to the laid-out text; a change repaints
-   * the window, and the repeat redraw finds it unchanged */
+  free(lines);
+  free(dx);
+
+  return result_OK;
+}
+
+/* Size the scrollable document to the laid-out text. Done from idle rather
+ * than from redraw: set_doc repaints the scrollbar and invalidates the
+ * content, which a redraw in progress would lose. The layout is only redone
+ * when something it depends on changes. */
+static result_t reading_idle(void *task_data)
+{
+  reading_task_t *tcx;
+  box_t           bounds;
+  int             wrap_width;
+  size_t          max;
+  bmtext_line_t  *lines;
+  int             nlines;
+  int             font_height;
+  size2d_t        doc;
+
+  tcx = task_data;
+
+  /* the proginfo dialogue is a second window on this same (autoclose)
+   * delegate, so the main window may already be gone */
+  if (tcx->window == NULL || tcx->text == NULL)
+    return result_OK;
+
+  wuss_window_get_content_bounds(tcx->window, &bounds);
+  wrap_width = (bounds.x1 - READING_INSET) - (bounds.x0 + READING_INSET);
+
+  if (wrap_width == tcx->doc_wrap && tcx->font == tcx->doc_font &&
+      tcx->spacing_idx == tcx->doc_spacing && tcx->text == tcx->doc_text)
+    return result_OK;
+
+  max   = strlen(tcx->text) + 1;
+  lines = malloc(max * sizeof(*lines));
+  if (lines == NULL)
+    return result_OOM;
+
+  nlines = reading__layout_lines(tcx->font, tcx->text, wrap_width,
+                                 &tcx->spacing, lines, (int) max);
+  free(lines);
+
+  tcx->doc_wrap    = wrap_width;
+  tcx->doc_font    = tcx->font;
+  tcx->doc_spacing = tcx->spacing_idx;
+  tcx->doc_text    = tcx->text;
+
+  bmfont_get_info(tcx->font, NULL, &font_height, NULL, NULL);
+
   /* a window cannot be dragged wider than its document, so make the
    * document as wide as the screen allows; the text reflows to fit */
   wuss_window_get_max_content(tcx->window, &doc);
   doc.h = nlines * (font_height + LEADING) + 2 * READING_INSET;
-  free(lines);
-  free(dx);
-  if (doc.h != tcx->doc.h || doc.w != tcx->doc.w)
-  {
-    tcx->doc = doc;
-    rc = wuss_window_set_doc(tcx->window, doc);
-    if (rc != result_OK)
-      return rc;
-  }
 
-  return result_OK;
+  return wuss_window_set_doc(tcx->window, doc);
 }
 
 /* A DataLoad on the reading window: show the file it names. */
@@ -1156,6 +1194,9 @@ result_t reading_handle(wuss_window_t      *window,
   case wuss_EVENT_QUIT:
     reading_destroy(tcx);
     return result_OK;
+
+  case wuss_EVENT_IDLE:
+    return reading_idle(task_data);
 
   case wuss_EVENT_KEY:
     return result_WUSS_KEY_UNCLAIMED;

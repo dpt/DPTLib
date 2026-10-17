@@ -41,7 +41,10 @@ reading_span_t;
 typedef struct reading_task
 {
   wuss_window_t      *window;
-  size2d_t            doc;        /* document extent last set on window */
+  int                 doc_wrap;    /* what the document extent was last */
+  bmfont_t           *doc_font;    /* laid out for; reading_idle redoes it */
+  int                 doc_spacing; /* when any of these change */
+  const char         *doc_text;
   wuss_task_t        *delegate;   /* the wuss task backing this window */
   wuss_t             *wuss;       /* for wuss_get_pointer when opening the
                                    * menu */
