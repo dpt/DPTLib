@@ -2,6 +2,7 @@
 
 #ifdef WUSS_APP
 
+#include <math.h>
 #include <stdlib.h>
 
 #ifdef FORTIFY
@@ -404,6 +405,78 @@ static result_t ball_idle(void *task_data)
                            b->radius);
 
     wuss_window_invalidate(bc->window, &local);
+  }
+
+  /* collisions: mass goes with area, so a big ball shoves a small one. The
+   * pair is pushed apart along the line of centres, then, if still closing,
+   * the velocity along that line is exchanged -- with restitution 3/4 under
+   * damping, else elastic. The held ball is immovable, as the pointer owns
+   * it. Integer maths throughout, bar the one square root for push-out. */
+  for (i = 0; i < bc->nballs; i++)
+  {
+    int j;
+
+    for (j = i + 1; j < bc->nballs; j++)
+    {
+      ball_t *a, *b;
+      box_t   local;
+      int     cx, cy, d2, d, r, k, f;
+      int     ma, mb, na, nb, den, pa, pb, pen;
+
+      a  = &bc->balls[i];
+      b  = &bc->balls[j];
+      cx = b->x - a->x;
+      cy = b->y - a->y;
+      r  = a->radius + b->radius;
+      d2 = cx * cx + cy * cy;
+      if (d2 == 0 || d2 > r * r)
+        continue;
+
+      /* f/4 is 1 + restitution */
+      f   = bc->damping ? 7 : 8;
+      ma  = a->radius * a->radius;
+      mb  = b->radius * b->radius;
+      den = ma + mb;
+      na  = mb;
+      nb  = ma;
+      if (i == bc->grabbed)
+      {
+        na = 0;
+        nb = den;
+      }
+      else if (j == bc->grabbed)
+      {
+        na = den;
+        nb = 0;
+      }
+
+      /* na/den and nb/den are the shares of the change each ball takes */
+      d   = (int) sqrt((double) d2);
+      pen = r - d;
+      if (pen > 0)
+      {
+        pa = pen * na / den;
+        pb = pen * nb / den;
+        a->x -= cx * pa / d;
+        a->y -= cy * pa / d;
+        b->x += cx * pb / d;
+        b->y += cy * pb / d;
+
+        local = ball_local_box(a->x, a->y, a->x, a->y, a->radius + pen + 1);
+        wuss_window_invalidate(bc->window, &local);
+        local = ball_local_box(b->x, b->y, b->x, b->y, b->radius + pen + 1);
+        wuss_window_invalidate(bc->window, &local);
+      }
+
+      k = (a->dx - b->dx) * cx + (a->dy - b->dy) * cy;
+      if (k <= 0)
+        continue; /* already moving apart */
+
+      a->dx -= f * na * cx * k / (4 * den * d2);
+      a->dy -= f * na * cy * k / (4 * den * d2);
+      b->dx += f * nb * cx * k / (4 * den * d2);
+      b->dy += f * nb * cy * k / (4 * den * d2);
+    }
   }
 
   return result_OK;
