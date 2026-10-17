@@ -13,14 +13,12 @@ result_t wuss__relayout_all(wuss_t *wuss)
   for (win = wuss__z_first(wuss); win != NULL; win = next)
   {
     result_t     crc;
-    wuss_event_t event;
 
     next = wuss__z_below(win); /* the handler may close this window */
     if (win->flags & wuss_WINDOW_PINNED)
       continue;
 
-    event.kind = wuss_EVENT_RELAYOUT;
-    crc = wuss__deliver(win->task, win, &event);
+    crc = wuss__deliver_kind(win->task, win, wuss_EVENT_RELAYOUT);
     if (crc != result_OK && rc == result_OK)
       rc = crc;
   }

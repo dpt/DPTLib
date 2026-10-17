@@ -25,7 +25,7 @@
 #include "wuss/component/dialogue.h"
 #include "wuss/component/saveas.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
 #include "../icon.h"
 
 /* ----------------------------------------------------------------------- */
@@ -429,13 +429,15 @@ static int saveas_handle_message(wuss_saveas_t      *sa,
 
     (void) wuss_icon_set_text(wuss_dialogue_window(sa->dialogue),
                               sa->leaf_icon, path);
-    (void) wuss_send_recorded(sa->wuss, sa->task, sa->save_target,
-                              wuss_MESSAGE_DATA_LOAD, path,
-                              strlen(path) + 1, 0, &sa->load_ref);
+    if (wuss_send_recorded(sa->wuss, sa->task, sa->save_target,
+                           wuss_MESSAGE_DATA_LOAD, path,
+                           strlen(path) + 1, 0, &sa->load_ref) != result_OK)
+      sa->transfer_active = 0;
 
     return 1;
   }
 
+  /* wuss_acknowledge of our DataLoad: the transfer is complete */
   if (msg->action == wuss_MESSAGE_DATA_LOAD_ACK &&
      msg->your_ref == sa->load_ref)
   {
@@ -477,10 +479,12 @@ int wuss_saveas_handle_event(wuss_saveas_t      *saveas,
   if (saveas == NULL || event == NULL)
     return 0;
 
-  /* wuss_EVENT_MESSAGE_BOUNCED is always task-view (window == NULL); every
-   * other kind this component handles is delivered to its own window. */
+  /* wuss_EVENT_MESSAGE_BOUNCED and the DataLoadAck are task-view (window ==
+   * NULL); every other kind this component handles is delivered to its own
+   * window. */
   if (event->kind != wuss_EVENT_MESSAGE_BOUNCED &&
-     window != wuss_dialogue_window(saveas->dialogue))
+     window != wuss_dialogue_window(saveas->dialogue) &&
+     !(event->kind == wuss_EVENT_MESSAGE && window == NULL))
     return 0;
 
   switch (event->kind)

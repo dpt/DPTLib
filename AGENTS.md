@@ -16,7 +16,7 @@ Build directories are per-config and already created; there is **no** plain
 - `build-sdl/`   — Release, ASan on, SDL tests on (`BUILD_SDL_TESTS=ON`) and
   apps on (`BUILD_APPS=ON`). Needed for the interactive `wuss` app
   (`apps/wuss/`, target `wuss`) and anything under
-  `libraries/wuss/test/tasks/`.
+  `libraries/wuss/tasks/`.
 - `build-nosdl/` — Release, core tests only.
 - `build-wuss-min/` — Release, core tests with `WUSS_FURNITURE=OFF`. Checks the
   wuss subsystem options still build when trimmed.
@@ -121,7 +121,7 @@ Before hand-rolling, grep `include/` for an existing helper. Do not re-implement
 - Rectangles: `box_t` helpers in `geom/box.h` (`box_intersection`, `box_is_empty`, `box_list_add`, `BOX_INIT`...), `geom/line.h` for line clipping.
 - Pixel sets and polygons: `geom/region.h` (sparse per-row runs; box and even-odd polygon fill, contains, outline). Do not use dense per-pixel masks or write scanline fills.
 - Bitmap compression: `bitmap_compress` / `bitmap_decompress` (`framebuf/bitmap.h`); drawing primitives in `framebuf/screen.h`.
-- File paths: build them with `pathf` (`io/path.h`) from `/`-separated pieces, never a raw `snprintf("%s/%s")`; RISC OS needs `.` separators and no extension. `pathf` returns one shared static buffer, so copy the result before the next call. Use `path_leaf`, `path_leaf_valid`, `path_leaf_strip_ext` and `path_is_full` rather than `strrchr(path, '/')`. When joining a directory and a leaf that may contain `.` (a listing's entries), `pathf` would mangle it: join with the host separator instead (see `filer_join` in `filer.c`).
+- File paths: build them with `pathf` (`io/path.h`) from `/`-separated pieces, never a raw `snprintf("%s/%s")`; RISC OS needs `.` separators and no extension. `pathf` returns one shared static buffer, so copy the result before the next call. Use `path_leaf`, `path_leaf_valid`, `path_leaf_strip_ext` and `path_is_full` rather than `strrchr(path, '/')`. When joining a directory and a leaf that may contain `.` (a listing's entries), `pathf` would mangle it: join with the host separator instead (see `filing_join` in `filing.c`).
 - Errors: `result_t` codes and `check` / `sentinel` (`base/result.h`, `base/debug.h`).
 
 If a new helper is generic (no dependence on the calling module), put it in the matching library area with a test, not in a demo or task.

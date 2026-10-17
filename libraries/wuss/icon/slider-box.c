@@ -3,7 +3,8 @@
 #include "geom/box.h"
 #include "geom/point.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/geometry.h"
 
 void wuss__slider_groove_box(const box_t *screen_box, box_t *out)
 {

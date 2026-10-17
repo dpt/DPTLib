@@ -9,17 +9,16 @@
 result_t wuss_set_backdrop(wuss_t *wuss, const wuss_backdrop_t *backdrop)
 {
   result_t        rc;
-  box_t           screen;
   wuss_backdrop_t resolved;
 
   assert(wuss     != NULL);
   assert(backdrop != NULL);
 
   resolved            = *backdrop;
-  resolved.colour     = wuss__resolve_colour(wuss, resolved.colour);
-  resolved.pattern_bg = wuss__resolve_colour(wuss, resolved.pattern_bg);
+  resolved.fill.colour     = wuss__resolve_colour(wuss, resolved.fill.colour);
+  resolved.fill.pattern_bg = wuss__resolve_colour(wuss, resolved.fill.pattern_bg);
 
-  rc = wuss__validate_backdrop(wuss, &resolved);
+  rc = wuss__validate_fill(wuss, &resolved.fill);
   if (rc != result_OK)
     return rc;
 
@@ -28,11 +27,7 @@ result_t wuss_set_backdrop(wuss_t *wuss, const wuss_backdrop_t *backdrop)
   /* wuss_COLOUR_BACKDROP now follows the new colour. */
   wuss__rebuild_palettecache(wuss);
 
-  screen.x0 = 0;
-  screen.y0 = 0;
-  screen.x1 = wuss->scr->size.w;
-  screen.y1 = wuss->scr->size.h;
-  wuss_invalidate(wuss, &screen);
+  wuss__invalidate_screen(wuss);
 
   return result_OK;
 }

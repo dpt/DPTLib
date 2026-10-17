@@ -6,7 +6,9 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/alloc.h"
+#include "../core/invalidate.h"
 
 #ifdef WUSS_ICONBAR
 
@@ -125,7 +127,8 @@ result_t wuss_iconbar_icon_create(wuss_t                         *wuss,
 
   wuss->iconbar.icons[wuss->iconbar.n++] = it;
 
-  wuss__iconbar_slot_box(wuss, wuss->iconbar.n - 1, &slot);
+  /* the whole bar: a full bar re-lays out (strip mode) when an icon is added */
+  wuss__iconbar_box(wuss, &slot);
   wuss__invalidate_clipped(wuss->iconbar.window, &slot);
 
   if (icon != NULL)

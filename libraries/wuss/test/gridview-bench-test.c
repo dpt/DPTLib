@@ -295,7 +295,7 @@ result_t gridview_bench_test(const char *resources)
   t = clock();
   for (i = 0; i < reps; i++)
     (void) wuss_gridview_set_count(gv, BENCH_COUNT);
-  bench_report("set_count (same count)", reps, t);
+  bench_report("set_count (same count; remeasure + reflow)", reps, t);
 
   t = clock();
   for (i = 0; i < reps; i++)

@@ -18,7 +18,8 @@
 
 #include "wuss/component/colourmenu.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -227,22 +228,15 @@ wuss_colour_t wuss_colourmenu_selected(const wuss_event_t *ev, int *ok)
   if (ok != NULL)
     *ok = 0;
 
-  if (ev == NULL || g.menu == NULL)
-    return 0;
-  if (ev->kind != wuss_EVENT_MENU_SELECT)
-    return 0;
-  if (ev->data.menu_select.menu != g.menu)
-    return 0;
-
-  index = ev->data.menu_select.index;
-  if (index < 0 || index >= g.menu->nitems)
+  index = wuss_menu_select_index(ev, g.menu);
+  if (index < 0)
     return 0;
 
   /* the pick is now the current colour: move the tick to it, both for the
    * next open and on the rows of a chain an ADJUST pick left open (a no-op
    * once a SELECT pick has torn the chain down) */
   wuss_colourmenu_set_ticked(g.menu->items[index].swatch);
-  wuss_menu_tick_exclusive_live(g.wuss->menu.chain, g.menu, index);
+  wuss_menu_tick_exclusive_live(wuss__menu_chain(g.wuss), g.menu, index);
 
   if (ok != NULL)
     *ok = 1;
@@ -287,4 +281,89 @@ int wuss_colourmenu_selected_rgb(const wuss_event_t *ev, colour_t *colour)
 
   *colour = palette[picked];
   return 1;
+}
+
+/* ----- colour list ----------------------------------------------------- */
+
+static const char *const colourlist_pair_names[2] =
+{
+  "Foreground", "Background"
+};
+
+result_t wuss_colourlist_init(wuss_colourlist_t *list,
+                              const wuss_t      *wuss,
+                              int                n,
+                              colour_t *const    fields[],
+                              const char *const  names[])
+{
+  int i;
+
+  if (n < 1 || n > WUSS_COLOURLIST_MAX || fields == NULL)
+    return result_BAD_ARG;
+  if (names == NULL)
+  {
+    if (n > 2)
+      return result_BAD_ARG;
+    names = colourlist_pair_names;
+  }
+
+  list->target = NULL;
+
+  for (i = 0; i < n; i++)
+  {
+    list->names[i]  = names[i];
+    list->fields[i] = fields[i];
+
+    /* the rows' .submenu only gives each an arrow and a hover target; which
+     * menu opens is decided by wuss_colourlist_pre_open */
+    WUSS_MENU_ITEM_MENU(list->items, i, names[i], wuss_MENU_ITEM_PRE_OPEN,
+                        wuss_colourmenu_menu(wuss));
+  }
+
+  WUSS_MENU_TITLE(list->menu, "Colours", list->items, n);
+
+  return result_OK;
+}
+
+void wuss_colourlist_init_pair(wuss_colourlist_t *list,
+                               const wuss_t      *wuss,
+                               colour_t          *fg,
+                               colour_t          *bg)
+{
+  colour_t *fields[2];
+
+  fields[0] = fg;
+  fields[1] = bg;
+
+  (void) wuss_colourlist_init(list, wuss, 2, fields, NULL);
+}
+
+int wuss_colourlist_pre_open(wuss_colourlist_t  *list,
+                             const wuss_t       *wuss,
+                             const wuss_event_t *ev,
+                             result_t           *rc)
+{
+  int index;
+
+  if (ev->kind != wuss_EVENT_PRE_SUBMENU_OPEN ||
+      wuss_menu_handle_menu(ev->data.pre_submenu_open.handle) != &list->menu)
+    return 0;
+
+  index = ev->data.pre_submenu_open.index;
+  if (index < 0 || index >= list->menu.nitems)
+    return 0;
+
+  list->target = list->fields[index];
+
+  *rc = wuss_colourmenu_open_rgb(wuss, ev, list->names[index], *list->target);
+  return 1;
+}
+
+int wuss_colourlist_selected(wuss_colourlist_t  *list,
+                             const wuss_event_t *ev)
+{
+  if (list->target == NULL)
+    return 0;
+
+  return wuss_colourmenu_selected_rgb(ev, list->target);
 }

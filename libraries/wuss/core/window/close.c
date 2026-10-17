@@ -11,11 +11,7 @@
 void wuss_window_close(wuss_window_t *doomed)
 {
   wuss_task_t *task;
-  wuss_event_t event;
   wuss_t      *wuss;
-#ifdef WUSS_MENUS
-  struct wuss__menu *m;
-#endif
 
   if (doomed == NULL)
     return;
@@ -23,21 +19,7 @@ void wuss_window_close(wuss_window_t *doomed)
   wuss = doomed->wuss;
   task = doomed->task;
 
-#ifdef WUSS_MENUS
-  /* the doomed window may be a borrowed level's focus lender; forget it */
-  for (m = wuss->menu.chain; m != NULL; m = m->child)
-    if (m->saved_focus == doomed)
-      m->saved_focus = NULL;
-
-  /* A window closed while in the open menu chain -- typically a borrowed
-   * level such as a Save As dialogue its client is freeing -- would leave a
-   * chain node pointing at freed memory. Tear the chain down first, while
-   * the window is still alive to be hidden and restacked. The chain's own
-   * menu windows are unhooked from their nodes before being closed (see
-   * wuss__menu_close_from), so this never recurses. */
-  if (wuss__menu_contains(wuss, doomed))
-    wuss__menu_abandon(wuss);
-#endif
+  wuss__menu_window_closing(wuss, doomed);
 
   /* Bounce anything still queued for this window now, while it is alive:
    * left queued, it would be read after the free below, or delivered to
@@ -108,15 +90,11 @@ void wuss_window_close(wuss_window_t *doomed)
       !(task->flags & wuss_TASK__REAPING)  &&
       task->windows.next == NULL)
   {
-#ifdef WUSS_MENUS
     /* As wuss_task_destroy: a chain this task still owns would outlive it,
      * so tear it down (delivering MENU_CLOSED) before QUIT. */
-    if (wuss->menu.chain != NULL && wuss->menu.chain->owner == task)
-      wuss__menu_abandon(wuss);
-#endif
+    wuss__menu_task_closing(wuss, task);
 
-    event.kind = wuss_EVENT_QUIT;
-    (void) wuss__deliver(task, NULL, &event);
+    (void) wuss__deliver_kind(task, NULL, wuss_EVENT_QUIT);
 
     list_remove(&wuss->tasks, &task->link);
     wuss__free(wuss, task);

@@ -21,9 +21,10 @@
 
 #include "wuss/gadget/stringset.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
 #include "../font/font.h"
 #include "../icon.h"
+#include "popup.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -49,42 +50,6 @@ struct wuss_stringset
 
 /* ----------------------------------------------------------------------- */
 
-/* Fill "spec" as the arrow at the right edge of "bbox", vertically centred,
- * returning its width. */
-static int stringset_arrow_spec(const wuss_t     *wuss,
-                                box_t             bbox,
-                                wuss_icon_spec_t *spec)
-{
-  const bitmap_t *bm;
-  int             idx;
-  int             w, h;
-
-  idx = wuss_iconpool_lookup(wuss, "gright");
-  bm  = (idx >= 0) ? wuss_iconpool_bitmap(wuss, idx) : NULL;
-  if (bm == NULL)
-  {
-    /* no icon set: a square button the height of the gadget */
-    h = bbox.y1 - bbox.y0;
-    wuss_icon_spec_action(spec,
-                          (box_t) BOX_POS_SIZE(bbox.x1 - h, bbox.y0, h, h),
-                          ">", 0);
-    return h;
-  }
-
-  w = bm->size.w;
-  h = bm->size.h;
-
-  memset(spec, 0, sizeof(*spec));
-  spec->bbox  = (box_t) BOX_POS_SIZE(bbox.x1 - w,
-                                     bbox.y0 + (bbox.y1 - bbox.y0 - h) / 2,
-                                     w, h);
-  spec->type  = wuss_ICON_TYPE_BITMAP;
-  spec->flags = wuss_ICON_FLAGS_INTERACTIVE;
-  spec->u.bitmap.name         = "gright";
-  spec->u.bitmap.pressed_name = "gright-p";
-  return w;
-}
-
 result_t wuss_stringset_create(wuss_stringset_t           **out,
                                wuss_window_t               *window,
                                box_t                        bbox,
@@ -101,8 +66,6 @@ result_t wuss_stringset_create(wuss_stringset_t           **out,
   wuss_icon_spec_t  specs[3];
   wuss_icon_t      *icons[3];
   box_t             field;
-  bmfont_t         *font;
-  bmfont_width_t    w;
   int               nspecs;
   int               i;
 
@@ -123,26 +86,8 @@ result_t wuss_stringset_create(wuss_stringset_t           **out,
     WUSS_MENU_ITEM(ss->items, i, strings[i], wuss_MENU_ITEM_NONE);
   WUSS_MENU_TITLE(ss->menu, title, ss->items, count);
 
-  field     = bbox;
-  field.x1 -= stringset_arrow_spec(wuss, bbox, &specs[1]) + wuss_STD_GAP;
-  nspecs    = 2;
-
-  font = wuss->fonts.fonts[0];
-  if (title_width >= 0 && title != NULL && title[0] != '\0' && font != NULL)
-  {
-    w = (bmfont_width_t) title_width;
-    if (title_width == 0)
-    {
-      wuss__text_measure(font, title, (int) strlen(title), INT_MAX, NULL, &w);
-      w += 2 * WUSS_LABEL_TEXT_PAD;
-    }
-    wuss_icon_spec_label(&specs[2],
-                         (box_t) BOX_POS_SIZE(bbox.x0, bbox.y0, (int) w,
-                                              bbox.y1 - bbox.y0),
-                         title, wuss_ICON_FLAGS_JUSTIFY_RIGHT);
-    field.x0 += (int) w + wuss_STD_GAP;
-    nspecs    = 3;
-  }
+  nspecs = wuss__popup_layout(wuss, bbox, title, title_width, "gright",
+                              "gright-p", specs, &field);
 
   wuss_icon_spec_display(&specs[0], field, strings[0], 0);
 
@@ -183,17 +128,8 @@ void wuss_stringset_destroy(wuss_stringset_t *doomed)
  * ticked. */
 static result_t stringset_open(wuss_stringset_t *ss)
 {
-  box_t   content, bbox, screen;
-  point_t scroll;
-
-  wuss_window_get_content_bounds(ss->window, &content);
-  wuss_window_get_scroll(ss->window, &scroll);
-  wuss_icon_get_bbox(ss->arrow, &bbox);
-  wuss__icon_box_to_screen(&content, scroll, &bbox, &screen);
-
   wuss_menu_tick_exclusive(&ss->menu, ss->index);
-  return wuss_menu_open(ss->window->task, &ss->menu,
-                        POINT(screen.x1, screen.y0), &ss->handle);
+  return wuss__popup_open(ss->window, ss->arrow, &ss->menu, &ss->handle);
 }
 
 int wuss_stringset_handle_event(wuss_stringset_t   *ss,
@@ -211,7 +147,7 @@ int wuss_stringset_handle_event(wuss_stringset_t   *ss,
 
     rc = result_OK;
     if (event->data.icon.action == wuss_MOUSE_UP &&
-        (event->data.icon.button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+        (event->data.icon.button & WUSS_BUTTON_CLICK))
       rc = stringset_open(ss);
     *out_result = rc;
     return 1;

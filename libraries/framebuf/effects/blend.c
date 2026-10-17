@@ -12,10 +12,10 @@
 
 /* ----------------------------------------------------------------------- */
 
-result_t effects_blend(const bitmap_t *a,
-                       const bitmap_t *b,
-                       bitmap_t       *dst,
-                       int             alpha)
+static result_t blend(const bitmap_t *a,
+                      const bitmap_t *b,
+                      bitmap_t       *dst,
+                      int             alpha)
 {
   result_t         rc;
   effects_layout_t layout;
@@ -30,7 +30,6 @@ result_t effects_blend(const bitmap_t *a,
   if (rc != result_OK)
     return rc;
 
-  alpha  = CLAMP(alpha, 0, 256);
   calpha = 256 - alpha;
 
   for (y = 0; y < a->size.h; y++)
@@ -53,11 +52,13 @@ result_t effects_blend(const bitmap_t *a,
       {
         uint32_t ca;
         uint32_t cb;
+        int      v;
 
         ca = (ap[x] >> shift) & 0xFF;
         cb = (bp[x] >> shift) & 0xFF;
 
-        out |= ((ca * calpha + cb * alpha) >> 8) << shift;
+        v = ((int) ca * calpha + (int) cb * alpha) >> 8;
+        out |= (uint32_t) CLAMP(v, 0, 255) << shift;
       }
 
       dp[x] = out;
@@ -65,4 +66,22 @@ result_t effects_blend(const bitmap_t *a,
   }
 
   return result_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+
+result_t effects_blend(const bitmap_t *a,
+                       const bitmap_t *b,
+                       bitmap_t       *dst,
+                       int             alpha)
+{
+  return blend(a, b, dst, CLAMP(alpha, 0, 256));
+}
+
+result_t effects_blend_extrapolate(const bitmap_t *a,
+                                   const bitmap_t *b,
+                                   bitmap_t       *dst,
+                                   int             alpha)
+{
+  return blend(a, b, dst, CLAMP(alpha, -256, 512));
 }

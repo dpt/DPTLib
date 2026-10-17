@@ -428,9 +428,10 @@ wuss_icon_spec_t;
 /** Standard main-axis size (px) for a wuss_ICON_TYPE_SLIDER. */
 #define wuss_STD_SLIDER_HEIGHT           18
 
-/** Standard size (px) of a wuss_ICON_TYPE_RADIO or wuss_ICON_TYPE_OPTION
- *  glyph, as the stock icon set draws it; square. */
-#define wuss_STD_OPTION_SIZE             22
+/** Standard size (px) of a stock-set glyph: a wuss_ICON_TYPE_RADIO or
+ *  wuss_ICON_TYPE_OPTION glyph, a gadget arrow and the like; square. Also
+ *  the row height needed to hold a stringset or colourset field. */
+#define wuss_STD_GLYPH_SIZE              22
 
 /** Standard main-axis size (px) for a non-default wuss_ICON_TYPE_ACTION
  *  button, e.g. Cancel. */
@@ -748,6 +749,17 @@ int wuss_iconpool_lookup(const wuss_t *wuss, const char *name);
  *         is out of range.
  */
 const bitmap_t *wuss_iconpool_bitmap(const wuss_t *wuss, int index);
+
+/**
+ * Fetch an icon set entry's name.
+ *
+ * \param[in] wuss  Window manager.
+ * \param[in] index 0-based index, 0..\ref wuss_iconpool_count -1.
+ * \return The entry's leafname sans ".png", owned by the pool and valid
+ *         until the next \ref wuss_iconpool_load or \ref wuss_destroy, or
+ *         NULL if \p index is out of range.
+ */
+const char *wuss_iconpool_name(const wuss_t *wuss, int index);
 
 #endif /* WUSS_ICONS */
 

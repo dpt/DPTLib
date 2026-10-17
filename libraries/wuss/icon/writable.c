@@ -7,7 +7,8 @@
 #include "framebuf/bmfont.h"
 #include "text/utf8.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/dispatch.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -20,23 +21,6 @@ bmfont_t *wuss__icon_font(const wuss_t *wuss, const wuss_icon_t *icon)
     font = wuss->fonts.fonts[0];
 
   return font;
-}
-
-void wuss__writable_copy(char *buf, int size, const char *text)
-{
-  size_t len;
-  int    trimmed;
-
-  len = MIN(strlen(text), (size_t) size - 1);
-
-  /* don't split a codepoint: back off over up to three continuation bytes */
-  for (trimmed = 0;
-       trimmed < 3 && len > 0 && ((unsigned char) text[len] & 0xC0) == 0x80;
-       trimmed++)
-    len--;
-
-  memcpy(buf, text, len);
-  buf[len] = '\0';
 }
 
 /* ----------------------------------------------------------------------- */
@@ -138,17 +122,90 @@ static int writable_rune_start(const char *text, int len, int index)
   return i;
 }
 
+/* Whether the caret icon has a selection; its byte range is *lo..*hi. */
+static int writable_selection(const wuss_t *wuss, int *lo, int *hi)
+{
+  *lo = MIN(wuss->caret.anchor, wuss->caret.index);
+  *hi = MAX(wuss->caret.anchor, wuss->caret.index);
+
+  return *lo != *hi;
+}
+
+/* Remove bytes lo..hi from "text" (length "len"), returning the new length.
+ * The caret is left for the caller to place. */
+static int writable_remove(char *text, int len, int lo, int hi)
+{
+  memmove(text + lo, text + hi, (size_t) (len - hi + 1));
+
+  return len - (hi - lo);
+}
+
 /* Tell the caret icon's task its text changed. */
 static result_t writable_changed(wuss_t *wuss)
 {
-  wuss_event_t event;
+  return wuss__icon_deliver(wuss->caret.window, wuss->caret.icon,
+                            wuss_MOUSE_UP, wuss_BUTTON_NONE);
+}
 
-  event.kind             = wuss_EVENT_ICON;
-  event.data.icon.icon   = wuss->caret.icon;
-  event.data.icon.action = wuss_MOUSE_UP;
-  event.data.icon.button = wuss_BUTTON_NONE;
-  event.data.icon.value  = wuss->caret.icon->value;
-  return wuss__deliver(wuss->caret.window->task, wuss->caret.window, &event);
+/* ----------------------------------------------------------------------- */
+
+/* Replace the selection (if any) with the clipboard text, dropping control
+ * characters and anything that would overflow the field. */
+static result_t writable_paste(wuss_t *wuss)
+{
+  wuss_window_t *window;
+  wuss_icon_t   *icon;
+  char          *text;
+  const char    *src;
+  int            len;
+  int            index;
+  int            lo;
+  int            hi;
+  int            srclen;
+  int            i;
+  int            n;
+  int            m;
+  unsigned long  codepoint;
+  char           utf8[4];
+
+  window = wuss->caret.window;
+  icon   = wuss->caret.icon;
+  text   = (char *) icon->spec.text;
+  len    = (int) strlen(text);
+  index  = wuss->caret.index;
+  src    = wuss_clipboard_get(wuss);
+  srclen = (int) strlen(src);
+
+  if (srclen == 0)
+    return result_OK;
+
+  if (writable_selection(wuss, &lo, &hi))
+  {
+    len   = writable_remove(text, len, lo, hi);
+    index = lo;
+  }
+
+  for (i = 0; i < srclen; i += n)
+  {
+    n = utf8_decode(src + i, srclen - i, &codepoint);
+    if (n <= 0)
+      break;
+
+    if (codepoint < 0x20 || (codepoint >= 0x7F && codepoint <= 0x9F))
+      continue;
+
+    m = utf8_encode(codepoint, utf8);
+    if (m == 0 || len + m >= icon->spec.u.writable.size)
+      break;
+
+    memmove(text + index + m, text + index, (size_t) (len - index + 1));
+    memcpy(text + index, utf8, (size_t) m);
+    index += m;
+    len   += m;
+  }
+
+  wuss__writable_place_caret(window, icon, index);
+  return writable_changed(wuss);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -199,6 +256,7 @@ void wuss__writable_place_caret(wuss_window_t *window,
   wuss->caret.icon   = icon;
   wuss->caret.window = window;
   wuss->caret.index  = index;
+  wuss->caret.anchor = index; /* placing the caret drops any selection */
 
   wuss__icon_invalidate(window, icon);
 }
@@ -245,15 +303,20 @@ result_t wuss__writable_key(wuss_t              *wuss,
                             wuss_key_modifiers_t modifiers,
                             int                 *claimed)
 {
+  result_t       rc;
   wuss_window_t *window;
   wuss_icon_t   *icon;
   char          *text;
   int            len;
   int            index;
+  int            lo;
+  int            hi;
   int            step;
   unsigned long  codepoint;
   int            n;
   char           utf8[4];
+  char           saved;
+  int            replaced;
 
   *claimed = 0;
 
@@ -279,6 +342,53 @@ result_t wuss__writable_key(wuss_t              *wuss,
       text[0] = '\0';
       wuss__writable_place_caret(window, icon, 0);
       return writable_changed(wuss);
+
+    case 'a':
+    case 'A':
+      *claimed = 1;
+      wuss__writable_place_caret(window, icon, len);
+      wuss->caret.anchor = 0;
+      return result_OK;
+
+    case 'z':
+    case 'Z':
+      *claimed = 1;
+      wuss__writable_place_caret(window, icon, index);
+      return result_OK;
+
+    case 'c':
+    case 'C':
+    case 'x':
+    case 'X':
+      *claimed = 1;
+      if (!writable_selection(wuss, &lo, &hi))
+        return result_OK;
+
+      saved    = text[hi];
+      text[hi] = '\0';
+      rc       = wuss_clipboard_set(wuss, text + lo);
+      text[hi] = saved;
+      if (rc != result_OK || (code != 'x' && code != 'X'))
+        return rc;
+
+      writable_remove(text, len, lo, hi);
+      wuss__writable_place_caret(window, icon, lo);
+      return writable_changed(wuss);
+
+    case 'v':
+    case 'V':
+      *claimed = 1;
+      return writable_paste(wuss);
+
+    /* item-level keys (Duplicate, Get info, Delete, Insert time, Bold): a
+     * field holding the caret owns them, so they never reach the task */
+    case 'd': case 'D':
+    case 'i': case 'I':
+    case 'k': case 'K':
+    case 't': case 'T':
+    case 'b': case 'B':
+      *claimed = 1;
+      return result_OK;
 
     case wuss_KEY_LEFT:
       *claimed = 1;
@@ -333,8 +443,19 @@ result_t wuss__writable_key(wuss_t              *wuss,
     wuss__writable_place_caret(window, icon, len);
     return result_OK;
 
+  case wuss_KEY_INSERT:
+    *claimed = 1;
+    return writable_paste(wuss);
+
   case 8: /* Backspace */
     *claimed = 1;
+    if (writable_selection(wuss, &lo, &hi))
+    {
+      writable_remove(text, len, lo, hi);
+      wuss__writable_place_caret(window, icon, lo);
+      return writable_changed(wuss);
+    }
+
     if (index == 0)
       return result_OK;
 
@@ -345,6 +466,13 @@ result_t wuss__writable_key(wuss_t              *wuss,
 
   case wuss_KEY_DELETE:
     *claimed = 1;
+    if (writable_selection(wuss, &lo, &hi))
+    {
+      writable_remove(text, len, lo, hi);
+      wuss__writable_place_caret(window, icon, lo);
+      return writable_changed(wuss);
+    }
+
     if (index == len)
       return result_OK;
 
@@ -364,8 +492,24 @@ result_t wuss__writable_key(wuss_t              *wuss,
       return result_OK;
 
     *claimed = 1;
+
+    /* typing replaces the selection */
+    replaced = writable_selection(wuss, &lo, &hi);
+    if (replaced)
+    {
+      len   = writable_remove(text, len, lo, hi);
+      index = lo;
+    }
+
     if (len + n >= icon->spec.u.writable.size)
-      return result_OK; /* full */
+    {
+      if (!replaced)
+        return result_OK;
+
+      /* full, but the selection went */
+      wuss__writable_place_caret(window, icon, index);
+      return writable_changed(wuss);
+    }
 
     memmove(text + index + n, text + index, (size_t) (len - index + 1));
     memcpy(text + index, utf8, (size_t) n);

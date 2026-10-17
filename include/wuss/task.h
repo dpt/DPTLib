@@ -149,7 +149,12 @@ typedef enum wuss_event_kind
    *  furniture or fonts and update its document extent. It is not raised
    *  for a window wuss left alone, nor by a plain move or resize (see
    *  wuss_EVENT_OPEN). Carries no data. */
-  wuss_EVENT_RELAYOUT
+  wuss_EVENT_RELAYOUT,
+  /** ADJUST was pressed on this window's close icon. wuss does nothing
+   *  else with the press -- the window stays open -- so the task decides
+   *  what it means: on RISC OS a filer opens the parent directory and
+   *  closes this window unless Shift is held. See data.close_adjust. */
+  wuss_EVENT_CLOSE_ADJUST
 }
 wuss_event_kind_t;
 
@@ -163,7 +168,8 @@ wuss_event_kind_t;
  * wuss_EVENT_PRE_CLOSE, wuss_EVENT_CLOSE, wuss_EVENT_POINTER_ENTER,
  * wuss_EVENT_POINTER_EXIT, wuss_EVENT_GAIN_FOCUS, wuss_EVENT_LOSE_FOCUS,
  * wuss_EVENT_KEY, wuss_EVENT_KEY_UP, wuss_EVENT_MESSAGE (a message addressed
- * to this window), wuss_EVENT_DRAG_END, wuss_EVENT_RELAYOUT.
+ * to this window), wuss_EVENT_DRAG_END, wuss_EVENT_RELAYOUT,
+ * wuss_EVENT_CLOSE_ADJUST.
  */
 typedef wuss_event_kind_t wuss_window_event_kind_t;
 
@@ -315,6 +321,15 @@ typedef struct wuss_event
     }
     menu_closed;
 
+    /** wuss_EVENT_CLOSE_ADJUST: modifiers is the set of
+     * wuss_key_modifiers_t flags held at the press (see
+     * wuss_set_modifiers). */
+    struct
+    {
+      wuss_key_modifiers_t modifiers;
+    }
+    close_adjust;
+
     /** wuss_EVENT_KEY / wuss_EVENT_KEY_UP: code is a Unicode codepoint or
      * a wuss_KEY_* constant; modifiers is a set of wuss_key_modifiers_t
      * flags, so test it with '&'. */
@@ -460,6 +475,143 @@ void wuss_task_destroy(wuss_task_t *doomed);
  * \param[in] on   Non-zero to enable autoclose, zero to disable.
  */
 void wuss_task_set_autoclose(wuss_task_t *task, int on);
+
+/**
+ * Bring the windows of every child of \p parent (see wuss_set_task_parent)
+ * to the front of their stacks.
+ *
+ * \param[in] wuss   Window manager.
+ * \param[in] parent Task whose children to raise.
+ * \return Non-zero if \p parent has any child task, else zero.
+ */
+int wuss_task_raise_children(wuss_t *wuss, wuss_task_t *parent);
+
+/**
+ * Close every window of \p task via wuss_window_try_close, so each task gets
+ * its wuss_EVENT_PRE_CLOSE veto. Stops at the first veto, leaving the
+ * remaining windows open. A task with autoclose set is destroyed when its
+ * last window closes.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] task Task whose windows to close.
+ * \return \ref result_OK if every window closed, else the result that
+ *         vetoed.
+ */
+result_t wuss_task_close_windows(wuss_t *wuss, wuss_task_t *task);
+
+/**
+ * Hide or show every window of \p task and of its child tasks (see
+ * wuss_set_task_parent), so an app is out of the way until revealed.
+ *
+ * Hiding hides each window that is visible, as wuss_window_set_hidden does,
+ * and remembers which it hid. Showing reveals only those: a window that was
+ * already hidden for its own reasons (a borrowed dialogue, say) stays so.
+ * Revealing fires wuss_EVENT_PRE_SHOW per window, which a handler may leave
+ * unrevealed. Windows created while the task is hidden are not affected.
+ *
+ * \param[in] wuss   Window manager.
+ * \param[in] task   Task whose windows, and its children's, to hide or show.
+ * \param[in] hidden Non-zero to hide, zero to show.
+ * \return \ref result_OK, or the first non-OK result from a
+ *         wuss_EVENT_PRE_SHOW handler (the remaining windows are still
+ *         processed).
+ */
+result_t wuss_task_set_hidden(wuss_t *wuss, wuss_task_t *task, int hidden);
+
+/**
+ * Whether \p task or any of its child tasks has a window that
+ * wuss_task_set_hidden would act on: one that is visible, or that it hid. A
+ * window hidden in its own right (a borrowed dialogue, say) does not count.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] task Task to test, with its children.
+ * \return Non-zero if there is such a window, else zero.
+ */
+int wuss_task_has_windows(wuss_t *wuss, wuss_task_t *task);
+
+/**
+ * Test whether \p task, with its children, is hidden: it has windows hidden
+ * by wuss_task_set_hidden (or the hide keys) and none visible.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] task Task to test, with its children.
+ * \return Non-zero if hidden, else zero.
+ */
+int wuss_task_is_hidden(wuss_t *wuss, wuss_task_t *task);
+
+/**
+ * Bring every window of the app that \p task belongs to (its root task: the
+ * parent, else itself) to the front of the regular windows, keeping their
+ * order, and focus the frontmost.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] task Any task of the app.
+ * \return Non-zero if a window took the focus, else zero.
+ */
+int wuss_task_front(wuss_t *wuss, wuss_task_t *task);
+
+/**
+ * Fetch the root task of the app that \p task belongs to: its parent, else
+ * itself. Destroying it ends the whole app.
+ *
+ * \param[in] task Any task of the app.
+ * \return The root task. Never NULL.
+ */
+wuss_task_t *wuss_task_get_root(const wuss_task_t *task);
+
+/**
+ * Cycle the focus through the windows of \p task's app. A positive \p step
+ * brings the rearmost window to the front; otherwise the front window goes
+ * to the back and the next one comes forward. Only visible focusable regular
+ * windows take part.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] task Any task of the app.
+ * \param[in] step Positive for next, else previous.
+ * \return Non-zero if the app has two or more such windows, else zero.
+ */
+int wuss_task_cycle_windows(wuss_t *wuss, wuss_task_t *task, int step);
+
+/**
+ * Cycle through the apps: a positive \p step raises the rearmost app (see
+ * wuss_task_front); otherwise the front app goes behind the rest.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] step Positive for next, else previous.
+ * \return Non-zero if there is more than one app to cycle, else zero.
+ */
+int wuss_cycle_tasks(wuss_t *wuss, int step);
+
+/**
+ * Hide the app that \p task belongs to, as wuss_task_set_hidden does for its
+ * root task, then focus the frontmost visible window.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] task Any task of the app.
+ * \return As wuss_task_set_hidden.
+ */
+result_t wuss_task_hide_app(wuss_t *wuss, wuss_task_t *task);
+
+/**
+ * Hide every app that has a window on screen except the one \p task belongs
+ * to. Apps with only back-stack windows (the icon bar) are left alone.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] task Any task of the app to keep.
+ * \return The first non-OK result from wuss_task_set_hidden, else \ref
+ *         result_OK.
+ */
+result_t wuss_task_hide_others(wuss_t *wuss, wuss_task_t *task);
+
+/**
+ * Reveal every window wuss_task_set_hidden hid, in every app, and focus the
+ * frontmost window if nothing has the focus.
+ *
+ * \param[in] wuss Window manager.
+ * \return The first non-OK result from wuss_task_set_hidden, else \ref
+ *         result_OK.
+ */
+result_t wuss_task_show_all(wuss_t *wuss);
 
 /**
  * Make every task created from now on a child of \p parent: destroying \p

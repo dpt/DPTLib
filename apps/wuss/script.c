@@ -156,9 +156,36 @@ static bool parse_point(wuss_t *wuss, char **p, point_t *out)
   return true;
 }
 
-static bool parse_button(const char *tok, wuss_button_t *out)
+/* Strips leading "MOD+" prefixes from *tok into *mods. A trailing '+' is
+ * left as the rest of the token, as in "ctrl++". */
+static bool parse_mods(char **tok, wuss_key_modifiers_t *mods)
 {
-  if (tok == NULL)
+  char *plus;
+
+  *mods = wuss_KEY_MOD_NONE;
+  while ((plus = strchr(*tok, '+')) != NULL && plus[1] != '\0')
+  {
+    *plus = '\0';
+    if (strcmp(*tok, "shift") == 0)
+      *mods |= wuss_KEY_MOD_SHIFT;
+    else if (strcmp(*tok, "ctrl") == 0)
+      *mods |= wuss_KEY_MOD_CTRL;
+    else if (strcmp(*tok, "alt") == 0)
+      *mods |= wuss_KEY_MOD_ALT;
+    else
+      return false;
+    *tok = plus + 1;
+  }
+
+  return true;
+}
+
+/* Parses "[MOD+...]BUTTON" into a button and modifiers. */
+static bool parse_button(char                 *tok,
+                         wuss_button_t        *out,
+                         wuss_key_modifiers_t *mods)
+{
+  if (tok == NULL || !parse_mods(&tok, mods))
     return false;
   else if (strcmp(tok, "select") == 0)
     *out = wuss_BUTTON_SELECT;
@@ -199,28 +226,12 @@ static bool parse_key(char *tok, int *key, wuss_key_modifiers_t *mods)
     { "pagedown",  wuss_KEY_PAGE_DOWN }
   };
 
-  char *plus;
-  int   i;
-  int   n;
+  int i;
+  int n;
 
   *mods = wuss_KEY_MOD_NONE;
-  if (tok == NULL)
+  if (tok == NULL || !parse_mods(&tok, mods))
     return false;
-
-  /* a trailing '+' is the key itself, as in "ctrl++" */
-  while ((plus = strchr(tok, '+')) != NULL && plus[1] != '\0')
-  {
-    *plus = '\0';
-    if (strcmp(tok, "shift") == 0)
-      *mods |= wuss_KEY_MOD_SHIFT;
-    else if (strcmp(tok, "ctrl") == 0)
-      *mods |= wuss_KEY_MOD_CTRL;
-    else if (strcmp(tok, "alt") == 0)
-      *mods |= wuss_KEY_MOD_ALT;
-    else
-      return false;
-    tok = plus + 1;
-  }
 
   if (tok[0] != '\0' && tok[1] == '\0')
   {
@@ -282,7 +293,7 @@ static void dump(wuss_t *wuss)
 }
 
 /* PNG save handles paletted and bgrx8888; take anything else via bgrx8888. */
-static void save_png(const bitmap_t *bm, const char *filename)
+result_t script_save_png(const bitmap_t *bm, const char *filename)
 {
   result_t  rc;
   bitmap_t *deep;
@@ -304,8 +315,7 @@ static void save_png(const bitmap_t *bm, const char *filename)
     }
   }
 
-  if (rc != result_OK)
-    script_error("png save failed", filename);
+  return rc;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -350,9 +360,10 @@ static bool end_frame(void)
   return false;
 }
 
-static void queue_input(wuss_input_kind_t kind,
-                        point_t           pos,
-                        wuss_button_t     button)
+static void queue_input(wuss_input_kind_t    kind,
+                        point_t              pos,
+                        wuss_button_t        button,
+                        wuss_key_modifiers_t mods)
 {
   wuss_input_t *ev;
 
@@ -361,6 +372,7 @@ static void queue_input(wuss_input_kind_t kind,
   ev->kind   = kind;
   ev->pos    = pos;
   ev->button = button;
+  ev->mods   = mods;
 }
 
 bool script_poll(wuss_t *wuss, const bitmap_t *bm, wuss_input_t *ev)
@@ -451,28 +463,31 @@ bool script_poll(wuss_t *wuss, const bitmap_t *bm, wuss_input_t *ev)
         if (arg == NULL)
           script_error("png needs a filename", NULL);
         else
-          save_png(bm, arg);
+          if (script_save_png(bm, arg) != result_OK)
+            script_error("png save failed", arg);
       }
     }
     else if (strcmp(cmd, "move") == 0)
     {
       if (parse_point(wuss, &p, &pos))
-        queue_input(wuss_INPUT_MOUSE_MOVE, pos, wuss_BUTTON_NONE);
+        queue_input(wuss_INPUT_MOUSE_MOVE, pos, wuss_BUTTON_NONE,
+                    wuss_KEY_MOD_NONE);
     }
     else if (strcmp(cmd, "down") == 0 || strcmp(cmd, "up") == 0 ||
              strcmp(cmd, "click") == 0)
     {
-      if (!parse_button(next_token(&p), &button))
+      if (!parse_button(next_token(&p), &button, &mods))
       {
         script_error("expected select, menu or adjust", NULL);
       }
       else if (parse_point(wuss, &p, &pos))
       {
-        queue_input(wuss_INPUT_MOUSE_MOVE, pos, wuss_BUTTON_NONE);
+        queue_input(wuss_INPUT_MOUSE_MOVE, pos, wuss_BUTTON_NONE,
+                    wuss_KEY_MOD_NONE);
         if (cmd[0] != 'u')
-          queue_input(wuss_INPUT_MOUSE_DOWN, pos, button);
+          queue_input(wuss_INPUT_MOUSE_DOWN, pos, button, mods);
         if (cmd[0] != 'd')
-          queue_input(wuss_INPUT_MOUSE_UP, pos, button);
+          queue_input(wuss_INPUT_MOUSE_UP, pos, button, mods);
       }
     }
     else if (strcmp(cmd, "key") == 0 || strcmp(cmd, "keyup") == 0)

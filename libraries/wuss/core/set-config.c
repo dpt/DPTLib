@@ -31,7 +31,7 @@ static result_t validate_bevel_backdrop(const wuss_t *w,
       btnfg       >= w->npalette ||
       btnpressed  >= w->npalette ||
       accent      >= w->npalette ||
-      wuss__validate_backdrop(w, &w->backdrop) != result_OK)
+      wuss__validate_fill(w, &w->backdrop.fill) != result_OK)
     return result_WUSS_BAD_COLOUR;
 
   return result_OK;
@@ -61,16 +61,17 @@ result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config)
   if (config != NULL)
   {
     w->backdrop            = config->backdrop;
-    w->backdrop.colour     = wuss__resolve_colour(w, w->backdrop.colour);
-    w->backdrop.pattern_bg = wuss__resolve_colour(w, w->backdrop.pattern_bg);
+    w->backdrop.fill.colour     = wuss__resolve_colour(w, w->backdrop.fill.colour);
+    w->backdrop.fill.pattern_bg = wuss__resolve_colour(w, w->backdrop.fill.pattern_bg);
     w->body.window           = wuss__resolve_colour(w, config->body.window);
     w->body.menu             = wuss__resolve_colour(w, config->body.menu);
   }
   else
   {
-    w->backdrop.colour     = wuss_NO_BACKGROUND;
-    w->backdrop.pattern    = screen_PATTERN_SOLID;
-    w->backdrop.pattern_bg = wuss_NO_BACKGROUND;
+    w->backdrop.fill.colour     = wuss_NO_BACKGROUND;
+    w->backdrop.fill.pattern    = screen_PATTERN_SOLID;
+    w->backdrop.fill.pattern_bg = wuss_NO_BACKGROUND;
+    w->backdrop.image           = NULL;
     w->body.window           = wuss__resolve_colour(w, wuss_COLOUR_GREY);
     w->body.menu             = wuss__resolve_colour(w, wuss_COLOUR_WHITE);
   }
@@ -216,7 +217,7 @@ result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config)
   w->button.pressed = btnpressed;
   w->accent         = accent;
 #else
-  if (wuss__validate_backdrop(w, &w->backdrop) != result_OK)
+  if (wuss__validate_fill(w, &w->backdrop.fill) != result_OK)
     return result_WUSS_BAD_COLOUR;
 #endif
 #endif /* WUSS_FURNITURE */
@@ -277,11 +278,8 @@ result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config)
 
 result_t wuss_set_config(wuss_t *wuss, const wuss_config_t *config)
 {
-  result_t     rc;
-  wuss_t      *saved;
-  wuss_event_t event;
-  list_t      *e;
-  box_t        screen;
+  result_t rc;
+  wuss_t  *saved;
 
   assert(wuss   != NULL);
   assert(config != NULL);
@@ -306,28 +304,9 @@ result_t wuss_set_config(wuss_t *wuss, const wuss_config_t *config)
   if (rc != result_OK)
     return rc;
 
-  event.kind = wuss_EVENT_PALETTE;
-  for (e = wuss->tasks.next; e != NULL; )
-  {
-    result_t     crc;
-    wuss_task_t *task;
-    list_t      *next;
+  rc = wuss__broadcast_palette(wuss);
 
-    task = (wuss_task_t *) e;
-    next = e->next; /* an autoclose task may free its own node in the handler */
-
-    crc = wuss__deliver(task, NULL, &event);
-    if (crc != result_OK && rc == result_OK)
-      rc = crc;
-
-    e = next;
-  }
-
-  screen.x0 = 0;
-  screen.y0 = 0;
-  screen.x1 = wuss->scr->size.w;
-  screen.y1 = wuss->scr->size.h;
-  wuss_invalidate(wuss, &screen);
+  wuss__invalidate_screen(wuss);
 
   {
     result_t lrc;

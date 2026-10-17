@@ -6,7 +6,8 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/alloc.h"
 
 #ifdef WUSS_ICONBAR
 

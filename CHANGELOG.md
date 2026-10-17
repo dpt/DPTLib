@@ -10,6 +10,23 @@ _Unreleased_ until one is cut.
 
 ### Added
 
+- `wuss_EVENT_CLOSE_ADJUST`: ADJUST on a close icon now tells the window's
+  task, with the modifier keys held (`data.close_adjust.modifiers`), and
+  leaves the window open (it used to start a move drag). The filer uses it
+  as RISC OS does: it opens the parent directory's window in the current
+  one's place (or brings it to the front) and closes the current one; with
+  Shift held the parent cascades instead and the current one stays. The
+  demo's Apps filer does the same between a category and the root, and a
+  double ADJUST on a category opens it in the root's place. Frontends report
+  held modifiers with the new `wuss_set_modifiers()` before each
+  `wuss_mouse_click()`; the demo's SDL and RISC OS frontends do so, and
+  script button names take `MOD+` prefixes (`click shift+adjust X Y`).
+- `wuss_window_create_at()` opens a window where a `wuss_place_t` says: in
+  the first free region (`wuss_PLACE_SPARE`) with a fallback, centred or
+  against any of the nine screen anchors (`wuss_ALIGN_*`), or offset from
+  another window, optionally keeping clear of the icon bar
+  (`wuss_PLACE_AVOID_ICONBAR`). `wuss_window_create_placed()` is now a
+  wrapper around it.
 - `wuss` private icon pools: a task may load its own pool
   (`wuss_task_iconpool_load()`, `wuss_task_iconpool_load_resource()`, from
   `resources/wuss/tasks/<task name>/iconpool/`) and look names up with
@@ -25,14 +42,14 @@ _Unreleased_ until one is cut.
   metrics from the first ink-free grid cell rather than the space glyph.
   Menu tick/submenu-arrow glyphs move to `U+2713`/`U+25B6` via the Symbols
   font's new cmap. New face: GrongyUI-Bold.
-- `wuss` Spheroid task: a shaded sphere with draggable point lights (marker
+- `wuss` Orbing task: a shaded sphere with draggable point lights (marker
   handles, a Light menu, per-light colour via `wuss_colourset`, highlight
   size/sharpness sliders, Randomise, arrow-key light nudging, a Dithering
   submenu drawing via `screen_copy_bitmap_dithered()`), laid out in Sphere/
   Light frames with the control strip lined up in columns.
 - `wuss_colourset` gadget — a row of colour swatches (one active pick, an
   optional title) built on `wuss_colourmenu`; `wuss_colourset_button_width()`
-  and `wuss_STD_OPTION_SIZE` size it, and `wuss_stringset`/`wuss_colourset`
+  and `wuss_STD_GLYPH_SIZE` size it, and `wuss_stringset`/`wuss_colourset`
   both take an optional title width.
 - `wuss_menu_open_at_pointer()` and `wuss_colourmenu`'s RGB open/pick
   helpers factor out boilerplate the per-task menu code kept repeating.
@@ -57,7 +74,7 @@ _Unreleased_ until one is cut.
 - `screen_draw_rounded_rect()` — rounded-rectangle outline and fill, used
   to draw menu shortcut keycaps.
 - `screen_copy_bitmap_dithered()` gains a selectable dithering method
-  (`screen_dither_t`), Spheroid's own consumer of it.
+  (`screen_dither_t`), Orbing's own consumer of it.
 - The Display task also picks colour depth (not just resolution), gains
   Cancel/Change buttons (closing the task as RISC OS does) and offers
   480x360; mode changes move windows back on-screen instead of shrinking
@@ -136,7 +153,7 @@ _Unreleased_ until one is cut.
   them.
 - `stack` size groups: items sharing a group get the largest size among
   them, so labels and values in different rows line up. Dialogue labels in
-  the saturn, particles, display, spheroid and config tasks are now
+  the saturn, particles, display, orbing and config tasks are now
   size-grouped and measured from the font.
 - Particles task: repeller and attractor forces (Add submenu) with a shared
   Strength dialogue whose Range slider sets the force's reach, and a
@@ -640,9 +657,111 @@ _Unreleased_ until one is cut.
   style selection. The Filer gains Select all, Clear selection and Open
   parent menu rows and starts by default.
 - `DPTLIB_TMPPREFIX` places test scratch PNGs under `/tmp`.
+- `wuss` Effecting stack: effects are held in a reorderable stack shown in
+  its own window (without a close icon). The menu adds, edits and deletes
+  elements, sets the blend level (-100% to 200%) and applies or cancels the
+  result. Menu shading updates live as the stack changes.
+- `effects_blend_extrapolate()` blends with alpha from -256 to 512, clamping
+  per byte. `tonemap_plot()` draws a map's per-channel curves over a grid.
+- `wuss_gridview_select()` selects a single item by index. A MENU click over
+  an unselected item (with nothing selected) selects it until the menu
+  closes, so the menu acts on it.
+- `wuss_task_set_hidden()` hides a task's windows and its children's, and
+  reveals only those it hid; `wuss_task_has_windows()` reports whether a task
+  has any. The Tasks, Filing and Apps filer icon bar menus gain a Hide/Show
+  row (relabelled live with `wuss_menu_set_item_text_live()`), and grey out
+  Hide and Close all when nothing is open.
+- An overfull `wuss` icon bar scrolls when the pointer hovers within 40px of
+  either end.
+- `wuss_colourlist` (with `wuss_colourlist_init_pair()` for the
+  Foreground/Background case): a shared submenu of N named colours, used by
+  Doughnut, Sofa, Saturn, Fern, Oscillating, Checker and Patterns.
+- Randomise and Reset menu options in Doughnut, Orbing, Oscillating, Sofa,
+  Fern, Saturn, Checker and Patterns, backed by `colour_random()` and
+  `colour_random_contrast()` in `framebuf/colour.h`. Doughnut gains Major and
+  Minor density submenus and tube keys.
+- Save PNG in the Ball and Fireworks tasks; wheel zoom in Fern and Saturn;
+  Space toggles Animate in Fern and Saturn; Up/Down step rotation in Sofa
+  while paused.
+- `easing()` in `utils/` (linear, quad to quint, sine, expo, circ, back,
+  elastic and bounce, each in in/out/in-out modes) and `colour_mix()`. The
+  Oscillating task uses them for random backwards runs, an Easing menu and a
+  Decay trail.
+- `docs/`: key reference and proposed system shortcuts for `wuss`.
+- `bitmap_resize()` with nearest, bilinear, box and Catmull-Rom filters and
+  an optional linear-light blend, and a `bitresize` test. The `wuss`
+  Resizing task offers Method, Scale, Linear light and Save PNG.
+- `wuss` Fern task: a parameterised Barnsley fern with size, points and curl
+  (-300..300), colour menus, Animate, seed stepping by click or Left/Right
+  and Save PNG.
+- `wuss` Display task: a 256 greys mode (`app_DEPTH_GREY256`). It now holds
+  the Zoom (1x-4x), CRT effect and Software pointer options, moved from the
+  Wuss menu; nothing takes effect until Change. It opens at startup on native
+  builds and is a singleton.
+- Icon bar apps may be singletons: `wuss_task_raise_children()` and a
+  `taskapp_desc` singleton flag make SELECT raise the open instance. Display,
+  Palette, Configure, Icons and Keys use it. SELECT on the Palette icon opens
+  the desktop palette and ADJUST the system palette. The Filer icon bar menu
+  has Info and Open root rows.
+- Every task has its own icon, looked up as `app_<name>` in the icon pool
+  (falling back to `file_app`); icon bar labels are dropped for tasks with
+  icons.
+- Ball Damping option (D). Paint `[` and `]` step the brush size.
+- Double ADJUST on an Apps filer task closes the viewer it was launched
+  from.
+- Reading shows any text file (plain text unless named `.md`) and refuses a
+  file containing a NUL byte; a dropped file that fails to load closes its new
+  instance. Its window has no horizontal scroll bar, reflows to any width up
+  to the screen's, and scrolls to the end of text of any length.
+- Pooling task: a grid of every shared icon pool entry with its name, using
+  new `wuss_iconpool_name()`.
+- `wuss_error_report()`: a non-modal singleton error window in the manner of
+  `Wimp_ReportError` (image, one-line message, OK and optional Cancel, later
+  reports queued and raised as they arrive), showing the reporting app's icon
+  via `taskapp_glyph_name()`. Reading reports an unreadable file through it.
+- DCS component: a Discard/Cancel/Save dialogue on `wuss_dialogue`, with a
+  Quit variant and `wuss_dcs_set_message()`.
+- Standard keys, proposed from the RISC OS 3 Style Guide with macOS chords
+  filling the gaps (see the keys document). A system key layer ahead of
+  `wuss_key` binds Ctrl-F2 close window, Ctrl-Q quit app, Ctrl-Shift-Q quit
+  Wuss, Ctrl-H / Ctrl-Shift-H hide app / others, Ctrl-F11, Ctrl-` and Ctrl-Tab
+  cycle apps and windows, Ctrl-Shift-Esc kill app, Ctrl-Shift-F toggle size,
+  Ctrl-Shift-3 save the screen, Ctrl-0 actual size and Ctrl-Shift-Up open
+  parent. Save moves to F3; Debug keys move to Shift-F1, Ctrl-Shift-F1 and
+  Shift-F3; zoom to Ctrl-= and Ctrl--. New `wuss_task_front()`,
+  `wuss_task_cycle_windows()`, `wuss_cycle_tasks()`, `wuss_task_hide_app()`,
+  `wuss_task_hide_others()`, `wuss_task_show_all()`,
+  `wuss_task_close_windows()`, `wuss_task_get_root()`,
+  `wuss_task_is_hidden()`, `wuss_window_get_task()` and
+  `wuss_window_toggle_size()`. Menu shortcut labels accept UP, DOWN, LEFT and
+  RIGHT, and the icon bar Hide rows show `^H`.
+- Writable icons have a clipboard (`wuss_clipboard_set()`, `_get()`,
+  `_generation()`) and a selection: Ctrl-A, C, X, V and Z, Insert, and typing
+  or deleting replaces the selection. The SDL frontend syncs the clipboard
+  with the host.
+- `wuss_menu_select_is()` and `wuss_menu_select_index()` test whether an event
+  picked a given menu row.
+- Per-colour fills: `wuss_fill_t` and `wuss_set_colour_fill()` let any desktop
+  colour be a pattern. Desktop colours are dithered against the physical
+  palette, solid where the screen can show them exactly.
+- Painting paintbrush tool (H) with round, square, flat, tall, slash,
+  backslash and bristles nozzles (N or the Nozzle menu).
+- Ball-to-ball collisions (mass follows area; the held ball is immovable).
+  Greebling Ctrl-R randomises the seed and base palette.
+- Emscripten builds open Configuring, Display and a Reading window showing
+  `About_Wuss.md` at start-up, scroll the mouse wheel 4x faster, and add an
+  Open filedrop row to the Filer icon bar menu.
 
 ### Changed
 
+- **Breaking:** `wuss_gridview_activate_fn_t` takes the double-click's
+  `wuss_button_t` after the index, and may close the gadget's window. The
+  filer uses it as RISC OS does: a double ADJUST on a directory opens it in
+  the place of the viewer it was in and closes that viewer.
+- **Breaking:** `wuss_gridview_window_create()` takes a `const wuss_place_t *`
+  after the task (NULL keeps the old first-free-region placement). The filer
+  and Apps windows use it to open a directory or category window offset
+  +32,+32 from the window it was opened from.
 - **Breaking:** the `wuss` icon set becomes the icon pool.
   `resources/wuss/icons/` and `resources/wuss/files/` merge into one flat
   directory, `resources/wuss/iconpool/`; `wuss_icons_*` is renamed
@@ -979,9 +1098,43 @@ _Unreleased_ until one is cut.
   rather than folding into the last entry.
 - `screen_copy_rect()` copies packed 1/2/4bpp rects bytewise.
 - Xcode schemes set the working directory for the test and wuss targets.
+- **Breaking:** `wuss_gridview_window_create()` also takes the default
+  furniture to omit.
+- Demo tasks move to `libraries/wuss/tasks`. Renamed: Paint to Painting,
+  Greeble to Greebling, Minesweeper to Minesweeping, Effects to Effecting,
+  Filer to Filing, Porter-Duff to Compositing, Lissajous to Oscillating,
+  Configure to Configuring, Particles to Fireworks and Curve to Curving.
+- `wuss_PLACE_SPARE` starts its search from the corner the alignment names
+  (right and/or bottom). Task windows open in the first free region clear of
+  the icon bar, falling back to centred; the Viewing window opens centred.
+- A gridview window cannot shrink below one cell wide enough for a
+  ten-character label and one row tall.
+- `resources/images` moves to `resources/wuss/images`.
+- `wuss` core: `core/impl.h` splits into per-concern headers; furniture and
+  icon click handling move into their layers (furniture driven from the
+  element table); the menu session is opaque to core. Behaviour is unchanged.
+- The `wuss` tests split out of `wuss-test` into per-layer tests that each
+  run alone on a fresh fixture. The `WUSS_FURNITURE=OFF`, `WUSS_ICONS=OFF`
+  and `WUSS_MENUS=OFF` builds link and pass again.
+- Gradient opens centred at its document size, and dithering can be turned
+  off. Painting's New dialogue is titled New Painting with a single
+  Dimensions row.
+- ADJUST on the toggle size icon toggles as SELECT does.
+- Internal: shared helpers replace repeated code in the menu, event delivery,
+  text-width, popup-field, screen-to-document and invalidation paths
+  (`wuss__menu_install`, `wuss__deliver_kind`, `wuss__text_width`,
+  `wuss__screen_to_doc`, `WUSS_BUTTON_CLICK` and others); behaviour is
+  unchanged.
 
 ### Fixed
 
+- `wuss_gridview_set_count()` re-measures the cell from the items, so a filer
+  window widens its cells when a rescan brings in a longer name (e.g. after
+  saving a new file) and narrows them when one goes.
+- `wuss_destroy()` closes each task's windows before freeing the task, so
+  abandoning a later task's menu chain cannot hand the focus back to a window
+  whose task is already gone (a heap use-after-free when quitting `wuss` with
+  Paint's New dialogue open).
 - `screen_copy_bitmap()` honours BGR(X|A)8888 source formats instead of
   assuming RGB byte order.
 - `wuss` windows are now placed around their actual (furniture-included)
@@ -1430,3 +1583,22 @@ _Unreleased_ until one is cut.
 - RISC OS: the Filer and Paint use native path separators, and
   `convolve` no longer uses `lroundf`, which the RISC OS libm lacks.
 - The pickle test deletes its temporary files.
+- `bitmap_load_png` honours colour-key tRNS on RGB and grey PNGs.
+- Save As closes after a drag-save (`DataLoadAck` is now sent).
+- A gridview keeps a MENU-click selection until the menu pick has been
+  handled. The Effecting Save PNG row opens as a plain window submenu.
+- Fireball particle style probability was unset, dividing by zero when
+  building the chance table (trapped in the Emscripten build at Minesweeping
+  launch).
+- The Apps filer passes on keys it does not use, so app shortcuts such as F2
+  reach the fallback.
+- Saturn skips the window resize when the size is unchanged.
+- Minesweeping Give Up shades live after it or a reset.
+- Two UBSan signed-arithmetic reports: gridview redraw with an empty clip
+  and bitmap resize with negative origins.
+- Reading no longer truncates long text, no longer asserts when centring or
+  right-aligning text with blank lines, and keeps its scroll bar in step with
+  the text.
+- Icon bar Hide/Show rows resync after the hide keys, so clicks no longer
+  toggle the wrong way.
+- Effects closes its effect stack window with the main window.

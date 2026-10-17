@@ -92,12 +92,12 @@ static void resize_pinned_window(wuss_window_t *window)
 result_t wuss_resize(wuss_t *wuss, screen_t *scr)
 {
   wuss_window_t *win;
-  box_t          screen;
 
   assert(wuss != NULL);
   assert(scr  != NULL);
 
   wuss->scr = scr;
+  wuss__rebuild_fills(wuss); /* new screen, possibly a new physical palette */
 
 #ifdef WUSS_ICONS
   {
@@ -117,11 +117,7 @@ result_t wuss_resize(wuss_t *wuss, screen_t *scr)
       resize_one_window(win);
   }
 
-  screen.x0 = 0;
-  screen.y0 = 0;
-  screen.x1 = scr->size.w;
-  screen.y1 = scr->size.h;
-  wuss_invalidate(wuss, &screen);
+  wuss__invalidate_screen(wuss);
 
   return wuss__relayout_all(wuss);
 }

@@ -22,7 +22,9 @@
  * keep our own copy. Bounded by that buffer's own DPTLIB_MAXPATH. */
 #define ICONS_DIR_MAX 256
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/alloc.h"
+#include "../core/windows.h"
 
 #ifdef WUSS_ICONS
 
@@ -426,6 +428,17 @@ const bitmap_t *wuss_iconpool_bitmap(const wuss_t *wuss, int index)
     return NULL;
 
   return &wuss->icon.bitmaps[index];
+}
+
+const char *wuss_iconpool_name(const wuss_t *wuss, int index)
+{
+  assert(wuss != NULL);
+
+  if (index < 0 || index >= wuss->icon.nbitmaps)
+    return NULL;
+
+  return (const char *) atom_get(wuss->icon.names,
+                                 (atom_t) wuss->icon.atoms[index], NULL);
 }
 
 /* ----------------------------------------------------------------------- */

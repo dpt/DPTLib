@@ -81,14 +81,18 @@ typedef void (wuss_gridview_item_fn_t)(int                    index,
                                        wuss_gridview_item_t  *out);
 
 /**
- * Activate callback: the user double-clicked item \p index.
+ * Activate callback: the user double-clicked item \p index. The callback may
+ * close the gadget's window (and so destroy the gadget).
  *
  * \param[in] gridview The gadget.
  * \param[in] index    The activated item's index.
+ * \param[in] button   The double-click's buttons: wuss_BUTTON_SELECT or
+ *                     wuss_BUTTON_ADJUST, with wuss_BUTTON_DOUBLE.
  * \param[in] opaque   As passed to \ref wuss_gridview_create.
  */
 typedef void (wuss_gridview_activate_fn_t)(wuss_gridview_t *gridview,
                                            int              index,
+                                           wuss_button_t    button,
                                            void            *opaque);
 
 /**
@@ -162,25 +166,32 @@ result_t wuss_gridview_create(wuss_gridview_t            **out,
  * \param[out] out         Filled with the new handle on success, untouched
  *                         on failure.
  * \param[in]  task        Task that owns the window.
+ * \param[in]  place       Where to open the window, placed at its initial
+ *                         320x240 size; NULL for the next spare region,
+ *                         centred, as wuss_window_create_placed.
  * \param[in]  title       Titlebar label.
  * \param[in]  count       As \ref wuss_gridview_create.
  * \param[in]  item_fn     As \ref wuss_gridview_create.
  * \param[in]  label_chars As \ref wuss_gridview_create.
  * \param[in]  activate    As \ref wuss_gridview_create.
  * \param[in]  opaque      As \ref wuss_gridview_create.
+ * \param[in]  omit        Default furniture to leave off, e.g.
+ *                         wuss_WINDOW_CLOSE; 0 for the default set.
  * \param[out] window      Filled with the new window on success.
  * \return \ref result_OK on success, or a result code from
- *         wuss_window_create_placed or \ref wuss_gridview_create; no window
- *         is left behind on failure.
+ *         wuss_window_create_at or \ref wuss_gridview_create; no window is
+ *         left behind on failure.
  */
 result_t wuss_gridview_window_create(wuss_gridview_t            **out,
                                      wuss_task_t                 *task,
+                                     const wuss_place_t          *place,
                                      const char                  *title,
                                      int                          count,
                                      wuss_gridview_item_fn_t     *item_fn,
                                      int                          label_chars,
                                      wuss_gridview_activate_fn_t *activate,
                                      void                        *opaque,
+                                     wuss_window_flags_t          omit,
                                      wuss_window_t              **window);
 
 /**
@@ -219,10 +230,14 @@ void wuss_gridview_destroy(wuss_gridview_t *doomed);
 
 /**
  * Offer an event from the task's own handler: a wuss_EVENT_REDRAW,
- * wuss_EVENT_MOUSE or wuss_EVENT_OPEN on the gadget's window.
- * wuss_EVENT_OPEN reflows the grid's columns to the window's current visible
- * width and updates its document extent -- offer it whenever the window's
- * width may have changed, not only on the first open.
+ * wuss_EVENT_MOUSE or wuss_EVENT_OPEN on the gadget's window. Also offer
+ * wuss_EVENT_MENU_CLOSED (any window): a MENU click over an unselected item
+ * with nothing selected selects that item. It is deselected when the menu
+ * closes without a pick, or at the first event after a pick, so the pick's
+ * action still sees it. Offer a MENU click before opening the menu, so the
+ * menu sees the selection. wuss_EVENT_OPEN reflows the grid's columns to the
+ * window's current visible width and updates its document extent -- offer it
+ * whenever the window's width may have changed, not only on the first open.
  *
  * \param[in] gridview Handle.
  * \param[in] event    The event, of any kind.
@@ -259,6 +274,15 @@ void wuss_gridview_clear_selection(wuss_gridview_t *gridview);
 void wuss_gridview_select_all(wuss_gridview_t *gridview);
 
 /**
+ * Select only item \p index, invalidating the cells whose state changes. An
+ * out-of-range index is ignored.
+ *
+ * \param[in] gridview Handle.
+ * \param[in] index    Item index, 0..count-1.
+ */
+void wuss_gridview_select(wuss_gridview_t *gridview, int index);
+
+/**
  * \param[in] gridview Handle.
  * \return Number of items selected.
  */
@@ -276,7 +300,10 @@ int wuss_gridview_hit_test(const wuss_gridview_t *gridview, point_t point);
 /**
  * Recompute item count after the underlying item list changes, keeping the
  * selection where indices still apply (a selected index at or beyond the new
- * count is dropped). Reflows and redraws.
+ * count is dropped). Unless the cell size is fixed (see \ref
+ * wuss_gridview_set_cell_size), the items are walked again to re-measure the
+ * cell, so call this whenever the items change, even if their count does
+ * not. Reflows and redraws.
  *
  * \param[in] gridview Handle.
  * \param[in] count    New item count; at least 0.
@@ -296,9 +323,9 @@ size2d_t wuss_gridview_get_cell_size(const wuss_gridview_t *gridview);
 /**
  * Re-measure the cell after the window's font or palette changed, then
  * reflow and redraw. The items are only walked again if the font or its
- * height differs from the last measure; changes to the items alone are not
- * picked up. Called by \ref wuss_gridview_handle_event on wuss_EVENT_PALETTE
- * and wuss_EVENT_RELAYOUT.
+ * height differs from the last measure; for changes to the items, call \ref
+ * wuss_gridview_set_count. Called by \ref wuss_gridview_handle_event on
+ * wuss_EVENT_PALETTE and wuss_EVENT_RELAYOUT.
  *
  * \param[in] gridview Handle.
  */
@@ -390,6 +417,9 @@ int wuss_gridview_width_for_columns(const wuss_gridview_t *gridview,
 /**
  * Content size that suits opening the window: \p columns wide (or one column
  * per item if fewer), as many rows as the items need up to \p max_rows.
+ * Never narrower than the window's minimum: one cell wide enough for a
+ * ten-character label (or \p label_chars, if fewer), unless the cell size
+ * was fixed by \ref wuss_gridview_set_cell_size.
  *
  * \param[in] gridview Handle.
  * \param[in] columns  Column count; at least 1.

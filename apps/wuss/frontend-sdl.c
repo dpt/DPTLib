@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -497,6 +498,7 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
         event->kind   = wuss_INPUT_MOUSE_DOWN;
         event->pos    = POINT(x, y);
         event->button = sdl_button_to_wuss(ev.button.button);
+        event->mods   = sdl_mods_to_wuss(SDL_GetModState());
       }
       return true;
 
@@ -509,6 +511,7 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
         event->kind   = wuss_INPUT_MOUSE_UP;
         event->pos    = POINT(x, y);
         event->button = sdl_button_to_wuss(ev.button.button);
+        event->mods   = sdl_mods_to_wuss(SDL_GetModState());
       }
       return true;
 
@@ -529,13 +532,18 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
 
     case SDL_EVENT_MOUSE_WHEEL:
       {
-        int x, y;
+        int   x, y;
+        float wheel;
 
         sdl_pos_to_scr(fe->window, fe->scr_width, fe->scr_height,
                        ev.wheel.mouse_x, ev.wheel.mouse_y, &x, &y);
+        wheel = ev.wheel.y;
+#ifdef __EMSCRIPTEN__
+        wheel *= 4; /* browser wheel steps are small; scale before truncating */
+#endif
         event->kind  = wuss_INPUT_WHEEL;
         event->pos   = POINT(x, y);
-        event->wheel = g_tasks.reverse_scroll ? -(int) ev.wheel.y : (int) ev.wheel.y;
+        event->wheel = g_tasks.reverse_scroll ? -(int) wheel : (int) wheel;
       }
       return true;
 
@@ -648,6 +656,11 @@ void wuss_frontend_zoom(wuss_frontend_t *fe, int delta)
   SDL_SetWindowSize(fe->window, fe->scr_width * scale, fe->scr_height * scale);
 }
 
+int wuss_frontend_get_zoom(const wuss_frontend_t *fe)
+{
+  return fe->scale;
+}
+
 bool wuss_frontend_set_crt(wuss_frontend_t *fe, bool on)
 {
   if (on == (fe->crt != NULL))
@@ -728,3 +741,29 @@ void wuss_frontend_close(wuss_frontend_t *fe)
 
 #endif /* USE_SDL */
 #endif /* WUSS_APP */
+
+/* ----------------------------------------------------------------------- */
+
+void wuss_frontend_clipboard_set(wuss_frontend_t *frontend, const char *utf8)
+{
+  NOT_USED(frontend);
+  SDL_SetClipboardText(utf8);
+}
+
+void wuss_frontend_clipboard_pull(wuss_frontend_t *frontend, wuss_t *wuss)
+{
+  char *text;
+
+  NOT_USED(frontend);
+  if (!SDL_HasClipboardText())
+    return;
+
+  text = SDL_GetClipboardText();
+  if (text == NULL)
+    return;
+
+  if (strcmp(text, wuss_clipboard_get(wuss)) != 0)
+    (void) wuss_clipboard_set(wuss, text);
+
+  SDL_free(text);
+}

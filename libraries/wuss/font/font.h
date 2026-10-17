@@ -87,4 +87,18 @@ result_t wuss__text_draw(bmfont_t      *font,
                          const point_t *pos,
                          point_t       *end_pos);
 
+/* Pixel width of the whole NUL-terminated "text" in "font"; 0 if either is
+ * NULL or the measure fails. The one way to size a string that is not being
+ * split or truncated. */
+bmfont_width_t wuss__text_width(bmfont_t *font, const char *text);
+
+/* wuss__text_draw for the whole NUL-terminated "text". */
+result_t wuss__text_draw_str(bmfont_t      *font,
+                             screen_t      *scr,
+                             const char    *text,
+                             colour_t       fg,
+                             colour_t       bg,
+                             const point_t *pos,
+                             point_t       *end_pos);
+
 #endif /* WUSS_FONT_H */

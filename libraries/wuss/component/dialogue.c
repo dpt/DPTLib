@@ -15,7 +15,7 @@
 
 #include "wuss/component/dialogue.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
 
 /* ----------------------------------------------------------------------- */
 

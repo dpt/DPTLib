@@ -7,7 +7,9 @@
 #include "geom/box.h"
 #include "framebuf/screen.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/invalidate.h"
+#include "../core/palette.h"
 #include "../font/font.h"
 
 #ifdef WUSS_ICONBAR
@@ -35,30 +37,59 @@ static int iconbar_icon_width(const wuss_t              *wuss,
 
   if (icon->spec.text[0] != '\0' && wuss->fonts.fonts[0] != NULL)
   {
-    wuss__text_measure(wuss->fonts.fonts[0], icon->spec.text,
-                       (int) strlen(icon->spec.text), INT_MAX, NULL, &width);
+    width = wuss__text_width(wuss->fonts.fonts[0], icon->spec.text);
     w = MAX(w, (int) width);
   }
 
   return (w > 0) ? w : WUSS_ICONBAR_ICON;
 }
 
+/* Total packed width of the left-side and right-side icons, gaps included. */
+static void iconbar_extent(const wuss_t *wuss, int *leftw, int *rightw)
+{
+  int i, w;
+
+  *leftw  = WUSS_ICONBAR_GAP;
+  *rightw = WUSS_ICONBAR_GAP;
+
+  for (i = 0; i < wuss->iconbar.n; i++)
+  {
+    w = iconbar_icon_width(wuss, wuss->iconbar.icons[i]) + WUSS_ICONBAR_GAP;
+    if (wuss->iconbar.icons[i]->spec.side == wuss_ICONBAR_RIGHT)
+      *rightw += w;
+    else
+      *leftw += w;
+  }
+}
+
 void wuss__iconbar_slot_box(const wuss_t *wuss, int index, box_t *out)
 {
   box_t                      bar;
   const wuss_iconbar_icon_t *icon;
-  int                        i, w, edge;
+  int                        i, w, edge, leftw, rightw, origin, right_edge;
 
   wuss__iconbar_box(wuss, &bar);
 
   icon = wuss->iconbar.icons[index];
   w    = iconbar_icon_width(wuss, icon);
 
+  /* when everything fits, each side packs from its own edge; when not, the
+   * icons form one strip (left icons then right icons) scrolled by
+   * iconbar.scroll */
+  iconbar_extent(wuss, &leftw, &rightw);
+  origin     = bar.x0;
+  right_edge = bar.x1;
+  if (leftw + rightw > bar.x1 - bar.x0)
+  {
+    origin     = bar.x0 - wuss->iconbar.scroll;
+    right_edge = origin + leftw + rightw;
+  }
+
   /* icons of one side pack from that side's edge in creation order, with
    * WUSS_ICONBAR_GAP of bar between neighbours and at the edge */
   if (icon->spec.side == wuss_ICONBAR_RIGHT)
   {
-    edge = bar.x1 - WUSS_ICONBAR_GAP;
+    edge = right_edge - WUSS_ICONBAR_GAP;
     for (i = 0; i < index; i++)
     {
       if (wuss->iconbar.icons[i]->spec.side == wuss_ICONBAR_RIGHT)
@@ -70,7 +101,7 @@ void wuss__iconbar_slot_box(const wuss_t *wuss, int index, box_t *out)
   }
   else
   {
-    edge = bar.x0 + WUSS_ICONBAR_GAP;
+    edge = origin + WUSS_ICONBAR_GAP;
     for (i = 0; i < index; i++)
     {
       if (wuss->iconbar.icons[i]->spec.side != wuss_ICONBAR_RIGHT)
@@ -83,6 +114,40 @@ void wuss__iconbar_slot_box(const wuss_t *wuss, int index, box_t *out)
 
   out->y0 = bar.y0;
   out->y1 = bar.y1;
+}
+
+void wuss__iconbar_scroll_tick(wuss_t *wuss)
+{
+  box_t bar;
+  int   leftw, rightw, max, old, zone;
+
+  if (wuss->iconbar.window == NULL || wuss->capture != NULL)
+    return;
+
+  wuss__iconbar_box(wuss, &bar);
+  iconbar_extent(wuss, &leftw, &rightw);
+  max = leftw + rightw - (bar.x1 - bar.x0);
+  old = wuss->iconbar.scroll;
+
+  if (max <= 0)
+  {
+    wuss->iconbar.scroll = 0;
+  }
+  else
+  {
+    if (box_contains_point(&bar, wuss->pointer.x, wuss->pointer.y))
+    {
+      zone = WUSS_ICONBAR_SCROLL_ZONE;
+      if (wuss->pointer.x < bar.x0 + zone)
+        wuss->iconbar.scroll -= WUSS_ICONBAR_SCROLL_STEP;
+      else if (wuss->pointer.x >= bar.x1 - zone)
+        wuss->iconbar.scroll += WUSS_ICONBAR_SCROLL_STEP;
+    }
+    wuss->iconbar.scroll = CLAMP(wuss->iconbar.scroll, 0, max);
+  }
+
+  if (wuss->iconbar.scroll != old)
+    wuss__invalidate_clipped(wuss->iconbar.window, &bar);
 }
 
 void wuss__iconbar_icon_box(const wuss_t *wuss, int index, box_t *out)
@@ -146,18 +211,16 @@ static void iconbar_draw_icon(wuss_t                    *wuss,
   {
     bmfont_t      *font;
     bmfont_width_t width;
-    int            len, ascent;
+    int            ascent;
     point_t        pos;
 
-    font = wuss->fonts.fonts[0];
-    len  = (int) strlen(icon->spec.text);
-    wuss__text_measure(font, icon->spec.text, len, INT_MAX, NULL, &width);
+    font  = wuss->fonts.fonts[0];
+    width = wuss__text_width(font, icon->spec.text);
     bmfont_get_info(font, NULL, NULL, &ascent, NULL);
 
     pos.x = icon_box->x0 + ((icon_box->x1 - icon_box->x0) - (int) width) / 2;
     pos.y = icon_box->y1 + WUSS_ICONBAR_TEXT_PAD + ascent;
-    wuss__text_draw(font, wuss->scr, icon->spec.text, len, ink, bg, &pos,
-                    NULL);
+    wuss__text_draw_str(font, wuss->scr, icon->spec.text, ink, bg, &pos, NULL);
   }
 }
 

@@ -12,7 +12,6 @@
 
 void wuss_task_destroy(wuss_task_t *doomed)
 {
-  wuss_event_t event;
   wuss_t      *wuss;
   list_t      *e;
   wuss_task_t *child;
@@ -32,16 +31,13 @@ void wuss_task_destroy(wuss_task_t *doomed)
    * fire QUIT and free the node from under us. */
   doomed->flags |= wuss_TASK__REAPING;
 
-#ifdef WUSS_MENUS
   /* If this task opened the live menu chain, tear it down now: leaving it
    * open would leave its owner (and any pending pick flash's owner) pointing
-   * at `doomed` after it is freed below. wuss__menu_abandon also delivers
+   * at `doomed` after it is freed below. The abandon also delivers
    * wuss_EVENT_MENU_CLOSED to `doomed`, so a wuss_menu_handle_t it still
    * holds is nulled before the QUIT below -- otherwise a QUIT handler that
    * calls wuss_menu_close on that stale handle double-frees the chain. */
-  if (wuss->menu.chain != NULL && wuss->menu.chain->owner == doomed)
-    wuss__menu_abandon(wuss);
-#endif
+  wuss__menu_task_closing(wuss, doomed);
 
   /* Children first, so each sees its own QUIT before the parent's. Each
    * destroy unlinks the child (and any autoclose sibling it brings down), so
@@ -61,8 +57,7 @@ void wuss_task_destroy(wuss_task_t *doomed)
   while (child != NULL);
 
   /* One QUIT while every window is still alive. */
-  event.kind = wuss_EVENT_QUIT;
-  (void) wuss__deliver(doomed, NULL, &event);
+  (void) wuss__deliver_kind(doomed, NULL, wuss_EVENT_QUIT);
 
   /* Drop anything this task sent before the close loop below bounces
    * messages addressed to its windows, so none bounce back to it. */

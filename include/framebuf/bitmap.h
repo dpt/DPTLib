@@ -213,4 +213,49 @@ result_t bitmap_compress(bitmap_t *bm);
  */
 result_t bitmap_decompress(bitmap_t *bm);
 
+/** Resampling filter for \ref bitmap_resize. */
+typedef enum bitmap_resample
+{
+  bitmap_resample_NEAREST,  /**< Nearest neighbour: blocky. */
+  bitmap_resample_BILINEAR, /**< Bilinear: smooth. */
+  bitmap_resample_BOX,      /**< Area average: best for shrinking. */
+  bitmap_resample_CUBIC,    /**< Catmull-Rom: sharp. */
+  bitmap_resample__LIMIT
+}
+bitmap_resample_t;
+
+/**
+ * Resample a 32bpp bitmap to a new size, allocating a new bitmap for the
+ * result. Any 32bpp format works; alpha is interpolated without
+ * premultiplying.
+ *
+ * With `linear` set, bilinear blending of the colour lanes is done in linear
+ * light, taking the pixels as sRGB, which avoids darkened edges when
+ * shrinking. Alpha and padding lanes are always blended as stored. Nearest
+ * neighbour ignores `linear`.
+ *
+ * \ref bitmap_resample_BOX averages every source pixel under each result
+ * pixel, so it does not alias on large reductions. It behaves as bilinear
+ * unless the result is narrower or shorter than `bm`.
+ *
+ * \ref bitmap_resample_CUBIC is Catmull-Rom bicubic: sharper than bilinear
+ * both ways, at the cost of slight ringing at hard edges (clamped to range).
+ *
+ * Free the result with `free(out->base)` then `free(out)`.
+ *
+ * \param[in]  bm     Bitmap to resample.
+ * \param[in]  size   Width and height of the result, both above zero.
+ * \param[in]  method Resampling filter.
+ * \param[in]  linear Non-zero to blend in linear light.
+ * \param[out] out    Resampled bitmap.
+ * \return \ref result_OK on success, \ref result_BAD_ARG for an empty size,
+ *         \ref result_NOT_SUPPORTED for a non-32bpp or compressed source,
+ *         \ref result_OOM on allocation failure.
+ */
+result_t bitmap_resize(const bitmap_t   *bm,
+                       size2d_t          size,
+                       bitmap_resample_t method,
+                       int               linear,
+                       bitmap_t        **out);
+
 #endif /* FRAMEBUF_BITMAP_H */

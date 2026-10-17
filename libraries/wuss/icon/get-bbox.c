@@ -1,6 +1,6 @@
 /* wuss/icon/get-bbox.c -- read a work-area icon's bounding box */
 
-#include "../core/impl.h"
+#include "../core/types.h"
 
 void wuss_icon_get_bbox(const wuss_icon_t *icon, box_t *bbox)
 {

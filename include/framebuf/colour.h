@@ -4,6 +4,7 @@
 #define FRAMEBUF_COLOUR_H
 
 #include "framebuf/pixelfmt.h"
+#include "utils/rng.h"
 
 typedef struct colour colour_t;
 
@@ -21,6 +22,25 @@ struct colour
  * \return Colour.
  */
 colour_t colour_rgb(unsigned int r, unsigned int g, unsigned int b);
+
+/**
+ * Create an opaque colour with each channel picked at random.
+ *
+ * \param[in,out] rng Generator state.
+ * \return Colour.
+ */
+colour_t colour_random(rng_t *rng);
+
+/**
+ * Create an opaque random colour that stands out from `against`: its luma
+ * differs by at least 96 of 255. Falls back to black or white if a few tries
+ * find nothing.
+ *
+ * \param[in,out] rng Generator state.
+ * \param[in] against Colour to contrast with.
+ * \return Colour.
+ */
+colour_t colour_random_contrast(rng_t *rng, colour_t against);
 
 /**
  * Create a colour from RGBA components.
@@ -70,5 +90,19 @@ void colour_get_rgb(const colour_t *c,
                     unsigned int   *r,
                     unsigned int   *g,
                     unsigned int   *b);
+
+/**
+ * Blend two colours, per component and opaque.
+ *
+ * \param[in] a   Colour returned when num is 0.
+ * \param[in] b   Colour returned when num equals den.
+ * \param[in] num Numerator of the blend fraction, at most den.
+ * \param[in] den Denominator of the blend fraction, non-zero.
+ * \return Colour num/den of the way from a to b.
+ */
+colour_t colour_mix(colour_t     a,
+                    colour_t     b,
+                    unsigned int num,
+                    unsigned int den);
 
 #endif /* FRAMEBUF_COLOUR_H */

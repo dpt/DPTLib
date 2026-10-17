@@ -94,7 +94,8 @@ result_t wuss_window_create(wuss_task_t        *task,
  * free screen region, packed towards the top-left, avoiding every shown
  * window at its current position so successive auto-placed windows tile
  * rather than stack. When no region is large enough the window is centred on
- * the screen (or pinned at the top-left if larger than the screen).
+ * the screen (or pinned at the top-left if larger than the screen). See
+ * wuss_window_create_at for other placements.
  *
  * \param[in]  task    Owning task, as wuss_window_create.
  * \param[in]  size    Requested content-area size. Width and height must
@@ -118,6 +119,94 @@ result_t wuss_window_create_placed(wuss_task_t        *task,
                                    size2d_t            doc,
                                    size2d_t            min_doc,
                                    wuss_window_t     **window);
+
+/**
+ * Where an anchored window goes on the screen: one horizontal value OR'd
+ * with one vertical value, e.g. wuss_ALIGN_TOP | wuss_ALIGN_RIGHT. Both axes
+ * default to the centre, so 0 is centred on the screen.
+ */
+typedef enum wuss_align
+{
+  wuss_ALIGN_CENTRE = 0,      /**< Centred on both axes. */
+  wuss_ALIGN_LEFT   = 1 << 0, /**< Against the left edge. */
+  wuss_ALIGN_RIGHT  = 1 << 1, /**< Against the right edge. */
+  wuss_ALIGN_TOP    = 1 << 2, /**< Against the top edge. */
+  wuss_ALIGN_BOTTOM = 1 << 3  /**< Against the bottom edge. */
+}
+wuss_align_t;
+
+/** Placement options for wuss_place_t, OR'd together. */
+typedef enum wuss_place_flags
+{
+  /**
+   * Try the first free screen region first, as wuss_window_create_placed;
+   * the anchor or relative position is then only the fallback for when no
+   * region is large enough. The search starts from the screen corner that
+   * align names (wuss_ALIGN_RIGHT and/or wuss_ALIGN_BOTTOM), else the
+   * top-left, so the window opens nearest that corner.
+   */
+  wuss_PLACE_SPARE         = 1 << 0,
+
+  /**
+   * Keep the window clear of the icon bar: the bar's strip is removed from
+   * the screen area used for placement. No effect without an icon bar.
+   */
+  wuss_PLACE_AVOID_ICONBAR = 1 << 1
+}
+wuss_place_flags_t;
+
+/**
+ * Where to open a window. The footprint (furniture included) is positioned
+ * at its base position plus offset, then clamped to fit the placement area
+ * (the screen, less the icon bar with wuss_PLACE_AVOID_ICONBAR), favouring
+ * the top-left when it is larger than the area.
+ *
+ * The base position is the top-left of relative_to's footprint when
+ * relative_to is non-NULL; otherwise it is the area aligned to by align,
+ * inset from any edge it is against by the auto-placement gutter. A
+ * zero-initialised wuss_place_t centres the window on the screen.
+ */
+typedef struct wuss_place
+{
+  wuss_place_flags_t   flags;       /**< Placement options. */
+  wuss_align_t         align;       /**< Anchor if relative_to is NULL. */
+  const wuss_window_t *relative_to; /**< Place relative to, or NULL. */
+  point_t              offset;      /**< Added to the base position. */
+}
+wuss_place_t;
+
+/**
+ * Create a window at a position described by \p place.
+ *
+ * As wuss_window_create_placed, but with the position chosen by \p place: in
+ * a free region, at one of nine screen anchors, or relative to another
+ * window. wuss_window_create_placed is this with place's flags set to
+ * wuss_PLACE_SPARE and everything else zero.
+ *
+ * \param[in]  task    Owning task, as wuss_window_create.
+ * \param[in]  place   Where to put the window; copied.
+ * \param[in]  size    Requested content-area size. Width and height must
+ *                     both be positive.
+ * \param[in]  title   Titlebar label, as wuss_window_create.
+ * \param[in]  flags   Appearance flags, as wuss_window_create.
+ * \param[in]  bg      Content background, as wuss_window_create.
+ * \param[in]  doc     Virtual document extent, as wuss_window_create.
+ * \param[in]  min_doc Minimum content size, as wuss_window_create.
+ * \param[out] window  Newly created window, as wuss_window_create.
+ * \return \ref result_OK on success, \ref result_WUSS_TOO_SMALL if size's
+ *         width or height is not positive, \ref result_OOM if the layout
+ *         tracker could not be created, or another result code from
+ *         wuss_window_create.
+ */
+result_t wuss_window_create_at(wuss_task_t        *task,
+                               const wuss_place_t *place,
+                               size2d_t            size,
+                               const char         *title,
+                               wuss_window_flags_t flags,
+                               wuss_backdrop_t     bg,
+                               size2d_t            doc,
+                               size2d_t            min_doc,
+                               wuss_window_t     **window);
 
 /**
  * Destroy a window. The forced, unvetoable teardown: fires no
@@ -145,6 +234,23 @@ void wuss_window_close(wuss_window_t *doomed);
  *         non-OK result the task returned from wuss_EVENT_PRE_CLOSE.
  */
 result_t wuss_window_try_close(wuss_window_t *window);
+
+/**
+ * Toggle a window between its normal and its full size, as a click on its
+ * toggle-size icon does.
+ *
+ * \param[in] window Window to toggle. NULL, or a window created without
+ *                   wuss_WINDOW_TOGGLE_SIZE, is a no-op.
+ */
+void wuss_window_toggle_size(wuss_window_t *window);
+
+/**
+ * Fetch the task that owns a window.
+ *
+ * \param[in] window Window to query.
+ * \return The owning task. Never NULL.
+ */
+wuss_task_t *wuss_window_get_task(const wuss_window_t *window);
 
 /**
  * Move a window, preserving its size.

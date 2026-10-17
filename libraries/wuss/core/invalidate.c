@@ -43,6 +43,19 @@ void wuss__touch(wuss_t *wuss, const box_t *box)
   mark_region(wuss->touched.box, &wuss->touched.n, WUSS_MAX_DIRTY, "touched", box);
 }
 
+void wuss__screen_box(const wuss_t *wuss, box_t *out)
+{
+  *out = (box_t) BOX_POS_SIZE(0, 0, wuss->scr->size.w, wuss->scr->size.h);
+}
+
+void wuss__invalidate_screen(wuss_t *wuss)
+{
+  box_t screen;
+
+  wuss__screen_box(wuss, &screen);
+  wuss_invalidate(wuss, &screen);
+}
+
 int wuss_get_dirty_count(const wuss_t *wuss)
 {
   assert(wuss != NULL);

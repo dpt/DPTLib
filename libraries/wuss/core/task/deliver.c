@@ -31,6 +31,7 @@ static int wuss__kind_ok_for(wuss_event_kind_t kind, int have_window)
   case wuss_EVENT_KEY_UP:
   case wuss_EVENT_DRAG_END:
   case wuss_EVENT_RELAYOUT:
+  case wuss_EVENT_CLOSE_ADJUST:
     return have_window;
 
   case wuss_EVENT_IDLE:

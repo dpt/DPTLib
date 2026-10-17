@@ -20,7 +20,6 @@ result_t wuss__capture_deliver(wuss_t             *wuss,
                                wuss_mouse_action_t action)
 {
   wuss_window_t *win;
-  box_t          content;
   wuss_event_t   event;
 
   win = wuss->capture;
@@ -28,12 +27,9 @@ result_t wuss__capture_deliver(wuss_t             *wuss,
   if (action == wuss_MOUSE_UP)
     wuss->capture = NULL;
 
-  wuss__content_box(win, &content);
-
   event.kind              = wuss_EVENT_MOUSE;
   event.data.mouse.action = action;
-  event.data.mouse.point  = POINT(p.x - content.x0 + win->scroll.x,
-                                  p.y - content.y0 + win->scroll.y);
+  event.data.mouse.point  = wuss__screen_to_doc(win, p);
   event.data.mouse.button = button;
   return wuss__deliver(win->task, win, &event);
 }

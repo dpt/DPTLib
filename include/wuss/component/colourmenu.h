@@ -21,7 +21,7 @@
  * wired into their tree with a different title/None setting at the same time
  * -- retitle/reconfigure it and hand back wuss_colourmenu_menu() from a
  * wuss_EVENT_PRE_SUBMENU_OPEN handler instead, the way a single shared fg/bg
- * colourmenu already had to (see wuss/test/tasks/saturn.c).
+ * colourmenu already had to (see wuss/tasks/saturn.c).
  *
  * A task opens the menu with wuss_menu_open and, in its
  * wuss_EVENT_MENU_SELECT case, calls wuss_colourmenu_selected to turn the
@@ -152,6 +152,90 @@ result_t wuss_colourmenu_open_rgb(const wuss_t       *wuss,
  *         the colourmenu's or picked the "None" row.
  */
 int wuss_colourmenu_selected_rgb(const wuss_event_t *ev, colour_t *colour);
+
+/* ----------------------------------------------------------------------- */
+
+/** Most rows a wuss_colourlist_t can hold. */
+#define WUSS_COLOURLIST_MAX 8
+
+/**
+ * A "Colours" submenu of N rows, each naming one of the task's colour
+ * fields, all answered by the shared colourmenu singleton retitled and
+ * retargeted per hover -- the pattern the demo tasks all want. Embed one in
+ * the task block, call wuss_colourlist_init (or wuss_colourlist_init_pair
+ * for Foreground/Background), add a row to the task's own menu naming \c
+ * menu as its submenu, and route two events through the functions below.
+ */
+typedef struct wuss_colourlist
+{
+  wuss_menu_item_t items[WUSS_COLOURLIST_MAX];
+  wuss_menu_t      menu;   /* titled "Colours"; the task's row names it */
+  const char      *names[WUSS_COLOURLIST_MAX]; /* borrowed row labels */
+  colour_t        *fields[WUSS_COLOURLIST_MAX]; /* borrowed from the task */
+  colour_t        *target; /* the field the open colourmenu picks; NULL
+                            * until a row has been hovered */
+}
+wuss_colourlist_t;
+
+/**
+ * Set up \p list over \p n of the task's colour fields.
+ *
+ * \param[out] list   Filled in; must stay at a fixed address while in use.
+ * \param[in]  wuss   Owner, as for wuss_colourmenu_menu.
+ * \param[in]  n      Number of rows, 1 to WUSS_COLOURLIST_MAX.
+ * \param[in]  fields The colour fields, one per row, copied (the colour_t
+ *                    they point at is borrowed).
+ * \param[in]  names  The row labels, borrowed and used again as the
+ *                    colourmenu's titles, so they must outlive \p list; NULL
+ *                    for "Foreground" and "Background" (n must then be at
+ *                    most 2).
+ * \return \ref result_OK or \ref result_BAD_ARG.
+ */
+result_t wuss_colourlist_init(wuss_colourlist_t *list,
+                              const wuss_t      *wuss,
+                              int                n,
+                              colour_t *const    fields[],
+                              const char *const  names[]);
+
+/**
+ * As wuss_colourlist_init for the common Foreground/Background pair.
+ *
+ * \param[out] list Filled in, as for wuss_colourlist_init.
+ * \param[in]  wuss Owner, as for wuss_colourmenu_menu.
+ * \param[in]  fg   The foreground colour field, borrowed.
+ * \param[in]  bg   The background colour field, borrowed.
+ */
+void wuss_colourlist_init_pair(wuss_colourlist_t *list,
+                               const wuss_t      *wuss,
+                               colour_t          *fg,
+                               colour_t          *bg);
+
+/**
+ * Answer a wuss_EVENT_PRE_SUBMENU_OPEN if it is for one of \p list's rows:
+ * retarget the list and open the colourmenu as that row's submenu.
+ *
+ * \param[in]  list Initialised list.
+ * \param[in]  wuss Owner, as for wuss_colourmenu_menu.
+ * \param[in]  ev   The PRE_SUBMENU_OPEN event.
+ * \param[out] rc   Set to the open's result when the event was the list's.
+ * \return Non-zero if the event was the list's and has been answered; zero
+ *         if the caller should handle it (any other submenu of the task).
+ */
+int wuss_colourlist_pre_open(wuss_colourlist_t  *list,
+                             const wuss_t       *wuss,
+                             const wuss_event_t *ev,
+                             result_t           *rc);
+
+/**
+ * Apply a wuss_EVENT_MENU_SELECT to whichever field \p list last targeted.
+ *
+ * \param[in] list Initialised list.
+ * \param[in] ev   The MENU_SELECT event.
+ * \return Non-zero if a colour changed, so the task can redraw or rebuild
+ *         from it; zero if the event was not a colour pick.
+ */
+int wuss_colourlist_selected(wuss_colourlist_t  *list,
+                             const wuss_event_t *ev);
 
 #ifdef __cplusplus
 }

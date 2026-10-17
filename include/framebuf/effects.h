@@ -95,6 +95,25 @@ result_t effects_blend(const bitmap_t *a,
                        int             alpha);
 
 /**
+ * Blend two bitmaps, extrapolating beyond either end.
+ *
+ * As \ref effects_blend, but `alpha` may lie outside 0 to 256. A negative
+ * `alpha` pushes the result away from `b`, past `a`; above 256 it pushes
+ * past `b`. Each destination byte is clamped to 0 to 255.
+ *
+ * \param[in]  a     First bitmap.
+ * \param[in]  b     Second bitmap.
+ * \param[out] dst   Destination bitmap.
+ * \param[in]  alpha Weight of `b`, clamped to -256 to 512.
+ * \return \ref result_OK on success, \ref result_BAD_ARG for unsuitable
+ *         bitmaps.
+ */
+result_t effects_blend_extrapolate(const bitmap_t *a,
+                                   const bitmap_t *b,
+                                   bitmap_t       *dst,
+                                   int             alpha);
+
+/**
  * Fill the colour channels with a single colour, keeping each pixel's alpha.
  *
  * \param[in]  src    Source bitmap, supplies the alpha bytes.

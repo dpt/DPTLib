@@ -7,7 +7,9 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/alloc.h"
+#include "../core/dispatch.h"
 
 void wuss_icon_delete(wuss_window_t *window, wuss_icon_t *icon)
 {

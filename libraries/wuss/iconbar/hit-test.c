@@ -3,7 +3,8 @@
 #include "geom/box.h"
 #include "geom/point.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/dispatch.h"
 
 #ifdef WUSS_ICONBAR
 
@@ -46,21 +47,16 @@ int wuss__iconbar_icon_click(wuss_t             *wuss,
     icon = wuss->iconbar.pressed;
 
     wuss->iconbar.pressed = NULL;
-
-    event.kind                     = wuss_EVENT_ICON;
-    event.data.iconbar_icon.icon   = icon;
-    event.data.iconbar_icon.action = action;
-    event.data.iconbar_icon.button = button;
-    (void) wuss__deliver(icon->owner, NULL, &event);
-    return 1;
   }
+  else
+  {
+    icon = wuss__iconbar_hit_test(wuss, p);
+    if (icon == NULL)
+      return 0; /* over empty slot space */
 
-  icon = wuss__iconbar_hit_test(wuss, p);
-  if (icon == NULL)
-    return 0; /* over empty slot space */
-
-  if (action == wuss_MOUSE_DOWN)
-    wuss->iconbar.pressed = icon;
+    if (action == wuss_MOUSE_DOWN)
+      wuss->iconbar.pressed = icon;
+  }
 
   event.kind                     = wuss_EVENT_ICON;
   event.data.iconbar_icon.icon   = icon;

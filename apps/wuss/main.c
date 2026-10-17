@@ -40,9 +40,12 @@
 #include "taskmanager.h"
 #include "tasks.h"
 
+#include "tasks/configuring.h"
+#include "tasks/display.h"
+#include "tasks/reading.h"
 #include "tasks/palette.h" /* palette_load_hex for the startup *.hex */
 #ifdef WUSS_ICONBAR
-#include "tasks/filer.h" /* filer_set_root for -root */
+#include "tasks/filing.h" /* filing_set_root for -root */
 #endif
 
 /* ----------------------------------------------------------------------- */
@@ -62,7 +65,7 @@ static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
   memset(config, 0, sizeof(*config));
 
   config->titlebar_height = 0;
-  config->backdrop.pattern = screen_PATTERN_DOTS;
+  config->backdrop.fill.pattern = screen_PATTERN_DOTS;
 
   if (use_wimp16)
   {
@@ -85,8 +88,8 @@ static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
     config->button.fg                 = palette_WIMP16_BLACK;
     config->button.pressed            = palette_WIMP16_GREY_62;
     config->accent.colour             = palette_WIMP16_ORANGE;
-    config->backdrop.colour           = palette_WIMP16_GREY_37;
-    config->backdrop.pattern_bg       = palette_WIMP16_GREY_50;
+    config->backdrop.fill.colour           = palette_WIMP16_GREY_37;
+    config->backdrop.fill.pattern_bg       = palette_WIMP16_GREY_50;
     config->body.window               = palette_WIMP16_GREY_87;
     config->body.menu                 = palette_WIMP16_WHITE;
     config->slider.track              = palette_WIMP16_WHITE;
@@ -114,8 +117,8 @@ static void fill_chrome_config(wuss_config_t *config, int use_wimp16)
     config->button.fg                 = palette_PICO8_BLACK;
     config->button.pressed            = palette_PICO8_LAVENDER;
     config->accent.colour             = palette_PICO8_ORANGE;
-    config->backdrop.colour           = palette_PICO8_LAVENDER;
-    config->backdrop.pattern_bg       = palette_PICO8_LIGHT_GREY;
+    config->backdrop.fill.colour           = palette_PICO8_LAVENDER;
+    config->backdrop.fill.pattern_bg       = palette_PICO8_LIGHT_GREY;
     config->body.window               = palette_PICO8_LIGHT_GREY;
     config->body.menu                 = palette_PICO8_WHITE;
     config->slider.track              = palette_PICO8_WHITE;
@@ -150,7 +153,7 @@ static void pixel_stress(wuss_t *wuss, int scr_width, int scr_height)
 
 /* ----------------------------------------------------------------------- */
 
-/* The optional software pointer (--pointer, System > Software Pointer): an
+/* The optional software pointer (--pointer, Display > Software pointer): an
  * arrow drawn into the framebuffer itself, so it scales with the window zoom
  * and goes through the CRT shader like everything else. wuss never learns of
  * it: each frame puts back the pixels under it before wuss can draw (a window
@@ -267,6 +270,30 @@ struct wuss_frame_ctx
 /* file scope so app_set_mode (called from the Display task, long after
  * run_wuss's own locals are gone) can update pixels/rowbytes/scr_width/
  * scr_height on the very instance the main loop below is reading */
+#ifndef __EMSCRIPTEN__
+/* Save the framebuffer as wuss-N.png in the current directory, N being the
+ * first number not already taken. */
+static void save_screenshot(void)
+{
+  char  name[32];
+  FILE *f;
+  int   n;
+
+  for (n = 1; n < 10000; n++)
+  {
+    snprintf(name, sizeof(name), "wuss-%d.png", n);
+    f = fopen(name, "rb");
+    if (f == NULL)
+      break;
+
+    fclose(f);
+  }
+
+  if (script_save_png(&g_bm, name) != result_OK)
+    logf_error("screenshot save failed: %s", name);
+}
+#endif
+
 static struct wuss_frame_ctx g_frame_ctx;
 
 /* --script given: script_poll feeds input ahead of the frontend's own */
@@ -362,10 +389,12 @@ static void wuss_frame(void *arg)
       break;
 
     case wuss_INPUT_MOUSE_DOWN:
+      wuss_set_modifiers(c->wuss, ev.mods);
       wuss_mouse_click(c->wuss, ev.pos, ev.button, wuss_MOUSE_DOWN, NULL);
       break;
 
     case wuss_INPUT_MOUSE_UP:
+      wuss_set_modifiers(c->wuss, ev.mods);
       wuss_mouse_click(c->wuss, ev.pos, ev.button, wuss_MOUSE_UP, NULL);
       break;
 
@@ -375,10 +404,35 @@ static void wuss_frame(void *arg)
 
     case wuss_INPUT_KEY:
       {
-        int claimed;
+        int          claimed;
+        unsigned int gen;
 
-        /* the focused window first, then the launcher menu's shortcuts */
+        /* system chords, then the focused window, then the launcher menu's
+         * shortcuts */
+        if (tasks_system_key(ev.key, ev.mods))
+          break;
+
+#ifndef __EMSCRIPTEN__
+        /* Ctrl-Shift-3: save the screen as wuss-N.png */
+        if ((ev.mods & wuss_KEY_MOD_CTRL) && (ev.mods & wuss_KEY_MOD_SHIFT) &&
+            (ev.key == '3' || ev.key == '#'))
+        {
+          save_screenshot();
+          break;
+        }
+#endif
+
+        /* paste reads the host clipboard; copy/cut publish to it */
+        if ((ev.mods & wuss_KEY_MOD_CTRL) && (ev.key == 'v' || ev.key == 'V'))
+          wuss_frontend_clipboard_pull(c->frontend, c->wuss);
+        else if (ev.key == wuss_KEY_INSERT)
+          wuss_frontend_clipboard_pull(c->frontend, c->wuss);
+
+        gen = wuss_clipboard_generation(c->wuss);
         wuss_key(c->wuss, ev.key, ev.mods, &claimed);
+        if (wuss_clipboard_generation(c->wuss) != gen)
+          wuss_frontend_clipboard_set(c->frontend, wuss_clipboard_get(c->wuss));
+
         if (!claimed)
           (void) tasks_launcher_key(ev.key, ev.mods);
       }
@@ -691,8 +745,8 @@ static result_t run_wuss(const char *resources,
   g_tasks.frontend       = frontend;
   g_tasks.bm             = &g_bm;
 
-  /* --crt: the frontend opens plain; switch over now so the Debug menu's
-   * tick agrees */
+  /* --crt: the frontend opens plain; switch over now so the Display
+   * window's option agrees */
   if (g_tasks.crt)
     tasks_set_crt(true);
 
@@ -716,6 +770,10 @@ static result_t run_wuss(const char *resources,
   g_tasks.quit = false;
 
 #ifdef WUSS_ICONBAR
+  /* Filing's icon goes on the bar ahead of AppsFiler's; installing it is
+   * idempotent so the -tasks list below does not add a second */
+  tasks_spawn("Filing");
+
   rc = appsfiler_create(wuss);
   if (rc != result_OK)
     logf_error("wuss: appsfiler_create -> rc=0x%X (%s)", rc,
@@ -728,6 +786,14 @@ static result_t run_wuss(const char *resources,
 #endif
 
   tasks_spawn(tasks);
+
+#ifdef __EMSCRIPTEN__
+  (void) configuring_open(wuss);
+  (void) display_open(wuss);
+  /* show the About text on load */
+  (void) reading_open_file(wuss, pathf("%s/resources/text/About_Wuss.md",
+                                       wuss_get_resources(wuss)));
+#endif
 
   wuss_redraw(wuss);
   wuss_frontend_present(frontend, &g_bm, NULL);
@@ -792,10 +858,13 @@ result_t app_set_mode(size2d_t size, int depth)
   colour_t        scr_palette[256];
   int             scr_nentries;
 
-  rc = wuss_frontend_resize(g_tasks.frontend, size.w, size.h, depth,
+  rc = wuss_frontend_resize(g_tasks.frontend, size.w, size.h,
+                            (depth == app_DEPTH_GREY256) ? 8 : depth,
                             &pixels, &rowbytes, &fmt);
   if (rc != result_OK)
     return rc;
+
+  g_tasks.grey = (depth == app_DEPTH_GREY256);
 
   /* drop the old palette buffer: it's sized for the old format, and
    * bitmap_init would otherwise copy out of it (overrunning if the new
@@ -833,6 +902,7 @@ int app_get_depth(void)
   {
   case pixelfmt_rgbx5551: return 15;
   case pixelfmt_rgb565:   return 16;
+  case pixelfmt_p8:       return g_tasks.grey ? app_DEPTH_GREY256 : 8;
   default:                return 1 << pixelfmt_log2bpp(g_bm.format);
   }
 }
@@ -852,11 +922,12 @@ typedef struct wuss_options
   int         res_height;
   const char *tasks;        /* -t/--tasks: comma-separated launcher task
                              * names to auto-open at startup, or "all";
-                             * default "Filer" ("Filer,Configure,Reading"
-                             * under Emscripten); giving -t replaces it */
-  const char *root;         /* --root: directory Filer's icon bar icon and
+                             * default "Filing,Display"
+                             * ("Filing,Configure,Reading" under
+                             * Emscripten); giving -t replaces it */
+  const char *root;         /* --root: directory Filing's icon bar icon and
                              * System menu row open; default "." (or "/"
-                             * under Emscripten, see filer_set_root) */
+                             * under Emscripten, see filing_set_root) */
   const char *script;       /* --script: input script to run; see script.h */
 }
 wuss_options_t;
@@ -1011,18 +1082,18 @@ int main(int argc, char *argv[])
   opts.res_width    = 640;
   opts.res_height   = 480;
 #ifdef __EMSCRIPTEN__
-  opts.tasks        = "Filer,Configure,Reading"; /* browser has no command line */
+  opts.tasks        = "Filing,Configuring,Display,Reading"; /* browser has no command line */
 #else
-  opts.tasks        = "Filer";
+  opts.tasks        = "Filing,Display";
 #endif
-  opts.root       = NULL; /* NULL: leave filer_set_root's own default */
+  opts.root       = NULL; /* NULL: leave filing_set_root's own default */
   opts.script       = NULL;
 
   if (!parse_args(argc, argv, &opts))
     return EXIT_FAILURE;
 
 #ifdef WUSS_ICONBAR
-  filer_set_root(opts.root);
+  filing_set_root(opts.root);
 #endif
 
   if (opts.script != NULL)

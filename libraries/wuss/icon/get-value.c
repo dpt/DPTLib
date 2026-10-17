@@ -2,7 +2,7 @@
 
 #include <assert.h>
 
-#include "../core/impl.h"
+#include "../core/types.h"
 
 int wuss_icon_get_value(const wuss_icon_t *icon)
 {

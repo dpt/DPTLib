@@ -137,6 +137,7 @@ set(PUBLIC_HEADERS
     include/utils/barith.h
     include/utils/bsearch.h
     include/utils/bytesex.h
+    include/utils/easing.h
     include/utils/fxp.h
     include/utils/maths.h
     include/utils/pack.h
@@ -169,6 +170,8 @@ if(WUSS_COMPONENTS)
     list(APPEND PUBLIC_HEADERS include/wuss/component/proginfo.h)
     list(APPEND PUBLIC_HEADERS include/wuss/component/dialogue.h)
     list(APPEND PUBLIC_HEADERS include/wuss/component/saveas.h)
+    list(APPEND PUBLIC_HEADERS include/wuss/component/dcs.h)
+    list(APPEND PUBLIC_HEADERS include/wuss/component/error.h)
     list(APPEND PUBLIC_HEADERS include/wuss/gadget/colourset.h)
 endif()
 
@@ -286,6 +289,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/bitmap/compress.c
     libraries/framebuf/bitmap/fill-pattern.c
     libraries/framebuf/bitmap/load.c
+    libraries/framebuf/bitmap/resize.c
     libraries/framebuf/bitmap/rle.h
     libraries/framebuf/bitmap/save.c
     libraries/framebuf/bmfont/bmfont.c
@@ -310,6 +314,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/octree/octree.c
     libraries/framebuf/palettes/palettes.c
     libraries/framebuf/pattern/pattern.c
+    libraries/framebuf/tonemap/plot.c
     libraries/framebuf/tonemap/tonemap.c
     libraries/framebuf/pixelfmt/log2bpp.c
     libraries/framebuf/pixelfmt/paletted-nentries.c
@@ -425,6 +430,7 @@ set(UTILS_SOURCES
     libraries/utils/bytesex/bytesex.c
     libraries/utils/bytesex/rev-l-block.c
     libraries/utils/bytesex/rev-s-block.c
+    libraries/utils/easing/easing.c
     libraries/utils/fxp/smull-fxp16.c
     libraries/utils/fxp/umull-fxp16.c
     libraries/utils/maths/degs-to-rads.c
@@ -436,7 +442,9 @@ set(UTILS_SOURCES
 set(WUSS_CORE_SOURCES
     libraries/wuss/core/backdrop.c
     libraries/wuss/core/capture.c
+    libraries/wuss/core/copy-text.c
     libraries/wuss/core/create.c
+    libraries/wuss/core/clipboard.c
     libraries/wuss/core/destroy.c
     libraries/wuss/core/drag.c
     libraries/wuss/core/get-focus.c
@@ -446,10 +454,20 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/get-screen-size.c
     libraries/wuss/core/idle.c
     libraries/wuss/core/impl.h
+    libraries/wuss/core/alloc.h
+    libraries/wuss/core/dispatch.h
+    libraries/wuss/core/geometry.h
+    libraries/wuss/core/input.h
+    libraries/wuss/core/invalidate.h
+    libraries/wuss/core/layers.h
+    libraries/wuss/core/palette.h
+    libraries/wuss/core/types.h
+    libraries/wuss/core/windows.h
     libraries/wuss/core/invalidate.c
     libraries/wuss/core/is-dragging.c
     libraries/wuss/core/key.c
     libraries/wuss/core/message.c
+    libraries/wuss/core/double-click.c
     libraries/wuss/core/mouse-click.c
     libraries/wuss/core/mouse-move.c
     libraries/wuss/core/nearest-colour.c
@@ -460,6 +478,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/scroll-step.c
     libraries/wuss/core/get-config.c
     libraries/wuss/core/set-backdrop.c
+    libraries/wuss/core/set-colour-fill.c
     libraries/wuss/core/set-config.c
     libraries/wuss/core/set-focus.c
     libraries/wuss/core/set-palette.c
@@ -469,8 +488,12 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/font/registry.c
     libraries/wuss/font/text.c
     libraries/wuss/core/task/create.c
+    libraries/wuss/core/task/arrange.c
+    libraries/wuss/core/task/close-windows.c
     libraries/wuss/core/task/destroy.c
+    libraries/wuss/core/task/raise-children.c
     libraries/wuss/core/task/set-autoclose.c
+    libraries/wuss/core/task/set-hidden.c
     libraries/wuss/core/task/set-parent.c
     libraries/wuss/core/task/deliver.c
     libraries/wuss/core/window/at.c
@@ -480,6 +503,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/window/get-content-bounds.c
     libraries/wuss/core/window/get-max-content.c
     libraries/wuss/core/window/get-scroll.c
+    libraries/wuss/core/window/get-task.c
     libraries/wuss/core/window/get-title.c
     libraries/wuss/core/window/get-visible-bounds.c
     libraries/wuss/core/window/invalidate.c
@@ -494,16 +518,21 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/window/set-hidden.c
     libraries/wuss/core/window/set-scroll.c
     libraries/wuss/core/window/set-title.c
+    libraries/wuss/core/window/toggle-size.c
     libraries/wuss/core/window/try-close.c)
 
 set(WUSS_FURNITURE_SOURCES
     libraries/wuss/furniture/back-box.c
+    libraries/wuss/furniture/click.c
     libraries/wuss/furniture/close-box.c
     libraries/wuss/furniture/content-box.c
     libraries/wuss/furniture/drag-resize.c
     libraries/wuss/furniture/draw.c
     libraries/wuss/furniture/elements.c
     libraries/wuss/furniture/hit-test.c
+    libraries/wuss/furniture/press-drag.c
+    libraries/wuss/furniture/press-icons.c
+    libraries/wuss/furniture/press-scroll.c
     libraries/wuss/furniture/invalidate.c
     libraries/wuss/furniture/layout.c
     libraries/wuss/furniture/ops.c
@@ -537,6 +566,7 @@ set(WUSS_ICON_SOURCES
     libraries/wuss/icon/get-text.c
     libraries/wuss/icon/get-type.c
     libraries/wuss/icon/get-value.c
+    libraries/wuss/icon/click.c
     libraries/wuss/icon/hit-test.c
     libraries/wuss/icon/invalidate.c
     libraries/wuss/icon/plot.c
@@ -561,6 +591,7 @@ set(WUSS_MENU_SOURCES
 
 set(WUSS_GADGET_SOURCES
     libraries/wuss/gadget/stringset.c
+    libraries/wuss/gadget/popup.c
     libraries/wuss/gadget/gridview.c)
 
 set(WUSS_COMPONENT_SOURCES
@@ -570,6 +601,8 @@ set(WUSS_COMPONENT_SOURCES
     libraries/wuss/component/proginfo.c
     libraries/wuss/component/dialogue.c
     libraries/wuss/component/saveas.c
+    libraries/wuss/component/dcs.c
+    libraries/wuss/component/error.c
     libraries/wuss/gadget/colourset.c) # a gadget, but built on colourmenu
 
 set(WUSS_SOURCES ${WUSS_CORE_SOURCES})
@@ -802,6 +835,7 @@ if(BUILD_TESTS)
         libraries/datastruct/list/test/list-test.c
         libraries/datastruct/ntree/test/ntree-test.c
         libraries/framebuf/bitmap/test/load-test.c
+        libraries/framebuf/bitmap/test/resize-test.c
         libraries/framebuf/bitmap/test/rle-test.c
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/bmfont/test/bmfontcache-test.c
@@ -829,12 +863,40 @@ if(BUILD_TESTS)
         libraries/utils/array/test/array-test.c
         libraries/utils/bsearch/test/bsearch-test.c
         libraries/utils/bytesex/test/bytesex-test.c
+        libraries/utils/easing/test/easing-test.c
         libraries/utils/pack/test/pack-test.c
         libraries/datastruct/vector/test/vector-test.c
         libraries/wuss/test/gridview-bench-test.c
-        libraries/wuss/test/paint-doc-test.c
-        libraries/wuss/test/tasks/paint-doc.c
-        libraries/wuss/test/tasks/paint-doc.h
+        libraries/wuss/test/painting-doc-test.c
+        libraries/wuss/test/harness.c
+        libraries/wuss/test/harness.h
+        libraries/wuss/menu/test/menu-test.c
+        libraries/wuss/menu/test/menu-desc-test.c
+        libraries/wuss/icon/test/iconpool-test.c
+        libraries/wuss/icon/test/icon-test.c
+        libraries/wuss/iconbar/test/iconbar-test.c
+        libraries/wuss/gadget/test/gadget-test.c
+        libraries/wuss/component/test/component-test.c
+        libraries/wuss/component/test/dcs-test.c
+        libraries/wuss/component/test/error-test.c
+        libraries/wuss/core/test/pointer-test.c
+        libraries/wuss/core/test/message-test.c
+        libraries/wuss/core/test/drag-test.c
+        libraries/wuss/core/test/task-test.c
+        libraries/wuss/core/test/content-test.c
+        libraries/wuss/core/test/stack-test.c
+        libraries/wuss/core/test/lifecycle-test.c
+        libraries/wuss/core/test/invalidate-test.c
+        libraries/wuss/core/test/placement-test.c
+        libraries/wuss/core/test/focus-test.c
+        libraries/wuss/core/test/hidden-test.c
+        libraries/wuss/core/test/move-test.c
+        libraries/wuss/core/test/resize-test.c
+        libraries/wuss/core/test/scroll-test.c
+        libraries/wuss/core/test/toggle-test.c
+        libraries/wuss/furniture/test/furniture-test.c
+        libraries/wuss/tasks/painting-doc.c
+        libraries/wuss/tasks/painting-doc.h
         libraries/wuss/test/wuss-test.c)
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})
@@ -897,46 +959,52 @@ if(BUILD_APPS)
         apps/wuss/taskmanager.c
         apps/wuss/taskmanager.h
         apps/wuss/tasks.c
-        libraries/wuss/test/tasks/ball.c
-        libraries/wuss/test/tasks/chasehq.c
-        libraries/wuss/test/tasks/greatescape.c
-        libraries/wuss/test/tasks/chars.c
-        libraries/wuss/test/tasks/checker.c
-        libraries/wuss/test/tasks/clock.c
-        libraries/wuss/test/tasks/config.c
-        libraries/wuss/test/tasks/curve.c
-        libraries/wuss/test/tasks/dithering.c
-        libraries/wuss/test/tasks/display.c
-        libraries/wuss/test/tasks/doughnut.c
-        libraries/wuss/test/tasks/effects.c
-        libraries/wuss/test/tasks/filer.c
-        libraries/wuss/test/tasks/fireball.c
-        libraries/wuss/test/tasks/gradient.c
-        libraries/wuss/test/tasks/greeble.c
-        libraries/wuss/test/tasks/icons.c
-        libraries/wuss/test/tasks/viewing.c
-        libraries/wuss/test/tasks/keys.c
-        libraries/wuss/test/tasks/lissajous.c
-        libraries/wuss/test/tasks/minesweeper.c
-        libraries/wuss/test/tasks/paint-doc.c
-        libraries/wuss/test/tasks/paint-doc.h
-        libraries/wuss/test/tasks/paint-new.c
-        libraries/wuss/test/tasks/paint-new.h
-        libraries/wuss/test/tasks/paint.c
-        libraries/wuss/test/tasks/paint.h
-        libraries/wuss/test/tasks/palette.c
-        libraries/wuss/test/tasks/particles.c
-        libraries/wuss/test/tasks/patterns.c
-        libraries/wuss/test/tasks/porter-duff.c
-        libraries/wuss/test/tasks/saturn.c
-        libraries/wuss/test/tasks/snapshot.c
-        libraries/wuss/test/tasks/sofa.c
-        libraries/wuss/test/tasks/spheroid.c
-        libraries/wuss/test/tasks/reading.c
-        libraries/wuss/test/tasks/tiling.c
-        libraries/wuss/test/tasks/taskapp.c
-        libraries/wuss/test/tasks/taskapp.h
-        libraries/wuss/test/tasks/zxtask.c)
+        libraries/wuss/tasks/ball.c
+        libraries/wuss/tasks/chasehq.c
+        libraries/wuss/tasks/greatescape.c
+        libraries/wuss/tasks/chars.c
+        libraries/wuss/tasks/checker.c
+        libraries/wuss/tasks/clock.c
+        libraries/wuss/tasks/configuring.c
+        libraries/wuss/tasks/curving.c
+        libraries/wuss/tasks/dithering.c
+        libraries/wuss/tasks/display.c
+        libraries/wuss/tasks/doughnut.c
+        libraries/wuss/tasks/effecting.c
+        libraries/wuss/tasks/effecting-edit.c
+        libraries/wuss/tasks/filing.c
+        libraries/wuss/tasks/fireball.c
+        libraries/wuss/tasks/gradient.c
+        libraries/wuss/tasks/greebling.c
+        libraries/wuss/tasks/icons.c
+        libraries/wuss/tasks/viewing.c
+        libraries/wuss/tasks/keys.c
+        libraries/wuss/tasks/oscillating.c
+        libraries/wuss/tasks/minesweeping.c
+        libraries/wuss/tasks/painting-doc.c
+        libraries/wuss/tasks/painting-doc.h
+        libraries/wuss/tasks/painting-new.c
+        libraries/wuss/tasks/painting-new.h
+        libraries/wuss/tasks/fern.c
+        libraries/wuss/tasks/fern.h
+        libraries/wuss/tasks/painting.c
+        libraries/wuss/tasks/painting.h
+        libraries/wuss/tasks/palette.c
+        libraries/wuss/tasks/fireworks.c
+        libraries/wuss/tasks/patterns.c
+        libraries/wuss/tasks/pooling.c
+        libraries/wuss/tasks/compositing.c
+        libraries/wuss/tasks/saturn.c
+        libraries/wuss/tasks/snapshot.c
+        libraries/wuss/tasks/sofa.c
+        libraries/wuss/tasks/orbing.c
+        libraries/wuss/tasks/reading.c
+        libraries/wuss/tasks/resizing.c
+        libraries/wuss/tasks/resizing.h
+        libraries/wuss/tasks/tiling.c
+        libraries/wuss/tasks/taskapp.c
+        libraries/wuss/tasks/taskapp.h
+        libraries/wuss/tasks/zxtask.c)
 
     if(TARGET_RISCOS)
         list(APPEND WUSS_APP_SOURCES apps/wuss/frontend-riscos.c)
@@ -961,7 +1029,7 @@ if(BUILD_APPS)
         OUTPUT_NAME_RELWITHDEBINFO wuss-relwithdebinfo
         OUTPUT_NAME_MINSIZEREL wuss-minsizerel)
 
-    target_include_directories(wuss PRIVATE apps/wuss libraries/wuss/test)
+    target_include_directories(wuss PRIVATE apps/wuss libraries/wuss)
     target_compile_definitions(wuss PRIVATE WUSS_APP)
     # OS window title, naming the build type (e.g. "Wuss (Debug)")
     target_compile_definitions(wuss PRIVATE
@@ -1057,7 +1125,7 @@ if(BUILD_APPS)
         # handed only to the file that needs it, not to all of wuss
         target_include_directories(chasehq
             PRIVATE "${CHQ_DIR}/include" "${CHQ}")
-        set_source_files_properties(libraries/wuss/test/tasks/chasehq.c
+        set_source_files_properties(libraries/wuss/tasks/chasehq.c
             PROPERTIES INCLUDE_DIRECTORIES "${CHQ_DIR}/include")
         # third-party code: its warnings are policed by its own build
         target_compile_options(chasehq PRIVATE -w)
@@ -1118,7 +1186,7 @@ if(BUILD_APPS)
         # replace with a TGE build option if it ever gains one
         set_source_files_properties(${TGE}/ZXSpectrum/Spectrum.c
             PROPERTIES COMPILE_DEFINITIONS "__riscos")
-        set_source_files_properties(libraries/wuss/test/tasks/greatescape.c
+        set_source_files_properties(libraries/wuss/tasks/greatescape.c
             PROPERTIES
                 INCLUDE_DIRECTORIES "${TGE_DIR}/include"
                 COMPILE_DEFINITIONS "${TGE_ZX_RENAMES}")

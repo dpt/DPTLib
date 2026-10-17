@@ -3,7 +3,7 @@
 #include "geom/box.h"
 #include "geom/point.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
 
 /* Map an icon bbox (virtual document space) into screen space, given the
  * owning window's content box and scroll offset. wuss__icon_draw uses this

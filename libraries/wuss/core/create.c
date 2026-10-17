@@ -41,6 +41,7 @@ result_t wuss_create(screen_t               *scr,
   wuss_alloc_t al;
   wuss_t      *w;
   int          s;
+  int          i;
 
   assert(scr  != NULL);
   assert(wuss != NULL);
@@ -62,7 +63,7 @@ result_t wuss_create(screen_t               *scr,
     palette  = default_palette;
     npalette = NELEMS(default_palette);
   }
-  else if (npalette <= 0)
+  else if (npalette <= 0 || npalette > NELEMS(w->fills))
   {
     wuss__free(w, w);
     return result_BAD_ARG;
@@ -76,6 +77,16 @@ result_t wuss_create(screen_t               *scr,
   }
   memcpy(w->palette, palette, npalette * sizeof(*w->palette));
   w->npalette = npalette;
+
+  for (i = 0; i < npalette; i++)
+  {
+    w->fills[i].colour     = wuss_NO_BACKGROUND;
+    w->fills[i].pattern    = screen_PATTERN_SOLID;
+    w->fills[i].pattern_bg = wuss_NO_BACKGROUND;
+  }
+
+  w->scr = scr;
+  wuss__rebuild_fills(w);
 
   rc = wuss__apply_config(w, config);
   if (rc != result_OK)
@@ -96,6 +107,8 @@ result_t wuss_create(screen_t               *scr,
   w->furniture.pressed_region = wuss_FURNITURE_NONE;
   w->furniture_ops            = &wuss__furniture_default_ops;
 #endif
+  w->clipboard          = NULL;
+  w->clipboard_gen      = 0;
 #ifdef WUSS_ICONS
   w->pressed.icon       = NULL;
   w->pressed.window     = NULL;
@@ -104,16 +117,11 @@ result_t wuss_create(screen_t               *scr,
   w->caret.icon         = NULL;
   w->caret.window       = NULL;
   w->caret.index        = 0;
+  w->caret.anchor       = 0;
   w->icon.names         = NULL;
   w->icon.atoms         = NULL;
   w->icon.bitmaps       = NULL;
   w->icon.nbitmaps      = 0;
-#endif
-#ifdef WUSS_MENUS
-  w->menu.chain         = NULL;
-  w->menu.task          = NULL;
-  w->menu.eat_up        = 0;
-  w->menu.bottom_gap    = 0;
 #endif
 #ifdef WUSS_ICONBAR
   w->iconbar.window         = NULL;
@@ -122,6 +130,7 @@ result_t wuss_create(screen_t               *scr,
   w->iconbar.n         = 0;
   w->iconbar.cap      = 0;
   w->iconbar.pressed   = NULL;
+  w->iconbar.scroll    = 0;
 #endif
 
   w->msg.queue          = NULL;
@@ -144,6 +153,7 @@ result_t wuss_create(screen_t               *scr,
 
   w->pointer.x = 0;
   w->pointer.y = 0;
+  w->modifiers = wuss_KEY_MOD_NONE;
 
   w->capture = NULL;
 
@@ -165,8 +175,19 @@ result_t wuss_create(screen_t               *scr,
     (void) wuss_iconpool_load_resource(w, resources);
 #endif
 
+  if (wuss__menu_session_create(w) != result_OK)
+  {
+#ifdef WUSS_ICONS
+    wuss__iconpool_clear(w, &w->icon);
+#endif
+    wuss__free(w, w->palette);
+    wuss__free(w, w);
+    return result_OOM;
+  }
+
   if (bmfontcache_create(&w->font_cache) != result_OK)
   {
+    wuss__menu_session_free(w);
 #ifdef WUSS_ICONS
     wuss__iconpool_clear(w, &w->icon);
 #endif

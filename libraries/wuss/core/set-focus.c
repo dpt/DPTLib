@@ -7,7 +7,6 @@
 result_t wuss_set_focus(wuss_t *wuss, wuss_window_t *window)
 {
   wuss_window_t *was;
-  wuss_event_t   event;
 
   assert(wuss != NULL);
 
@@ -33,14 +32,12 @@ result_t wuss_set_focus(wuss_t *wuss, wuss_window_t *window)
   if (was != NULL)
   {
     wuss__chrome_repaint(was);
-    event.kind = wuss_EVENT_LOSE_FOCUS;
-    (void) wuss__deliver(was->task, was, &event);
+    (void) wuss__deliver_kind(was->task, was, wuss_EVENT_LOSE_FOCUS);
   }
   if (window != NULL)
   {
     wuss__chrome_repaint(window);
-    event.kind = wuss_EVENT_GAIN_FOCUS;
-    (void) wuss__deliver(window->task, window, &event);
+    (void) wuss__deliver_kind(window->task, window, wuss_EVENT_GAIN_FOCUS);
   }
 
   return result_OK;

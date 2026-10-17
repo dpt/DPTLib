@@ -30,8 +30,8 @@ typedef enum wuss_input_kind
   wuss_INPUT_NONE = 0,
   wuss_INPUT_QUIT,          /* window closed, or the quit key */
   wuss_INPUT_MOUSE_MOVE,    /* .pos */
-  wuss_INPUT_MOUSE_DOWN,    /* .pos, .button */
-  wuss_INPUT_MOUSE_UP,      /* .pos, .button */
+  wuss_INPUT_MOUSE_DOWN,    /* .pos, .button, .mods */
+  wuss_INPUT_MOUSE_UP,      /* .pos, .button, .mods */
   wuss_INPUT_MOUSE_LEAVE,   /* pointer left the window; next move returns */
   wuss_INPUT_WHEEL,         /* .pos, .wheel */
   wuss_INPUT_KEY,           /* .key, .mods: a press or autorepeat */
@@ -124,13 +124,17 @@ void wuss_frontend_set_palette(wuss_frontend_t *frontend,
  * range. No-op on a backend without a resizable window (RISC OS). */
 void wuss_frontend_zoom(wuss_frontend_t *frontend, int delta);
 
+/* The current window zoom, in device pixels per screen pixel; 1 on a backend
+ * without a resizable window. */
+int wuss_frontend_get_zoom(const wuss_frontend_t *frontend);
+
 /* Switch the CRT post-effect on or off (Debug > CRT). Returns whether it is
  * now on: false on a backend or platform without it (RISC OS, non-Metal
  * SDL), leaving the plain surface in place. */
 bool wuss_frontend_set_crt(wuss_frontend_t *frontend, bool on);
 
 /* Hide or show the OS mouse pointer over the window, for when main.c draws
- * its own (System > Software Pointer). Returns whether it is now hidden:
+ * its own (Display > Software pointer). Returns whether it is now hidden:
  * false on a backend that keeps its hardware pointer (RISC OS). */
 bool wuss_frontend_hide_pointer(wuss_frontend_t *frontend, bool hide);
 
@@ -143,6 +147,13 @@ void wuss_frontend_capture_mouse(wuss_frontend_t *frontend, bool capture);
 /* Milliseconds from an arbitrary epoch, wrapping; fed to wuss_set_time for
  * double-click timing. */
 unsigned int wuss_frontend_ms(wuss_frontend_t *frontend);
+
+/* Host clipboard bridge. Set publishes UTF-8 text to the host; pull copies the
+ * host's text into the wuss clipboard (when it has some and it differs).
+ * No-ops on a backend with no host clipboard (RISC OS). */
+void wuss_frontend_clipboard_set(wuss_frontend_t *frontend,
+                                 const char      *utf8);
+void wuss_frontend_clipboard_pull(wuss_frontend_t *frontend, wuss_t *wuss);
 
 /* Tear down the surface and free everything wuss_frontend_open allocated. */
 void wuss_frontend_close(wuss_frontend_t *frontend);

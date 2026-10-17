@@ -220,7 +220,7 @@ typedef unsigned char wuss_colour_t;
  * wuss_COLOUR_BUTTON_BG is button.bg, wuss_COLOUR_BUTTON_FG is button.fg,
  * wuss_COLOUR_BUTTON_PRESSED is button.pressed,
  * wuss_COLOUR_ACCENT is accent.colour,
- * wuss_COLOUR_BACKDROP is backdrop.colour,
+ * wuss_COLOUR_BACKDROP is backdrop.fill.colour,
  * wuss_COLOUR_WINDOW is body.window, wuss_COLOUR_MENU is body.menu,
  * wuss_COLOUR_SLIDER_TRACK is slider.track,
  * wuss_COLOUR_SLIDER_VALUE is slider.value,
@@ -413,11 +413,11 @@ typedef enum wuss_zorder
 wuss_zorder_t;
 
 /**
- * Desktop background specification: a flat colour, or an 8x8 fill pattern.
- * Used by wuss_config_t. Always honoured regardless of the WUSS_FURNITURE /
- * WUSS_ICONS options.
+ * A fill: a flat colour, or an 8x8 pattern tiled in a foreground colour over
+ * a background colour. Used by wuss_backdrop_t and the per-colour fill table
+ * (see wuss_set_colour_fill).
  */
-typedef struct wuss_backdrop
+typedef struct wuss_fill
 {
   /**
    * Fill colour, or wuss_NO_BACKGROUND to leave the background untouched
@@ -428,31 +428,45 @@ typedef struct wuss_backdrop
   wuss_colour_t    colour;
 
   /**
-   * Fill pattern. screen_PATTERN_SOLID (the default) fills flat in colour;
-   * any other value tiles that pattern in colour over pattern_bg, phased to
-   * a fixed screen origin so it stays put across dirty-region redraws.
-   * Ignored when colour is wuss_NO_BACKGROUND.
+   * Fill pattern. screen_PATTERN_SOLID (the default) fills flat in colour
+   * (or in colour's own fill, see wuss_set_colour_fill); any other value
+   * tiles that pattern in colour over pattern_bg, phased to a fixed screen
+   * origin so it stays put across dirty-region redraws. Ignored when colour
+   * is wuss_NO_BACKGROUND.
    */
   screen_pattern_t pattern;
 
   /** Pattern background (clear-bit) colour; used only when pattern is not
    *  screen_PATTERN_SOLID. */
   wuss_colour_t    pattern_bg;
+}
+wuss_fill_t;
+
+/**
+ * Desktop background specification: a fill plus an optional image. Used by
+ * wuss_config_t and window backgrounds. Always honoured regardless of the
+ * WUSS_FURNITURE / WUSS_ICONS options.
+ */
+typedef struct wuss_backdrop
+{
+  /** Colour or pattern fill. */
+  wuss_fill_t     fill;
 
   /**
-   * Optional image centred over the colour/pattern fill, or NULL for none.
-   * Drawn once per exposed backdrop area after that area's colour/pattern
-   * fill, via screen_copy_bitmap (no scaling; clipped as usual). Not owned:
-   * the caller must keep it alive for as long as it's set.
+   * Optional image centred over the fill, or NULL for none. Drawn once per
+   * exposed backdrop area after that area's colour/pattern fill, via
+   * screen_copy_bitmap (no scaling; clipped as usual). Not owned: the caller
+   * must keep it alive for as long as it's set.
    */
-  const bitmap_t  *image;
+  const bitmap_t *image;
 }
 wuss_backdrop_t;
 
 /** A flat-colour wuss_backdrop_t (or wuss_NO_BACKGROUND for none), as a
  *  compound literal -- the common case where no fill pattern is wanted. */
 #define wuss_BACKDROP_COLOUR(c) \
-  ((wuss_backdrop_t) { (c), screen_PATTERN_SOLID, wuss_NO_BACKGROUND, NULL })
+  ((wuss_backdrop_t) { { (c), screen_PATTERN_SOLID, wuss_NO_BACKGROUND }, \
+                       NULL })
 
 /** wuss_BACKDROP_COLOUR(wuss_NO_BACKGROUND): no fill at all, background
  *  painting left to the task. */
@@ -461,7 +475,7 @@ wuss_backdrop_t;
 /** A patterned wuss_backdrop_t: 8x8 pattern p tiled in colour c over
  *  background colour b. */
 #define wuss_BACKDROP_PATTERN(c, p, b) \
-  ((wuss_backdrop_t) { (c), (p), (b), NULL })
+  ((wuss_backdrop_t) { { (c), (p), (b) }, NULL })
 
 /**
  * Optional creation-time configuration.
@@ -756,6 +770,26 @@ const colour_t *wuss_get_palette(const wuss_t *wuss, int *npalette);
  *         unchanged).
  */
 result_t wuss_set_backdrop(wuss_t *wuss, const wuss_backdrop_t *backdrop);
+
+/**
+ * Give a palette colour a fill of its own. Afterwards every solid fill of \p
+ * colour (a backdrop or window background with screen_PATTERN_SOLID, and
+ * wuss's own chrome) paints \p fill instead, so any desktop colour can be a
+ * pattern. Without one, a colour fills automatically: solid when the
+ * screen's physical palette can show it (always, on a direct-colour screen),
+ * else a dither of the two nearest physical colours. Invalidates the whole
+ * screen.
+ *
+ * \param[in] wuss   Window manager.
+ * \param[in] colour Palette index (or symbolic colour) to redefine.
+ * \param[in] fill   Its fill, copied in. A fill whose colour is
+ *                   wuss_NO_BACKGROUND removes the override.
+ * \return \ref result_OK on success, \ref result_WUSS_BAD_COLOUR if an index
+ *         is out of range.
+ */
+result_t wuss_set_colour_fill(wuss_t            *wuss,
+                              wuss_colour_t      colour,
+                              const wuss_fill_t *fill);
 
 /**
  * Replace the window manager's config partway through a session.
@@ -1095,6 +1129,17 @@ result_t wuss_mouse_click(wuss_t             *wuss,
                           wuss_window_t     **hit);
 
 /**
+ * Record the modifier keys held, for the mouse events that follow. A
+ * frontend calls this before each wuss_mouse_click; wuss passes the value on
+ * where an event needs it (see wuss_EVENT_CLOSE_ADJUST). Starts out as
+ * wuss_KEY_MOD_NONE.
+ *
+ * \param[in] wuss      Window manager.
+ * \param[in] modifiers Modifier keys held.
+ */
+void wuss_set_modifiers(wuss_t *wuss, wuss_key_modifiers_t modifiers);
+
+/**
  * Deliver a mouse-move event. Updates the dragged window's position if a
  * drag is active (invalidating the affected region; call wuss_redraw_dirty
  * to actually repaint it), otherwise hit-tests and delivers to the window's
@@ -1164,6 +1209,36 @@ result_t wuss_set_focus(wuss_t *wuss, wuss_window_t *window);
  * \return The focused window, or NULL if none.
  */
 wuss_window_t *wuss_get_focus(const wuss_t *wuss);
+
+/**
+ * Replace the clipboard text. Writable icons cut and copy into it and paste
+ * from it. A frontend mirrors it to the host clipboard: push the text out
+ * when wuss_clipboard_generation changes, and call this to pull host text in
+ * before a paste key.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] utf8 New text, copied. NULL clears the clipboard.
+ * \return \ref result_OK on success, \ref result_OOM if the copy failed (the
+ *         clipboard is left as it was).
+ */
+result_t wuss_clipboard_set(wuss_t *wuss, const char *utf8);
+
+/**
+ * Fetch the clipboard text.
+ *
+ * \param[in] wuss Window manager.
+ * \return The UTF-8 text, owned by wuss and valid until the next
+ *         wuss_clipboard_set. Never NULL: an empty clipboard is "".
+ */
+const char *wuss_clipboard_get(const wuss_t *wuss);
+
+/**
+ * Fetch the clipboard change count.
+ *
+ * \param[in] wuss Window manager.
+ * \return A counter bumped by every successful wuss_clipboard_set.
+ */
+unsigned int wuss_clipboard_generation(const wuss_t *wuss);
 
 /**
  * Deliver a keypress (including autorepeats) to the focused window as

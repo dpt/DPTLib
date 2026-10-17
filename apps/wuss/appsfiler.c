@@ -22,6 +22,7 @@
 #include "appsfiler.h"
 #include "tasks.h"
 #include "tasks/common.h"
+#include "tasks/taskapp.h"
 
 #define APPS_LABEL_CHARS 12
 #define APPS_COLUMNS     4
@@ -42,6 +43,14 @@ typedef struct
 }
 apps_window_t;
 
+enum
+{
+  APPS_MENU_INFO,
+  APPS_MENU_CLOSE_ALL,
+  APPS_MENU_HIDE,
+  APPS_MENU__LIMIT
+};
+
 struct apps_task
 {
   wuss_t               *wuss;
@@ -50,13 +59,13 @@ struct apps_task
 
   apps_window_t         windows[1 + APPS_MAX_CATEGORIES]; /* [0] root,
                                                            * [c + 1] category c */
-  const bitmap_t       *glyph_file;      /* borrowed from the icon pool */
-  const bitmap_t       *glyph_directory;
+  const bitmap_t       *glyph_directory; /* borrowed from the icon pool */
   const bitmap_t       *glyph_apps;
 
   wuss_menu_handle_t    menu_handle;
-  wuss_menu_item_t      menu_items[1]; /* "Info" */
+  wuss_menu_item_t      menu_items[APPS_MENU__LIMIT];
   wuss_menu_t           menu;
+  int                   hidden; /* windows hidden by Hide */
 };
 
 static int apps_count(const apps_window_t *aw)
@@ -81,21 +90,65 @@ static void apps_item(int index, void *opaque, wuss_gridview_item_t *out)
   }
 
   out->label = tasks_entry_name(aw->category, index);
-  out->glyph = aw->owner->glyph_file;
+  out->glyph = taskapp_glyph(aw->owner->delegate, out->label);
 }
 
 /* ----------------------------------------------------------------------- */
 
 static void apps_activate(wuss_gridview_t *gridview,
                           int              index,
+                          wuss_button_t    button,
                           void            *opaque);
 
-static result_t apps_open(apps_task_t *task, int category)
+/* Opens the window for category (-1: the root), or brings it to the front
+ * if open. A new window cascades from parent, or with over set takes
+ * parent's place (top-left) for a parent that is about to close. */
+static void apps_label_hide(apps_task_t *task, int hidden)
+{
+  wuss_menu_item_t *item;
+
+  task->hidden = hidden;
+
+  item       = &task->menu_items[APPS_MENU_HIDE];
+  item->text = hidden ? "Show" : "Hide";
+  wuss_menu_set_item_text_live(task->menu_handle, &task->menu, APPS_MENU_HIDE,
+                               item->text);
+}
+
+/* whether the windows are hidden, resynchronising the flag and the menu row
+ * with the window manager: the hide keys hide a task without telling us */
+static int apps_hidden(apps_task_t *task)
+{
+  int hidden;
+
+  hidden = wuss_task_is_hidden(task->wuss, task->delegate) != 0;
+  if (hidden != task->hidden)
+    apps_label_hide(task, hidden);
+
+  return task->hidden;
+}
+
+/* hide or show every window, relabelling the icon bar menu's row to match */
+static result_t apps_set_hidden(apps_task_t *task, int hidden)
+{
+  apps_label_hide(task, hidden);
+
+  return wuss_task_set_hidden(task->wuss, task->delegate, hidden);
+}
+
+static result_t apps_open(apps_task_t         *task,
+                          int                  category,
+                          const wuss_window_t *parent,
+                          int                  over)
 {
   result_t       rc;
   apps_window_t *aw;
-  wuss_window_t *window;
   const char    *title;
+  wuss_place_t   place;
+  wuss_window_t *window;
+
+  if (apps_hidden(task))
+    (void) apps_set_hidden(task, 0);
 
   aw = &task->windows[category + 1];
   if (aw->window != NULL)
@@ -109,10 +162,14 @@ static result_t apps_open(apps_task_t *task, int category)
   aw->owner    = task;
   aw->category = category;
 
-  rc = wuss_gridview_window_create(&aw->gridview, task->delegate, title,
-                                   apps_count(aw), apps_item,
+  place = task_place_from(parent);
+  if (over)
+    place.offset = POINT(0, 0);
+
+  rc = wuss_gridview_window_create(&aw->gridview, task->delegate, &place,
+                                   title, apps_count(aw), apps_item,
                                    APPS_LABEL_CHARS, apps_activate, aw,
-                                   &window);
+                                   0, &window);
   if (rc != result_OK)
     return rc;
 
@@ -122,17 +179,33 @@ static result_t apps_open(apps_task_t *task, int category)
   return result_OK;
 }
 
-static void apps_activate(wuss_gridview_t *gridview, int index, void *opaque)
+static void apps_activate(wuss_gridview_t *gridview,
+                          int              index,
+                          wuss_button_t    button,
+                          void            *opaque)
 {
   apps_window_t *aw;
 
   NOT_USED(gridview);
 
   aw = opaque;
-  if (aw->category < 0)
-    (void) apps_open(aw->owner, index);
-  else
-    (void) tasks_entry_spawn(aw->category, index);
+  if (aw->category >= 0)
+  {
+    /* as RISC OS: a task launched with a double ADJUST closes its viewer.
+     * That destroys gridview; neither it nor aw's window is used after. */
+    if (tasks_entry_spawn(aw->category, index) == result_OK &&
+        (button & wuss_BUTTON_ADJUST))
+      (void) wuss_window_try_close(aw->window);
+    return;
+  }
+
+  /* as the filer: a double ADJUST opens the category in the root's place and
+   * closes the root. That destroys gridview; neither it nor aw's window is
+   * used after. */
+  (void) apps_open(aw->owner, index, aw->window, button & wuss_BUTTON_ADJUST);
+
+  if (button & wuss_BUTTON_ADJUST)
+    (void) wuss_window_try_close(aw->window);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -165,8 +238,22 @@ static result_t apps_menu_open(apps_task_t *task)
   static const wuss_proginfo_desc_t desc =
     TASK_PROGINFO_DESC("AppsFiler", "Launcher for demo apps");
 
+  (void) apps_hidden(task);
   wuss_proginfo_set_desc(&desc);
-  task->menu_items[0].window = wuss_proginfo_window(task->delegate);
+  task->menu_items[APPS_MENU_INFO].window = wuss_proginfo_window(task->delegate);
+
+  if (wuss_task_has_windows(task->wuss, task->delegate))
+  {
+    task->menu_items[APPS_MENU_CLOSE_ALL].flags &=
+      (wuss_menu_item_flags_t) ~wuss_MENU_ITEM_DISABLED;
+    task->menu_items[APPS_MENU_HIDE].flags &=
+      (wuss_menu_item_flags_t) ~wuss_MENU_ITEM_DISABLED;
+  }
+  else
+  {
+    task->menu_items[APPS_MENU_CLOSE_ALL].flags |= wuss_MENU_ITEM_DISABLED;
+    task->menu_items[APPS_MENU_HIDE].flags |= wuss_MENU_ITEM_DISABLED;
+  }
 
   return wuss_iconbar_menu_open(task->delegate, &task->menu,
                                 &task->menu_handle);
@@ -198,7 +285,27 @@ static result_t apps_handle(wuss_window_t      *window,
       return result_OK;
     if (event->data.iconbar_icon.button & wuss_BUTTON_MENU)
       return apps_menu_open(task);
-    return apps_open(task, -1);
+    if (apps_hidden(task)) /* the click only reveals; it opens nothing new */
+      return apps_set_hidden(task, 0);
+    return apps_open(task, -1, NULL, 0);
+
+  case wuss_EVENT_MENU_SELECT:
+    if (event->data.menu_select.menu != &task->menu)
+      return result_OK;
+
+    if (event->data.menu_select.index == APPS_MENU_CLOSE_ALL)
+    {
+      int i;
+
+      for (i = 0; i < (int) NELEMS(task->windows); i++)
+        if (task->windows[i].window != NULL)
+          (void) wuss_window_try_close(task->windows[i].window);
+      return result_OK;
+    }
+    if (event->data.menu_select.index != APPS_MENU_HIDE)
+      return result_OK;
+
+    return apps_set_hidden(task, !apps_hidden(task));
 
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL;
@@ -208,7 +315,7 @@ static result_t apps_handle(wuss_window_t      *window,
   {
     result_t rc;
 
-    if (window == task->menu_items[0].window)
+    if (window == task->menu_items[APPS_MENU_INFO].window)
       rc = wuss_proginfo_handle_pre_show();
     else
       rc = result_OK;
@@ -217,6 +324,25 @@ static result_t apps_handle(wuss_window_t      *window,
 
     return wuss_menu_open_window_now(event->data.pre_show.handle,
                                      event->data.pre_show.index);
+  }
+
+  case wuss_EVENT_CLOSE_ADJUST:
+  {
+    int keep;
+
+    /* as the filer: open the root in this category's place and close this
+     * one -- or, with Shift held, cascade the root and keep this one. The
+     * root has no parent, so it just closes (or stays with Shift). */
+    aw = apps_find(task, window);
+    if (aw == NULL)
+      return result_OK;
+
+    keep = (event->data.close_adjust.modifiers & wuss_KEY_MOD_SHIFT) != 0;
+    if (aw->category >= 0)
+      (void) apps_open(task, -1, window, !keep);
+    if (!keep)
+      return wuss_window_try_close(window);
+    return result_OK;
   }
 
   case wuss_EVENT_CLOSE:
@@ -232,6 +358,9 @@ static result_t apps_handle(wuss_window_t      *window,
   case wuss_EVENT_QUIT:
     apps_destroy(task);
     return result_OK;
+
+  case wuss_EVENT_KEY:
+    return result_WUSS_KEY_UNCLAIMED;
 
   default:
     return result_OK;
@@ -270,7 +399,11 @@ result_t appsfiler_create(wuss_t *wuss)
     task->windows[i].category = i - 1;
   }
 
-  WUSS_MENU_ITEM_WINDOW(task->menu_items, 0, "Info",
+  WUSS_MENU_ITEM(task->menu_items, APPS_MENU_CLOSE_ALL, "Close all",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, APPS_MENU_HIDE, "Hide",
+                          wuss_MENU_ITEM_NONE, "^H");
+  WUSS_MENU_ITEM_WINDOW(task->menu_items, APPS_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo
                                 * singleton in apps_menu_open */
@@ -287,7 +420,6 @@ result_t appsfiler_create(wuss_t *wuss)
     return rc;
   }
 
-  task->glyph_file      = apps_find_glyph(task->delegate, "file_app");
   task->glyph_directory = apps_find_glyph(task->delegate, "file_dir");
   task->glyph_apps      = apps_find_glyph(task->delegate, "apps");
 

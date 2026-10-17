@@ -213,7 +213,7 @@ document -> screen: screen.x = bounds.x0 - scroll.x + doc.x
 scroll clamp:       max = doc - (bounds.x1 - bounds.x0);  clamp(scroll, 0, max)
 ```
 
-In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scroll.y`, then paint the whole content normally — the framebuffer clip (`scr->clip` = `redraw.content`) discards anything outside the piece. See `libraries/wuss/test/tasks/reading.c`.
+In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scroll.y`, then paint the whole content normally — the framebuffer clip (`scr->clip` = `redraw.content`) discards anything outside the piece. See `libraries/wuss/tasks/reading.c`.
 
 ## Redrawing
 

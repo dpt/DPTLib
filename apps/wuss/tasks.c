@@ -20,34 +20,37 @@
 #include "tasks.h"
 
 #include "tasks/ball.h"
+#include "tasks/pooling.h"
 #include "tasks/chasehq.h"
 #include "tasks/greatescape.h"
 #include "tasks/chars.h"
 #include "tasks/checker.h"
 #include "tasks/clock.h"
 #include "tasks/common.h"
-#include "tasks/config.h"
-#include "tasks/curve.h"
+#include "tasks/configuring.h"
+#include "tasks/curving.h"
 #include "tasks/dithering.h"
 #include "tasks/display.h"
 #include "tasks/doughnut.h"
-#include "tasks/effects.h"
-#include "tasks/filer.h"
+#include "tasks/effecting.h"
+#include "tasks/filing.h"
 #include "tasks/gradient.h"
-#include "tasks/greeble.h"
+#include "tasks/greebling.h"
 #include "tasks/icons.h"
+#include "tasks/resizing.h"
 #include "tasks/viewing.h"
+#include "tasks/fern.h"
 #include "tasks/keys.h"
-#include "tasks/lissajous.h"
-#include "tasks/minesweeper.h"
-#include "tasks/paint.h"
+#include "tasks/oscillating.h"
+#include "tasks/minesweeping.h"
+#include "tasks/painting.h"
 #include "tasks/palette.h"
-#include "tasks/particles.h"
+#include "tasks/fireworks.h"
 #include "tasks/patterns.h"
-#include "tasks/porter-duff.h"
+#include "tasks/compositing.h"
 #include "tasks/saturn.h"
 #include "tasks/sofa.h"
-#include "tasks/spheroid.h"
+#include "tasks/orbing.h"
 #include "tasks/reading.h"
 #include "tasks/taskapp.h"
 #include "tasks/tiling.h"
@@ -64,8 +67,9 @@ void tasks_build_screen_palette(colour_t       *out,
   int r, g, b, n;
 
   /* 1bpp and 2bpp screens can't hold the UI colours, so they get a fixed
-   * grey ramp instead and the UI colours match onto it */
-  if (nout == 2 || nout == 4)
+   * grey ramp instead and the UI colours match onto it; so does 8bpp in
+   * grey mode */
+  if (nout == 2 || nout == 4 || (nout == 256 && g_tasks.grey))
   {
     for (n = 0; n < nout; n++)
     {
@@ -123,13 +127,14 @@ g_games_tasks[] =
 #ifdef WUSS_GREATESCAPE
   { "The Great Escape", greatescape_app_create },
 #endif
-  { "Minesweeper", minesweeper_app_create }
+  { "Minesweeping", minesweeping_app_create }
 },
 g_image_tasks[] =
 {
   { "Dithering", dithering_app_create },
-  { "Effects", effects_app_create },
-  { "Paint", paint_app_create },
+  { "Effecting", effecting_app_create },
+  { "Painting", painting_app_create },
+  { "Resizing", resizing_app_create },
   { "Viewing", viewing_app_create },
   { "Tiling", tiling_app_create }
 },
@@ -137,7 +142,7 @@ g_tests_tasks[] =
 {
   { "Icons", icons_app_create },
   { "Keys", keys_app_create },
-  { "Porter-Duff", porter_duff_app_create }
+  { "Compositing", compositing_app_create }
 },
 g_text_tasks[] =
 {
@@ -146,32 +151,34 @@ g_text_tasks[] =
 g_utilities_tasks[] =
 {
   { "Chars", chars_app_create },
-  { "Clock", clock_app_create }
+  { "Clock", clock_app_create },
+  { "Pooling", pooling_app_create }
 },
 g_visuals_tasks[] =
 {
   { "Checker", checker_app_create },
-  { "Curve", curve_app_create },
+  { "Curving", curving_app_create },
   { "Gradient", gradient_app_create },
-  { "Greeble", greeble_app_create },
-  { "Lissajous", lissajous_app_create },
+  { "Greebling", greebling_app_create },
+  { "Oscillating", oscillating_app_create },
   { "Patterns", patterns_app_create }
 },
 g_toys_tasks[] =
 {
   { "Doughnut", doughnut_app_create },
-  { "Particles", particles_app_create },
+  { "Fern", fern_app_create },
+  { "Fireworks", fireworks_app_create },
   { "Saturn", saturn_app_create },
   { "Sofa", sofa_app_create },
-  { "Spheroid", spheroid_app_create }
+  { "Orbing", orbing_app_create }
 },
 g_system_tasks[] =
 {
-  { "Configure", config_app_create },
+  { "Configuring", configuring_app_create },
   { "Display", display_app_create },
   { "Palette", palette_app_create },
 #ifdef WUSS_ICONBAR
-  { "Filer", filer_app_create }
+  { "Filing", filing_app_create }
 #endif
 };
 
@@ -186,9 +193,9 @@ enum
 
 static const wuss_menu_item_t g_debug_items[] =
 {
-  { "Redraw",           wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F1"                 },
-  { "Garbage",          wuss_MENU_ITEM_NONE, NULL, NULL, 0, WUSS_MENU_SHIFT "F1" },
-  { "Pixel Stress",     wuss_MENU_ITEM_NONE, NULL, NULL, 0, "F3"                 }
+  { "Redraw",           wuss_MENU_ITEM_NONE, NULL, NULL, 0, WUSS_MENU_SHIFT "F1"     },
+  { "Garbage",          wuss_MENU_ITEM_NONE, NULL, NULL, 0, "^" WUSS_MENU_SHIFT "F1" },
+  { "Pixel Stress",     wuss_MENU_ITEM_NONE, NULL, NULL, 0, WUSS_MENU_SHIFT "F3"     }
 };
 
 static const wuss_menu_t g_debug_menu =
@@ -201,10 +208,6 @@ static const wuss_menu_t g_debug_menu =
 enum
 {
   TASK_ITEM_INFO,
-  TASK_ITEM_ZOOM_IN,
-  TASK_ITEM_ZOOM_OUT,
-  TASK_ITEM_CRT,
-  TASK_ITEM_POINTER,
   TASK_ITEM_DEBUG
 #ifndef __EMSCRIPTEN__
   ,
@@ -214,19 +217,14 @@ enum
 
 /* not const: the "Info" row's .window is filled in by tasks_open_launcher,
  * retargeting the shared proginfo singleton at g_tasks.menu_task each time
- * -- the table itself cannot name it at compile time. The CRT and Software
- * pointer rows' ticks track g_tasks.crt and g_tasks.pointer. */
+ * -- the table itself cannot name it at compile time. */
 static wuss_menu_item_t g_task_items[] =
 {
   { "Info",             wuss_MENU_ITEM_PRE_OPEN, NULL, NULL                          },
-  { "Zoom In",          wuss_MENU_ITEM_DASHED,   NULL, NULL, 0, "F2"                 },
-  { "Zoom Out",         wuss_MENU_ITEM_NONE,     NULL, NULL, 0, WUSS_MENU_SHIFT "F2" },
-  { "CRT Effect",       wuss_MENU_ITEM_NONE,     NULL, NULL, 0, "F5"                 },
-  { "Software Pointer", wuss_MENU_ITEM_NONE,     NULL, NULL, 0, "F6"                 },
   { "Debug",            wuss_MENU_ITEM_DASHED,   &g_debug_menu                       }
 #ifndef __EMSCRIPTEN__
   ,
-  { "Quit Wuss",        wuss_MENU_ITEM_DASHED,   NULL, NULL, 0, "F4"                 }
+  { "Quit Wuss",        wuss_MENU_ITEM_DASHED,   NULL, NULL, 0, "^" WUSS_MENU_SHIFT "Q" }
 #endif
 };
 
@@ -238,19 +236,11 @@ static const wuss_menu_t g_task_menu =
 void tasks_set_crt(bool on)
 {
   g_tasks.crt = wuss_frontend_set_crt(g_tasks.frontend, on);
-  if (g_tasks.crt)
-    g_task_items[TASK_ITEM_CRT].flags |= wuss_MENU_ITEM_TICKED;
-  else
-    g_task_items[TASK_ITEM_CRT].flags &= ~wuss_MENU_ITEM_TICKED;
 }
 
 void tasks_set_pointer(bool on)
 {
   g_tasks.pointer = app_set_pointer(on);
-  if (g_tasks.pointer)
-    g_task_items[TASK_ITEM_POINTER].flags |= wuss_MENU_ITEM_TICKED;
-  else
-    g_task_items[TASK_ITEM_POINTER].flags &= ~wuss_MENU_ITEM_TICKED;
 }
 
 /* g_task_menu picks are dispatched by index and g_debug_menu picks likewise.
@@ -339,20 +329,6 @@ result_t task_handle_event(wuss_window_t      *window,
   {
     switch (index)
     {
-    case TASK_ITEM_ZOOM_IN:
-      wuss_frontend_zoom(g_tasks.frontend, 1);
-      break;
-    case TASK_ITEM_ZOOM_OUT:
-      wuss_frontend_zoom(g_tasks.frontend, -1);
-      break;
-    case TASK_ITEM_CRT:
-      tasks_set_crt(!g_tasks.crt);
-      /* the new surface starts empty: present the whole frame */
-      g_tasks.debug_redraw_all = true;
-      break;
-    case TASK_ITEM_POINTER:
-      tasks_set_pointer(!g_tasks.pointer);
-      break;
 #ifndef __EMSCRIPTEN__
     case TASK_ITEM_QUIT:
       g_tasks.quit = true;
@@ -380,9 +356,153 @@ result_t tasks_open_menu(void)
 }
 #endif
 
+int tasks_system_key(int code, wuss_key_modifiers_t modifiers)
+{
+  wuss_window_t *focus;
+  wuss_task_t   *task;
+  int            shift;
+  int            ctrl;
+
+  if (modifiers & wuss_KEY_MOD_ALT)
+    return 0;
+
+  focus = wuss_get_focus(g_tasks.wuss);
+  task  = (focus != NULL) ? wuss_window_get_task(focus) : NULL;
+  shift = (modifiers & wuss_KEY_MOD_SHIFT) != 0;
+  ctrl  = (modifiers & wuss_KEY_MOD_CTRL) != 0;
+
+  /* F7 next / Shift-F7 previous window, F10 / Shift-F10 app, F11 hide,
+   * Shift-F11 hide others, Ctrl-F11 show all, Ctrl-F10 app to front,
+   * Ctrl-F9 quit app: the function-key forms of the chords below */
+  if (code == wuss_KEY_F1 + 6 && !ctrl)
+  {
+    if (task != NULL)
+      (void) wuss_task_cycle_windows(g_tasks.wuss, task, shift ? -1 : 1);
+    return 1;
+  }
+
+  if (code == wuss_KEY_F1 + 9)
+  {
+    if (ctrl)
+    {
+      if (task != NULL)
+        (void) wuss_task_front(g_tasks.wuss, task);
+    }
+    else
+    {
+      (void) wuss_cycle_tasks(g_tasks.wuss, shift ? -1 : 1);
+    }
+    return 1;
+  }
+
+  if (code == wuss_KEY_F1 + 10)
+  {
+    if (ctrl)
+      (void) wuss_task_show_all(g_tasks.wuss);
+    else if (task != NULL)
+      (void) (shift ? wuss_task_hide_others(g_tasks.wuss, task)
+                    : wuss_task_hide_app(g_tasks.wuss, task));
+    return 1;
+  }
+
+  if (code == wuss_KEY_F1 + 8 && ctrl && !shift)
+  {
+    if (task != NULL)
+      (void) wuss_task_close_windows(g_tasks.wuss, task);
+    return 1;
+  }
+
+  if (!ctrl)
+    return 0;
+
+  /* Ctrl-` / Ctrl-Shift-`: next / previous window of the app. Shift-` types
+   * ~ on a US keyboard. Ctrl-Tab / Ctrl-Shift-Tab: next / previous app.
+   * Ctrl-H hides the app, Ctrl-Shift-H the others. */
+  if (code == '`' || code == '~')
+  {
+    if (task != NULL)
+      (void) wuss_task_cycle_windows(g_tasks.wuss, task,
+                                     (shift || code == '~') ? -1 : 1);
+    return 1;
+  }
+
+  if (code == 9)
+  {
+    (void) wuss_cycle_tasks(g_tasks.wuss, shift ? -1 : 1);
+    return 1;
+  }
+
+  /* Ctrl-Shift-Esc: kill the focused app, without unsaved-data prompts */
+  if (code == wuss_KEY_ESCAPE && shift)
+  {
+    if (task != NULL)
+      wuss_task_destroy(wuss_task_get_root(task));
+    return 1;
+  }
+
+  /* Ctrl-Shift-F: toggle the focused window's size */
+  if ((code == 'f' || code == 'F') && shift)
+  {
+    wuss_window_toggle_size(focus);
+    return 1;
+  }
+
+  if (code == 'h' || code == 'H')
+  {
+    if (task != NULL)
+      (void) (shift ? wuss_task_hide_others(g_tasks.wuss, task)
+                    : wuss_task_hide_app(g_tasks.wuss, task));
+    return 1;
+  }
+
+  /* Ctrl-F2: close window, as its close icon does */
+  if (code == wuss_KEY_F1 + 1 && !(modifiers & wuss_KEY_MOD_SHIFT))
+  {
+    (void) wuss_window_try_close(focus);
+    return 1;
+  }
+
+  if (code == 'q' || code == 'Q')
+  {
+#ifndef __EMSCRIPTEN__
+    /* Ctrl-Shift-Q: quit Wuss */
+    if (modifiers & wuss_KEY_MOD_SHIFT)
+    {
+      g_tasks.quit = true;
+      return 1;
+    }
+#endif
+
+    /* Ctrl-Q: quit the focused app, with unsaved-data prompts */
+    if (focus != NULL)
+      (void) wuss_task_close_windows(g_tasks.wuss, wuss_window_get_task(focus));
+    return 1;
+  }
+
+  return 0;
+}
+
 result_t tasks_launcher_key(int code, wuss_key_modifiers_t modifiers)
 {
   wuss_event_t key;
+
+  /* zoom stays on Ctrl-= / Ctrl--, now that the menu rows are gone; the CRT
+   * and pointer options live only in the Display window, whose ticks a key
+   * could not keep current. Ctrl-Plus is Ctrl-Shift-= on most keyboards. */
+  if ((modifiers & wuss_KEY_MOD_CTRL) &&
+      (code == '=' || code == '+' || code == '-'))
+  {
+    wuss_frontend_zoom(g_tasks.frontend, code == '-' ? -1 : 1);
+    return result_OK;
+  }
+
+  /* Ctrl-0: actual size */
+  if ((modifiers & wuss_KEY_MOD_CTRL) && code == '0')
+  {
+    while (wuss_frontend_get_zoom(g_tasks.frontend) > 1)
+      wuss_frontend_zoom(g_tasks.frontend, -1);
+    return result_OK;
+  }
 
   key.kind               = wuss_EVENT_KEY;
   key.data.key.code      = code;

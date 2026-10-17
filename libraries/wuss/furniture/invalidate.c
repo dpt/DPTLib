@@ -1,6 +1,8 @@
 /* wuss/furniture/invalidate.c -- wuss - minimal window manager */
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/geometry.h"
+#include "../core/invalidate.h"
 
 /* Same as wuss__furniture_invalidate, but against an arbitrary box rather
  * than window->visible -- lets a caller that's just resized the window

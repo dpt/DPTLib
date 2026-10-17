@@ -41,8 +41,7 @@ static void fill_backdrop_excluding_content(wuss_t *wuss, const box_t *area)
      * image has no such bound, so leaving clip at the wider "area" lets it
      * paint over window boxes this piece was meant to exclude. */
     wuss->scr->clip = pieces[i];
-    wuss__fill_backdrop(wuss->scr, wuss->palette, &wuss->backdrop,
-                        &pieces[i], 0, 0);
+    wuss__fill_backdrop(wuss, &wuss->backdrop, &pieces[i], 0, 0);
   }
 }
 
@@ -90,7 +89,7 @@ static void redraw_window(wuss_t        *wuss,
 
     /* phase any pattern against the scroll origin so it locks to the
      * content rather than crawling as the window scrolls */
-    wuss__fill_backdrop(wuss->scr, wuss->palette, &win->bg, &content,
+    wuss__fill_backdrop(wuss, &win->bg, &content,
                         content.x0 - win->scroll.x,
                         content.y0 - win->scroll.y);
 
@@ -173,10 +172,7 @@ result_t wuss_redraw(wuss_t *wuss)
   result_t rc;
   box_t    full;
 
-  full.x0 = 0;
-  full.y0 = 0;
-  full.x1 = wuss->scr->size.w;
-  full.y1 = wuss->scr->size.h;
+  wuss__screen_box(wuss, &full);
 
   wuss->scr->clip = full;
   fill_backdrop_excluding_content(wuss, &full);

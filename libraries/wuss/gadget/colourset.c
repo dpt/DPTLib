@@ -22,9 +22,11 @@
 #include "wuss/component/colourmenu.h"
 #include "wuss/gadget/colourset.h"
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/palette.h"
 #include "../font/font.h"
 #include "../icon.h"
+#include "popup.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -49,42 +51,6 @@ struct wuss_colourset
 };
 
 /* ----------------------------------------------------------------------- */
-
-/* Fill "spec" as the button at the right edge of "bbox", vertically centred,
- * returning its width. */
-static int colourset_button_spec(const wuss_t     *wuss,
-                                 box_t             bbox,
-                                 wuss_icon_spec_t *spec)
-{
-  const bitmap_t *bm;
-  int             idx;
-  int             w, h;
-
-  idx = wuss_iconpool_lookup(wuss, "grightc");
-  bm  = (idx >= 0) ? wuss_iconpool_bitmap(wuss, idx) : NULL;
-  if (bm == NULL)
-  {
-    /* no icon set: a square button the height of the gadget */
-    h = bbox.y1 - bbox.y0;
-    wuss_icon_spec_action(spec,
-                          (box_t) BOX_POS_SIZE(bbox.x1 - h, bbox.y0, h, h),
-                          ">", 0);
-    return h;
-  }
-
-  w = bm->size.w;
-  h = bm->size.h;
-
-  memset(spec, 0, sizeof(*spec));
-  spec->bbox  = (box_t) BOX_POS_SIZE(bbox.x1 - w,
-                                     bbox.y0 + (bbox.y1 - bbox.y0 - h) / 2,
-                                     w, h);
-  spec->type  = wuss_ICON_TYPE_BITMAP;
-  spec->flags = wuss_ICON_FLAGS_INTERACTIVE;
-  spec->u.bitmap.name         = "grightc";
-  spec->u.bitmap.pressed_name = "grightc-p";
-  return w;
-}
 
 /* The concrete palette index for "colour", or -1 if it is
  * wuss_NO_BACKGROUND or out of range. */
@@ -113,8 +79,6 @@ result_t wuss_colourset_create(wuss_colourset_t           **out,
   wuss_icon_spec_t  specs[3];
   wuss_icon_t      *icons[3];
   box_t             field;
-  bmfont_t         *font;
-  bmfont_width_t    w;
   int               nspecs;
 
   if (out == NULL || window == NULL)
@@ -130,26 +94,8 @@ result_t wuss_colourset_create(wuss_colourset_t           **out,
   if (cs == NULL)
     return result_OOM;
 
-  field     = bbox;
-  field.x1 -= colourset_button_spec(wuss, bbox, &specs[1]) + wuss_STD_GAP;
-  nspecs    = 2;
-
-  font = wuss->fonts.fonts[0];
-  if (title != NULL && title[0] != '\0' && font != NULL)
-  {
-    w = (bmfont_width_t) title_width;
-    if (title_width <= 0)
-    {
-      wuss__text_measure(font, title, (int) strlen(title), INT_MAX, NULL, &w);
-      w += 2 * WUSS_LABEL_TEXT_PAD;
-    }
-    wuss_icon_spec_label(&specs[2],
-                         (box_t) BOX_POS_SIZE(bbox.x0, bbox.y0, (int) w,
-                                              bbox.y1 - bbox.y0),
-                         title, wuss_ICON_FLAGS_JUSTIFY_RIGHT);
-    field.x0 += (int) w + wuss_STD_GAP;
-    nspecs    = 3;
-  }
+  nspecs = wuss__popup_layout(wuss, bbox, title, title_width, "grightc",
+                              "grightc-p", specs, &field);
 
   wuss_icon_spec_display(&specs[0], field, NULL, 0);
   specs[0].bg = (wuss_colour_t) resolved;
@@ -180,8 +126,9 @@ int wuss_colourset_button_width(const wuss_t *wuss, int height)
 {
   wuss_icon_spec_t spec;
 
-  return colourset_button_spec(wuss, (box_t) BOX_POS_SIZE(0, 0, height, height),
-                               &spec);
+  return wuss__popup_arrow_spec(wuss,
+                                (box_t) BOX_POS_SIZE(0, 0, height, height),
+                                "grightc", "grightc-p", &spec);
 }
 
 void wuss_colourset_destroy(wuss_colourset_t *doomed)
@@ -200,8 +147,6 @@ void wuss_colourset_destroy(wuss_colourset_t *doomed)
 static result_t colourset_open(wuss_colourset_t *cs)
 {
   const wuss_menu_t *menu;
-  box_t              content, bbox, screen;
-  point_t            scroll;
 
   menu = wuss_colourmenu_menu(cs->window->task->wuss);
   if (menu == NULL)
@@ -212,13 +157,7 @@ static result_t colourset_open(wuss_colourset_t *cs)
                                                 * old title */
   wuss_colourmenu_set_ticked(cs->colour);
 
-  wuss_window_get_content_bounds(cs->window, &content);
-  wuss_window_get_scroll(cs->window, &scroll);
-  wuss_icon_get_bbox(cs->button, &bbox);
-  wuss__icon_box_to_screen(&content, scroll, &bbox, &screen);
-
-  return wuss_menu_open(cs->window->task, menu,
-                        POINT(screen.x1, screen.y0), &cs->handle);
+  return wuss__popup_open(cs->window, cs->button, menu, &cs->handle);
 }
 
 int wuss_colourset_handle_event(wuss_colourset_t   *cs,
@@ -237,7 +176,7 @@ int wuss_colourset_handle_event(wuss_colourset_t   *cs,
 
     rc = result_OK;
     if (event->data.icon.action == wuss_MOUSE_UP &&
-        (event->data.icon.button & (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST)))
+        (event->data.icon.button & WUSS_BUTTON_CLICK))
       rc = colourset_open(cs);
     *out_result = rc;
     return 1;

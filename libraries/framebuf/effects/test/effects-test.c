@@ -173,6 +173,16 @@ static result_t test_blend(void)
       channel(pd[0], 16) != 255 || channel(pd[0], 24) != 127)
     FAIL("blend 128 gave %08x", pd[0]);
 
+  effects_blend_extrapolate(&a, &b, &dst, -128);
+  if (channel(pd[0], 0) != 0 || channel(pd[0], 8) != 150 ||
+      channel(pd[0], 16) != 255 || channel(pd[0], 24) != 0)
+    FAIL("extrapolate -128 gave %08x", pd[0]);
+
+  effects_blend_extrapolate(&a, &b, &dst, 384);
+  if (channel(pd[0], 0) != 255 || channel(pd[0], 8) != 0 ||
+      channel(pd[0], 16) != 255 || channel(pd[0], 24) != 255)
+    FAIL("extrapolate 384 gave %08x", pd[0]);
+
   return result_TEST_PASSED;
 }
 

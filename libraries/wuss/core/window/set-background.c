@@ -7,10 +7,10 @@ result_t wuss_window_set_background(wuss_window_t  *window,
 {
   box_t content;
 
-  bg.colour     = wuss__resolve_colour(window->wuss, bg.colour);
-  bg.pattern_bg = wuss__resolve_colour(window->wuss, bg.pattern_bg);
+  bg.fill.colour     = wuss__resolve_colour(window->wuss, bg.fill.colour);
+  bg.fill.pattern_bg = wuss__resolve_colour(window->wuss, bg.fill.pattern_bg);
 
-  if (wuss__validate_backdrop(window->wuss, &bg) != result_OK)
+  if (wuss__validate_fill(window->wuss, &bg.fill) != result_OK)
     return result_WUSS_BAD_COLOUR;
 
   window->bg = bg;

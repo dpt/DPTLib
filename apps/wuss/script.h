@@ -18,9 +18,9 @@
  * to the front-most window with the given title when prefixed with one:
  *
  *   move [TITLE] X Y            pointer to X,Y
- *   down|up|click BUTTON [TITLE] X Y
- *                               BUTTON is select, menu or adjust; click is
- *                               a down then an up
+ *   down|up|click [MOD+...]BUTTON [TITLE] X Y
+ *                               BUTTON is select, menu or adjust; MOD as
+ *                               for key; click is a down then an up
  *   key [MOD+...]KEY            KEY is a printable or return, escape, tab,
  *                               backspace, delete, insert, up, down, left,
  *                               right, home, end, pageup, pagedown, f1..f12;
@@ -45,6 +45,9 @@ result_t script_open(const char *filename);
  * scripted input. false ends the script's part of this frame (a wait, or a
  * dump/png held over until input already sent has been redrawn). */
 bool script_poll(wuss_t *wuss, const bitmap_t *bm, wuss_input_t *ev);
+
+/* Save a framebuffer as a PNG, whatever its pixel format. */
+result_t script_save_png(const bitmap_t *bm, const char *filename);
 
 /* Returns result_OK if the script ran to its end without error. */
 result_t script_close(void);

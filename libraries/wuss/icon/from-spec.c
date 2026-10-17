@@ -6,7 +6,8 @@
 #include "fortify/fortify.h"
 #endif
 
-#include "../core/impl.h"
+#include "../core/types.h"
+#include "../core/palette.h"
 
 result_t wuss__icon_from_spec(const wuss_t           *w,
                               const wuss_task_t      *task,

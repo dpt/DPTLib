@@ -379,6 +379,46 @@ static int test_deep(const char *resources)
   return ok;
 }
 
+/* A colour-key tRNS on a truecolour or greyscale PNG makes the keyed colour
+ * transparent. */
+static int test_colour_key(const char *resources)
+{
+  static const unsigned char rgbkey[] = { 1, 2, 3, 0xFF, 250, 251, 252, 0 };
+
+  bitmap_t bm;
+  int      ok;
+
+  ok = 1;
+
+  if (load_expect(resources, "rgbkey.png", 2, 1, pixelfmt_rgba8888, &bm))
+  {
+    ok &= row_is(&bm, "rgbkey", 0, rgbkey, 8);
+    load_free(&bm);
+  }
+  else
+  {
+    ok = 0;
+  }
+
+  /* the key is grey level 64: only that palette entry loses its alpha */
+  if (load_expect(resources, "greykey.png", 4, 2, pixelfmt_p8, &bm))
+  {
+    if (colour_get_alpha(&bm.palette[64]) != 0 ||
+        colour_get_alpha(&bm.palette[128]) != 0xFF)
+    {
+      printf("load: greykey: palette alpha wrong\n");
+      ok = 0;
+    }
+    load_free(&bm);
+  }
+  else
+  {
+    ok = 0;
+  }
+
+  return ok;
+}
+
 /* Missing, non-PNG and unsupported-depth files are reported, not loaded. */
 static int test_errors(const char *resources)
 {
@@ -427,6 +467,7 @@ result_t bitmap_load_test(const char *resources)
   ok &= test_palette(resources);
   ok &= test_palette_depths(resources);
   ok &= test_deep(resources);
+  ok &= test_colour_key(resources);
   ok &= test_errors(resources);
 
   return ok ? result_TEST_PASSED : result_TEST_FAILED;
