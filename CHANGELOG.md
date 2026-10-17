@@ -709,6 +709,48 @@ _Unreleased_ until one is cut.
 - Ball Damping option (D). Paint `[` and `]` step the brush size.
 - Double ADJUST on an Apps filer task closes the viewer it was launched
   from.
+- Reading shows any text file (plain text unless named `.md`) and refuses a
+  file containing a NUL byte; a dropped file that fails to load closes its new
+  instance. Its window has no horizontal scroll bar, reflows to any width up
+  to the screen's, and scrolls to the end of text of any length.
+- Pooling task: a grid of every shared icon pool entry with its name, using
+  new `wuss_iconpool_name()`.
+- `wuss_error_report()`: a non-modal singleton error window in the manner of
+  `Wimp_ReportError` (image, one-line message, OK and optional Cancel, later
+  reports queued and raised as they arrive), showing the reporting app's icon
+  via `taskapp_glyph_name()`. Reading reports an unreadable file through it.
+- DCS component: a Discard/Cancel/Save dialogue on `wuss_dialogue`, with a
+  Quit variant and `wuss_dcs_set_message()`.
+- Standard keys, proposed from the RISC OS 3 Style Guide with macOS chords
+  filling the gaps (see the keys document). A system key layer ahead of
+  `wuss_key` binds Ctrl-F2 close window, Ctrl-Q quit app, Ctrl-Shift-Q quit
+  Wuss, Ctrl-H / Ctrl-Shift-H hide app / others, Ctrl-F11, Ctrl-` and Ctrl-Tab
+  cycle apps and windows, Ctrl-Shift-Esc kill app, Ctrl-Shift-F toggle size,
+  Ctrl-Shift-3 save the screen, Ctrl-0 actual size and Ctrl-Shift-Up open
+  parent. Save moves to F3; Debug keys move to Shift-F1, Ctrl-Shift-F1 and
+  Shift-F3; zoom to Ctrl-= and Ctrl--. New `wuss_task_front()`,
+  `wuss_task_cycle_windows()`, `wuss_cycle_tasks()`, `wuss_task_hide_app()`,
+  `wuss_task_hide_others()`, `wuss_task_show_all()`,
+  `wuss_task_close_windows()`, `wuss_task_get_root()`,
+  `wuss_task_is_hidden()`, `wuss_window_get_task()` and
+  `wuss_window_toggle_size()`. Menu shortcut labels accept UP, DOWN, LEFT and
+  RIGHT, and the icon bar Hide rows show `^H`.
+- Writable icons have a clipboard (`wuss_clipboard_set()`, `_get()`,
+  `_generation()`) and a selection: Ctrl-A, C, X, V and Z, Insert, and typing
+  or deleting replaces the selection. The SDL frontend syncs the clipboard
+  with the host.
+- `wuss_menu_select_is()` and `wuss_menu_select_index()` test whether an event
+  picked a given menu row.
+- Per-colour fills: `wuss_fill_t` and `wuss_set_colour_fill()` let any desktop
+  colour be a pattern. Desktop colours are dithered against the physical
+  palette, solid where the screen can show them exactly.
+- Painting paintbrush tool (H) with round, square, flat, tall, slash,
+  backslash and bristles nozzles (N or the Nozzle menu).
+- Ball-to-ball collisions (mass follows area; the held ball is immovable).
+  Greebling Ctrl-R randomises the seed and base palette.
+- Emscripten builds open Configuring, Display and a Reading window showing
+  `About_Wuss.md` at start-up, scroll the mouse wheel 4x faster, and add an
+  Open filedrop row to the Filer icon bar menu.
 
 ### Changed
 
@@ -1074,6 +1116,15 @@ _Unreleased_ until one is cut.
 - The `wuss` tests split out of `wuss-test` into per-layer tests that each
   run alone on a fresh fixture. The `WUSS_FURNITURE=OFF`, `WUSS_ICONS=OFF`
   and `WUSS_MENUS=OFF` builds link and pass again.
+- Gradient opens centred at its document size, and dithering can be turned
+  off. Painting's New dialogue is titled New Painting with a single
+  Dimensions row.
+- ADJUST on the toggle size icon toggles as SELECT does.
+- Internal: shared helpers replace repeated code in the menu, event delivery,
+  text-width, popup-field, screen-to-document and invalidation paths
+  (`wuss__menu_install`, `wuss__deliver_kind`, `wuss__text_width`,
+  `wuss__screen_to_doc`, `WUSS_BUTTON_CLICK` and others); behaviour is
+  unchanged.
 
 ### Fixed
 
@@ -1545,3 +1596,9 @@ _Unreleased_ until one is cut.
 - Minesweeping Give Up shades live after it or a reset.
 - Two UBSan signed-arithmetic reports: gridview redraw with an empty clip
   and bitmap resize with negative origins.
+- Reading no longer truncates long text, no longer asserts when centring or
+  right-aligning text with blank lines, and keeps its scroll bar in step with
+  the text.
+- Icon bar Hide/Show rows resync after the hide keys, so clicks no longer
+  toggle the wrong way.
+- Effects closes its effect stack window with the main window.
