@@ -388,7 +388,8 @@ result_t taskapp_install(wuss_t *wuss, const taskapp_desc_t *desc)
     n++;
   }
   app->hide_row = n;
-  WUSS_MENU_ITEM(app->menu_items, n, "Hide", wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(app->menu_items, n, "Hide", wuss_MENU_ITEM_NONE,
+                          "^H");
   n++;
   app->quit_row = n;
   WUSS_MENU_ITEM_SHORTCUT(app->menu_items, n, "Quit", 0, NULL);

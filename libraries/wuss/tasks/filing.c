@@ -404,8 +404,8 @@ result_t filing_create(wuss_t *wuss, filing_task_t **out)
                  wuss_MENU_ITEM_NONE);
   WUSS_MENU_ITEM(task->ib_menu_items, FILING_IB_MENU_CLOSE_ALL, "Close all",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->ib_menu_items, FILING_IB_MENU_HIDE, "Hide",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->ib_menu_items, FILING_IB_MENU_HIDE, "Hide",
+                          wuss_MENU_ITEM_NONE, "^H");
   WUSS_MENU_TITLE(task->ib_menu, "Filing", task->ib_menu_items,
                   NELEMS(task->ib_menu_items));
 

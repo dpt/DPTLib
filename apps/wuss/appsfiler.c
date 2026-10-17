@@ -401,8 +401,8 @@ result_t appsfiler_create(wuss_t *wuss)
 
   WUSS_MENU_ITEM(task->menu_items, APPS_MENU_CLOSE_ALL, "Close all",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->menu_items, APPS_MENU_HIDE, "Hide",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, APPS_MENU_HIDE, "Hide",
+                          wuss_MENU_ITEM_NONE, "^H");
   WUSS_MENU_ITEM_WINDOW(task->menu_items, APPS_MENU_INFO, "Info",
                         wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                         NULL); /* retargeted at the shared proginfo
