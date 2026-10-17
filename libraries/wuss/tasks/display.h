@@ -42,6 +42,9 @@ result_t display_create(wuss_t *wuss, display_task_t **out);
 /* install the icon bar app that opens display windows on demand */
 result_t display_app_create(wuss_t *wuss);
 
+/* open a display window now; the app must be installed first */
+result_t display_open(wuss_t *wuss);
+
 /* free a task block allocated by display_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void display_destroy(display_task_t *task);

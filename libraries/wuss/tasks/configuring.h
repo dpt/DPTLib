@@ -73,6 +73,9 @@ result_t configuring_create(wuss_t *wuss, configuring_task_t **out);
 /* install the icon bar app that opens config windows on demand */
 result_t configuring_app_create(wuss_t *wuss);
 
+/* open a configuring window now; the app must be installed first */
+result_t configuring_open(wuss_t *wuss);
+
 /* free a task block allocated by configuring_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */
 void configuring_destroy(configuring_task_t *task);

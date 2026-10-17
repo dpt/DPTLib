@@ -40,6 +40,8 @@
 #include "taskmanager.h"
 #include "tasks.h"
 
+#include "tasks/configuring.h"
+#include "tasks/display.h"
 #include "tasks/reading.h"
 #include "tasks/palette.h" /* palette_load_hex for the startup *.hex */
 #ifdef WUSS_ICONBAR
@@ -786,6 +788,8 @@ static result_t run_wuss(const char *resources,
   tasks_spawn(tasks);
 
 #ifdef __EMSCRIPTEN__
+  (void) configuring_open(wuss);
+  (void) display_open(wuss);
   /* show the About text on load */
   (void) reading_open_file(wuss, pathf("%s/resources/text/About_Wuss.md",
                                        wuss_get_resources(wuss)));
@@ -1078,7 +1082,7 @@ int main(int argc, char *argv[])
   opts.res_width    = 640;
   opts.res_height   = 480;
 #ifdef __EMSCRIPTEN__
-  opts.tasks        = "Filing,Configure,Display,Reading"; /* browser has no command line */
+  opts.tasks        = "Filing,Configuring,Display,Reading"; /* browser has no command line */
 #else
   opts.tasks        = "Filing,Display";
 #endif

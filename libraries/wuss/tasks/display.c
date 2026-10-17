@@ -379,20 +379,34 @@ result_t display_create(wuss_t *wuss, display_task_t **out)
   return result_OK;
 }
 
+static const taskapp_desc_t display_desc =
+{
+  "Display",
+  "Set colours and resolution",
+  (taskapp_create_fn_t) display_create,
+  NULL,
+  false,
+  NULL,
+  true
+};
+
 result_t display_app_create(wuss_t *wuss)
 {
-  static const taskapp_desc_t desc =
-  {
-    "Display",
-    "Set colours and resolution",
-    (taskapp_create_fn_t) display_create,
-    NULL,
-    false,
-    NULL,
-    true
-  };
+  return taskapp_install(wuss, &display_desc);
+}
 
-  return taskapp_install(wuss, &desc);
+static result_t display__spawn(wuss_t *wuss, void *param, void **out)
+{
+  NOT_USED(param);
+
+  return display_create(wuss, (display_task_t **) out);
+}
+
+result_t display_open(wuss_t *wuss)
+{
+  void *task;
+
+  return taskapp_spawn(wuss, &display_desc, display__spawn, NULL, &task);
 }
 
 void display_destroy(display_task_t *task)

@@ -630,20 +630,34 @@ fail_delegate:
   return rc;
 }
 
+static const taskapp_desc_t configuring_desc =
+{
+  "Configuring",
+  "System settings",
+  (taskapp_create_fn_t) configuring_create,
+  NULL,
+  false,
+  NULL,
+  true
+};
+
 result_t configuring_app_create(wuss_t *wuss)
 {
-  static const taskapp_desc_t desc =
-  {
-    "Configuring",
-    "System settings",
-    (taskapp_create_fn_t) configuring_create,
-    NULL,
-    false,
-    NULL,
-    true
-  };
+  return taskapp_install(wuss, &configuring_desc);
+}
 
-  return taskapp_install(wuss, &desc);
+static result_t configuring__spawn(wuss_t *wuss, void *param, void **out)
+{
+  NOT_USED(param);
+
+  return configuring_create(wuss, (configuring_task_t **) out);
+}
+
+result_t configuring_open(wuss_t *wuss)
+{
+  void *task;
+
+  return taskapp_spawn(wuss, &configuring_desc, configuring__spawn, NULL, &task);
 }
 
 void configuring_destroy(configuring_task_t *task)
