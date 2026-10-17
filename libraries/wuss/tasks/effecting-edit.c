@@ -681,6 +681,17 @@ result_t effecting_edit_create(effecting_task_t *ec, effecting_edit_t **out)
   return result_OK;
 }
 
+void effecting_edit_closed(effecting_edit_t *edit, wuss_window_t *window)
+{
+  int i;
+
+  if (edit == NULL)
+    return;
+
+  for (i = 0; i < EFFECTING_EDIT__LIMIT; i++)
+    wuss_dialogue_handle_close(edit->dlg[i].dialogue, window);
+}
+
 void effecting_edit_destroy(effecting_edit_t *edit)
 {
   int i;

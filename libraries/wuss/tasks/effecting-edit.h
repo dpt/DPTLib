@@ -39,6 +39,10 @@ wuss_window_t *effecting_edit_window(const effecting_edit_t *edit,
 int effecting_edit_find(const effecting_edit_t *edit,
                         const wuss_window_t    *window);
 
+/* a wuss_EVENT_CLOSE on window: forget it if it is one of the dialogues', so
+ * effecting_edit_destroy does not close it again */
+void effecting_edit_closed(effecting_edit_t *edit, wuss_window_t *window);
+
 /* a wuss_EVENT_ICON on the dialogue's window */
 result_t effecting_edit_icon(effecting_edit_t      *edit,
                              effecting_edit_which_t which,

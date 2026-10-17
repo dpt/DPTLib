@@ -973,6 +973,7 @@ result_t saturn_handle(wuss_window_t      *window,
     return saturn_idle(task);
 
   case wuss_EVENT_CLOSE:
+    wuss_dialogue_handle_close(task->conf.dialogue, window);
     if (window == task->window)
       task->window = NULL;
     return result_OK;

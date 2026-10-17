@@ -159,6 +159,18 @@ result_t wuss_dialogue_create_on_window(wuss_dialogue_t           **out,
 void wuss_dialogue_destroy(wuss_dialogue_t *doomed);
 
 /**
+ * Tell a dialogue its window has been closed by someone else (e.g. its
+ * task's windows all closed at once), so wuss_dialogue_destroy does not
+ * close it again. Call it from the owning task's wuss_EVENT_CLOSE handler.
+ * Does nothing if closed is not the dialogue's window or dialogue is NULL.
+ *
+ * \param[in] dialogue Dialogue, or NULL.
+ * \param[in] closed   Window being closed.
+ */
+void wuss_dialogue_handle_close(wuss_dialogue_t *dialogue,
+                                wuss_window_t   *closed);
+
+/**
  * Change the opaque pointer passed to the fillout and action callbacks,
  * replacing the one given at creation. For a dialogue shared by several
  * callers (e.g. the wuss_proginfo singleton reused across tasks), call this

@@ -1072,6 +1072,7 @@ result_t fireworks_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_CLOSE:
+    wuss_dialogue_handle_close(pt->strength_dialogue, window);
     if (window == pt->window)
       pt->window = NULL;
     return result_OK;

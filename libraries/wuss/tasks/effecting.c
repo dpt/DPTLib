@@ -865,6 +865,7 @@ result_t effecting_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_CLOSE:
+    effecting_edit_closed(ec->edit, window);
     if (window == ec->window)
     {
       ec->window = NULL;

@@ -305,8 +305,6 @@ static result_t paintingnew_handle(wuss_window_t      *window,
   paintingnew_t *pn;
   result_t       rc;
 
-  (void) window;
-
   pn = task_data;
 
   switch (event->kind)
@@ -320,6 +318,10 @@ static result_t paintingnew_handle(wuss_window_t      *window,
     rc = result_WUSS_KEY_UNCLAIMED;
     (void) wuss_dialogue_handle_key(pn->dialogue, event, &rc);
     return rc;
+
+  case wuss_EVENT_CLOSE:
+    wuss_dialogue_handle_close(pn->dialogue, window);
+    return result_OK;
 
   case wuss_EVENT_MENU_CLOSED:
     pn->menu_handle = NULL; /* wuss closed the chain under us */
