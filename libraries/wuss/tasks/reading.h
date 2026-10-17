@@ -41,6 +41,7 @@ reading_span_t;
 typedef struct reading_task
 {
   wuss_window_t      *window;
+  size2d_t            doc;        /* document extent last set on window */
   wuss_task_t        *delegate;   /* the wuss task backing this window */
   wuss_t             *wuss;       /* for wuss_get_pointer when opening the
                                    * menu */
@@ -117,6 +118,10 @@ result_t reading_create(wuss_t *wuss, reading_task_t **out);
 
 /* install the icon bar app that opens Reading windows on demand */
 result_t reading_app_create(wuss_t *wuss);
+
+/* open a Reading window showing the file at path; the app must be installed
+ * (reading_app_create) first */
+result_t reading_open_file(wuss_t *wuss, const char *path);
 
 /* free a task block allocated by reading_create; normally called by the
  * window's wuss_EVENT_QUIT handler, not by callers directly */

@@ -755,7 +755,7 @@ result_t reading_create(wuss_t *wuss, reading_task_t **out)
                              &task_place,
                              sz,
                              "Reading",
-                             wuss_WINDOW_DEFAULT | wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
+                             (wuss_WINDOW_DEFAULT & ~wuss_WINDOW_HSCROLL) | wuss_WINDOW_NO_RESIZE_BLIT, /* paragraph reflows across the whole window, so a resize must redraw all of it, not just the newly (un)covered edge */
                              wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                              SIZE2D(sz.w, 220 * 4),
                              SIZE2D(0, 0),
@@ -772,18 +772,43 @@ result_t reading_create(wuss_t *wuss, reading_task_t **out)
   return result_OK;
 }
 
+static const taskapp_desc_t reading_desc =
+{
+  "Reading",
+  "Read Markdown and text files",
+  (taskapp_create_fn_t) reading_create,
+  (taskapp_data_load_fn_t) reading_drop,
+  true
+};
+
 result_t reading_app_create(wuss_t *wuss)
 {
-  static const taskapp_desc_t desc =
-  {
-    "Reading",
-    "Read Markdown and text files",
-    (taskapp_create_fn_t) reading_create,
-    (taskapp_data_load_fn_t) reading_drop,
-    true
-  };
+  return taskapp_install(wuss, &reading_desc);
+}
 
-  return taskapp_install(wuss, &desc);
+static result_t reading__spawn_show(wuss_t *wuss, void *param, void **out)
+{
+  result_t        rc;
+  reading_task_t *task;
+
+  rc = reading_create(wuss, &task);
+  if (rc != result_OK)
+    return rc;
+
+  *out = task;
+  return reading_drop(task, (const char *) param);
+}
+
+result_t reading_open_file(wuss_t *wuss, const char *path)
+{
+  void *task;
+  char  copy[512];
+
+  /* reading_create calls pathf, so path may be pathf's shared buffer */
+  snprintf(copy, sizeof(copy), "%s", path);
+
+  return taskapp_spawn(wuss, &reading_desc, reading__spawn_show, copy,
+                       &task);
 }
 
 void reading_destroy(reading_task_t *task)
@@ -801,7 +826,6 @@ void reading_destroy(reading_task_t *task)
 
 #define READING_INSET 4
 #define LEADING    2
-#define MAX_LINES  64 /* text is short; overflow is dropped */
 
 /* like bmtext_draw, but each line is split against tcx->markdown_spans (byte
  * offsets into tcx->text) so a span's run is drawn in its own colour
@@ -953,12 +977,15 @@ static result_t reading_redraw(const wuss_event_t *event, void *task_data)
   const colour_t *palette;
   colour_t        fg, bg;
   int             wrap_width;
-  bmtext_line_t   lines[MAX_LINES];
+  bmtext_line_t  *lines;
   int             nlines;
-  int             dx[MAX_LINES];
+  int            *dx;
   int             i;
   point_t         origin;
   int             font_height;
+  size_t          max;
+  size2d_t        doc;
+  result_t        rc;
 
   tcx = task_data;
   if (tcx->text == NULL)
@@ -974,12 +1001,25 @@ static result_t reading_redraw(const wuss_event_t *event, void *task_data)
   bg      = tcx->bg_transparent ? colour_rgba(0, 0, 0, 0) : palette[tcx->bg_index];
 
   wrap_width = (bounds->x1 - READING_INSET) - (bounds->x0 + READING_INSET);
-  nlines     = reading__layout_lines(tcx->font,
-                                  tcx->text,
-                                  wrap_width,
-                                  &tcx->spacing,
-                                  lines,
-                                  MAX_LINES);
+
+  /* every line holds at least one byte, plus one empty line per newline, so
+   * strlen + 1 bounds the count */
+  max   = strlen(tcx->text) + 1;
+  lines = malloc(max * sizeof(*lines));
+  dx    = malloc(max * sizeof(*dx));
+  if (lines == NULL || dx == NULL)
+  {
+    free(lines);
+    free(dx);
+    return result_OOM;
+  }
+
+  nlines = reading__layout_lines(tcx->font,
+                                 tcx->text,
+                                 wrap_width,
+                                 &tcx->spacing,
+                                 lines,
+                                 (int) max);
 
   /* per-line indent for the alignment; a line wider than the wrap width (a
    * single unbreakable word) measures as the wrap width, so it stays at the
@@ -1005,22 +1045,40 @@ static result_t reading_redraw(const wuss_event_t *event, void *task_data)
   origin.x = bounds->x0 - sx + READING_INSET;
   origin.y = bounds->y0 - sy + READING_INSET;
 
+  bmfont_get_info(tcx->font, NULL, &font_height, NULL, NULL);
+
   if (tcx->markdown_nspans > 0)
   {
     reading__draw_styled(tcx, scr, lines, nlines, dx, fg, bg, origin);
-    return result_OK;
+  }
+  else
+  {
+    /* one bmtext_draw per line so each can take its own indent */
+    for (i = 0; i < nlines; i++)
+    {
+      point_t line_origin;
+
+      line_origin.x = origin.x + dx[i];
+      line_origin.y = origin.y + i * (font_height + LEADING);
+      bmtext_draw(tcx->font, scr, &lines[i], 1, fg, bg, LEADING, line_origin,
+                  &tcx->spacing);
+    }
   }
 
-  /* one bmtext_draw per line so each can take its own indent */
-  bmfont_get_info(tcx->font, NULL, &font_height, NULL, NULL);
-  for (i = 0; i < nlines; i++)
+  /* size the scrollable document to the laid-out text; a change repaints
+   * the window, and the repeat redraw finds it unchanged */
+  /* a window cannot be dragged wider than its document, so make the
+   * document as wide as the screen allows; the text reflows to fit */
+  wuss_window_get_max_content(tcx->window, &doc);
+  doc.h = nlines * (font_height + LEADING) + 2 * READING_INSET;
+  free(lines);
+  free(dx);
+  if (doc.h != tcx->doc.h || doc.w != tcx->doc.w)
   {
-    point_t line_origin;
-
-    line_origin.x = origin.x + dx[i];
-    line_origin.y = origin.y + i * (font_height + LEADING);
-    bmtext_draw(tcx->font, scr, &lines[i], 1, fg, bg, LEADING, line_origin,
-               &tcx->spacing);
+    tcx->doc = doc;
+    rc = wuss_window_set_doc(tcx->window, doc);
+    if (rc != result_OK)
+      return rc;
   }
 
   return result_OK;
