@@ -1011,8 +1011,8 @@ static result_t reading_redraw(const wuss_event_t *event, void *task_data)
     bmfont_width_t width;
 
     dx[i] = 0;
-    if (tcx->align == READING_ALIGN_LEFT)
-      continue;
+    if (tcx->align == READING_ALIGN_LEFT || lines[i].len == 0)
+      continue; /* bmfont_measure refuses an empty run */
 
     if (bmfont_measure(tcx->font, lines[i].str, lines[i].len, &tcx->spacing,
                        wrap_width, &split, &width) != result_OK)
