@@ -93,6 +93,7 @@ extern testfn_t gridview_bench_test,
                 wuss_menu_desc_test,
                 wuss_gadget_test,
                 wuss_component_test,
+                dcs_test,
                 wuss_test;
 
 #endif /* TESTS_ALL_TESTS_H */
