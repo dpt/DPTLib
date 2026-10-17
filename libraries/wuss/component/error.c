@@ -530,6 +530,9 @@ result_t wuss_error_report(wuss_t                 *wuss,
     }
   }
 
+  /* a queued report is no less urgent: bring the window up for it too */
+  wuss_window_restack(wuss_dialogue_window(g.dialogue), wuss_ZORDER_FRONT);
+
   return result_OK;
 
 failure:
