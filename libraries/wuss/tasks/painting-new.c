@@ -51,9 +51,9 @@ static const char *const paintingnew_bg_names[PN_BG__COUNT] =
 /* icons, in creation order */
 enum
 {
-  PN_ICON_WIDTH_LABEL,
+  PN_ICON_DIM_LABEL,
   PN_ICON_WIDTH,
-  PN_ICON_HEIGHT_LABEL,
+  PN_ICON_X_LABEL,
   PN_ICON_HEIGHT,
   PN_ICON_BG_LABEL,
   PN_ICON_BG,        /* first of PN_BG__COUNT radios */
@@ -66,11 +66,10 @@ enum
 enum
 {
   PN_ST_ROOT,
-  PN_ST_WIDTH_ROW,
-  PN_ST_WIDTH_LABEL,
+  PN_ST_DIM_ROW,
+  PN_ST_DIM_LABEL,
   PN_ST_WIDTH,
-  PN_ST_HEIGHT_ROW,
-  PN_ST_HEIGHT_LABEL,
+  PN_ST_X_LABEL,
   PN_ST_HEIGHT,
   PN_ST_BG_ROW,
   PN_ST_BG_LABEL,
@@ -90,13 +89,11 @@ static const stack_item_t g_paintingnew_stack[PN_ST__LIMIT] =
   [PN_ST_ROOT] = { .kind = stack_KIND_VBOX, .parent = -1,
                    .gap = wuss_STD_GAP, .pad = wuss_STD_INSETS },
 
-  [PN_ST_WIDTH_ROW]    = STACK_HBOX(PN_ST_ROOT, wuss_STD_GLYPH_SIZE, wuss_STD_GAP, stack_ALIGN_START),
-  [PN_ST_WIDTH_LABEL]  = STACK_LEAF_GROUP(PN_ST_WIDTH_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE, PN_G_LABEL),
-  [PN_ST_WIDTH]        = STACK_LEAF(PN_ST_WIDTH_ROW, PN_FIELD_W, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE),
-
-  [PN_ST_HEIGHT_ROW]   = STACK_HBOX(PN_ST_ROOT, wuss_STD_GLYPH_SIZE, wuss_STD_GAP, stack_ALIGN_START),
-  [PN_ST_HEIGHT_LABEL] = STACK_LEAF_GROUP(PN_ST_HEIGHT_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE, PN_G_LABEL),
-  [PN_ST_HEIGHT]       = STACK_LEAF(PN_ST_HEIGHT_ROW, PN_FIELD_W, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE),
+  [PN_ST_DIM_ROW]      = STACK_HBOX(PN_ST_ROOT, wuss_STD_GLYPH_SIZE, wuss_STD_GAP, stack_ALIGN_START),
+  [PN_ST_DIM_LABEL]    = STACK_LEAF_GROUP(PN_ST_DIM_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE, PN_G_LABEL),
+  [PN_ST_WIDTH]        = STACK_LEAF(PN_ST_DIM_ROW, PN_FIELD_W, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE),
+  [PN_ST_X_LABEL]      = STACK_LEAF(PN_ST_DIM_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE),
+  [PN_ST_HEIGHT]       = STACK_LEAF(PN_ST_DIM_ROW, PN_FIELD_W, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE),
 
   [PN_ST_BG_ROW]       = STACK_HBOX(PN_ST_ROOT, wuss_STD_GLYPH_SIZE, wuss_STD_GAP, stack_ALIGN_START),
   [PN_ST_BG_LABEL]     = STACK_LEAF_GROUP(PN_ST_BG_ROW, 0, wuss_STD_GLYPH_SIZE, stack_ALIGN_CENTRE, PN_G_LABEL),
@@ -225,8 +222,8 @@ static result_t paintingnew_layout(const wuss_t *wuss,
 
   /* each label's natural width; the size group widens the others to match */
   memcpy(items, g_paintingnew_stack, sizeof(items));
-  items[PN_ST_WIDTH_LABEL].axis_size  = task_text_width(wuss, "Width");
-  items[PN_ST_HEIGHT_LABEL].axis_size = task_text_width(wuss, "Height");
+  items[PN_ST_DIM_LABEL].axis_size    = task_text_width(wuss, "Dimensions");
+  items[PN_ST_X_LABEL].axis_size      = task_text_width(wuss, "x");
   items[PN_ST_BG_LABEL].axis_size     = task_text_width(wuss, "Background");
   for (i = 0; i < PN_BG__COUNT; i++)
     items[PN_ST_BG + i].axis_size = wuss_STD_GLYPH_SIZE + wuss_STD_GAP +
@@ -255,15 +252,15 @@ static result_t paintingnew_build_icons(paintingnew_t *pn,
   char                   height_text[PN_DIGITS + 2];
   int                    i;
 
-  wuss_icon_spec_label(&specs[PN_ICON_WIDTH_LABEL], boxes[PN_ST_WIDTH_LABEL],
-                       "Width", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+  wuss_icon_spec_label(&specs[PN_ICON_DIM_LABEL], boxes[PN_ST_DIM_LABEL],
+                       "Dimensions", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
   snprintf(width_text, sizeof(width_text), "%d", PN_DEFAULT_W);
   wuss_icon_spec_writable(&specs[PN_ICON_WIDTH], boxes[PN_ST_WIDTH],
                           width_text, sizeof(width_text),
                           wuss_ICON_FLAGS_JUSTIFY_CENTRE);
 
-  wuss_icon_spec_label(&specs[PN_ICON_HEIGHT_LABEL], boxes[PN_ST_HEIGHT_LABEL],
-                       "Height", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+  wuss_icon_spec_label(&specs[PN_ICON_X_LABEL], boxes[PN_ST_X_LABEL],
+                       "x", wuss_ICON_FLAGS_JUSTIFY_CENTRE);
   snprintf(height_text, sizeof(height_text), "%d", PN_DEFAULT_H);
   wuss_icon_spec_writable(&specs[PN_ICON_HEIGHT], boxes[PN_ST_HEIGHT],
                           height_text, sizeof(height_text),
@@ -371,7 +368,7 @@ result_t paintingnew_create(paintingnew_t          **slot,
 
   rc = paintingnew_layout(wuss, &size, boxes);
   if (rc == result_OK)
-    rc = wuss_dialogue_create(&pn->dialogue, pn->task, size, "New", NULL, pn);
+    rc = wuss_dialogue_create(&pn->dialogue, pn->task, size, "New Painting", NULL, pn);
   if (rc == result_OK)
     rc = paintingnew_build_icons(pn, boxes);
   if (rc != result_OK)
