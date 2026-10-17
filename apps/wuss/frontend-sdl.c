@@ -532,13 +532,18 @@ bool wuss_frontend_poll(wuss_frontend_t *fe, wuss_input_t *event)
 
     case SDL_EVENT_MOUSE_WHEEL:
       {
-        int x, y;
+        int   x, y;
+        float wheel;
 
         sdl_pos_to_scr(fe->window, fe->scr_width, fe->scr_height,
                        ev.wheel.mouse_x, ev.wheel.mouse_y, &x, &y);
+        wheel = ev.wheel.y;
+#ifdef __EMSCRIPTEN__
+        wheel *= 4; /* browser wheel steps are small; scale before truncating */
+#endif
         event->kind  = wuss_INPUT_WHEEL;
         event->pos   = POINT(x, y);
-        event->wheel = g_tasks.reverse_scroll ? -(int) ev.wheel.y : (int) ev.wheel.y;
+        event->wheel = g_tasks.reverse_scroll ? -(int) wheel : (int) wheel;
       }
       return true;
 
