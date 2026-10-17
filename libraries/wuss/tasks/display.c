@@ -258,6 +258,11 @@ static result_t display_create_window(display_task_t *task,
     task_text_width(task->wuss, "Zoom");
   items[DISPLAY_ST_CRT].min = wuss_STD_GLYPH_SIZE + wuss_STD_GAP +
                               task_text_width(task->wuss, "CRT effect");
+#ifdef __EMSCRIPTEN__
+  /* no CRT effect in the browser: collapse its row */
+  items[DISPLAY_ST_CRT_ROW].axis_size = 0;
+  items[DISPLAY_ST_CRT].cross_size    = 0;
+#endif
   items[DISPLAY_ST_POINTER].min = wuss_STD_GLYPH_SIZE + wuss_STD_GAP +
     task_text_width(task->wuss, "Software pointer");
   items[DISPLAY_ST_CANCEL].min =
@@ -309,6 +314,9 @@ static result_t display_create_window(display_task_t *task,
     return rc;
 
   task->crt      = made[DISPLAY_ICON_CRT];
+#ifdef __EMSCRIPTEN__
+  wuss_icon_set_hidden(task->window, task->crt, 1);
+#endif
   task->pointer  = made[DISPLAY_ICON_POINTER];
   task->cancel = made[DISPLAY_ICON_CANCEL];
   task->change = made[DISPLAY_ICON_CHANGE];
