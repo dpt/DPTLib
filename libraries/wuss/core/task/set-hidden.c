@@ -94,3 +94,34 @@ int wuss_task_has_windows(wuss_t *wuss, wuss_task_t *task)
 
   return 0;
 }
+
+int wuss_task_is_hidden(wuss_t *wuss, wuss_task_t *task)
+{
+  list_t        *t;
+  list_t        *w;
+  wuss_task_t   *each;
+  wuss_window_t *window;
+  int            hidden;
+
+  hidden = 0;
+  for (t = wuss->tasks.next; t != NULL; t = t->next)
+  {
+    each = wuss__task_from_link(t);
+    if (each != task && each->parent != task)
+      continue;
+
+    for (w = each->windows.next; w != NULL; w = w->next)
+    {
+      window = wuss__window_from_task_link(w);
+      if (window->stack == wuss_STACK_BACK)
+        continue;
+
+      if (!(window->flags & wuss_WINDOW_HIDDEN))
+        return 0;
+      if (window->state & wuss_WINDOW_STATE_TASK_HIDDEN)
+        hidden = 1;
+    }
+  }
+
+  return hidden;
+}

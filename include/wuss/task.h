@@ -530,6 +530,16 @@ result_t wuss_task_set_hidden(wuss_t *wuss, wuss_task_t *task, int hidden);
 int wuss_task_has_windows(wuss_t *wuss, wuss_task_t *task);
 
 /**
+ * Test whether \p task, with its children, is hidden: it has windows hidden
+ * by wuss_task_set_hidden (or the hide keys) and none visible.
+ *
+ * \param[in] wuss Window manager.
+ * \param[in] task Task to test, with its children.
+ * \return Non-zero if hidden, else zero.
+ */
+int wuss_task_is_hidden(wuss_t *wuss, wuss_task_t *task);
+
+/**
  * Bring every window of the app that \p task belongs to (its root task: the
  * parent, else itself) to the front of the regular windows, keeping their
  * order, and focus the frontmost.

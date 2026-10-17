@@ -69,13 +69,31 @@ struct app
 
 static app_t *g_apps; /* every installed app */
 
-static result_t app_set_hidden(app_t *app, bool hidden)
+static void app_label_hide(app_t *app, bool hidden)
 {
   app->hidden = hidden;
 
   app->menu_items[app->hide_row].text = hidden ? "Show" : "Hide";
   wuss_menu_set_item_text_live(app->menu_handle, &app->menu, app->hide_row,
                                app->menu_items[app->hide_row].text);
+}
+
+/* whether the app is hidden, resynchronising the flag and the menu row with
+ * the window manager: the hide keys hide an app without telling us */
+static bool app_hidden(app_t *app)
+{
+  bool hidden;
+
+  hidden = wuss_task_is_hidden(app->wuss, app->task) != 0;
+  if (hidden != app->hidden)
+    app_label_hide(app, hidden);
+
+  return app->hidden;
+}
+
+static result_t app_set_hidden(app_t *app, bool hidden)
+{
+  app_label_hide(app, hidden);
 
   return wuss_task_set_hidden(app->wuss, app->task, hidden);
 }
@@ -87,7 +105,7 @@ static result_t app_spawn(app_t             *app,
 {
   result_t rc;
 
-  if (app->hidden)
+  if (app_hidden(app))
     (void) app_set_hidden(app, false);
 
   wuss_set_task_parent(app->wuss, app->task);
@@ -129,7 +147,7 @@ static result_t app_new(app_t *app)
 {
   result_t rc;
 
-  if (app->hidden)
+  if (app_hidden(app))
     (void) app_set_hidden(app, false);
 
   if (app->desc->singleton &&
@@ -217,6 +235,7 @@ static result_t app_menu_open(app_t *app)
   const wuss_proginfo_desc_t desc =
     TASK_PROGINFO_DESC(app->desc->name, app->desc->purpose);
 
+  (void) app_hidden(app);
   wuss_proginfo_set_desc(&desc);
   app->menu_items[APP_MENU_INFO].window = wuss_proginfo_window(app->task);
   if (wuss_task_has_windows(app->wuss, app->task))
@@ -244,7 +263,7 @@ static result_t app_handle(wuss_window_t      *window,
       return result_OK;
     if (event->data.iconbar_icon.button & wuss_BUTTON_MENU)
       return app_menu_open(app);
-    if (app->hidden) /* the click only reveals; it opens nothing new */
+    if (app_hidden(app)) /* the click only reveals; it opens nothing new */
       return app_set_hidden(app, false);
     if (event->data.iconbar_icon.button & wuss_BUTTON_SELECT)
       return app->desc->drop_only ? result_OK : app_new(app);
@@ -264,7 +283,7 @@ static result_t app_handle(wuss_window_t      *window,
     if (event->data.menu_select.index == app->quit_row)
       app->quit = true;
     else if (event->data.menu_select.index == app->hide_row)
-      return app_set_hidden(app, !app->hidden);
+      return app_set_hidden(app, !app_hidden(app));
     else if (event->data.menu_select.index == app->new_row)
       return app_new(app);
     else if (event->data.menu_select.index == app->create_row)

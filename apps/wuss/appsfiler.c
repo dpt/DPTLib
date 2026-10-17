@@ -103,8 +103,7 @@ static void apps_activate(wuss_gridview_t *gridview,
 /* Opens the window for category (-1: the root), or brings it to the front
  * if open. A new window cascades from parent, or with over set takes
  * parent's place (top-left) for a parent that is about to close. */
-/* hide or show every window, relabelling the icon bar menu's row to match */
-static result_t apps_set_hidden(apps_task_t *task, int hidden)
+static void apps_label_hide(apps_task_t *task, int hidden)
 {
   wuss_menu_item_t *item;
 
@@ -114,6 +113,25 @@ static result_t apps_set_hidden(apps_task_t *task, int hidden)
   item->text = hidden ? "Show" : "Hide";
   wuss_menu_set_item_text_live(task->menu_handle, &task->menu, APPS_MENU_HIDE,
                                item->text);
+}
+
+/* whether the windows are hidden, resynchronising the flag and the menu row
+ * with the window manager: the hide keys hide a task without telling us */
+static int apps_hidden(apps_task_t *task)
+{
+  int hidden;
+
+  hidden = wuss_task_is_hidden(task->wuss, task->delegate) != 0;
+  if (hidden != task->hidden)
+    apps_label_hide(task, hidden);
+
+  return task->hidden;
+}
+
+/* hide or show every window, relabelling the icon bar menu's row to match */
+static result_t apps_set_hidden(apps_task_t *task, int hidden)
+{
+  apps_label_hide(task, hidden);
 
   return wuss_task_set_hidden(task->wuss, task->delegate, hidden);
 }
@@ -129,7 +147,7 @@ static result_t apps_open(apps_task_t         *task,
   wuss_place_t   place;
   wuss_window_t *window;
 
-  if (task->hidden)
+  if (apps_hidden(task))
     (void) apps_set_hidden(task, 0);
 
   aw = &task->windows[category + 1];
@@ -220,6 +238,7 @@ static result_t apps_menu_open(apps_task_t *task)
   static const wuss_proginfo_desc_t desc =
     TASK_PROGINFO_DESC("AppsFiler", "Launcher for demo apps");
 
+  (void) apps_hidden(task);
   wuss_proginfo_set_desc(&desc);
   task->menu_items[APPS_MENU_INFO].window = wuss_proginfo_window(task->delegate);
 
@@ -266,7 +285,7 @@ static result_t apps_handle(wuss_window_t      *window,
       return result_OK;
     if (event->data.iconbar_icon.button & wuss_BUTTON_MENU)
       return apps_menu_open(task);
-    if (task->hidden) /* the click only reveals; it opens nothing new */
+    if (apps_hidden(task)) /* the click only reveals; it opens nothing new */
       return apps_set_hidden(task, 0);
     return apps_open(task, -1, NULL, 0);
 
@@ -286,7 +305,7 @@ static result_t apps_handle(wuss_window_t      *window,
     if (event->data.menu_select.index != APPS_MENU_HIDE)
       return result_OK;
 
-    return apps_set_hidden(task, !task->hidden);
+    return apps_set_hidden(task, !apps_hidden(task));
 
   case wuss_EVENT_MENU_CLOSED:
     task->menu_handle = NULL;

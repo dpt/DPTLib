@@ -150,8 +150,7 @@ static result_t filing_open_path(filing_task_t       *task,
                                  const wuss_window_t *parent,
                                  int                  over);
 
-/* hide or show every window, relabelling the icon bar menu's row to match */
-static result_t filing_set_hidden(filing_task_t *task, int hidden)
+static void filing_label_hide(filing_task_t *task, int hidden)
 {
   wuss_menu_item_t *item;
 
@@ -161,6 +160,25 @@ static result_t filing_set_hidden(filing_task_t *task, int hidden)
   item->text = hidden ? "Show" : "Hide";
   wuss_menu_set_item_text_live(task->menu_handle, &task->ib_menu,
                                FILING_IB_MENU_HIDE, item->text);
+}
+
+/* whether the windows are hidden, resynchronising the flag and the menu row
+ * with the window manager: the hide keys hide a task without telling us */
+static int filing_hidden(filing_task_t *task)
+{
+  int hidden;
+
+  hidden = wuss_task_is_hidden(task->wuss, task->delegate) != 0;
+  if (hidden != task->hidden)
+    filing_label_hide(task, hidden);
+
+  return task->hidden;
+}
+
+/* hide or show every window, relabelling the icon bar menu's row to match */
+static result_t filing_set_hidden(filing_task_t *task, int hidden)
+{
+  filing_label_hide(task, hidden);
 
   return wuss_task_set_hidden(task->wuss, task->delegate, hidden);
 }
@@ -273,7 +291,7 @@ static result_t filing_open_path(filing_task_t       *task,
     path = canon;
 #endif
 
-  if (task->hidden)
+  if (filing_hidden(task))
     (void) filing_set_hidden(task, 0);
 
   fw = filing_find_window(task, path);
@@ -581,6 +599,7 @@ static result_t filing_iconbar_menu_open(filing_task_t *task)
   static const wuss_proginfo_desc_t desc =
     TASK_PROGINFO_DESC("Filing", "Directory display and file save target");
 
+  (void) filing_hidden(task);
   wuss_proginfo_set_desc(&desc);
   task->ib_menu_items[FILING_IB_MENU_INFO].window =
     wuss_proginfo_window(task->delegate);
@@ -712,7 +731,7 @@ result_t filing_handle(wuss_window_t      *window,
       return result_OK;
     if (event->data.iconbar_icon.button & wuss_BUTTON_MENU)
       return filing_iconbar_menu_open(task);
-    if (task->hidden) /* the click only reveals; it opens nothing new */
+    if (filing_hidden(task)) /* the click only reveals; it opens nothing new */
       return filing_set_hidden(task, 0);
     return filing_open_path(task, filing_root(), NULL, 0);
 
@@ -736,7 +755,7 @@ result_t filing_handle(wuss_window_t      *window,
       }
       if (event->data.menu_select.index == FILING_IB_MENU_HIDE)
       {
-        return filing_set_hidden(task, !task->hidden);
+        return filing_set_hidden(task, !filing_hidden(task));
       }
       return result_OK;
     }
