@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <math.h>
 #include <string.h>
 
 #ifdef FORTIFY
@@ -27,10 +26,6 @@
 #include "reading.h"
 #include "taskapp.h"
 #include "common.h"
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 /* "Colours" leads to a submenu with one row per task->fg_index/bg_index;
  * both rows share the colourmenu singleton, retargeted per hover by
@@ -273,9 +268,6 @@ oom:
 
 /* index into task->top_items[] of the "Font" leaf */
 #define READING_MENU_FONT 0
-
-/* index into task->top_items[] of the "Auto-size" leaf */
-#define READING_MENU_AUTOSIZE 4
 
 /* "Alignment" submenu rows */
 enum { READING_ALIGN_LEFT = 0, READING_ALIGN_CENTRE, READING_ALIGN_RIGHT };
@@ -625,8 +617,6 @@ result_t reading_create(wuss_t *wuss, reading_task_t **out)
   task->bg_index    = wuss_nearest_colour(wuss, 0xFF, 0xFF, 0xFF);
   task->bg_transparent = true; /* "None": blend onto the window backdrop */
   task->colourmenu_target = NULL;
-  task->frame_count = 0;
-  task->resizing    = false;
 
   /* the shared picker: every ".png" font under resources/bmfonts, sorted,
    * less any SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows
@@ -724,10 +714,6 @@ result_t reading_create(wuss_t *wuss, reading_task_t **out)
   task->top_items[3].flags   = wuss_MENU_ITEM_NONE;
   task->top_items[3].submenu = &task->colours_menu;
   task->top_items[3].window  = NULL;
-  task->top_items[4].text    = "Auto-size";
-  task->top_items[4].flags   = wuss_MENU_ITEM_NONE;
-  task->top_items[4].submenu = NULL;
-  task->top_items[4].window  = NULL;
 
   WUSS_MENU_TITLE(task->top_menu, "Reading", task->top_items,
                  NELEMS(task->top_items));
@@ -748,9 +734,6 @@ result_t reading_create(wuss_t *wuss, reading_task_t **out)
   task->delegate = delegate;
 
   sz                = SIZE2D(220, 220);
-  task->base_width  = sz.w;
-  task->base_height = sz.h;
-
   rc = wuss_window_create_at(delegate,
                              &task_place,
                              sz,
@@ -1084,53 +1067,6 @@ static result_t reading_redraw(const wuss_event_t *event, void *task_data)
   return result_OK;
 }
 
-/* toggle the window's automatic width swing, keeping the "Auto-size" tick
- * in step */
-static result_t reading_toggle_resizing(reading_task_t *tcx)
-{
-  tcx->resizing = !tcx->resizing;
-
-  wuss_menu_tick_item(&tcx->top_menu, READING_MENU_AUTOSIZE, tcx->resizing);
-  wuss_menu_tick_item_live(tcx->menu_handle, &tcx->top_menu,
-                           READING_MENU_AUTOSIZE, tcx->resizing);
-  return result_OK;
-}
-
-#define READING_RESIZE_PERIOD_FRAMES 300 /* one full swing every 5s at 60fps */
-#define READING_RESIZE_AMPLITUDE     50  /* +/-50px either side of base_width */
-
-static result_t reading_idle(void *task_data)
-{
-  reading_task_t *tcx;
-  int             height, width;
-  double          angle;
-  result_t        rc;
-
-  tcx = task_data;
-
-  /* the proginfo dialogue is a second window on this same (autoclose)
-   * delegate, so closing the main window alone never empties task->windows
-   * and the task lingers until the dialogue closes too -- guard against the
-   * dangling window in the meantime */
-  if (tcx->window == NULL)
-    return result_OK;
-
-  if (!tcx->resizing)
-    return result_OK;
-
-  height = tcx->base_height;
-
-  tcx->frame_count++;
-  angle = tcx->frame_count * (2.0 * M_PI / READING_RESIZE_PERIOD_FRAMES);
-  width = tcx->base_width + (int) (READING_RESIZE_AMPLITUDE * sin(angle));
-
-  rc = wuss_window_resize(tcx->window, SIZE2D(width, height));
-  if (rc != result_OK)
-    logf_warning("reading_idle: wuss_window_resize(%d, %d) failed", width, height);
-
-  return rc;
-}
-
 /* A DataLoad on the reading window: show the file it names. */
 static result_t reading_message(reading_task_t     *tcx,
                                 wuss_window_t      *window,
@@ -1164,10 +1100,7 @@ result_t reading_handle(wuss_window_t      *window,
     if (event->data.mouse.action == wuss_MOUSE_DOWN &&
         (event->data.mouse.button & wuss_BUTTON_MENU))
       return reading_open_menu(tcx);
-    if (event->data.mouse.action != wuss_MOUSE_DOWN ||
-        !(event->data.mouse.button & wuss_BUTTON_SELECT))
-      return result_OK;
-    return reading_toggle_resizing(tcx);
+    return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
     {
@@ -1194,8 +1127,6 @@ result_t reading_handle(wuss_window_t      *window,
         return reading_set_spacing(tcx, event->data.menu_select.index);
       if (event->data.menu_select.menu == &tcx->align_menu)
         return reading_set_align(tcx, event->data.menu_select.index);
-      if (wuss_menu_select_is(event, &tcx->top_menu, READING_MENU_AUTOSIZE))
-        return reading_toggle_resizing(tcx);
       if (tcx->colourmenu_target == NULL)
         return result_OK;
       picked = wuss_colourmenu_selected(event, &mine);
@@ -1225,9 +1156,6 @@ result_t reading_handle(wuss_window_t      *window,
   case wuss_EVENT_QUIT:
     reading_destroy(tcx);
     return result_OK;
-
-  case wuss_EVENT_IDLE:
-    return reading_idle(task_data);
 
   case wuss_EVENT_KEY:
     return result_WUSS_KEY_UNCLAIMED;

@@ -67,8 +67,8 @@ typedef struct reading_task
                                    * retargeted per hover in
                                    * reading_pre_submenu_open */
   wuss_menu_t         colours_menu;
-  wuss_menu_item_t    top_items[5]; /* "Font", "Spacing", "Alignment",
-                                   * "Colours", "Auto-size", built once the
+  wuss_menu_item_t    top_items[4]; /* "Font", "Spacing", "Alignment",
+                                   * "Colours", built once the
                                    * fontmenu exists so items[0].submenu can
                                    * borrow its live wuss_menu_t */
   wuss_menu_t         top_menu;   /* root menu passed to wuss_menu_open */
@@ -96,15 +96,6 @@ typedef struct reading_task
   bool                bg_transparent; /* set from the "Background" menu's
                                    * "None" row; bg drawn transparent while
                                    * set, overriding bg_index */
-  int                 base_width;  /* content width when the window was
-                                   * made */
-  int                 base_height; /* content height when the window was
-                                   * made */
-  int                 frame_count;
-  bool                resizing;    /* off by default; toggled by the
-                                   * "Auto-size" menu row or a content
-                                   * click. reading_idle only resizes the
-                                   * window while this is true */
 }
 reading_task_t;
 
