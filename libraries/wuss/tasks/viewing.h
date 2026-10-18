@@ -20,7 +20,6 @@ typedef struct viewing_task
   wuss_t        *wuss;      /* for wuss_get_pointer when opening the menu */
   wuss_task_t   *delegate;  /* the wuss task backing this window */
   bitmap_t       bitmap;    /* owned: base freed by the caller when done */
-  bitmap_t       ninepatch; /* owned: 9-patch tiled behind the main image */
   wuss_menu_t   *menu;      /* owned: MENU-button demo tree, built from a
                               * descriptor string; rebuilt on each open,
                               * freed at QUIT */
@@ -34,9 +33,7 @@ viewing_task_t;
 
 wuss_window_fn_t viewing_handle;
 
-/* load the 9-patch PNG at wuss_get_resources(wuss)/resources/wuss/ninepatch.png
- * (drawn tiled behind the image), and create an empty viewing window against
- * the given wuss instance. A wuss_MESSAGE_DATA_LOAD sent to the window, whose
+/* create an empty viewing window against the given wuss instance. A wuss_MESSAGE_DATA_LOAD sent to the window, whose
  * payload is the path of a PNG, shows that image; a file that will not load
  * is not acknowledged. if out is non-NULL, the task block is also returned
  * through it */

@@ -13,7 +13,6 @@
 #include "base/utils.h"
 #include "framebuf/palettes.h"
 #include "geom/box.h"
-#include "io/path.h"
 #include "wuss/menu.h"
 #include "wuss/menu-desc.h"
 #include "wuss/message.h"
@@ -22,9 +21,8 @@
 #include "taskapp.h"
 #include "common.h"
 
-#define NINEPATCHSZ      9
-#define VIEWING_BORDERSZ 8 /* solid inset band drawn inside the ninepatch */
-#define VIEWING_MARGINSZ (NINEPATCHSZ + VIEWING_BORDERSZ)
+#define VIEWING_BORDERSZ 8 /* solid band drawn around the image */
+#define VIEWING_MARGINSZ VIEWING_BORDERSZ
 #define VIEWING_EMPTYSZ  64 /* image area before the first DataLoad */
 
 result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
@@ -39,8 +37,6 @@ result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
   viewing_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  const char      *resources;
-  const char      *background_path;
   size2d_t         sz;
 
   task = calloc(1, sizeof(*task));
@@ -64,16 +60,6 @@ result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
   WUSS_MENU_TITLE(task->dither_menu, "Dithering", task->dither_items,
                   NELEMS(task->dither_items));
 
-  resources       = wuss_get_resources(wuss);
-  background_path = pathf("%s/resources/wuss/ninepatch.png", resources);
-  rc = load_png_deep(&task->ninepatch, background_path, pixelfmt_rgbx8888);
-  if (rc != result_OK)
-  {
-    free(task->bitmap.base);
-    free(task); /* nothing registered yet; nobody else owns it */
-    return rc;
-  }
-
   /* shows through the image's transparent pixels */
   delegate_desc.handle    = viewing_handle;
   delegate_desc.task_data = task;
@@ -82,7 +68,6 @@ result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
   if (rc != result_OK)
   {
     free(task->bitmap.base);
-    free(task->ninepatch.base);
     free(task); /* nothing registered yet; nobody else owns it */
     return rc;
   }
@@ -104,7 +89,7 @@ result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
                              &task->window);
   if (rc != result_OK)
   {
-    wuss_task_destroy(delegate); /* QUIT frees the two bitmaps and the block */
+    wuss_task_destroy(delegate); /* QUIT frees the bitmap and the block */
     return rc;
   }
 
@@ -134,7 +119,6 @@ void viewing_destroy(viewing_task_t *task)
 {
   wuss_menu_destroy(task->menu);
   free(task->bitmap.base);
-  free(task->ninepatch.base);
   free(task); /* task_data was calloc'd per instance by the spawner */
 }
 
@@ -146,7 +130,6 @@ static result_t viewing_redraw(const wuss_event_t *event, void *task_data)
   int             sx, sy;
   int             bx, by;
   int             bx0, bx1, by1;
-  box_t           behind;
   box_t           band[4];
   const colour_t *palette;
 
@@ -162,13 +145,7 @@ static result_t viewing_redraw(const wuss_event_t *event, void *task_data)
   bx1    = bx + ic->bitmap.size.w + VIEWING_BORDERSZ;
   by1    = by + ic->bitmap.size.h;
 
-  behind.x0 = bx - VIEWING_MARGINSZ;
-  behind.y0 = by - VIEWING_MARGINSZ;
-  behind.x1 = behind.x0 + ic->bitmap.size.w + VIEWING_MARGINSZ * 2;
-  behind.y1 = behind.y0 + ic->bitmap.size.h + VIEWING_MARGINSZ * 2;
-  screen_copy_ninepatch(scr, &behind, &ic->ninepatch, screen_NINEPATCH_NO_CENTRE);
-
-  /* solid 8px band between the ninepatch frame and the image */
+  /* solid 8px band around the image */
   band[0] = (box_t) { bx0, by - VIEWING_BORDERSZ, bx1, by };    /* top */
   band[1] = (box_t) { bx0, by1, bx1, by1 + VIEWING_BORDERSZ };  /* bottom */
   band[2] = (box_t) { bx0, by, bx, by1 };                     /* left */
