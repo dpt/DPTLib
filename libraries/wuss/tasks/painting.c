@@ -54,7 +54,7 @@
 
 #define PAINTING_NSWATCHES (TB_SWATCH_COLS * TB_SWATCH_ROWS)
 
-/* the tools' images, in the task's icon pool under resources/wuss/tasks/painting */
+/* the tools' images, in the task's icon pool under resources/wuss-tasks/painting */
 static const char *painting_tool_names[painting_TOOL__COUNT] =
 {
   "draw",
@@ -129,7 +129,8 @@ static result_t painting_toolbox_icons(painting_task_t *pt)
   /* pathf maps to native separators (RISC OS); it returns a shared static
    * buffer, so copy it */
   snprintf(dir, sizeof(dir), "%s",
-           pathf("%s/resources/wuss/tasks/painting", wuss_get_resources(pt->wuss)));
+           pathf("%s/resources/wuss-tasks/painting",
+                 wuss_get_resources(pt->wuss)));
   rc = wuss_task_iconpool_load(pt->delegate, dir);
   if (rc != result_OK)
     return rc;

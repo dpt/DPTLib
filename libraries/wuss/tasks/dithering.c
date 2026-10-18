@@ -228,7 +228,8 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
   task->serpentine = 1;
   task->source.size = SIZE2D(DITHERING_EMPTYSZ, DITHERING_EMPTYSZ); /* no pixels */
 
-  namelist_scan(pathf("%s/resources/palettes", wuss_get_resources(wuss)),
+  namelist_scan(pathf("%s/resources/wuss-tasks/palettes",
+                      wuss_get_resources(wuss)),
                 ".hex", task->palettes[0], sizeof(task->palettes[0]),
                 PALETTE_MAX_FILES, 1 /* sorted */, &task->npalettes);
 

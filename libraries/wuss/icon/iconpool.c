@@ -467,7 +467,7 @@ result_t wuss_task_iconpool_load_resource(wuss_task_t *task,
   if (task->name == NULL)
     return result_BAD_ARG;
 
-  if ((size_t) snprintf(sub, sizeof(sub), "wuss/tasks/%s/iconpool",
+  if ((size_t) snprintf(sub, sizeof(sub), "wuss-tasks/%s/iconpool",
                         task->name) >= sizeof(sub))
     return result_BAD_ARG;
 

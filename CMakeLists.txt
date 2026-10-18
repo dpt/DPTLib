@@ -1061,8 +1061,9 @@ if(BUILD_APPS)
     elseif(EMSCRIPTEN)
         # Emscripten ships its own SDL3 port; the browser owns the main loop
         # (see emscripten_set_main_loop_arg in apps/wuss/main.c). resources/ is
-        # baked into wuss.data, minus resources/test (the unit-test fixtures),
-        # and mounted at MEMFS /resources so the runtime file loads and the
+        # baked into wuss.data, minus resources/test (the unit-test fixtures) and
+        # resources/sources (editable artwork sources), and
+        # mounted at MEMFS /resources so the runtime file loads and the
         # font picker's opendir() resolve.
         target_compile_definitions(wuss PRIVATE USE_SDL)
         target_compile_options(wuss PRIVATE "-sUSE_SDL=3")
@@ -1072,8 +1073,8 @@ if(BUILD_APPS)
             "-sEXIT_RUNTIME=0"
             "--preload-file"
             "${CMAKE_CURRENT_SOURCE_DIR}/resources@/resources"
-            "--exclude-file"
-            "*/resources/test"
+            "SHELL:--exclude-file */resources/test"
+            "SHELL:--exclude-file */resources/sources"
             "--shell-file"
             "${CMAKE_CURRENT_SOURCE_DIR}/apps/wuss/shell.html")
         set_target_properties(wuss PROPERTIES

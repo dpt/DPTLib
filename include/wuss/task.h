@@ -649,7 +649,7 @@ result_t wuss_task_iconpool_load(wuss_task_t *task, const char *dir);
 
 /**
  * Convenience wrapper for \ref wuss_task_iconpool_load: loads
- * "<resources>/resources/wuss/tasks/<name>/iconpool", where <name> is the
+ * "<resources>/resources/wuss-tasks/<name>/iconpool", where <name> is the
  * task's name (\ref wuss_task_desc::name). A missing directory is not an
  * error: the pool is just empty.
  *
