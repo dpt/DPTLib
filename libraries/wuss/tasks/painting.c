@@ -12,7 +12,6 @@
 #include "base/utils.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
-#include "io/path.h"
 #include "utils/array.h"
 #include "utils/rng.h"
 
@@ -54,7 +53,8 @@
 
 #define PAINTING_NSWATCHES (TB_SWATCH_COLS * TB_SWATCH_ROWS)
 
-/* the tools' images, in the task's icon pool under resources/wuss-tasks/painting */
+/* the tools' images, in the task's icon pool under
+ * resources/wuss-tasks/painting/iconpool */
 static const char *painting_tool_names[painting_TOOL__COUNT] =
 {
   "draw",
@@ -121,17 +121,12 @@ static box_t painting_swatch_box(int i)
 static result_t painting_toolbox_icons(painting_task_t *pt)
 {
   result_t         rc;
-  char             dir[512];
   wuss_icon_spec_t specs[painting_TOOL__COUNT + 2];
   wuss_icon_t     *icons[painting_TOOL__COUNT + 2];
   int              i, n;
 
-  /* pathf maps to native separators (RISC OS); it returns a shared static
-   * buffer, so copy it */
-  snprintf(dir, sizeof(dir), "%s",
-           pathf("%s/resources/wuss-tasks/painting",
-                 wuss_get_resources(pt->wuss)));
-  rc = wuss_task_iconpool_load(pt->delegate, dir);
+  rc = wuss_task_iconpool_load_resource(pt->delegate,
+                                        wuss_get_resources(pt->wuss));
   if (rc != result_OK)
     return rc;
 
