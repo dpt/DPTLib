@@ -466,9 +466,16 @@ static int dither_bias_build(dither_t       *d,
 /* Per-channel level count driving the dither bias for a deep->paletted
  * pixelmap: the worst (fewest-level) of R/G/B, since one shared bias table
  * nudges all three channels. */
-static int dither_levels_for(const pixelmap_t *pm)
+static int dither_levels_for(const pixelmap_t *pm,
+                             pixelfmt_t        destfmt)
 {
-  return 1 << MIN(pm->rbits, MIN(pm->gbits, pm->bbits));
+  int levels;
+
+  levels = 1 << MIN(pm->rbits, MIN(pm->gbits, pm->bbits));
+
+  /* a p1/p2 palette has fewer entries than the 4:4:4 quantiser has levels, so
+   * the real gap between adjacent colours is much wider than the bits imply */
+  return MIN(levels, 1 << (1 << pixelfmt_log2bpp(destfmt)));
 }
 
 /* Apply the pre-built bias for sprite-local pixel (sx, sy) to channel value
@@ -734,7 +741,7 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
   if (pm == NULL)
     return result_NOT_SUPPORTED;
 
-  do_dither = dither_bias_build(&bias,dither_levels_for(pm), dither);
+  do_dither = dither_bias_build(&bias,dither_levels_for(pm, scr->format), dither);
 
   if (src->format == pixelfmt_p4 && !do_dither)
     return screen_copy_bitmap_p4_from_p4(scr, x, y, src, draw_box, has_alpha,
@@ -821,7 +828,7 @@ static result_t screen_copy_bitmap_p8(screen_t       *scr,
   if (pm == NULL)
     return result_NOT_SUPPORTED;
 
-  do_dither = dither_bias_build(&bias,dither_levels_for(pm), dither);
+  do_dither = dither_bias_build(&bias,dither_levels_for(pm, scr->format), dither);
 
   for (yy = 0; yy < clipped_height; yy++)
   {
@@ -900,7 +907,7 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
   if (pm == NULL)
     return result_NOT_SUPPORTED;
 
-  do_dither = dither_bias_build(&bias,dither_levels_for(pm), dither);
+  do_dither = dither_bias_build(&bias,dither_levels_for(pm, scr->format), dither);
 
   for (yy = 0; yy < clipped_height; yy++)
   {
@@ -983,7 +990,7 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
   if (pm == NULL)
     return result_NOT_SUPPORTED;
 
-  do_dither = dither_bias_build(&bias,dither_levels_for(pm), dither);
+  do_dither = dither_bias_build(&bias,dither_levels_for(pm, scr->format), dither);
 
   for (yy = 0; yy < clipped_height; yy++)
   {
