@@ -8,6 +8,7 @@
 #include "framebuf/colour.h"
 #include "framebuf/screen.h"
 #include "utils/rng.h"
+#include "wuss/component/colourpicker.h"
 #include "wuss/component/saveas.h"
 #include "wuss/gadget/colourset.h"
 #include "wuss/icon-spec.h"
@@ -46,7 +47,8 @@ orbing_light_t;
  * light faces the surface under the pointer; the band just outside wraps it
  * round to the back. Menu > Light (or keys 1-4) picks the current light; O
  * switches it on or off, as its On option does. Each colour set picks from the
- * palette. Dithering picks how the preview is blitted to a paletted screen.
+ * palette; Light colour... (C) opens a true-colour picker on the current
+ * light. Dithering picks how the preview is blitted to a paletted screen.
  * Mutate (M) nudges the sliders, the lit lights' directions and the colours'
  * hues; Randomise (^R) picks every setting afresh, keeping at least one light
  * on; Reset (R) restores the defaults; Save PNG (F3) opens a Save As dialogue
@@ -57,7 +59,7 @@ typedef struct orbing_task
   wuss_task_t       *delegate; /* the task that owns the menu */
   wuss_window_t     *window;
   wuss_menu_handle_t menu_handle; /* live only between open and a pick */
-  wuss_menu_item_t   menu_items[6]; /* per-instance, not a shared static */
+  wuss_menu_item_t   menu_items[7]; /* per-instance, not a shared static */
   wuss_menu_t        menu;
   /* "Light" submenu: one row per light */
   wuss_menu_item_t   light_items[ORBING_NLIGHTS];
@@ -80,6 +82,8 @@ typedef struct orbing_task
                                                      * current light */
   rng_t              rng;        /* for Mutate and Randomise */
   wuss_saveas_t       *saveas;
+  wuss_colourpicker_t *picker;      /* Light colour...: any 24-bit colour */
+  int                  picker_light; /* index of the light it edits */
 }
 orbing_task_t;
 

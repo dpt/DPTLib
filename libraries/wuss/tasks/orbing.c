@@ -70,6 +70,7 @@
 enum
 {
   ORBING_MENU_LIGHT = 0,
+  ORBING_MENU_LIGHT_COLOUR,
   ORBING_MENU_DITHERING,
   ORBING_MENU_MUTATE,
   ORBING_MENU_RANDOMISE,
@@ -588,6 +589,22 @@ static result_t orbing_colour_changed(wuss_colourset_t *colourset,
   return result_OK;
 }
 
+/* wuss_colourpicker_changed_fn_t: the picked light takes any 24-bit colour,
+ * its colour set showing the nearest palette entry */
+static void orbing_picker_changed(colour_t colour, void *opaque)
+{
+  orbing_task_t *task;
+
+  task = opaque;
+
+  if (task->window == NULL)
+    return; /* closing: the QUIT that frees the picker is on its way */
+
+  task->lights[task->picker_light].colour = colour;
+  orbing_sync_colours(task);
+  orbing_invalidate_preview(task);
+}
+
 /* build the control strip's icons down the window's left edge, "height"
  * tall */
 static result_t orbing_strip_create(orbing_task_t *task, int height)
@@ -748,6 +765,14 @@ result_t orbing_create(wuss_t *wuss, orbing_task_t **out)
     return rc;
   }
 
+  rc = wuss_colourpicker_create(&task->picker, wuss, "Light colour",
+                                orbing_picker_changed, task);
+  if (rc != result_OK)
+  {
+    wuss_window_close(task->window); /* its QUIT frees all three */
+    return rc;
+  }
+
   for (i = 0; i < ORBING_NLIGHTS; i++)
   {
     static const char *const keys[ORBING_NLIGHTS] =
@@ -764,6 +789,9 @@ result_t orbing_create(wuss_t *wuss, orbing_task_t **out)
 
   WUSS_MENU_ITEM_MENU(task->menu_items, ORBING_MENU_LIGHT, "Light",
                       wuss_MENU_ITEM_NONE, &task->light_menu);
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, ORBING_MENU_LIGHT_COLOUR,
+                          "Light colour...", wuss_MENU_ITEM_NONE, "C");
 
   /* indexed by screen_dither_t */
   WUSS_MENU_ITEM(task->dither_items, screen_DITHER_NONE, "None",
@@ -820,6 +848,7 @@ void orbing_destroy(orbing_task_t *task)
 
   for (which = 0; which < ORBING_NCOLOURS; which++)
     wuss_colourset_destroy(task->colour_sets[which]);
+  wuss_colourpicker_destroy(task->picker);
   wuss_saveas_destroy(task->saveas);
   free(task);
 }
@@ -1337,6 +1366,12 @@ static result_t orbing_menu_select(orbing_task_t      *task,
   {
     switch (event->data.menu_select.index)
     {
+    case ORBING_MENU_LIGHT_COLOUR:
+      /* edits this light even if another is made current meanwhile */
+      task->picker_light = task->current;
+      return wuss_colourpicker_open(task->picker,
+                                    task->lights[task->current].colour);
+
     case ORBING_MENU_MUTATE:
       orbing_mutate(task);
       break;
