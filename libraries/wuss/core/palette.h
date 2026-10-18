@@ -69,14 +69,17 @@ void wuss__fill_index(const wuss_t *wuss,
                       int           origin_y);
 
 /* As wuss__fill_index for the desktop colour whose RGB equals "colour"
- * (screen-phased); a plain screen_fill_rect if no palette entry matches.
- * For chrome code that holds colour_t values rather than indices.
+ * (phased against "origin"); a plain screen_fill_rect if no palette entry
+ * matches. For chrome code that holds colour_t values rather than indices.
+ * Pass the same origin the window's own background uses (content origin
+ * less scroll) so dithered fills line up with it and survive blits.
  * ponytail: linear reverse lookup, fine for <=128 entries; pass indices
  * through if it shows in a profile. */
 void wuss__fill_colour(const wuss_t *wuss,
                        screen_t     *scr,
                        const box_t  *area,
-                       colour_t      colour);
+                       colour_t      colour,
+                       point_t       origin);
 
 /* wuss__fill_area for backdrop->fill, then backdrop->image centred on the
  * screen. */

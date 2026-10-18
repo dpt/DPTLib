@@ -311,6 +311,14 @@ static box_t gridview_cell_box(const wuss_gridview_t *gv, int index)
                               gv->cell.w, gv->cell.h);
 }
 
+/* Document origin in screen space for a redraw event: the phase the
+ * window's own background fill uses, so dithered fills line up with it. */
+static point_t gridview_origin(const wuss_event_t *event)
+{
+  return POINT(event->data.redraw.bounds->x0 - event->data.redraw.scroll.x,
+               event->data.redraw.bounds->y0 - event->data.redraw.scroll.y);
+}
+
 /* Item index under document point "p", or -1 if none (including gaps and
  * past the last item). */
 static int gridview_hit_test(const wuss_gridview_t *gv, point_t p)
@@ -437,7 +445,8 @@ static void gridview_draw_cell(wuss_gridview_t    *gv,
   bg = wuss_gridview_is_selected(gv, index)
      ? wuss->palette[wuss->accent]
      : wuss->palette[wuss->body.window];
-  wuss__fill_colour(wuss, &clipped, &screen_box, bg);
+  wuss__fill_colour(wuss, &clipped, &screen_box, bg,
+                    gridview_origin(event));
   if (wuss_gridview_is_selected(gv, index))
   {
     colour_t tmp = fg;
@@ -532,7 +541,8 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
     content = *event->data.redraw.content;
     wuss__fill_colour(wuss, event->data.redraw.scr, &content,
                       gv->has_bg ? gv->bg
-                                 : wuss->palette[wuss->body.window]);
+                                 : wuss->palette[wuss->body.window],
+                      gridview_origin(event));
 
     /* only the rows the clip reaches */
     clip_y0 = MAX(event->data.redraw.scr->clip.y0, content.y0);
