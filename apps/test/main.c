@@ -73,6 +73,7 @@ static const test_t tests[] =
   { "packer",     packer_test     },
   { "region",     region_test     },
   { "stack",      stack_test      },
+  { "stage",      stage_test      },
 
   { "dirlist",    dirlist_test    },
   { "filetype",   filetype_test   },

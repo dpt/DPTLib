@@ -116,6 +116,7 @@ set(PUBLIC_HEADERS
     include/geom/point.h
     include/geom/region.h
     include/geom/size.h
+    include/geom/stage.h
     include/geom/stack.h
     include/io/dirlist.h
     include/io/dirscan.h
@@ -367,6 +368,7 @@ set(GEOM_SOURCES
     libraries/geom/box/union.c
     libraries/geom/layout/layout.c
     libraries/geom/line/line.c
+    libraries/geom/stage/stage.c
     libraries/geom/packer/impl.h
     libraries/geom/packer/packer.c
     libraries/geom/region/impl.h
@@ -851,6 +853,7 @@ if(BUILD_TESTS)
         libraries/framebuf/screen/test/screen-test.c
         libraries/geom/box/test/box-test.c
         libraries/geom/layout/test/layout-test.c
+        libraries/geom/stage/test/stage-test.c
         libraries/geom/packer/test/packer-test.c
         libraries/geom/region/test/region-test.c
         libraries/geom/stack/test/stack-test.c

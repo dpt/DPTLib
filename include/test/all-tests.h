@@ -48,7 +48,8 @@ extern testfn_t box_test,
                 layout_test,
                 packer_test,
                 region_test,
-                stack_test;
+                stack_test,
+                stage_test;
 
 /* io */
 extern testfn_t dirlist_test,

@@ -10,6 +10,11 @@ _Unreleased_ until one is cut.
 
 ### Added
 
+- `geom/stage.h`: lays out a document background (a page in a margin, with a
+  stroked border and optional drop shadow, centred on a pasteboard) as a list
+  of tagged boxes to fill. Ported from PrivateEye's `stage`, with `box_t` in
+  place of `os_box` and `stageconfig_t::log2_pixel_x`/`log2_pixel_y` in place
+  of the RISC OS pixel size query.
 - `wuss_EVENT_CLOSE_ADJUST`: ADJUST on a close icon now tells the window's
   task, with the modifier keys held (`data.close_adjust.modifiers`), and
   leaves the window open (it used to start a move drag). The filer uses it
