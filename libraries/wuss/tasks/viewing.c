@@ -386,6 +386,7 @@ result_t viewing_handle(wuss_window_t      *window,
     if (menu == ic->menu && index == VIEWING_MENU_STAGE)
     {
       ic->stage = !ic->stage;
+      wuss_menu_tick_item_live(ic->menu_handle, menu, index, ic->stage);
       return viewing_fit(ic);
     }
     if (menu == &ic->dither_menu)
