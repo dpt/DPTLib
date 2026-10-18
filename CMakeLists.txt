@@ -486,6 +486,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/set-colour-fill.c
     libraries/wuss/core/set-config.c
     libraries/wuss/core/set-focus.c
+    libraries/wuss/core/set-font.c
     libraries/wuss/core/set-palette.c
     libraries/wuss/core/set-time.c
     libraries/wuss/core/relayout.c

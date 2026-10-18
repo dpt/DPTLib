@@ -802,8 +802,8 @@ result_t wuss_set_colour_fill(wuss_t            *wuss,
  * caller is still responsible for the next wuss_redraw / wuss_redraw_dirty.
  *
  * config->titlebar_height is ignored: the titlebar height is fixed at
- * wuss_create. Existing windows keep the background they resolved when they
- * were created.
+ * wuss_create (bar a re-derive by wuss_set_font). Existing windows keep the
+ * background they resolved when they were created.
  *
  * \param[in] wuss   Window manager.
  * \param[in] config New config, copied in.
@@ -916,8 +916,9 @@ wuss_font_class_t wuss_get_font_class_n(const wuss_t *wuss, int index);
  *
  * \param[in] wuss  Window manager.
  * \param[in] index Font slot, 0..\ref wuss_MAX_FONTS - 1.
- * \return The slot's name (borrowed, valid until wuss_destroy), or NULL if
- *         the slot is out of range, was not filled, or was given no name.
+ * \return The slot's name (borrowed, valid until wuss_set_font replaces the
+ *         slot or wuss_destroy), or NULL if the slot is out of range, was
+ *         not filled, or was given no name.
  */
 const char *wuss_get_font_name_n(const wuss_t *wuss, int index);
 
@@ -933,6 +934,29 @@ const char *wuss_get_font_name_n(const wuss_t *wuss, int index);
  * \return The font cache. Never NULL.
  */
 bmfontcache_t *wuss_get_font_cache(const wuss_t *wuss);
+
+/**
+ * Replace one font slot partway through a session, e.g. to change the system
+ * font (slot 0).
+ *
+ * If the titlebar height was derived from the fonts (config->titlebar_height
+ * 0 at wuss_create) it is re-derived, and every window's visible box grows
+ * or shrinks from its top-left so its content size is kept. The whole screen
+ * is invalidated and every unpinned window is sent a \ref
+ * wuss_EVENT_RELAYOUT. Menus already open keep the size they opened at.
+ *
+ * \param[in] wuss  Window manager.
+ * \param[in] index Font slot, 0..\ref wuss_MAX_FONTS - 1.
+ * \param[in] desc  New slot contents, copied in. The font and name are
+ *                  borrowed and must stay valid until replaced again or
+ *                  wuss_destroy.
+ * \return \ref result_OK on success, \ref result_BAD_ARG if \p index is out
+ *         of range or desc->font is NULL, else the first non-OK result
+ *         returned by a task's handle callback.
+ */
+result_t wuss_set_font(wuss_t                 *wuss,
+                       int                     index,
+                       const wuss_font_desc_t *desc);
 
 /**
  * Measure a run of text in one of wuss's configured fonts (see

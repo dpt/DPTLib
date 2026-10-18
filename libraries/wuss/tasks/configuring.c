@@ -1,5 +1,5 @@
 /* wuss/tasks/configuring.c -- startup settings task (mouse button swap,
- * reverse scroll, backdrop swatches) */
+ * reverse scroll, system font, backdrop swatches) */
 
 #ifdef WUSS_APP
 
@@ -12,11 +12,15 @@
 #endif
 
 #include "base/utils.h"
+#include "framebuf/bmfontcache.h"
+#include "framebuf/bmfontfamily.h"
 #include "framebuf/pattern.h"
 #include "geom/box.h"
 #include "geom/point.h"
 #include "geom/size.h"
 #include "geom/stack.h"
+#include "io/path.h"
+#include "wuss/component/fontmenu.h"
 #include "wuss/icon-spec.h"
 
 #include "tasks.h" /* g_tasks.swap_mouse_buttons */
@@ -62,7 +66,14 @@
 /* Timing frame's writable fields are narrower than a swatch row. */
 #define CONFIGURING_FIELD_W    48
 
-/* Root layout: a "System" frame (the two option icons), a "Timing" frame
+/* Font frame's name display, sized so it and its "Choose" button line up
+ * with the swatch rows below. */
+#define CONFIGURING_FONT_NAME_W (CONFIGURING_GRID_COLS * CONFIGURING_CELL - \
+                                 CONFIGURING_FIELD_W - 4)
+
+/* Root layout: a "System" frame (the two option icons), a "Font" frame (the
+ * system font's name and a "Choose" button opening the font menu), a
+ * "Timing" frame
  * (three writable fields, each followed by its unit, plus an Apply button)
  * and a "Backdrop" frame (colour/pattern swatches). All three frames are
  * stack containers, their children descended from the stack tree and solved
@@ -73,6 +84,11 @@ enum
   CONFIGURING_ST_SYSTEM,
   CONFIGURING_ST_SWAP,
   CONFIGURING_ST_REVERSE_SCROLL,
+  CONFIGURING_ST_FONT,
+  CONFIGURING_ST_FONT_HBOX,
+  CONFIGURING_ST_FONT_LABEL,
+  CONFIGURING_ST_FONT_NAME,
+  CONFIGURING_ST_FONT_BUTTON,
   CONFIGURING_ST_TIMING,
   CONFIGURING_ST_DBL_MS_HBOX,
   CONFIGURING_ST_DBL_MS_LABEL,
@@ -149,6 +165,41 @@ static const stack_item_t g_configuring_stack[CONFIGURING_ST__LIMIT] =
                                           CONFIGURING_ROW,
                                           0,
                                           stack_ALIGN_FILL),
+
+  [CONFIGURING_ST_FONT] =
+  {
+    .kind      = stack_KIND_VBOX,
+    .parent    = CONFIGURING_ST_ROOT,
+    .axis_size = STACK_HUG,
+    .gap       = 4,
+    .align     = stack_ALIGN_FILL,
+    .pad       = wuss_STD_FRAME_INSETS,
+  },
+
+  [CONFIGURING_ST_FONT_HBOX] =
+  {
+    .kind      = stack_KIND_HBOX,
+    .parent    = CONFIGURING_ST_FONT,
+    .axis_size = CONFIGURING_ROW,
+    .gap       = 4,
+    .align     = stack_ALIGN_FILL,
+  },
+
+  [CONFIGURING_ST_FONT_LABEL] = STACK_LEAF_GROUP(CONFIGURING_ST_FONT_HBOX,
+                                                 0,
+                                                 CONFIGURING_ROW,
+                                                 stack_ALIGN_FILL,
+                                                 CONFIGURING_G_LABEL),
+
+  [CONFIGURING_ST_FONT_NAME] = STACK_LEAF(CONFIGURING_ST_FONT_HBOX,
+                                          CONFIGURING_FONT_NAME_W,
+                                          CONFIGURING_ROW,
+                                          stack_ALIGN_FILL),
+
+  [CONFIGURING_ST_FONT_BUTTON] = STACK_LEAF(CONFIGURING_ST_FONT_HBOX,
+                                            CONFIGURING_FIELD_W,
+                                            CONFIGURING_ROW,
+                                            stack_ALIGN_FILL),
 
   [CONFIGURING_ST_TIMING] =
   {
@@ -383,6 +434,10 @@ enum
   CONFIGURING_ICON_SYSTEM_FRAME,
   CONFIGURING_ICON_SWAP,
   CONFIGURING_ICON_REVERSE_SCROLL,
+  CONFIGURING_ICON_FONT_FRAME,
+  CONFIGURING_ICON_FONT_LABEL,
+  CONFIGURING_ICON_FONT_NAME,
+  CONFIGURING_ICON_FONT_CHOOSE,
   CONFIGURING_ICON_TIMING_FRAME,
   CONFIGURING_ICON_DBL_MS_LABEL,
   CONFIGURING_ICON_DBL_MS_FIELD,
@@ -401,6 +456,17 @@ enum
   CONFIGURING_ICON_SET_BACKDROP,
   CONFIGURING_NICONS
 };
+
+/* The system font faces this task has handed to wuss_set_font, and their
+ * names: wuss borrows both, so they live here rather than in any one
+ * window's task block. NULL until the first pick (the start-up faces are
+ * main's to free). */
+static struct
+{
+  bmfont_t *fonts[2];      /* [0] regular, [1] bold */
+  char      names[2][128]; /* "Family Style" */
+}
+g_configuring_font;
 
 /* The pattern shown in grid cell i, 0 <= i < CONFIGURING_NPATTERNS: the named
  * hatches first, then the full Bayer run (EMPTY, dither levels 1..63,
@@ -445,6 +511,7 @@ result_t configuring_create(wuss_t *wuss, configuring_task_t **out)
   stack_item_t        items[CONFIGURING_ST__LIMIT];
   size2d_t            doc;
   size2d_t            min_sz;
+  const char         *font_name;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -475,6 +542,8 @@ result_t configuring_create(wuss_t *wuss, configuring_task_t **out)
     task_text_width(wuss, "Background");
   items[CONFIGURING_ST_GRID_LABEL].axis_size =
     task_text_width(wuss, "Patterns");
+  items[CONFIGURING_ST_FONT_LABEL].axis_size =
+    task_text_width(wuss, "System font");
   items[CONFIGURING_ST_DBL_MS_LABEL].axis_size =
     task_text_width(wuss, "Double-click");
   items[CONFIGURING_ST_DBL_PX_LABEL].axis_size =
@@ -529,6 +598,22 @@ result_t configuring_create(wuss_t *wuss, configuring_task_t **out)
   wuss_icon_spec_option(&specs[CONFIGURING_ICON_REVERSE_SCROLL],
                         boxes[CONFIGURING_ST_REVERSE_SCROLL],
                         "Reverse mouse scroll direction");
+
+  wuss_icon_spec_frame(&specs[CONFIGURING_ICON_FONT_FRAME],
+                       boxes[CONFIGURING_ST_FONT], "Font");
+
+  wuss_icon_spec_label(&specs[CONFIGURING_ICON_FONT_LABEL],
+                       boxes[CONFIGURING_ST_FONT_LABEL],
+                       "System font", wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+
+  font_name = wuss_get_font_name_n(wuss, 0);
+  wuss_icon_spec_display(&specs[CONFIGURING_ICON_FONT_NAME],
+                         boxes[CONFIGURING_ST_FONT_NAME],
+                         (font_name != NULL) ? font_name : "", 0);
+
+  wuss_icon_spec_action(&specs[CONFIGURING_ICON_FONT_CHOOSE],
+                        boxes[CONFIGURING_ST_FONT_BUTTON],
+                        "Choose", 0);
 
   wuss_icon_spec_frame(&specs[CONFIGURING_ICON_TIMING_FRAME],
                        boxes[CONFIGURING_ST_TIMING], "Timing");
@@ -606,6 +691,8 @@ result_t configuring_create(wuss_t *wuss, configuring_task_t **out)
   task->set_backdrop_icon       = icons[CONFIGURING_ICON_SET_BACKDROP];
   task->swap_icon               = icons[CONFIGURING_ICON_SWAP];
   task->reverse_scroll_icon     = icons[CONFIGURING_ICON_REVERSE_SCROLL];
+  task->font_name_icon          = icons[CONFIGURING_ICON_FONT_NAME];
+  task->choose_font_icon        = icons[CONFIGURING_ICON_FONT_CHOOSE];
   task->double_click_ms_icon    = icons[CONFIGURING_ICON_DBL_MS_FIELD];
   task->double_click_px_icon    = icons[CONFIGURING_ICON_DBL_PX_FIELD];
   task->drag_threshold_px_icon  = icons[CONFIGURING_ICON_DRAG_PX_FIELD];
@@ -771,6 +858,135 @@ static result_t configuring_redraw(configuring_task_t *task,
   return result_OK;
 }
 
+/* the shared fontmenu singleton, retargeted at task->wuss's bmfonts dir */
+static const wuss_menu_t *configuring_fontmenu(configuring_task_t *task)
+{
+  const char *resources;
+
+  resources = wuss_get_resources(task->wuss);
+  return wuss_fontmenu_menu(pathf("%s/resources/bmfonts", resources), "Font",
+                            task->wuss);
+}
+
+/* Open the font menu at the pointer with the system font's row ticked. */
+static result_t configuring_open_fontmenu(configuring_task_t *task)
+{
+  const wuss_menu_t *menu;
+  const char        *current;
+  int                ticked;
+  int                i;
+
+  menu = configuring_fontmenu(task);
+  if (menu == NULL)
+    return result_OOM;
+
+  current = wuss_get_font_name_n(task->wuss, 0);
+  ticked  = -1;
+  if (current != NULL)
+    for (i = 0; i < menu->nitems; i++)
+      if (strcmp(menu->items[i].text, current) == 0)
+        ticked = i;
+
+  wuss_fontmenu_set_ticked(ticked);
+  return wuss_menu_open_at_pointer(task->delegate, menu, NULL);
+}
+
+/* Make the face labelled name ("Family Style") the system font, and the next
+ * heavier face of its family the bold one, as main does at start-up. */
+static result_t configuring_set_font(configuring_task_t *task,
+                                     const char         *name)
+{
+  result_t            rc;
+  const char         *style;
+  char                family_name[128];
+  const char         *resources;
+  bmfontfamily_t     *family;
+  const bmfontface_t *faces[2];
+  int                 i;
+  bmfontcache_t      *cache;
+  bmfont_t           *fonts[2];
+  wuss_font_desc_t    desc;
+
+  style = strrchr(name, ' ');
+  if (style == NULL || (size_t) (style - name) >= sizeof(family_name))
+    return result_BAD_ARG;
+
+  memcpy(family_name, name, (size_t) (style - name));
+  family_name[style - name] = '\0';
+  style++;
+
+  resources = wuss_get_resources(task->wuss);
+  rc = bmfontfamily_scan(pathf("%s/resources/bmfonts/%s", resources,
+                               family_name),
+                         &family);
+  if (rc != result_OK)
+    return rc;
+
+  faces[0] = NULL;
+  for (i = 0; i < bmfontfamily_count(family); i++)
+    if (strcmp(bmfontfamily_face(family, i)->style, style) == 0)
+      faces[0] = bmfontfamily_face(family, i);
+
+  if (faces[0] == NULL)
+  {
+    bmfontfamily_destroy(family);
+    return result_NOT_FOUND;
+  }
+
+  faces[1] = bmfontfamily_heavier(family, faces[0]);
+
+  cache = wuss_get_font_cache(task->wuss);
+  rc = bmfontcache_acquire(cache, faces[0]->path, &fonts[0]);
+  if (rc != result_OK)
+  {
+    bmfontfamily_destroy(family);
+    return rc;
+  }
+
+  rc = bmfontcache_acquire(cache, faces[1]->path, &fonts[1]);
+  if (rc != result_OK)
+  {
+    bmfontcache_release(cache, fonts[0]);
+    bmfontfamily_destroy(family);
+    return rc;
+  }
+
+  for (i = 0; i < 2; i++)
+  {
+    result_t frc;
+
+    snprintf(g_configuring_font.names[i], sizeof(g_configuring_font.names[i]),
+             "%s %s", family_name, faces[i]->style);
+
+    desc.font       = fonts[i];
+    desc.font_class = wuss_FONT_CLASS_NONE;
+    desc.name       = g_configuring_font.names[i];
+
+    /* the slot is replaced even when a task's relayout handler fails */
+    frc = wuss_set_font(task->wuss, i, &desc);
+    if (frc != result_OK && rc == result_OK)
+      rc = frc;
+
+    if (g_configuring_font.fonts[i] != NULL)
+      bmfontcache_release(cache, g_configuring_font.fonts[i]);
+    g_configuring_font.fonts[i] = fonts[i];
+  }
+
+  bmfontfamily_destroy(family);
+
+  if (task->window != NULL)
+  {
+    result_t trc;
+
+    trc = wuss_icon_set_text(task->window, task->font_name_icon,
+                             g_configuring_font.names[0]);
+    if (trc != result_OK && rc == result_OK)
+      rc = trc;
+  }
+
+  return rc;
+}
+
 static result_t configuring_icon(const wuss_event_t *event, void *task_data)
 {
   configuring_task_t *cc;
@@ -789,6 +1005,10 @@ static result_t configuring_icon(const wuss_event_t *event, void *task_data)
   else if (icon == cc->reverse_scroll_icon)
   {
     g_tasks.reverse_scroll = !!wuss_icon_get_selected(icon);
+  }
+  else if (icon == cc->choose_font_icon)
+  {
+    return configuring_open_fontmenu(cc);
   }
   else if (icon == cc->set_backdrop_icon)
   {
@@ -890,6 +1110,17 @@ result_t configuring_handle(wuss_window_t      *window,
       return configuring_click(cc, event);
 
     return result_OK;
+
+  case wuss_EVENT_MENU_SELECT:
+    {
+      const char *name;
+
+      name = wuss_fontmenu_selected(event);
+      if (name == NULL)
+        return result_OK;
+
+      return configuring_set_font(cc, name);
+    }
 
   case wuss_EVENT_CLOSE:
     if (window == cc->window)

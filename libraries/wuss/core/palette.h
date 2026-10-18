@@ -22,6 +22,13 @@ result_t wuss__broadcast_palette(wuss_t *wuss);
  * part-updated on a bad colour -- the caller discards or restores w. */
 result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config);
 
+#ifdef WUSS_FURNITURE
+/* Titlebar height derived from w's current fonts: the taller of the regular
+ * and bold faces plus a margin, or WUSS_DEFAULT_TITLEBAR_HEIGHT if both
+ * slots are empty. Used when the config gives no explicit height. */
+int wuss__titlebar_height_auto(const wuss_t *w);
+#endif
+
 /* Concrete 0..npalette-1 palette index for any wuss_colour_t: a symbolic
  * value (>= wuss_COLOUR_SYMBOLIC, bar wuss_NO_BACKGROUND) via the cache,
  * everything else -- raw indices, wuss_NO_BACKGROUND -- unchanged. */

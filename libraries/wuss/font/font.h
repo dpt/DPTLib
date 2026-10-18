@@ -13,9 +13,9 @@
 
 /* The set of fonts a wuss_t was created with: slot 0 is the system font used
  * for window titlebars and offered to tasks via wuss_get_font; further slots
- * hold optional bold/symbol faces. Populated once by wuss__fontset_init from
- * wuss_create's argument and never changed after. Fonts are borrowed, not
- * owned. */
+ * hold optional bold/symbol faces. Populated by wuss__fontset_init from
+ * wuss_create's argument; a slot may later be replaced by wuss_set_font.
+ * Fonts are borrowed, not owned. */
 struct wuss_fontset
 {
   /* unset slots NULL */
@@ -36,6 +36,12 @@ struct wuss_fontset
 void wuss__fontset_init(struct wuss_fontset    *set,
                         const wuss_font_desc_t *fonts,
                         int                     nfonts);
+
+/* Fill "slot" (0..wuss_MAX_FONTS-1) from "desc", measuring its space
+ * advance, and widen nfonts to cover it. */
+void wuss__fontset_set(struct wuss_fontset    *set,
+                       int                     slot,
+                       const wuss_font_desc_t *desc);
 
 /* Pixel height of the font in "slot", or 0 if that slot is empty or out of
  * range. Used by wuss_create to size the titlebar to the tallest of the

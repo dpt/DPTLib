@@ -1,5 +1,5 @@
 /* wuss/tasks/configuring.h -- startup settings task (mouse button swap,
- * reverse scroll, backdrop swatches) */
+ * reverse scroll, system font, backdrop swatches) */
 
 #ifndef TASKS_CONFIGURING_H
 #define TASKS_CONFIGURING_H
@@ -22,7 +22,9 @@
  * icons (right/middle mouse button swap -- g_tasks.swap_mouse_buttons, read
  * by each frontend's raw-button translator -- and reversed scroll direction
  * -- g_tasks.reverse_scroll, read where each frontend fills
- * wuss_input_event_t.wheel), a "Timing" frame with three writable fields
+ * wuss_input_event_t.wheel), a "Font" frame showing the system font with a
+ * "Choose" action opening the font menu (a pick is applied via
+ * wuss_set_font), a "Timing" frame with three writable fields
  * (double-click interval/distance, drag threshold) applied via an "Apply"
  * action calling wuss_set_config, plus a "Backdrop" frame: a foreground and
  * a background colour swatch row, a fill-pattern grid, a result swatch
@@ -37,6 +39,8 @@ typedef struct configuring_task
   wuss_window_t      *window;
   wuss_icon_t         *swap_icon;
   wuss_icon_t         *reverse_scroll_icon;
+  wuss_icon_t         *font_name_icon;
+  wuss_icon_t         *choose_font_icon;
   wuss_icon_t         *double_click_ms_icon;
   wuss_icon_t         *double_click_px_icon;
   wuss_icon_t         *drag_threshold_px_icon;

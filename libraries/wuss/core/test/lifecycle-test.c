@@ -14,6 +14,7 @@
 #include "framebuf/colour.h"
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "io/path.h"
 #include "wuss/wuss.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
@@ -42,8 +43,6 @@ result_t wuss_lifecycle_test(const char *resources)
   wuss_t        *wuss;
   box_t          content;
   const colour_t custom_palette[2] = { 0, 0 };
-
-  NOT_USED(resources);
 
   rowbytes = 200 * 4;
   rc       = wuss_fixture_open(&fixture, 200, 200);
@@ -379,6 +378,81 @@ result_t wuss_lifecycle_test(const char *resources)
     }
 
     wuss_destroy(pw);
+  }
+
+  printf("test: wuss_set_font re-derives the titlebar height and keeps each "
+         "window's content size\n");
+
+  {
+    static test_task_t tc_sf;
+    bmfont_t          *small;
+    bmfont_t          *tall;
+    wuss_font_desc_t   sfdesc;
+    wuss_t            *sfw;
+    wuss_task_t       *sfdel;
+    wuss_window_t     *sfwin;
+    box_t              sfbox;
+    box_t              before;
+    box_t              after;
+    int                old_height;
+
+    small = NULL;
+    tall  = NULL;
+    rc = bmfont_create(pathf("%s/resources/bmfonts/Tiny/Regular.png",
+                             resources), &small);
+    if (rc == result_OK)
+      rc = bmfont_create(pathf("%s/resources/bmfonts/DPT-CookeTall/Regular.png",
+                               resources), &tall);
+    if (rc != result_OK)
+      goto Failure;
+
+    memset(&sfdesc, 0, sizeof(sfdesc));
+    sfdesc.font = small;
+    rc = wuss_create(&fixture.scr, &sfdesc, 1, NULL, 0, NULL, NULL, NULL, &sfw);
+    if (rc != result_OK)
+      goto Failure;
+
+    memset(&tc_sf, 0, sizeof(tc_sf));
+    sfdel = mk_task(sfw, test_handle, &tc_sf);
+    forget_test_tasks(); /* wuss_destroy frees it */
+    if (sfdel == NULL) { wuss_destroy(sfw); goto Failure; }
+
+    sfbox.x0 = 10; sfbox.y0 = 40; sfbox.x1 = 90; sfbox.y1 = 90;
+    rc = wuss_window_create(sfdel, &sfbox, "F",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_VSCROLL,
+                            wuss_NO_BACKDROP, SIZE2D(80, 100), SIZE2D(0, 0),
+                            &sfwin);
+    if (rc != result_OK) { wuss_destroy(sfw); goto Failure; }
+
+    old_height = sfw->titlebar_height;
+    wuss_window_get_content_bounds(sfwin, &before);
+
+    sfdesc.font = tall;
+    rc = wuss_set_font(sfw, 0, &sfdesc);
+    wuss_window_get_content_bounds(sfwin, &after);
+
+    if (rc != result_OK || wuss_get_font(sfw) != tall ||
+        sfw->titlebar_height <= old_height ||
+        after.x1 - after.x0 != before.x1 - before.x0 ||
+        after.y1 - after.y0 != before.y1 - before.y0)
+    {
+      printf("  rc=%d height %d -> %d, content %dx%d -> %dx%d\n", rc,
+             old_height, sfw->titlebar_height,
+             before.x1 - before.x0, before.y1 - before.y0,
+             after.x1 - after.x0, after.y1 - after.y0);
+      wuss_destroy(sfw);
+      goto Failure;
+    }
+
+    if (wuss_set_font(sfw, wuss_MAX_FONTS, &sfdesc) != result_BAD_ARG)
+    {
+      wuss_destroy(sfw);
+      goto Failure;
+    }
+
+    wuss_destroy(sfw);
+    bmfont_destroy(tall);
+    bmfont_destroy(small);
   }
 
   wuss_fixture_close(&fixture);
