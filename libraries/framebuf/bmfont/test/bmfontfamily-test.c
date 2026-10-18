@@ -27,7 +27,7 @@ static result_t test_scan_order(const char *resources)
     "Light", "Regular", "Italic", "Bold", "BoldItalic", "Black"
   };
 
-  rc = bmfontfamily_scan(pathf("%s/resources/bmfonts-test/Fixture",
+  rc = bmfontfamily_scan(pathf("%s/resources/test/bmfonts/Fixture",
                                resources), &family);
   if (rc != result_OK)
   {
@@ -80,7 +80,7 @@ static result_t test_selection(const char *resources)
   const bmfontface_t *bold_italic;
   int                 ok;
 
-  rc = bmfontfamily_scan(pathf("%s/resources/bmfonts-test/Fixture",
+  rc = bmfontfamily_scan(pathf("%s/resources/test/bmfonts/Fixture",
                                resources), &family);
   if (rc != result_OK)
   {

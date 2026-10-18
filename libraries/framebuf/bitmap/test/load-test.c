@@ -15,7 +15,7 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* Fixtures are tiny PNGs in resources/bitmap-test/, one per colour type and
+/* Fixtures are tiny PNGs in resources/test/bitmap/, one per colour type and
  * depth the loader accepts. */
 
 static void load_free(bitmap_t *bm)
@@ -35,7 +35,7 @@ static int load_expect(const char *resources,
 {
   result_t rc;
 
-  rc = bitmap_load_png(bm, pathf("%s/resources/bitmap-test/%s",
+  rc = bitmap_load_png(bm, pathf("%s/resources/test/bitmap/%s",
                                  resources, leaf));
   if (rc != result_OK)
   {
@@ -442,7 +442,7 @@ static int test_errors(const char *resources)
   ok = 1;
   for (i = 0; i < sizeof(cases) / sizeof(cases[0]); i++)
   {
-    rc = bitmap_load_png(&bm, pathf("%s/resources/bitmap-test/%s",
+    rc = bitmap_load_png(&bm, pathf("%s/resources/test/bitmap/%s",
                                     resources, cases[i].leaf));
     if (rc != cases[i].want)
     {

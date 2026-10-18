@@ -222,7 +222,7 @@ result_t wuss_iconpool_test(const char *resources)
   {
     int idx;
 
-    rc = wuss_iconpool_load(wuss, pathf("%s/resources/wuss-test/icons",
+    rc = wuss_iconpool_load(wuss, pathf("%s/resources/test/wuss/icons",
                                      resources));
     if (rc != result_OK)
       goto Failure;
@@ -247,7 +247,7 @@ result_t wuss_iconpool_test(const char *resources)
       goto Failure;
 
     /* a file that isn't a PNG fails the whole load */
-    if (wuss_iconpool_load(wuss, pathf("%s/resources/wuss-test/badicons",
+    if (wuss_iconpool_load(wuss, pathf("%s/resources/test/wuss/badicons",
                                     resources)) == result_OK)
       goto Failure;
 
@@ -269,7 +269,7 @@ result_t wuss_iconpool_test(const char *resources)
     const char        *dir_pp;
     const bitmap_t    *priv;
 
-    dir_pp = pathf("%s/resources/wuss-test/icons", resources);
+    dir_pp = pathf("%s/resources/test/wuss/icons", resources);
 
     memset(&tc_pp, 0, sizeof(tc_pp));
     delegate_pp = mk_task(wuss, test_handle, &tc_pp);
@@ -351,7 +351,7 @@ result_t wuss_iconpool_test(const char *resources)
     /* a bad directory fails the load and leaves the pool empty, as for the
      * shared pool; the task falls back to the shared one */
     if (wuss_task_iconpool_load(delegate_pp,
-                                pathf("%s/resources/wuss-test/badicons",
+                                pathf("%s/resources/test/wuss/badicons",
                                       resources)) == result_OK ||
         wuss_task_iconpool_find(delegate_pp, "rgba") !=
           wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "rgba")))

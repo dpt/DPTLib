@@ -1756,7 +1756,7 @@ static result_t bmfont_metrics_test(const char *resources)
   static const char *fonts[] =
   {
     "bmfonts/DPT-Henry/Regular.png",
-    "bmfonts-test/Henry-SpaceSwapped.png"
+    "test/bmfonts/Henry-SpaceSwapped.png"
   };
 
   const char *filename;
