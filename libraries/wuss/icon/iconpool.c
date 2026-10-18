@@ -82,6 +82,32 @@ static void icons_swap_rb(bitmap_t *bm)
   }
 }
 
+/* The RLE codec only turns wholly-zero pixels into skip runs, and the 32bpp
+ * RLE blit writes every other pixel as is, alpha and all. A colour-keyed PNG
+ * loads with the key colour kept under alpha 0 (e.g. magenta), which would
+ * then be drawn. Zero every alpha-0 pixel of an rgba/bgra bitmap so it
+ * compresses to a skip. Bitmap must be uncompressed. */
+static void icons_clear_transparent(bitmap_t *bm)
+{
+  unsigned char *row;
+  int            x, y;
+
+  assert(!pixelfmt_is_rle(bm->format));
+
+  if (bm->format != pixelfmt_rgba8888 && bm->format != pixelfmt_bgra8888)
+    return;
+
+  for (y = 0; y < bm->size.h; y++)
+  {
+    row = (unsigned char *) bm->base + (size_t) y * bm->rowbytes;
+    for (x = 0; x < bm->size.w; x++)
+    {
+      if (row[x * 4 + 3] == 0)
+        memset(&row[x * 4], 0, 4);
+    }
+  }
+}
+
 /* True when "a" and "b" are 32bpp RGB(A/X) formats of opposite R/B order. */
 static int icons_rb_swapped(pixelfmt_t a, pixelfmt_t b)
 {
@@ -131,6 +157,8 @@ static result_t icons_load_entry(const char *leaf, void *opaque)
   if (pixelfmt_log2bpp(bm.format) == 5 &&
       icons_rb_swapped(bm.format, icons_order_for(st->wuss->scr->format)))
     icons_swap_rb(&bm);
+
+  icons_clear_transparent(&bm);
 
   /* paletted formats can't be RLE-compressed: keep those uncompressed */
   rc = bitmap_compress(&bm);
