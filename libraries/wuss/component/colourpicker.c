@@ -482,6 +482,7 @@ static result_t cp_build(wuss_colourpicker_t *picker, const char *title)
   int                    label_w, value_w, radio_w[CP_NMODELS], radios_w;
   int                    cancel_w, ok_w, width, height;
   int                    m, i, n, x, y;
+  char                   digit[2];
   wuss_icon_spec_t       specs[NICONS];
   wuss_icon_t           *made[NICONS];
   char                   bufs[NROWS][WUSS_SLIDER_ROW_BUF];
@@ -497,7 +498,14 @@ static result_t cp_build(wuss_colourpicker_t *picker, const char *title)
     for (i = 0; i < cp_models[m].nchannels; i++)
       label_w = MAX(label_w, cp_text_width(wuss,
                                            cp_models[m].channels[i].label));
-  value_w = MAX(cp_text_width(wuss, "-40"), cp_text_width(wuss, "359"));
+
+  /* room for a sign and three of the widest digit: a hidden row's text
+   * must not spill past its box, or hiding it leaves the spill behind */
+  value_w  = 0;
+  digit[1] = '\0';
+  for (digit[0] = '0'; digit[0] <= '9'; digit[0]++)
+    value_w = MAX(value_w, cp_text_width(wuss, digit));
+  value_w = cp_text_width(wuss, "-") + 3 * value_w;
 
   radios_w = 0;
   for (m = 0; m < CP_NMODELS; m++)
@@ -717,6 +725,7 @@ result_t wuss_colourpicker_open(wuss_colourpicker_t *picker, colour_t colour)
 {
   result_t       rc;
   wuss_window_t *win;
+  box_t          outer;
   box_t          content;
   size2d_t       size;
   size2d_t       scr;
@@ -731,14 +740,16 @@ result_t wuss_colourpicker_open(wuss_colourpicker_t *picker, colour_t colour)
   if (win->flags & wuss_WINDOW_HIDDEN)
   {
     /* centred on the pointer, where the click that prompted it was, and
-     * kept on screen */
+     * kept on screen, title bar and all */
+    wuss_window_get_visible_bounds(win, &outer);
     wuss_window_get_content_bounds(win, &content);
-    size = SIZE2D(content.x1 - content.x0, content.y1 - content.y0);
+    size = SIZE2D(outer.x1 - outer.x0, outer.y1 - outer.y0);
     scr  = wuss_get_screen_size(picker->wuss);
     at   = wuss_get_pointer(picker->wuss);
     at.x = CLAMP(at.x - size.w / 2, 0, MAX(scr.w - size.w, 0));
     at.y = CLAMP(at.y - size.h / 2, 0, MAX(scr.h - size.h, 0));
-    wuss_window_move(win, at);
+    wuss_window_move(win, POINT(at.x + content.x0 - outer.x0,
+                                at.y + content.y0 - outer.y0));
 
     rc = wuss_window_set_hidden(win, 0);
     if (rc != result_OK)
