@@ -529,25 +529,26 @@ ColourPairOK: ;
 
   printf("test: wuss_colourset fills its field and tracks colour picks\n");
   {
-    const char       *csfontfile;
-    bmfont_t         *csfont;
-    screen_t          csscr;
-    bitmap_t          csbm;
-    void             *cspixels;
-    wuss_t           *cswuss;
-    wuss_font_desc_t  csfdesc;
-    test_task_t       cstc;
-    wuss_task_t      *csowner;
-    wuss_window_t    *cswin;
-    wuss_colourset_t *cs;
-    wuss_icon_t      *button, *field;
-    wuss_event_t      ev;
-    box_t             cscontent;
-    result_t          csrc;
-    int               calls;
+    const char         *csfontfile;
+    bmfont_t           *csfont;
+    screen_t            csscr;
+    bitmap_t            csbm;
+    void               *cspixels;
+    wuss_t             *cswuss;
+    wuss_font_desc_t    csfdesc;
+    test_task_t         cstc;
+    wuss_task_t        *csowner;
+    wuss_window_t      *cswin;
+    wuss_colourset_t   *cs;
+    wuss_icon_t        *button, *field;
+    const unsigned int *fpx;
+    wuss_event_t        ev;
+    box_t               cscontent;
+    result_t            csrc;
+    int                 calls;
 
     /* the menu needs a font, and the button the icon set; the default
-     * palette is just white (0) and black (1) */
+     * palette is just black (0) and white (1) */
     csfontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
     rc = bmfont_create(csfontfile, &csfont);
     if (rc != result_OK) goto ColourSetFail;
@@ -589,13 +590,14 @@ ColourPairOK: ;
     if (wuss_colourset_get_colour(cs) != 0) goto ColourSetFail;
 
     /* the button sits at the right edge, drawn from the icon set; the field
-     * just left of it is filled with the colour */
+     * just left of it is a bitmap filled with the colour */
     button = wuss__icon_hit_test(cswin, POINT(4 + 120 - 2, 4 + 11));
     if (button == NULL || wuss_icon_get_type(button) != wuss_ICON_TYPE_BITMAP)
       goto ColourSetFail;
     field = cswin->icons[0];
-    if (field->spec.type != wuss_ICON_TYPE_DISPLAY || field->spec.bg != 0)
-      goto ColourSetFail;
+    if (field->spec.type != wuss_ICON_TYPE_BITMAP) goto ColourSetFail;
+    fpx = field->spec.u.bitmap.image->base;
+    if ((*fpx & 0xFFFFFF) != 0) goto ColourSetFail;
     if (field->spec.bbox.x0 != 4 + 40 + wuss_STD_GAP) /* the title width */
       goto ColourSetFail;
     /* the field ends where button_width says */
@@ -628,7 +630,7 @@ ColourPairOK: ;
     ev.data.menu_select.button = wuss_BUTTON_ADJUST;
     if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
       goto ColourSetFail;
-    if (wuss_colourset_get_colour(cs) != 1 || field->spec.bg != 1 ||
+    if (wuss_colourset_get_colour(cs) != 1 || (*fpx & 0xFFFFFF) != 0xFFFFFF ||
         calls != 1)
       goto ColourSetFail;
 
@@ -643,6 +645,17 @@ ColourPairOK: ;
     if (wuss_colourset_set_colour(cs, 0) != result_OK) goto ColourSetFail;
     if (wuss_colourset_get_colour(cs) != 0 || calls != 1) goto ColourSetFail;
 
+    /* an RGB shows exactly, not snapped to the palette, and its nearest
+     * entry stands as the colour; picking that entry is still a change */
+    wuss_colourset_set_rgb(cs, colour_rgb(0x12, 0x34, 0x56));
+    if ((*fpx & 0xFFFFFF) != 0x123456 || wuss_colourset_get_colour(cs) != 0 ||
+        calls != 1)
+      goto ColourSetFail;
+    ev.data.menu_select.index = 0;
+    if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK ||
+        (*fpx & 0xFFFFFF) != 0 || calls != 2)
+      goto ColourSetFail;
+
     /* a Select pick: wuss closes the chain and delivers MENU_CLOSED (picked)
      * before MENU_SELECT, which is still the gadget's */
     wuss_menu_close(wuss__menu_chain(cswuss));
@@ -655,7 +668,7 @@ ColourPairOK: ;
     ev.data.menu_select.button = wuss_BUTTON_SELECT;
     if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
       goto ColourSetFail;
-    if (wuss_colourset_get_colour(cs) != 1 || calls != 2) goto ColourSetFail;
+    if (wuss_colourset_get_colour(cs) != 1 || calls != 3) goto ColourSetFail;
 
     /* ... but once that pick is spent, a later one is not */
     if (wuss_colourset_handle_event(cs, &ev, &csrc)) goto ColourSetFail;

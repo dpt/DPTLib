@@ -1004,6 +1004,15 @@ result_t icons_handle(wuss_window_t      *window,
     return result_OK;
   }
 
+  case wuss_EVENT_PALETTE:
+  {
+    result_t rc;
+
+    if (tcx->cset != NULL) /* never consumed; refills its field */
+      (void) wuss_colourset_handle_event(tcx->cset, event, &rc);
+    return result_OK;
+  }
+
   case wuss_EVENT_DRAG_END:
   {
     char buf[48];

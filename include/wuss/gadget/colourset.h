@@ -8,16 +8,20 @@
  * wuss/component/colourmenu.h) -- the colour sibling of \ref stringset.h.
  *
  * The gadget is three icons on the caller's window: the title (see \ref
- * wuss_icon_spec_label), the field (a grooved label filled with the colour)
- * and the button, drawn from the "grightc" / "grightc-p" icon-set entries,
- * or as an ACTION button labelled ">" when the icon set lacks them. The
- * icons belong to the window and are freed with it.
+ * wuss_icon_spec_label), the field (a grooved bitmap filled with the colour,
+ * so an RGB set by \ref wuss_colourset_set_rgb shows exactly rather than
+ * snapped to the palette) and the button, drawn from the "grightc" /
+ * "grightc-p" icon-set entries, or as an ACTION button labelled ">" when the
+ * icon set lacks them. The icons belong to the window and are freed with it,
+ * but the field's image belongs to the gadget: free the gadget after the
+ * window closes, or at least once the window will not be redrawn.
  *
  * A Select or Adjust click on the button opens the colour menu beside it,
  * retitled to the gadget's title, its None row hidden and the current colour
- * ticked. The task forwards its wuss_EVENT_ICON, wuss_EVENT_MENU_SELECT and
- * wuss_EVENT_MENU_CLOSED events to \ref wuss_colourset_handle_event; a pick
- * refills the field and calls the changed callback.
+ * ticked. The task forwards its wuss_EVENT_ICON, wuss_EVENT_MENU_SELECT,
+ * wuss_EVENT_MENU_CLOSED and wuss_EVENT_PALETTE events to \ref
+ * wuss_colourset_handle_event; a pick refills the field and calls the
+ * changed callback.
  *
  * Built only when WUSS_COMPONENTS is defined, since it borrows the colour
  * menu component.
@@ -32,6 +36,7 @@ extern "C"
 #endif
 
 #include "base/result.h"
+#include "framebuf/colour.h"
 #include "geom/box.h"
 
 #include "wuss/task.h"
@@ -108,8 +113,8 @@ int wuss_colourset_button_width(const wuss_t *wuss, int height);
 
 /**
  * Free a colour set, closing its menu if open. Its icons are left on the
- * window, so this is safe to call before or after the window closes. Safe to
- * pass NULL.
+ * window, but the field's image is freed: call after the window closes, or
+ * when it will not be redrawn again. Safe to pass NULL.
  *
  * \param[in] doomed Handle to free, or NULL.
  */
@@ -120,7 +125,8 @@ void wuss_colourset_destroy(wuss_colourset_t *doomed);
  * gadget's button, or a wuss_EVENT_MENU_SELECT from the colour menu while
  * the gadget opened it. An Adjust pick keeps the menu open with the tick
  * moved. A wuss_EVENT_MENU_CLOSED must be offered too, so the gadget drops
- * its handle on the freed chain; it is noted but never consumed.
+ * its handle on the freed chain, and a wuss_EVENT_PALETTE, so the field
+ * follows the new palette; both are noted but never consumed.
  *
  * \param[in]  colourset  Handle.
  * \param[in]  event      The event, of any kind.
@@ -137,7 +143,8 @@ int wuss_colourset_handle_event(wuss_colourset_t   *colourset,
  * Fetch the current colour.
  *
  * \param[in] colourset Handle.
- * \return The colour, a concrete palette index.
+ * \return The colour, a concrete palette index: after \ref
+ *         wuss_colourset_set_rgb, the entry nearest that RGB.
  */
 wuss_colour_t wuss_colourset_get_colour(const wuss_colourset_t *colourset);
 
@@ -153,6 +160,17 @@ wuss_colour_t wuss_colourset_get_colour(const wuss_colourset_t *colourset);
  */
 result_t wuss_colourset_set_colour(wuss_colourset_t *colourset,
                                    wuss_colour_t     colour);
+
+/**
+ * Show the 24-bit colour \p rgb exactly, for a caller whose colours are not
+ * limited to the palette (e.g. one also offering \ref colourpicker.h). The
+ * menu ticks the palette entry matching \p rgb, if any; picking any entry,
+ * even the nearest, is then a change. The changed callback is not called.
+ *
+ * \param[in] colourset Handle.
+ * \param[in] rgb       The colour.
+ */
+void wuss_colourset_set_rgb(wuss_colourset_t *colourset, colour_t rgb);
 
 #ifdef __cplusplus
 }

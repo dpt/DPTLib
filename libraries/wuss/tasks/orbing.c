@@ -553,21 +553,14 @@ static colour_t *orbing_colour_field(orbing_task_t *task, int which)
   }
 }
 
-/* show each colour set's field as its nearest palette entry. ponytail: a
- * Mutated or Randomised colour shows as that approximation until a pick */
+/* show each colour set's field as its exact colour */
 static void orbing_sync_colours(orbing_task_t *task)
 {
-  int          which;
-  unsigned int r, g, b;
+  int which;
 
   for (which = 0; which < ORBING_NCOLOURS; which++)
-  {
-    colour_get_rgb(orbing_colour_field(task, which), &r, &g, &b);
-    (void) wuss_colourset_set_colour(task->colour_sets[which],
-                                     wuss_nearest_colour(task->wuss,
-                                                         (int) r, (int) g,
-                                                         (int) b));
-  }
+    wuss_colourset_set_rgb(task->colour_sets[which],
+                           *orbing_colour_field(task, which));
 }
 
 /* a colour set's pick: its field takes that palette entry */
@@ -590,7 +583,7 @@ static result_t orbing_colour_changed(wuss_colourset_t *colourset,
 }
 
 /* wuss_colourpicker_changed_fn_t: the picked light takes any 24-bit colour,
- * its colour set showing the nearest palette entry */
+ * its colour set showing it exactly */
 static void orbing_picker_changed(colour_t colour, void *opaque)
 {
   orbing_task_t *task;
