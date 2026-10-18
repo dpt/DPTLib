@@ -241,6 +241,19 @@ int wuss_dialogue_handle_key(wuss_dialogue_t    *dialogue,
                              result_t           *out_result);
 
 /**
+ * Handle a wuss_EVENT_PRE_CLOSE from the task's own handler, e.g. a "close
+ * this task's windows" key: activates the cancel action (see
+ * wuss_dialogue_set_cancel) as ESCAPE would, or hides the dialogue if it has
+ * none, and vetoes the close. The window stays alive until
+ * wuss_dialogue_destroy, so the component never holds a freed window.
+ *
+ * \param[in] dialogue Handle.
+ * \return \ref result_STOP_WALK, for the task's handler to return as the
+ *         veto.
+ */
+result_t wuss_dialogue_handle_pre_close(wuss_dialogue_t *dialogue);
+
+/**
  * Handle a wuss_EVENT_PRE_SHOW from the task's own handler: calls the
  * fillout callback passed to wuss_dialogue_create, if any.
  *

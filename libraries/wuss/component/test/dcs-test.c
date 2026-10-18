@@ -16,6 +16,7 @@
 #include "framebuf/pixelfmt.h"
 #include "framebuf/screen.h"
 #include "io/path.h"
+#include "wuss/task.h"
 #include "wuss/wuss.h"
 #include "wuss/window.h"
 #include "wuss/component/dcs.h"
@@ -309,13 +310,23 @@ result_t dcs_test(const char *resources)
   if (state.calls != 9 || state.last != wuss_DCS_DISCARD)
     goto Failure; /* the rebuilt buttons are wired up */
 
+  printf("test: wuss_dcs refuses a close and cancels instead\n");
+  rc = wuss_dcs_open(dcs);
+  if (rc != result_OK)
+    goto Failure;
+  if (wuss_task_close_windows(wuss, wuss_window_get_task(win)) == result_OK)
+    goto Failure; /* vetoed */
+  if (state.calls != 10 || state.last != wuss_DCS_CANCEL ||
+      (win->flags & wuss_WINDOW_HIDDEN) == 0)
+    goto Failure;
+
   printf("test: wuss_dcs_destroy while shown reports nothing\n");
   rc = wuss_dcs_open(dcs);
   if (rc != result_OK)
     goto Failure;
   wuss_dcs_destroy(dcs);
   dcs = NULL;
-  if (state.calls != 9)
+  if (state.calls != 10)
     goto Failure;
 
   printf("test: wuss_dcs Quit kind has Discard and Cancel only\n");

@@ -457,6 +457,9 @@ static result_t cp_task_handle(wuss_window_t      *window,
     (void) wuss_dialogue_handle_key(picker->dialogue, event, &rc);
     return rc;
 
+  case wuss_EVENT_PRE_CLOSE:
+    return wuss_dialogue_handle_pre_close(picker->dialogue);
+
   default:
     return result_OK;
   }

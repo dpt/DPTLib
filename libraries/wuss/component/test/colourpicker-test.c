@@ -17,6 +17,7 @@
 #include "framebuf/pixelfmt.h"
 #include "framebuf/screen.h"
 #include "io/path.h"
+#include "wuss/task.h"
 #include "wuss/wuss.h"
 #include "wuss/window.h"
 #include "wuss/component/colourpicker.h"
@@ -297,6 +298,22 @@ result_t colourpicker_test(const char *resources)
     goto Failure;
   if (state.last.primary != blue.primary ||
       (win->flags & wuss_WINDOW_HIDDEN) == 0)
+    goto Failure;
+
+  printf("test: wuss_colourpicker refuses a close and cancels instead\n");
+  rc = wuss_colourpicker_open(picker, blue);
+  if (rc != result_OK)
+    goto Failure;
+  rc = cp_test_type_hex(wuss, win, hex, "#000");
+  if (rc != result_OK)
+    goto Failure;
+  if (wuss_task_close_windows(wuss, wuss_window_get_task(win)) == result_OK)
+    goto Failure; /* vetoed */
+  if (state.last.primary != blue.primary ||
+      (win->flags & wuss_WINDOW_HIDDEN) == 0)
+    goto Failure;
+  rc = wuss_colourpicker_open(picker, blue); /* the window is still live */
+  if (rc != result_OK)
     goto Failure;
 
   wuss_colourpicker_destroy(picker);

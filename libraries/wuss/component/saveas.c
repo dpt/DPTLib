@@ -230,10 +230,16 @@ static result_t saveas_task_handle(wuss_window_t      *window,
                                    const wuss_event_t *event,
                                    void               *task_data)
 {
+  wuss_saveas_t *saveas;
+
+  saveas = task_data;
+
   if (event->kind == wuss_EVENT_QUIT)
     return result_OK;
+  if (event->kind == wuss_EVENT_PRE_CLOSE)
+    return wuss_dialogue_handle_pre_close(saveas->dialogue);
 
-  (void) wuss_saveas_handle_event(task_data, window, event);
+  (void) wuss_saveas_handle_event(saveas, window, event);
 
   return result_OK;
 }

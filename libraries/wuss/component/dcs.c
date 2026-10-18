@@ -264,6 +264,9 @@ static result_t dcs_task_handle(wuss_window_t      *window,
     (void) wuss_dialogue_handle_key(dcs->dialogue, event, &rc);
     return rc;
 
+  case wuss_EVENT_PRE_CLOSE:
+    return wuss_dialogue_handle_pre_close(dcs->dialogue);
+
   case wuss_EVENT_MENU_CLOSED:
     dcs->menu_handle = NULL; /* wuss closed the chain under us */
     return dcs_choose(dcs, wuss_DCS_CANCEL);

@@ -221,6 +221,23 @@ int wuss_dialogue_handle_key(wuss_dialogue_t    *dialogue,
   return 0;
 }
 
+result_t wuss_dialogue_handle_pre_close(wuss_dialogue_t *dialogue)
+{
+  int i;
+
+  for (i = 0; i < dialogue->nactions; i++)
+    if (dialogue->actions[i].icon == dialogue->cancel)
+      break;
+
+  if (i < dialogue->nactions)
+    (void) dialogue->actions[i].fn(dialogue->opaque, wuss_BUTTON_SELECT);
+  else
+    (void) wuss_dialogue_hide(dialogue);
+
+  /* the window is the component's: only wuss_dialogue_destroy frees it */
+  return result_STOP_WALK;
+}
+
 result_t wuss_dialogue_handle_pre_show(wuss_dialogue_t *dialogue)
 {
   if (dialogue->fillout == NULL)

@@ -16,6 +16,7 @@
 #include "framebuf/pixelfmt.h"
 #include "framebuf/screen.h"
 #include "io/path.h"
+#include "wuss/task.h"
 #include "wuss/wuss.h"
 #include "wuss/window.h"
 #include "wuss/component/error.h"
@@ -305,6 +306,21 @@ result_t error_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
 
+  printf("test: wuss_error refuses a close and cancels instead\n");
+  rc = wuss_error_report(wuss, NULL, NULL, "Continue?",
+                         wuss_ERROR_BUTTONS_OK_CANCEL, error_test_choice,
+                         &state);
+  if (rc != result_OK)
+    goto Failure;
+  win = error_test_window(wuss);
+  if (win == NULL)
+    goto Failure;
+  if (wuss_task_close_windows(wuss, wuss_window_get_task(win)) == result_OK)
+    goto Failure; /* vetoed */
+  if (state.calls != 9 || state.last != wuss_ERROR_CANCEL ||
+      wuss_error_pending(wuss) != 0 || (win->flags & wuss_WINDOW_HIDDEN) == 0)
+    goto Failure; /* the reports below reuse the live window */
+
   printf("test: wuss_error app icon adds an icon and widens the window\n");
   rc = wuss_error_report(wuss, NULL, NULL, "Plain", wuss_ERROR_BUTTONS_OK,
                          NULL, NULL);
@@ -354,7 +370,7 @@ result_t error_test(const char *resources)
     goto Failure;
   wuss_destroy(wuss);
   wuss = NULL;
-  if (state.calls != 8)
+  if (state.calls != 9)
     goto Failure;
 
   goto Cleanup;
