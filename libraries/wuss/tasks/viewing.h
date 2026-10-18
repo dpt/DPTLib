@@ -7,6 +7,7 @@
 
 #include "framebuf/bitmap.h"
 #include "framebuf/screen.h"
+#include "geom/stage.h"
 #include "wuss/component/colourmenu.h"
 #include "wuss/menu.h"
 #include "wuss/window.h"
@@ -27,14 +28,23 @@ typedef struct viewing_task
   wuss_menu_item_t dither_items[3]; /* one row per screen_dither_t */
   wuss_menu_t    dither_menu; /* "Dithering" submenu, borrowed by menu */
   screen_dither_t dithering; /* method for paletted screens */
-  wuss_colour_t  background;
+  colour_t       colour_pasteboard; /* stage: outside the page */
+  colour_t       colour_paper;      /* page; the band behind the image when
+                                     * the stage is off */
+  colour_t       colour_shadow;
+  colour_t       colour_border;
+  wuss_colourlist_t colours; /* "Colours" submenu over the four above */
+  int            stage;     /* nonzero: draw a stage (page, border, shadow)
+                             * behind the image instead of a plain band */
+  stageconfig_t  stagecfg;
 }
 viewing_task_t;
 
 wuss_window_fn_t viewing_handle;
 
-/* create an empty viewing window against the given wuss instance. A wuss_MESSAGE_DATA_LOAD sent to the window, whose
- * payload is the path of a PNG, shows that image; a file that will not load
+/* create an empty viewing window against the given wuss instance. A
+ * wuss_MESSAGE_DATA_LOAD sent to the window, whose payload is the path of a
+ * PNG, shows that image; a file that will not load
  * is not acknowledged. if out is non-NULL, the task block is also returned
  * through it */
 result_t viewing_create(wuss_t *wuss, viewing_task_t **out);

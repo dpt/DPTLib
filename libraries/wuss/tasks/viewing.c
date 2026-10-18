@@ -25,6 +25,46 @@
 #define VIEWING_MARGINSZ VIEWING_BORDERSZ
 #define VIEWING_EMPTYSZ  64 /* image area before the first DataLoad */
 
+/* rows of the main menu (its caption is not a row) */
+enum { VIEWING_MENU_DITHERING, VIEWING_MENU_COLOURS, VIEWING_MENU_STAGE };
+
+/* The window size that shows the image: with the stage, the smallest one
+ * that fits it; without, the image in its band. */
+static size2d_t viewing_size(const viewing_task_t *ic)
+{
+  stagebox_t boxes[stage_MAX_BOXES];
+  size_t     nboxes;
+  size2d_t   sz;
+
+  if (ic->stage)
+  {
+    stage_generate(&ic->stagecfg, 0, 0,
+                   ic->bitmap.size.w, ic->bitmap.size.h,
+                   &sz.w, &sz.h, boxes, &nboxes);
+    return sz;
+  }
+
+  sz.w = ic->bitmap.size.w + VIEWING_MARGINSZ * 2;
+  sz.h = ic->bitmap.size.h + VIEWING_MARGINSZ * 2;
+
+  return sz;
+}
+
+/* Resize the window and its document to fit the image */
+static result_t viewing_fit(viewing_task_t *ic)
+{
+  result_t rc;
+  size2d_t sz;
+
+  sz = viewing_size(ic);
+
+  rc = wuss_window_resize(ic->window, sz);
+  if (rc != result_OK)
+    return rc;
+
+  return wuss_window_set_doc(ic->window, sz);
+}
+
 result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
 {
   /* centred, clear of the icon bar, rather than in the first free region */
@@ -32,12 +72,17 @@ result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
   {
     wuss_PLACE_AVOID_ICONBAR, wuss_ALIGN_CENTRE, NULL, { 0, 0 }
   };
+  static const char *const colour_names[4] =
+  {
+    "Pasteboard", "Paper", "Shadow", "Border"
+  };
 
   result_t         rc;
   viewing_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
   size2d_t         sz;
+  colour_t        *colour_fields[4];
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -49,6 +94,18 @@ result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
   task->menu        = NULL;
   task->menu_handle = NULL;
   task->dithering   = screen_DITHER_BLUE_NOISE;
+  task->stage       = 1;
+  stageconfig_init(&task->stagecfg);
+
+  task->colour_pasteboard = colour_rgb(192, 192, 192); /* light grey */
+  task->colour_paper      = colour_rgb(255, 255, 255);
+  task->colour_shadow     = colour_rgb(96, 96, 96); /* dark grey */
+  task->colour_border     = colour_rgb(0, 0, 0);
+  colour_fields[0] = &task->colour_pasteboard;
+  colour_fields[1] = &task->colour_paper;
+  colour_fields[2] = &task->colour_shadow;
+  colour_fields[3] = &task->colour_border;
+  wuss_colourlist_init(&task->colours, wuss, 4, colour_fields, colour_names);
 
   /* indexed by screen_dither_t */
   WUSS_MENU_ITEM(task->dither_items, screen_DITHER_NONE, "None",
@@ -75,8 +132,7 @@ result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
   /* No autoclose: QUIT is delivered at wuss_destroy instead. Closing the
    * main window early leaks this block until then -- fine for a demo. */
 
-  sz.w = task->bitmap.size.w + VIEWING_MARGINSZ * 2;
-  sz.h = task->bitmap.size.h + VIEWING_MARGINSZ * 2;
+  sz = viewing_size(task);
 
   rc = wuss_window_create_at(delegate,
                              &place,
@@ -122,6 +178,60 @@ void viewing_destroy(viewing_task_t *task)
   free(task); /* task_data was calloc'd per instance by the spawner */
 }
 
+/* Draw the stage behind the image, centred in the window. The stage lays out
+ * with y up, so flip it. */
+static void viewing_redraw_stage(viewing_task_t *ic,
+                                 screen_t       *scr,
+                                 const box_t    *bounds,
+                                 int             ox,
+                                 int             oy)
+{
+  stagebox_t boxes[stage_MAX_BOXES];
+  size_t     nboxes;
+  size_t     i;
+  int        w, h;
+  box_t      b;
+  colour_t   colour;
+
+  stage_generate(&ic->stagecfg,
+                 bounds->x1 - bounds->x0, bounds->y1 - bounds->y0,
+                 ic->bitmap.size.w, ic->bitmap.size.h,
+                 &w, &h, boxes, &nboxes);
+
+  for (i = 0; i < nboxes; i++)
+  {
+    b = (box_t) { ox + boxes[i].box.x0, oy + h - boxes[i].box.y1,
+                  ox + boxes[i].box.x1, oy + h - boxes[i].box.y0 };
+
+    switch (boxes[i].kind)
+    {
+    case stageboxkind_CONTENT:
+      if (ic->bitmap.base != NULL)
+        screen_copy_bitmap_dithered(scr, b.x0, b.y0, &ic->bitmap,
+                                    ic->dithering);
+      continue;
+
+    case stageboxkind_STROKE:
+      colour = ic->colour_border;
+      break;
+
+    case stageboxkind_SHADOW:
+      colour = ic->colour_shadow;
+      break;
+
+    case stageboxkind_MARGIN:
+      colour = ic->colour_paper;
+      break;
+
+    default:
+      colour = ic->colour_pasteboard;
+      break;
+    }
+
+    screen_fill_rects(scr, &b, 1, colour);
+  }
+}
+
 static result_t viewing_redraw(const wuss_event_t *event, void *task_data)
 {
   viewing_task_t *ic;
@@ -139,6 +249,13 @@ static result_t viewing_redraw(const wuss_event_t *event, void *task_data)
   bounds = event->data.redraw.bounds;
   sx     = event->data.redraw.scroll.x;
   sy     = event->data.redraw.scroll.y;
+
+  if (ic->stage)
+  {
+    viewing_redraw_stage(ic, scr, bounds, bounds->x0 - sx, bounds->y0 - sy);
+    return result_OK;
+  }
+
   bx     = bounds->x0 - sx + VIEWING_MARGINSZ;
   by     = bounds->y0 - sy + VIEWING_MARGINSZ;
   bx0    = bx - VIEWING_BORDERSZ;
@@ -150,8 +267,7 @@ static result_t viewing_redraw(const wuss_event_t *event, void *task_data)
   band[1] = (box_t) { bx0, by1, bx1, by1 + VIEWING_BORDERSZ };  /* bottom */
   band[2] = (box_t) { bx0, by, bx, by1 };                     /* left */
   band[3] = (box_t) { bx + ic->bitmap.size.w, by, bx1, by1 }; /* right */
-  palette = wuss_get_palette(ic->wuss, NULL);
-  screen_fill_rects(scr, band, 4, palette[ic->background]);
+  screen_fill_rects(scr, band, 4, ic->colour_paper);
 
   if (ic->bitmap.base != NULL)
     screen_copy_bitmap_dithered(scr, bx, by, &ic->bitmap, ic->dithering);
@@ -165,7 +281,6 @@ static result_t viewing_show(viewing_task_t *ic, const char *path)
 {
   result_t rc;
   bitmap_t next;
-  size2d_t sz;
 
   rc = load_png_deep(&next, path, pixelfmt_rgbx8888);
   if (rc != result_OK)
@@ -177,14 +292,7 @@ static result_t viewing_show(viewing_task_t *ic, const char *path)
   free(ic->bitmap.base);
   ic->bitmap = next;
 
-  sz.w = ic->bitmap.size.w + VIEWING_MARGINSZ * 2;
-  sz.h = ic->bitmap.size.h + VIEWING_MARGINSZ * 2;
-
-  rc = wuss_window_resize(ic->window, sz);
-  if (rc != result_OK)
-    return rc;
-
-  return wuss_window_set_doc(ic->window, sz);
+  return viewing_fit(ic);
 }
 
 /* A DataLoad on the viewing window: show the file it names. */
@@ -211,32 +319,14 @@ static result_t viewing_open_menu(viewing_task_t *ic)
   int          i;
 
   rc = wuss_menu_create_from_desc(&m,
-         "Viewing, Dithering, Background");
+         "Viewing, Dithering, Colours, !Stage", ic->stage);
   if (rc != result_OK)
     return rc;
 
-  /* The descriptor syntax has no "open this submenu on hover" mark, so point
-   * "Background" at the shared colourmenu singleton by hand as a submenu, so
-   * it gets the usual arrow-and-hover behaviour.
-   * Marked BORROWED_SUBMENU so wuss_menu_destroy leaves it alone -- it is
-   * owned by the singleton, not by this per-open tree. No "None" row: its
-   * wuss_NO_BACKGROUND isn't a palette index, and there's nothing behind
-   * the band to show through anyway. */
-  wuss_colourmenu_set_none(0);
-  for (i = 0; i < m->nitems; i++)
-    if (m->items[i].text != NULL && strcmp(m->items[i].text, "Background") == 0)
-    {
-      wuss_menu_item_t *it = (wuss_menu_item_t *) &m->items[i];
-
-      it->submenu = wuss_colourmenu_menu(ic->wuss);
-      it->flags  |= wuss_MENU_ITEM_BORROWED_SUBMENU;
-      wuss_colourmenu_set_title("Background"); /* needs it built first */
-      wuss_colourmenu_set_ticked(ic->background);
-      break;
-    }
-
-  /* And "Dithering": a per-instance submenu built at create time and ticked
-   * here. Borrowed for the same reason. */
+  /* The descriptor syntax cannot name a submenu, so point "Colours" and
+   * "Dithering" at per-instance submenus built at create time, by hand.
+   * Marked BORROWED_SUBMENU so wuss_menu_destroy leaves them alone -- they
+   * belong to the task, not to this per-open tree. */
   wuss_menu_tick_exclusive(&ic->dither_menu, (int) ic->dithering);
   for (i = 0; i < m->nitems; i++)
   {
@@ -244,11 +334,14 @@ static result_t viewing_open_menu(viewing_task_t *ic)
 
     if (it->text == NULL)
       continue;
-    if (strcmp(it->text, "Dithering") != 0)
+    if (strcmp(it->text, "Dithering") == 0)
+      it->submenu = &ic->dither_menu;
+    else if (strcmp(it->text, "Colours") == 0)
+      it->submenu = &ic->colours.menu;
+    else
       continue;
 
-    it->submenu = &ic->dither_menu;
-    it->flags  |= wuss_MENU_ITEM_BORROWED_SUBMENU;
+    it->flags |= wuss_MENU_ITEM_BORROWED_SUBMENU;
   }
 
   wuss_menu_destroy(ic->menu);
@@ -282,21 +375,19 @@ result_t viewing_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_MENU_SELECT:
+    if (wuss_colourlist_selected(&ic->colours, event))
     {
-      wuss_colour_t picked;
-      int           mine;
-
-      picked = wuss_colourmenu_selected(event, &mine);
-      if (mine)
-      {
-        ic->background = picked;
-        wuss_window_invalidate_visible(ic->window);
-        return result_OK;
-      }
+      wuss_window_invalidate_visible(ic->window);
+      return result_OK;
     }
 
     menu  = event->data.menu_select.menu;
     index = event->data.menu_select.index;
+    if (menu == ic->menu && index == VIEWING_MENU_STAGE)
+    {
+      ic->stage = !ic->stage;
+      return viewing_fit(ic);
+    }
     if (menu == &ic->dither_menu)
     {
       ic->dithering = (screen_dither_t) index;
@@ -305,6 +396,16 @@ result_t viewing_handle(wuss_window_t      *window,
       wuss_menu_tick_exclusive_live(ic->menu_handle, &ic->dither_menu, index);
     }
     return result_OK;
+
+  case wuss_EVENT_PRE_SUBMENU_OPEN:
+    {
+      result_t rc;
+
+      if (wuss_colourlist_pre_open(&ic->colours, ic->wuss, event, &rc))
+        return rc;
+
+      return result_OK;
+    }
 
   case wuss_EVENT_MESSAGE:
     return viewing_message(ic, window, event);
