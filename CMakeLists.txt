@@ -85,6 +85,7 @@ set(PUBLIC_HEADERS
     include/framebuf/bmfontcache.h
     include/framebuf/bmfontfamily.h
     include/framebuf/colour.h
+    include/framebuf/colourspace.h
     include/framebuf/composite.h
     include/framebuf/curve.h
     include/framebuf/dither.h
@@ -298,6 +299,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/bmfont/enumerate.c
     libraries/framebuf/bmfont/family.c
     libraries/framebuf/colour/colour.c
+    libraries/framebuf/colourspace/colourspace.c
     libraries/framebuf/composite/composite.c
     libraries/framebuf/curve/curve.c
     libraries/framebuf/dither/dither.c
@@ -842,6 +844,7 @@ if(BUILD_TESTS)
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/bmfont/test/bmfontcache-test.c
         libraries/framebuf/bmfont/test/bmfontfamily-test.c
+        libraries/framebuf/colourspace/test/colourspace-test.c
         libraries/framebuf/composite/test/composite-test.c
         libraries/framebuf/curve/test/curve-test.c
         libraries/framebuf/dither/test/dither-test.c
