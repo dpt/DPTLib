@@ -327,6 +327,109 @@ static result_t test_bad_args(void)
   return result_TEST_PASSED;
 }
 
+static result_t test_layouts(void)
+{
+  static const struct
+  {
+    pixelfmt_t   fmt;
+    unsigned int alpha; /* 0x40 alpha in this format */
+    unsigned int want;  /* the alpha plus rgb 11,22,33 */
+  }
+  formats[] =
+  {
+    { pixelfmt_rgbx8888, 0x40000000u, 0x40332211u },
+    { pixelfmt_rgba8888, 0x40000000u, 0x40332211u },
+    { pixelfmt_bgrx8888, 0x40000000u, 0x40112233u },
+    { pixelfmt_bgra8888, 0x40000000u, 0x40112233u },
+    { pixelfmt_xbgr8888, 0x00000040u, 0x11223340u },
+    { pixelfmt_abgr8888, 0x00000040u, 0x11223340u },
+    { pixelfmt_xrgb8888, 0x00000040u, 0x33221140u },
+    { pixelfmt_argb8888, 0x00000040u, 0x33221140u },
+  };
+
+  bitmap_t     src, dst;
+  unsigned int a[STRIDE * H], b[STRIDE * H];
+  int          i;
+
+  /* clear writes each channel where the format keeps it */
+  for (i = 0; i < (int) (sizeof(formats) / sizeof(formats[0])); i++)
+  {
+    if (make(&src, a, formats[i].fmt) != result_OK ||
+        make(&dst, b, formats[i].fmt) != result_OK)
+      FAIL("bad bitmap");
+
+    fill(a, formats[i].alpha);
+
+    if (effects_clear_apply(&src, &dst, colour_rgb(0x11, 0x22, 0x33)) !=
+        result_OK)
+      FAIL("clear failed for format %d", formats[i].fmt);
+
+    if (b[0] != formats[i].want)
+      FAIL("format %d cleared to %08x, want %08x",
+           formats[i].fmt, b[0], formats[i].want);
+  }
+
+  /* a bitmap already using the full range is copied as is, in place too */
+  if (make(&src, a, pixelfmt_rgba8888) != result_OK ||
+      make(&dst, b, pixelfmt_rgba8888) != result_OK)
+    FAIL("bad bitmap");
+
+  fill(a, 0x40FF0000u);
+
+  if (effects_expand_apply(&src, &dst, 0) != result_OK || b[0] != a[0])
+    FAIL("expand of a full range bitmap changed it: %08x", b[0]);
+
+  if (effects_expand_apply(&src, &src, 0) != result_OK || a[0] != 0x40FF0000u)
+    FAIL("expand in place changed it: %08x", a[0]);
+
+  return result_TEST_PASSED;
+}
+
+static result_t test_bad_bitmaps(void)
+{
+  bitmap_t     src, dst;
+  bitmap_t     bad;
+  unsigned int a[STRIDE * H], b[STRIDE * H];
+
+  if (make(&src, a, pixelfmt_rgba8888) != result_OK ||
+      make(&dst, b, pixelfmt_rgba8888) != result_OK)
+    FAIL("bad bitmap");
+
+  if (effects_grey_apply(NULL, &dst) != result_BAD_ARG ||
+      effects_grey_apply(&src, NULL) != result_BAD_ARG)
+    FAIL("NULL bitmap accepted");
+
+  bad = src;
+  bad.base = NULL;
+  if (effects_grey_apply(&bad, &dst) != result_BAD_ARG ||
+      effects_grey_apply(&src, &bad) != result_BAD_ARG)
+    FAIL("NULL base accepted");
+
+  bad = src;
+  bad.rowbytes = STRIDE * 4 - 2;
+  if (effects_grey_apply(&bad, &dst) != result_BAD_ARG ||
+      effects_grey_apply(&src, &bad) != result_BAD_ARG)
+    FAIL("unaligned rows accepted");
+
+  bad = src;
+  bad.rowbytes = (W - 1) * 4;
+  if (effects_grey_apply(&bad, &dst) != result_BAD_ARG ||
+      effects_grey_apply(&src, &bad) != result_BAD_ARG)
+    FAIL("short rows accepted");
+
+  bad = src;
+  bad.size.w = -1;
+  if (effects_grey_apply(&bad, &dst) != result_BAD_ARG)
+    FAIL("negative width accepted");
+
+  bad = dst;
+  bad.size.h--;
+  if (effects_grey_apply(&src, &bad) != result_BAD_ARG)
+    FAIL("height mismatch accepted");
+
+  return result_TEST_PASSED;
+}
+
 result_t effects_test(const char *resources)
 {
   (void) resources;
@@ -337,7 +440,9 @@ result_t effects_test(const char *resources)
       test_grey_clear() != result_TEST_PASSED ||
       test_levels() != result_TEST_PASSED ||
       test_tonemap() != result_TEST_PASSED ||
-      test_bad_args() != result_TEST_PASSED)
+      test_bad_args() != result_TEST_PASSED ||
+      test_layouts() != result_TEST_PASSED ||
+      test_bad_bitmaps() != result_TEST_PASSED)
     return result_TEST_FAILED;
 
   return result_TEST_PASSED;
