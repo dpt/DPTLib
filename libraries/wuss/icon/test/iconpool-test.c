@@ -48,7 +48,7 @@ result_t wuss_iconpool_test(const char *resources)
 
   {
     const bitmap_t *icon_bm;
-    int             idx, opton, count;
+    int             idx, opton, deep, count;
 
     rc = wuss_iconpool_load_resource(wuss, resources);
     if (rc != result_OK)
@@ -66,7 +66,12 @@ result_t wuss_iconpool_test(const char *resources)
     if (wuss_iconpool_lookup(wuss, "nonesuch") != -1)
       goto Failure;
 
-    icon_bm = wuss_iconpool_bitmap(wuss, opton);
+    /* only 32bpp icons get RLE-compressed: opton is plain grey (stays as
+     * loaded), radoff is grey+alpha (expanded to 32bpp) */
+    if (wuss_iconpool_bitmap(wuss, opton) == NULL)
+      goto Failure;
+    deep    = wuss_iconpool_lookup(wuss, "radoff");
+    icon_bm = wuss_iconpool_bitmap(wuss, deep);
     if (icon_bm == NULL || !bitmap_is_compressed(icon_bm))
       goto Failure;
     if (wuss_iconpool_bitmap(wuss, count) != NULL)
@@ -188,7 +193,7 @@ result_t wuss_iconpool_test(const char *resources)
       screen_t      p4scr;
       pixelfmt_t    fmt32;
 
-      icon_bm = wuss_iconpool_bitmap(wuss, opton);
+      icon_bm = wuss_iconpool_bitmap(wuss, deep);
       fmt32   = pixelfmt_base(icon_bm->format);
       if (fmt32 != pixelfmt_bgra8888 && fmt32 != pixelfmt_bgrx8888)
         goto Failure;
@@ -202,7 +207,7 @@ result_t wuss_iconpool_test(const char *resources)
       rc = wuss_resize(wuss, &p4scr);
       if (rc != result_OK)
         goto Failure;
-      if (wuss_iconpool_bitmap(wuss, opton) != icon_bm ||
+      if (wuss_iconpool_bitmap(wuss, deep) != icon_bm ||
           !bitmap_is_compressed(icon_bm) ||
           (pixelfmt_base(icon_bm->format) != pixelfmt_rgba8888 &&
            pixelfmt_base(icon_bm->format) != pixelfmt_rgbx8888))
@@ -211,7 +216,7 @@ result_t wuss_iconpool_test(const char *resources)
       rc = wuss_resize(wuss, &fixture.scr);
       if (rc != result_OK)
         goto Failure;
-      if (wuss_iconpool_bitmap(wuss, opton) != icon_bm ||
+      if (wuss_iconpool_bitmap(wuss, deep) != icon_bm ||
           pixelfmt_base(icon_bm->format) != fmt32)
         goto Failure;
     }
