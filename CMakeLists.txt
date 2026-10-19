@@ -893,6 +893,7 @@ if(BUILD_TESTS)
         libraries/wuss/icon/test/icon-test.c
         libraries/wuss/icon/test/icon-draw-test.c
         libraries/wuss/icon/test/writable-test.c
+        libraries/wuss/icon/test/slider-test.c
         libraries/wuss/iconbar/test/iconbar-test.c
         libraries/wuss/gadget/test/gadget-test.c
         libraries/wuss/component/test/component-test.c

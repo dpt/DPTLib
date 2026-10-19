@@ -111,6 +111,7 @@ static const test_t tests[] =
   { "wuss-icon", wuss_icon_test },
   { "wuss-icon-draw", wuss_icon_draw_test },
   { "wuss-writable", wuss_writable_test },
+  { "wuss-slider", wuss_slider_test },
   { "wuss-iconbar", wuss_iconbar_test },
   { "wuss-menu-desc", wuss_menu_desc_test },
   { "wuss-gadget", wuss_gadget_test },
