@@ -1081,6 +1081,121 @@ ColourSetOK: ;
       if (sa_save_calls != 3) goto SaveAsFail;
     }
 
+    /* NULL handles, other windows and stray messages are not consumed */
+    {
+      wuss_message_t msg;
+
+      if (wuss_saveas_window(NULL) != NULL) goto SaveAsFail;
+      if (wuss_saveas_handle_event(NULL, sawin, &ev)) goto SaveAsFail;
+      if (wuss_saveas_create(NULL, sawuss, NULL, "x", saveas_test_save,
+                             NULL) != result_NULL_ARG) goto SaveAsFail;
+      wuss_saveas_destroy(NULL);
+
+      /* a cancelled drag is consumed but starts no transfer */
+      ev.kind                    = wuss_EVENT_DRAG_END;
+      ev.data.drag_end.drop      = sarecvwin;
+      ev.data.drag_end.point     = POINT(50, 50);
+      ev.data.drag_end.cancelled = 1;
+      ev.data.drag_end.button    = wuss_BUTTON_SELECT;
+      if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+      rc = wuss_idle(sawuss);
+      if (rc != result_OK) goto SaveAsFail;
+      if (sa_save_calls != 3) goto SaveAsFail;
+
+      ev.kind             = wuss_EVENT_ICON;
+      ev.data.icon.icon   = sa_save;
+      ev.data.icon.action = wuss_MOUSE_UP;
+      ev.data.icon.button = wuss_BUTTON_SELECT;
+      ev.data.icon.value  = 0;
+      if (wuss_saveas_handle_event(sa, sarecvwin, &ev)) goto SaveAsFail;
+
+      memset(&msg, 0, sizeof(msg));
+      msg.action        = wuss_MESSAGE_DATA_SAVE_ACK;
+      ev.kind           = wuss_EVENT_MESSAGE;
+      ev.data.message   = &msg;
+      if (wuss_saveas_handle_event(sa, NULL, &ev)) goto SaveAsFail;
+      ev.kind           = wuss_EVENT_MESSAGE_BOUNCED;
+      if (wuss_saveas_handle_event(sa, NULL, &ev)) goto SaveAsFail;
+
+      /* the leafname can be set, but not while a transfer is running; a
+       * bounce of someone else's message leaves the transfer running */
+      wuss_saveas_set_leafname(sa, "renamed");
+      if (strcmp(wuss_saveas_get_path(sa), "renamed") != 0) goto SaveAsFail;
+
+      sarecv_tc.suppress_ack     = 1;
+      ev.kind                    = wuss_EVENT_DRAG_END;
+      ev.data.drag_end.drop      = sarecvwin;
+      ev.data.drag_end.point     = POINT(50, 50);
+      ev.data.drag_end.cancelled = 0;
+      ev.data.drag_end.button    = wuss_BUTTON_SELECT;
+      if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+      wuss_saveas_set_leafname(sa, "ignored");
+      if (strcmp(wuss_saveas_get_path(sa), "renamed") != 0) goto SaveAsFail;
+      ev.kind         = wuss_EVENT_MESSAGE_BOUNCED;
+      ev.data.message = &msg;
+      if (wuss_saveas_handle_event(sa, NULL, &ev)) goto SaveAsFail;
+      rc = wuss_idle(sawuss); /* the unanswered DataSave bounces */
+      if (rc != result_OK) goto SaveAsFail;
+      sarecv_tc.suppress_ack = 0;
+
+      /* a save_fn failure on the DataSaveAck abandons the transfer and
+       * keeps the leafname */
+      sarecv_tc.dir              = "/nonexistent-dptlib-saveas";
+      ev.kind                    = wuss_EVENT_DRAG_END;
+      ev.data.drag_end.drop      = sarecvwin;
+      ev.data.drag_end.point     = POINT(50, 50);
+      ev.data.drag_end.cancelled = 0;
+      ev.data.drag_end.button    = wuss_BUTTON_SELECT;
+      if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+      rc = wuss_idle(sawuss);
+      if (rc != result_OK) goto SaveAsFail;
+      sarecv_tc.dir = sa_scratch;
+      if (sa_save_calls != 4) goto SaveAsFail;
+      if (strcmp(wuss_saveas_get_path(sa), "renamed") != 0) goto SaveAsFail;
+      if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+      rc = wuss_idle(sawuss);
+      if (rc != result_OK) goto SaveAsFail;
+      if (sa_save_calls != 5) goto SaveAsFail;
+    }
+
+    /* the file icon follows the filetype: b60 has its own, data falls back
+     * to the generic one fff had */
+    {
+      filetype_t ft;
+      int        generic;
+
+      generic   = sawin->icons[0]->spec.u.bitmap.set;
+      ft.riscos = 0xb60;
+      ft.ext    = "png";
+      wuss_saveas_set_filetype(sa, &ft);
+      if (sawin->icons[0]->spec.u.bitmap.set == generic) goto SaveAsFail;
+      wuss_saveas_set_filetype(sa, &ft);
+      wuss_saveas_set_filetype(sa, NULL);
+      if (sawin->icons[0]->spec.u.bitmap.set != generic) goto SaveAsFail;
+    }
+
+    /* opened standalone, the dialogue is centred on the pointer; Escape
+     * cancels and closes it */
+    {
+      box_t content;
+      int   cx, cy;
+
+      rc = wuss_mouse_move(sawuss, POINT(100, 100), NULL);
+      if (rc == result_OK)
+        rc = wuss_saveas_open(sa);
+      if (rc != result_OK) goto SaveAsFail;
+      if ((sawin->flags & wuss_WINDOW_HIDDEN) != 0) goto SaveAsFail;
+      wuss_window_get_content_bounds(sawin, &content);
+      cx = (content.x0 + content.x1) / 2;
+      cy = (content.y0 + content.y1) / 2;
+      if (cx < 99 || cx > 101 || cy < 99 || cy > 101) goto SaveAsFail;
+
+      ev.kind          = wuss_EVENT_KEY;
+      ev.data.key.code = wuss_KEY_ESCAPE;
+      if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+      if ((sawin->flags & wuss_WINDOW_HIDDEN) == 0) goto SaveAsFail;
+    }
+
     wuss_saveas_destroy(sa);
     reap_test_tasks();
     wuss_destroy(sawuss);
