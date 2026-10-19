@@ -1221,6 +1221,167 @@ QuitFail:
       return result_TEST_FAILED;
   }
 
+  printf("test: menu ticks, live updates and the open variants\n");
+  {
+    static wuss_menu_item_t tk_items[3];
+    static wuss_menu_t      tk_menu =
+    {
+      "Ticks", tk_items, NELEMS(tk_items)
+    };
+    static wuss_menu_t      tk_other =
+    {
+      "Other", tk_items, NELEMS(tk_items)
+    };
+
+    const char        *fontfile;
+    bmfont_t          *font = NULL;
+    wuss_font_desc_t   fdesc;
+    screen_t           tscr;
+    bitmap_t           tbm;
+    void              *tpixels;
+    wuss_t            *twuss;
+    test_task_t        ttc;
+    wuss_task_t       *towner;
+    wuss_menu_handle_t h;
+    struct wuss__menu *level;
+    wuss_window_t     *win;
+    wuss_event_t       ev;
+    int                i;
+
+    fontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
+    rc = bmfont_create(fontfile, &font);
+    if (rc != result_OK)
+    {
+      printf("wuss_test: tick test could not load %s\n", fontfile);
+      goto Failure;
+    }
+
+    tpixels = malloc((size_t) rowbytes * 200);
+    if (tpixels == NULL) { rc = result_OOM; goto TickFail; }
+    rc = bitmap_init(&tbm, SIZE2D(200, 200), pixelfmt_bgrx8888, rowbytes,
+                     NULL, tpixels);
+    if (rc != result_OK) goto TickFailFree;
+    screen_for_bitmap(&tscr, &tbm);
+
+    fdesc.font       = font;
+    fdesc.font_class = wuss_FONT_CLASS_NONE;
+    fdesc.name       = NULL;
+    rc = wuss_create(&tscr, &fdesc, 1, NULL, 0, NULL, NULL, NULL, &twuss);
+    if (rc != result_OK) goto TickFailFree;
+
+    memset(&ttc, 0, sizeof(ttc));
+    towner = mk_task(twuss, test_handle, &ttc);
+    if (towner == NULL) { rc = result_OOM; goto TickDestroy; }
+
+    WUSS_MENU_ITEM(tk_items, 0, "Zero", wuss_MENU_ITEM_NONE);
+    WUSS_MENU_ITEM(tk_items, 1, "One",  wuss_MENU_ITEM_NONE);
+    WUSS_MENU_ITEM(tk_items, 2, "Two",  wuss_MENU_ITEM_NONE);
+
+    rc = result_TEST_FAILED;
+
+    /* static ticks: a bit set, one item, out of range ignored */
+    wuss_menu_tick_set(&tk_menu, 5);
+    if (!(tk_items[0].flags & wuss_MENU_ITEM_TICKED) ||
+        (tk_items[1].flags & wuss_MENU_ITEM_TICKED) ||
+        !(tk_items[2].flags & wuss_MENU_ITEM_TICKED))
+      goto TickCheckFail;
+    wuss_menu_tick_item(&tk_menu, 2, 0);
+    wuss_menu_tick_item(&tk_menu, 3, 1);
+    wuss_menu_tick_item(&tk_menu, -1, 1);
+    if (tk_items[2].flags & wuss_MENU_ITEM_TICKED)        goto TickCheckFail;
+
+    /* select_is matches only this menu's in-range index */
+    ev.kind                    = wuss_EVENT_MENU_SELECT;
+    ev.data.menu_select.menu   = &tk_menu;
+    ev.data.menu_select.index  = 1;
+    ev.data.menu_select.button = wuss_BUTTON_SELECT;
+    if (!wuss_menu_select_is(&ev, &tk_menu, 1) ||
+        wuss_menu_select_is(&ev, &tk_menu, 2) ||
+        wuss_menu_select_is(&ev, &tk_menu, -1) ||
+        wuss_menu_select_is(&ev, &tk_other, 1))
+      goto TickCheckFail;
+
+    /* open_ticked sets the ticks before opening */
+    rc = wuss_menu_open_ticked(towner, &tk_menu, 2, POINT(20, 40), &h);
+    if (rc != result_OK) goto TickDestroy;
+    rc = result_TEST_FAILED;
+    level = wuss__menu_chain(twuss);
+    if (!wuss_menu_is_open(h) || wuss_menu_is_open(NULL) ||
+        level == NULL || wuss_menu_handle_menu(h) != &tk_menu)
+      goto TickCheckFail;
+    for (i = 0; i < 3; i++)
+      if (wuss_icon_get_selected(wuss__menu_level_icon(level, i)) != (i == 1))
+        goto TickCheckFail;
+
+    /* live updates reach the open rows; others are no-ops */
+    wuss_menu_tick_set_live(h, &tk_menu, 4);
+    for (i = 0; i < 3; i++)
+      if (wuss_icon_get_selected(wuss__menu_level_icon(level, i)) != (i == 2))
+        goto TickCheckFail;
+    wuss_menu_tick_item_live(h, &tk_menu, 0, 1);
+    wuss_menu_tick_item_live(h, &tk_menu, 3, 1);
+    wuss_menu_tick_set_live(h, &tk_other, 0);
+    if (!wuss_icon_get_selected(wuss__menu_level_icon(level, 0)) ||
+        !wuss_icon_get_selected(wuss__menu_level_icon(level, 2)))
+      goto TickCheckFail;
+    wuss_menu_disable_item_live(h, &tk_menu, 1, 1);
+    if (!(wuss__menu_level_icon(level, 1)->spec.flags &
+          wuss_ICON_FLAGS_DISABLED))
+      goto TickCheckFail;
+    wuss_menu_set_item_text_live(h, &tk_menu, 1, "Uno");
+    if (strcmp(wuss_icon_get_text(wuss__menu_level_icon(level, 1)), "Uno"))
+      goto TickCheckFail;
+    win = wuss__menu_level_window(level);
+    wuss_menu_set_title_live(h, &tk_menu, "Live");
+    wuss_menu_set_title_live(h, &tk_other, "Nope");
+    if (strcmp(wuss_window_get_title(win), "Live"))       goto TickCheckFail;
+
+    wuss_menu_close(h);
+    if (wuss__menu_chain(twuss) != NULL)                   goto TickCheckFail;
+
+    /* at the pointer */
+    rc = wuss_mouse_move(twuss, POINT(60, 60), NULL);
+    if (rc != result_OK) goto TickDestroy;
+    rc = wuss_menu_open_at_pointer(towner, &tk_menu, &h);
+    if (rc != result_OK) goto TickDestroy;
+    rc = result_TEST_FAILED;
+    if (wuss__menu_chain(twuss) == NULL)                   goto TickCheckFail;
+    wuss_menu_close(h);
+
+    /* above the icon bar: bottom edge 'gap' up, centred on x */
+    rc = wuss_menu_open_above(towner, &tk_menu, 100, 30, &h);
+    if (rc != result_OK) goto TickDestroy;
+    rc = result_TEST_FAILED;
+    win = wuss__menu_level_window(wuss__menu_chain(twuss));
+    if (win->visible.y1 != 200 - 30 ||
+        win->visible.x0 >= 100 || win->visible.x1 <= 100)
+    {
+      printf("wuss_test: open_above visible <%d,%d-%d,%d>\n",
+             win->visible.x0, win->visible.y0,
+             win->visible.x1, win->visible.y1);
+      goto TickCheckFail;
+    }
+    wuss_menu_close(h);
+
+    rc = result_OK;
+    goto TickDestroy;
+
+TickCheckFail:
+    printf("wuss_test: menu tick check failed\n");
+    if (wuss__menu_chain(twuss) != NULL)
+      wuss_menu_close(wuss__menu_chain(twuss));
+
+TickDestroy:
+    reap_test_tasks();
+    wuss_destroy(twuss);
+TickFailFree:
+    free(tpixels);
+TickFail:
+    bmfont_destroy(font);
+    if (rc != result_OK)
+      return result_TEST_FAILED;
+  }
+
   return result_TEST_PASSED;
 
 Failure:
