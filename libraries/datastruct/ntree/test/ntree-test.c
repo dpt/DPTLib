@@ -176,8 +176,8 @@ fatal:
 
 static result_t dup_data(void *data, void *opaque, void **newdata)
 {
-  size_t  len;
-  char   *copy;
+  size_t len;
+  char  *copy;
 
   NOT_USED(opaque);
 
@@ -202,6 +202,21 @@ static result_t free_data(ntree_t *t, void *opaque)
   free(ntree_get_data(t));
 
   return result_OK;
+}
+
+/* -------------------------------------------------------------------------- */
+
+/* Returns non-zero if a pre-order walk of t gives expected. */
+static int pre_order_is(ntree_t *t, const char *expected)
+{
+  char output[100];
+
+  if (tree_to_string(t, ntree_WALK_PRE_ORDER, 0, output) != result_OK)
+    return 0;
+
+  printf("pre order walk returned: \"%s\"\n", output);
+
+  return strcmp(expected, output) == 0;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -350,6 +365,106 @@ result_t ntree_test(const char *resources)
   }
 
   TEST_OK;
+
+
+  BEGIN_TEST("unlink");
+
+  {
+    ntree_t *b, *c, *d, *e, *f, *g, *h, *j;
+
+    b = test_data[1].node;
+    c = test_data[2].node;
+    d = test_data[3].node;
+    e = test_data[4].node;
+    f = test_data[5].node;
+    g = test_data[6].node;
+    h = test_data[7].node;
+    j = test_data[9].node;
+
+    BEGIN_SUBTEST("unlink a middle child, taking its subtree");
+
+    ntree_unlink(g);
+    if (pre_order_is(test_data[0].node, "abdiecfh") &&
+        ntree_next_sibling(f) == h && ntree_prev_sibling(h) == f &&
+        ntree_parent(g) == NULL && ntree_next_sibling(g) == NULL &&
+        ntree_prev_sibling(g) == NULL &&
+        ntree_first_child(g) == j && pre_order_is(g, "gj"))
+    {
+      TEST_OK;
+    }
+    else
+    {
+      nfailures++;
+      TEST_FAILED;
+    }
+
+    BEGIN_SUBTEST("unlink a first child");
+
+    ntree_unlink(f);
+    if (pre_order_is(test_data[0].node, "abdiech") &&
+        ntree_first_child(c) == h && ntree_prev_sibling(h) == NULL &&
+        ntree_parent(f) == NULL && ntree_next_sibling(f) == NULL)
+    {
+      TEST_OK;
+    }
+    else
+    {
+      nfailures++;
+      TEST_FAILED;
+    }
+
+    BEGIN_SUBTEST("unlink a last child");
+
+    ntree_unlink(e);
+    if (pre_order_is(test_data[0].node, "abdich") &&
+        ntree_last_child(b) == d && ntree_next_sibling(d) == NULL &&
+        ntree_parent(e) == NULL && ntree_prev_sibling(e) == NULL &&
+        ntree_n_nodes(test_data[0].node) == 6)
+    {
+      TEST_OK;
+    }
+    else
+    {
+      nfailures++;
+      TEST_FAILED;
+    }
+
+    BEGIN_SUBTEST("unlink an only child, then a detached node");
+
+    ntree_unlink(h);
+    ntree_unlink(h); /* already detached: must be a no-op */
+    if (pre_order_is(test_data[0].node, "abdic") &&
+        ntree_first_child(c) == NULL &&
+        ntree_parent(h) == NULL && ntree_next_sibling(h) == NULL)
+    {
+      TEST_OK;
+    }
+    else
+    {
+      nfailures++;
+      TEST_FAILED;
+    }
+
+    BEGIN_SUBTEST("an unlinked node can be inserted elsewhere");
+
+    err = ntree_insert(b, ntree_INSERT_AT_END, g);
+    if (err)
+      goto fatal;
+    if (pre_order_is(test_data[0].node, "abdigjc") &&
+        ntree_parent(g) == b && ntree_prev_sibling(g) == d)
+    {
+      TEST_OK;
+    }
+    else
+    {
+      nfailures++;
+      TEST_FAILED;
+    }
+
+    ntree_delete(f);
+    ntree_delete(e);
+    ntree_delete(h);
+  }
 
 
   BEGIN_TEST("delete tree");
