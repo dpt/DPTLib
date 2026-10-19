@@ -896,6 +896,7 @@ if(BUILD_TESTS)
         libraries/wuss/icon/test/slider-test.c
         libraries/wuss/icon/test/hover-test.c
         libraries/wuss/icon/test/click-test.c
+        libraries/wuss/icon/test/set-text-test.c
         libraries/wuss/iconbar/test/iconbar-test.c
         libraries/wuss/gadget/test/gadget-test.c
         libraries/wuss/component/test/component-test.c
