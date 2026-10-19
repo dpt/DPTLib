@@ -118,6 +118,82 @@ result_t wuss_menu_desc_test(const char *resources)
     if (rc != result_BAD_ARG)
       goto MenuFail;
 
+    /* malformed: '~' vararg not 0/1 */
+    rc = wuss_menu_create_from_desc(&m, "T, ~Export", 2);
+    if (rc != result_BAD_ARG)
+      goto MenuFail;
+
+    /* malformed: a name made only of options */
+    rc = wuss_menu_create_from_desc(&m, "T, !, A", 0);
+    if (rc != result_BAD_ARG)
+      goto MenuFail;
+
+    /* malformed: nesting deeper than eight levels */
+    rc = wuss_menu_create_from_desc(&m,
+           "T, A { S, B { S, C { S, D { S, E { S, F { S, G { S, H { S, I"
+           " { S, J } } } } } } } } }");
+    if (rc != result_BAD_ARG)
+      goto MenuFail;
+
+    /* malformed: } without { */
+    rc = wuss_menu_create_from_desc(&m, "T, A }");
+    if (rc != result_BAD_ARG)
+      goto MenuFail;
+
+    /* malformed: { } with no preceding item */
+    rc = wuss_menu_create_from_desc(&m, "T, { S, A }");
+    if (rc != result_BAD_ARG)
+      goto MenuFail;
+
+    /* malformed: %s expansion overflows the 64-byte text buffer */
+    rc = wuss_menu_create_from_desc(&m, "T, %s",
+           "0123456789012345678901234567890123456789012345678901234567890123");
+    if (rc != result_BAD_ARG)
+      goto MenuFail;
+
+    /* malformed: literal text overflows the 64-byte text buffer */
+    rc = wuss_menu_create_from_desc(&m,
+           "T, 0123456789012345678901234567890123456789012345678901234567890123");
+    if (rc != result_BAD_ARG)
+      goto MenuFail;
+
+    /* '>' deep-copies a borrowed menu whose items have their own submenus */
+    {
+      static const wuss_menu_item_t inner_items[] =
+      {
+        { "Leaf", wuss_MENU_ITEM_NONE, NULL }
+      };
+      static const wuss_menu_t inner =
+      {
+        NULL, inner_items, NELEMS(inner_items)
+      };
+      static const wuss_menu_item_t outer_items[] =
+      {
+        { "Branch", wuss_MENU_ITEM_NONE, &inner }
+      };
+      static const wuss_menu_t outer =
+      {
+        "Outer", outer_items, NELEMS(outer_items)
+      };
+
+      rc = wuss_menu_create_from_desc(&m, "T, >Tree", &outer);
+      if (rc != result_OK)
+        goto MenuFail;
+      sub = m->items[0].submenu;
+      if (sub == NULL || sub == &outer)                     goto NestFail;
+      sub = sub->items[0].submenu;
+      if (sub == NULL || sub == &inner)                     goto NestFail;
+      if (sub->nitems != 1)                                 goto NestFail;
+      if (strcmp(sub->items[0].text, "Leaf") != 0)          goto NestFail;
+      wuss_menu_destroy(m);
+      goto NestOK;
+
+NestFail:
+      wuss_menu_destroy(m);
+      goto MenuFail;
+NestOK: ;
+    }
+
     rc = result_OK;
     goto MenuOK;
 
