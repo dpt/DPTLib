@@ -253,6 +253,7 @@ set(DATASTRUCT_SOURCES
     libraries/datastruct/list/init.c
     libraries/datastruct/list/remove.c
     libraries/datastruct/list/walk.c
+    libraries/datastruct/ntree/append.c
     libraries/datastruct/ntree/copy.c
     libraries/datastruct/ntree/delete.c
     libraries/datastruct/ntree/depth.c

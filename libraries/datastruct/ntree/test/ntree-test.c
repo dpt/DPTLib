@@ -447,7 +447,7 @@ result_t ntree_test(const char *resources)
 
     BEGIN_SUBTEST("an unlinked node can be inserted elsewhere");
 
-    err = ntree_insert(b, ntree_INSERT_AT_END, g);
+    err = ntree_append(b, g);
     if (err)
       goto fatal;
     if (pre_order_is(test_data[0].node, "abdigjc") &&
