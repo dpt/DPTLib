@@ -33,6 +33,7 @@ typedef enum painting_tool
   painting_TOOL_SPRAY,  /* scatter dots around the pointer while held */
   painting_TOOL_SELECT, /* rubber-band a rectangular selection */
   painting_TOOL_LASSO,  /* drag out a freeform selection */
+  painting_TOOL_PICK,   /* take the fg (Select) or bg (Adjust) from the canvas */
   painting_TOOL__COUNT
 }
 painting_tool_t;

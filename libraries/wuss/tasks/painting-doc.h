@@ -122,6 +122,10 @@ box_t paintingdoc_rect(paintingdoc_t *doc,
  * the fill colour; otherwise takes its own checkpoint */
 box_t paintingdoc_fill(paintingdoc_t *doc, point_t p, colour_t colour);
 
+/* the colour of the canvas pixel at p, into *colour. false, leaving *colour
+ * alone, if p is off the canvas */
+int paintingdoc_pick(const paintingdoc_t *doc, point_t p, colour_t *colour);
+
 /* the selection limits every drawing operation to its pixels, so a stroke,
  * rect or fill leaves the rest of the canvas as it was. there is at most one;
  * making a new one replaces it. it is not part of the undo history. loading a

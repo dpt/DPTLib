@@ -186,6 +186,18 @@ result_t paintingdoc_test(const char *resources)
   CHECK(px(doc, 8, 9) == WHITE);
   CHECK(px(doc, 4, 4) == BLACK);
 
+  printf("test: pick reads a canvas pixel back as a colour, and refuses "
+         "off the canvas\n");
+
+  {
+    colour_t c;
+
+    CHECK(paintingdoc_pick(doc, POINT(5, 0), &c));
+    CHECK(c.primary == red().primary);
+    CHECK(!paintingdoc_pick(doc, POINT(-1, 0), &c));
+    CHECK(!paintingdoc_pick(doc, POINT(0, 99), &c));
+  }
+
   printf("test: filling with the colour already there, or off the canvas, "
          "changes nothing and takes no undo step\n");
 

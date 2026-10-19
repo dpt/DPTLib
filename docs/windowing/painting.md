@@ -29,10 +29,12 @@ makes an instance of its own.
   background colour. Clicking a swatch in the toolbox sets the foreground
   (Select) or the background (Adjust).
 - Tools: brush, eraser (paints the background colour), line, rect, filled
-  rect, flood fill, spray, select (rectangle) and lasso. Press `B` `E` `L` `R`
-  `X` `F` `P` `S` or `O` to pick one. Other keys pass on to the demo's
+  rect, flood fill, spray, select (rectangle), lasso and colour picker. Press
+  `B` `E` `L` `R` `X` `F` `P` `S` `O` or `I` to pick one. Other keys pass on to the demo's
   hotkeys. The slider sets the width, 1 to 32 pixels. For spray it sets the
   radius (3 pixels per unit).
+- The colour picker takes the foreground (Select) or the background
+  (Adjust) colour from the canvas pixel clicked.
 - Spray scatters dots in a disc round the pointer. Dots build up while the
   button is held still.
 - Select and lasso make a selection, shown with marching ants. The new

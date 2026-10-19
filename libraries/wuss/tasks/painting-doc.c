@@ -751,3 +751,16 @@ box_t paintingdoc_fill(paintingdoc_t *doc, point_t p, colour_t colour)
   sel_clip(doc, dirty);
   return dirty;
 }
+
+int paintingdoc_pick(const paintingdoc_t *doc, point_t p, colour_t *colour)
+{
+  uint32_t px;
+
+  if (p.x < 0 || p.x >= doc->bm.size.w || p.y < 0 || p.y >= doc->bm.size.h)
+    return 0;
+
+  px      = pixel_row(doc, p.y)[p.x];
+  *colour = colour_rgb((px >> 16) & 0xFF, (px >> 8) & 0xFF, px & 0xFF);
+
+  return 1;
+}

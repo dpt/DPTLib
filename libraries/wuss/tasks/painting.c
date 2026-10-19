@@ -32,19 +32,19 @@
  * painting_toolbox_redraw and the swatches hit-tested by painting_toolbox_mouse, not
  * icons */
 #define TB_W           96
-#define TB_H           286
+#define TB_H           312
 #define TB_MARGIN      5
 #define TB_TOOL_COLS   2
 #define TB_TOOL_X      23
 #define TB_TOOL_CELL   26  /* pitch of the tool buttons */
 #define TB_TOOL_SIZE   24  /* button size, including its bevel */
-#define TB_SLIDER_Y    138
+#define TB_SLIDER_Y    164
 #define TB_SWATCH_COLS 4
 #define TB_SWATCH_ROWS 4
 #define TB_SWATCH      20  /* swatch size */
 #define TB_SWATCH_GAP  2
-#define TB_SWATCH_Y    166
-#define TB_CHIPS_Y     260
+#define TB_SWATCH_Y    192
+#define TB_CHIPS_Y     286
 
 #define PAINTING_ANTS_IDLES 6 /* idles between steps of the marching ants */
 
@@ -66,7 +66,8 @@ static const char *painting_tool_names[painting_TOOL__COUNT] =
   "fill",
   "spray",
   "select",
-  "lasso"
+  "lasso",
+  "pick"
 };
 
 /* the paintbrush's nozzle rows, indexed by paintingdoc_nozzle_t */
@@ -767,6 +768,19 @@ static result_t painting_mouse(painting_task_t    *pt,
 
     switch (pt->tool)
     {
+    case painting_TOOL_PICK:
+      pt->held = 0; /* a click, not a stroke */
+      if (!paintingdoc_pick(pt->doc, p, &colour))
+        return result_OK;
+
+      if (event->data.mouse.button & wuss_BUTTON_SELECT)
+        pt->fg = colour;
+      else
+        pt->bg = colour;
+      if (pt->toolbox != NULL)
+        wuss_window_invalidate_visible(pt->toolbox);
+      return result_OK;
+
     case painting_TOOL_FILL:
       colour   = painting_stroke_colour(pt);
       pt->held = 0; /* a click, not a stroke */
@@ -917,9 +931,9 @@ static void painting_step_size(painting_task_t *pt, int delta)
   (void) wuss_slider_row_set(pt->toolbox, &pt->size_row, pt->size);
 }
 
-/* N steps the nozzle. B, H, E, L, R, X, F, P, S and O pick the matching tool, [ and ] step the
- * size down and up, Escape drops the selection. Anything else is passed back
- * unclaimed */
+/* N steps the nozzle. B, H, E, L, R, X, F, P, S, O and I pick the matching
+ * tool, [ and ] step the size down and up, Escape drops the selection.
+ * Anything else is passed back unclaimed */
 static result_t painting_key(painting_task_t *pt, int code)
 {
   box_t box;
@@ -940,6 +954,7 @@ static result_t painting_key(painting_task_t *pt, int code)
   case 'p': case 'P': painting_set_tool(pt, painting_TOOL_SPRAY);  break;
   case 's': case 'S': painting_set_tool(pt, painting_TOOL_SELECT); break;
   case 'o': case 'O': painting_set_tool(pt, painting_TOOL_LASSO);  break;
+  case 'i': case 'I': painting_set_tool(pt, painting_TOOL_PICK);   break;
   case '[':           painting_step_size(pt, -1);               break;
   case ']':           painting_step_size(pt, +1);               break;
   case wuss_KEY_ESCAPE:
