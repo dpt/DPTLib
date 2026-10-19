@@ -279,11 +279,14 @@ result_t wuss_menu_open_window(wuss_task_t        *task,
                                point_t             at,
                                wuss_menu_handle_t *out);
 
-/** Close a menu chain and every window in it. Safe to pass a stale or NULL
- *  handle. */
+/** Close a menu chain and every window in it, freeing it. Safe to pass NULL.
+ *  A handle is freed with its chain, so drop it on wuss_EVENT_MENU_CLOSED or
+ *  after this call: a handle kept past either must not be passed back. */
 void wuss_menu_close(wuss_menu_handle_t handle);
 
-/** Non-zero while \p handle refers to a currently open chain. */
+/** Non-zero while \p handle refers to a currently open chain; zero for
+ *  NULL. Like every call taking a handle, it must not be passed one dropped
+ *  on wuss_EVENT_MENU_CLOSED. */
 int wuss_menu_is_open(wuss_menu_handle_t handle);
 
 /**
@@ -447,9 +450,9 @@ result_t wuss_menu_open_ticked(wuss_task_t        *task,
 /**
  * Ticks item \p index and unticks every other item of the open level whose
  * \c menu is \p menu (searched from \p handle's chain), then invalidates the
- * changed rows. A no-op if \p handle is stale/closed, \p menu is not an open
- * level of its chain, or \p index is out of range (still unticking every row
- * in that case).
+ * changed rows. A no-op if \p handle is NULL, \p menu is not an open level
+ * of its chain, or \p index is out of range (still unticking every row in
+ * that case).
  *
  * \param[in] handle Chain handle from wuss_menu_open.
  * \param[in] menu   The (sub)menu level to update; matched by pointer
@@ -464,9 +467,9 @@ void wuss_menu_tick_exclusive_live(wuss_menu_handle_t handle,
 /**
  * Set every row's tick from \p ticked (row i ticked iff bit i is set) on a
  * currently open menu level in place, then invalidates the changed rows.
- * Live equivalent of wuss_menu_tick_set. A no-op if \p handle is
- * stale/closed or \p menu is not an open level of its chain. \c menu->nitems
- * must not exceed the bit width of <tt>unsigned int</tt>.
+ * Live equivalent of wuss_menu_tick_set. A no-op if \p handle is NULL or \p
+ * menu is not an open level of its chain. \c menu->nitems must not exceed
+ * the bit width of <tt>unsigned int</tt>.
  *
  * \param[in] handle Chain handle from wuss_menu_open.
  * \param[in] menu   The (sub)menu level to update; matched by pointer
@@ -503,7 +506,7 @@ void wuss_menu_tick_item_live(wuss_menu_handle_t handle,
  * an ADJUST pick that changes whether another row applies shows at once.
  * Only the open row changes: set or clear wuss_MENU_ITEM_DISABLED in the
  * item's flags as well, for the next wuss_menu_open. A no-op if \p handle is
- * stale/closed or \p menu is not an open level of its chain.
+ * NULL or \p menu is not an open level of its chain.
  *
  * \param[in] handle   Chain handle from wuss_menu_open.
  * \param[in] menu     The (sub)menu level to update; matched by pointer
@@ -522,8 +525,8 @@ void wuss_menu_disable_item_live(wuss_menu_handle_t handle,
  * ADJUST pick that changes what a row does (Hide to Show) shows at once.
  * Only the open row changes: set the item's \c text as well, for the next
  * wuss_menu_open. The menu keeps the width it opened at, so a longer label
- * may be clipped. A no-op if \p handle is stale/closed or \p menu is not an
- * open level of its chain.
+ * may be clipped. A no-op if \p handle is NULL or \p menu is not an open
+ * level of its chain.
  *
  * \param[in] handle Chain handle from wuss_menu_open.
  * \param[in] menu   The (sub)menu level to update; matched by pointer
@@ -541,7 +544,7 @@ void wuss_menu_set_item_text_live(wuss_menu_handle_t handle,
  * Retitle a currently open menu level in place. Only the open level changes:
  * set \c menu->title as well, for the next wuss_menu_open. The menu keeps
  * the width it opened at, so a longer title may be clipped. A no-op if \p
- * handle is stale/closed or \p menu is not an open level of its chain.
+ * handle is NULL or \p menu is not an open level of its chain.
  *
  * \param[in] handle Chain handle from wuss_menu_open.
  * \param[in] menu   The (sub)menu level to update; matched by pointer
