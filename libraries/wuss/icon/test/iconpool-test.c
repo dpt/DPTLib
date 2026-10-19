@@ -175,6 +175,24 @@ result_t wuss_iconpool_test(const char *resources)
       wuss_window_close(win_ic);
     }
 
+    /* entries know their names; out-of-range indices have none */
+    if (wuss_iconpool_name(wuss, opton) == NULL ||
+        strcmp(wuss_iconpool_name(wuss, opton), "opton") != 0 ||
+        wuss_iconpool_name(wuss, -1) != NULL ||
+        wuss_iconpool_name(wuss, count) != NULL)
+      goto Failure;
+
+    /* NULL and overlong directories are refused */
+    {
+      static char longdir[300];
+
+      memset(longdir, 'x', sizeof(longdir) - 1);
+      if (wuss_iconpool_load(wuss, NULL) != result_NULL_ARG ||
+          wuss_iconpool_load_resource(wuss, NULL) != result_NULL_ARG ||
+          wuss_iconpool_load(wuss, longdir) != result_BAD_ARG)
+        goto Failure;
+    }
+
     /* a reload replaces the set cleanly (no leak, ASan would catch it) */
     rc = wuss_iconpool_load_resource(wuss, resources);
     if (rc != result_OK || wuss_iconpool_count(wuss) != count)
@@ -361,6 +379,44 @@ result_t wuss_iconpool_test(const char *resources)
         wuss_task_iconpool_find(delegate_pp, "rgba") !=
           wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "rgba")))
       goto Failure;
+
+    /* a task's resource pool lives under wuss-tasks/<task name>/iconpool;
+     * a task with no name or one too long for the path is refused */
+    {
+      static test_task_t tc_rs;
+      static char        longname[300];
+      wuss_task_desc_t   desc;
+      wuss_task_t       *task_rs;
+
+      if (wuss_task_iconpool_load(delegate_pp, NULL) != result_NULL_ARG ||
+          wuss_task_iconpool_load_resource(delegate_pp, NULL) !=
+            result_NULL_ARG)
+        goto Failure;
+
+      memset(&tc_rs, 0, sizeof(tc_rs));
+      desc.handle    = test_handle;
+      desc.task_data = &tc_rs;
+      desc.name      = "minesweeping";
+      rc = wuss_task_create(wuss, &desc, &task_rs);
+      if (rc != result_OK)
+        goto Failure;
+      rc = wuss_task_iconpool_load_resource(task_rs, resources);
+      if (rc != result_OK || task_rs->iconpool.nbitmaps == 0)
+        goto Failure;
+
+      task_rs->name = NULL;
+      if (wuss_task_iconpool_load_resource(task_rs, resources) !=
+          result_BAD_ARG)
+        goto Failure;
+
+      memset(longname, 'x', sizeof(longname) - 1);
+      task_rs->name = longname;
+      if (wuss_task_iconpool_load_resource(task_rs, resources) !=
+          result_BAD_ARG)
+        goto Failure;
+
+      wuss_task_destroy(task_rs);
+    }
 
     /* the standard shared set goes back for the tests that follow; the
      * private pool is freed with its task (ASan would catch a leak) */
