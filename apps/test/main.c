@@ -60,6 +60,7 @@ static const test_t tests[] =
   { "bitload",     bitmap_load_test },
   { "bitresize",   bitmap_resize_test },
   { "rle",         bitmap_rle_test  },
+  { "bitconvert",  bitmap_convert_test },
   { "curve",       curve_test       },
   { "dither",      dither_test      },
   { "effects",     effects_test     },
