@@ -20,6 +20,10 @@ Build directories are per-config and already created; there is **no** plain
 - `build-nosdl/` — Release, core tests only.
 - `build-wuss-min/` — Release, core tests with `WUSS_FURNITURE=OFF`. Checks the
   wuss subsystem options still build when trimmed.
+- `build-coverage/` — Debug, core tests, Clang source-based coverage
+  (`USE_COVERAGE=YES`). Run `tools/coverage.sh [tests...]` from the repo root:
+  it configures if needed, builds, runs the tests, prints a per-file summary
+  and writes `build-coverage/coverage/index.html`.
 - `build.xc/`    — Xcode generator, MinSizeRel, apps on.
 - RISC OS: GCCSDK cross build via an external toolchain file; no build dir is
   kept. Leave alone unless working on RISC OS.

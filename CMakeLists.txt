@@ -29,6 +29,7 @@ endif(CCACHE_FOUND)
 
 option(USE_FORTIFY "Use Fortify" OFF)
 option(USE_ASAN "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
+option(USE_COVERAGE "Build with Clang source-based code coverage" OFF)
 option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
 option(WUSS_FURNITURE "Build the Wuss window-furniture subsystem" ON)
 option(WUSS_ICONBAR "Build the Wuss RISC OS-style icon bar" ON)
@@ -688,6 +689,12 @@ endif()
 if(USE_ASAN)
     target_compile_options(DPTLib PUBLIC -fsanitize=address,undefined -g -O0)
     target_link_options(DPTLib PUBLIC -fsanitize=address,undefined)
+endif()
+
+if(USE_COVERAGE)
+    # Clang only: run tools/coverage.sh to build, test and report
+    target_compile_options(DPTLib PUBLIC -fprofile-instr-generate -fcoverage-mapping)
+    target_link_options(DPTLib PUBLIC -fprofile-instr-generate)
 endif()
 
 if(DPTLIB_IMAGES_READ_ONLY)
