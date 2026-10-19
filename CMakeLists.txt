@@ -853,6 +853,7 @@ if(BUILD_TESTS)
         libraries/framebuf/bitmap/test/resize-test.c
         libraries/framebuf/bitmap/test/rle-test.c
         libraries/framebuf/bitmap/test/convert-test.c
+        libraries/framebuf/span/test/span-test.c
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/bmfont/test/bmfontcache-test.c
         libraries/framebuf/bmfont/test/bmfontfamily-test.c
