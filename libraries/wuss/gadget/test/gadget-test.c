@@ -84,6 +84,46 @@ static int gridview_test_drag(wuss_gridview_t *gridview,
   *(int *) opaque = index;
   return 0;
 }
+
+/* gridview drag callback that accepts, so a core drag starts */
+static int gridview_test_accept_drag(wuss_gridview_t *gridview,
+                                     int              index,
+                                     void            *opaque)
+{
+  NOT_USED(gridview);
+  NOT_USED(index);
+  NOT_USED(opaque);
+
+  return 1;
+}
+
+/* gridview draw callback: counts the cells drawn and records the last index
+ * at opaque */
+static int gridview_test_drawn;
+
+static void gridview_test_draw(wuss_gridview_t    *gridview,
+                               const wuss_event_t *event,
+                               int                 index,
+                               const box_t        *screen_box,
+                               void               *opaque)
+{
+  NOT_USED(gridview);
+  NOT_USED(event);
+  NOT_USED(screen_box);
+
+  gridview_test_drawn++;
+  *(int *) opaque = index;
+}
+
+/* gridview item source like gridview_test_item, but with the bitmap at
+ * opaque as every item's glyph */
+static void gridview_test_glyph_item(int                   index,
+                                     void                 *opaque,
+                                     wuss_gridview_item_t *out)
+{
+  out->glyph = (const bitmap_t *) opaque;
+  out->label = gridview_test_labels[index];
+}
 #endif
 
 #ifdef WUSS_GADGETS
@@ -542,6 +582,152 @@ StringSetOK: ;
     rc = wuss_gridview_set_count(gv, NELEMS(gridview_test_labels));
     if (rc != result_OK) goto GridViewFail;
     if (wuss_gridview_get_cell_size(gv).w != cell_w) goto GridViewFail;
+    if (wuss_gridview_set_count(gv, -1) != result_BAD_ARG) goto GridViewFail;
+
+    /* a fixed cell size holds across a change of count; with three short
+     * rows the rest of the window shows the background */
+    {
+      unsigned int    *px;
+      unsigned int     plain;
+      int              claimed;
+      bitmap_t         glyph;
+      unsigned int     glyph_px[4 * 4];
+      wuss_gridview_t *glyph_gv;
+      wuss_window_t   *glyph_win;
+      box_t            glyph_content;
+
+      px = (unsigned int *) gvpixels;
+
+      wuss_gridview_set_cell_size(gv, SIZE2D(30, 10));
+      rc = wuss_gridview_set_count(gv, NELEMS(gridview_test_labels));
+      if (rc != result_OK) goto GridViewFail;
+      if (wuss_gridview_get_cell_size(gv).w != 30 ||
+          wuss_gridview_get_columns(gv) != 1) goto GridViewFail;
+
+      /* a full redraw paints the selected cell 0 unlike the plain cell 1,
+       * truncating the long label to fit */
+      wuss_gridview_select(gv, 0);
+      gvscr.clip             = gvcontent;
+      ev.kind                = wuss_EVENT_REDRAW;
+      ev.data.redraw.scr     = &gvscr;
+      ev.data.redraw.content = &gvcontent;
+      ev.data.redraw.bounds  = &gvcontent;
+      ev.data.redraw.scroll  = POINT(0, 0);
+      if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+      if (px[11 * 200 + 11] == px[21 * 200 + 11]) goto GridViewFail;
+      plain = px[100 * 200 + 12];
+
+      wuss_gridview_set_background(gv, colour_rgba(0xFF, 0x00, 0x00, 0xFF));
+      if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+      if (px[100 * 200 + 12] == plain) goto GridViewFail;
+      wuss_gridview_clear_selection(gv);
+
+      /* a draw callback replaces the cell drawing, and a clip over the
+       * second row draws only item 1 */
+      gridview_test_drawn = 0;
+      activated           = -1;
+      wuss_gridview_set_draw(gv, gridview_test_draw, 1);
+      gvscr.clip = (box_t) BOX_POS_SIZE(10, 20, 40, 10);
+      if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+      if (gridview_test_drawn != 1 || activated != 1) goto GridViewFail;
+      gvscr.clip = gvcontent;
+      wuss_gridview_set_draw(gv, NULL, 1);
+
+      /* a MENU click on an item, with nothing selected, selects it until
+       * the menu closes unpicked; it is not consumed */
+      ev.kind              = wuss_EVENT_MOUSE;
+      ev.data.mouse.action = wuss_MOUSE_DOWN;
+      ev.data.mouse.point  = POINT(2, 12);
+      ev.data.mouse.button = wuss_BUTTON_MENU;
+      if (wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+      if (wuss_gridview_selected_count(gv) != 1 ||
+          !wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+      ev.kind                    = wuss_EVENT_MENU_CLOSED;
+      ev.data.menu_closed.picked = 0;
+      (void) wuss_gridview_handle_event(gv, &ev);
+      if (wuss_gridview_selected_count(gv) != 0) goto GridViewFail;
+
+      /* after a pick the selection lasts until the next event, so the
+       * menu's action still sees it */
+      ev.kind              = wuss_EVENT_MOUSE;
+      ev.data.mouse.action = wuss_MOUSE_DOWN;
+      ev.data.mouse.point  = POINT(2, 12);
+      ev.data.mouse.button = wuss_BUTTON_MENU;
+      (void) wuss_gridview_handle_event(gv, &ev);
+      ev.kind                    = wuss_EVENT_MENU_CLOSED;
+      ev.data.menu_closed.picked = 1;
+      (void) wuss_gridview_handle_event(gv, &ev);
+      if (wuss_gridview_selected_count(gv) != 1) goto GridViewFail;
+      ev.kind = wuss_EVENT_IDLE;
+      (void) wuss_gridview_handle_event(gv, &ev);
+      if (wuss_gridview_selected_count(gv) != 0) goto GridViewFail;
+
+      /* with an existing selection a MENU click leaves it alone */
+      wuss_gridview_select(gv, 0);
+      ev.kind              = wuss_EVENT_MOUSE;
+      ev.data.mouse.action = wuss_MOUSE_DOWN;
+      ev.data.mouse.point  = POINT(2, 12);
+      ev.data.mouse.button = wuss_BUTTON_MENU;
+      (void) wuss_gridview_handle_event(gv, &ev);
+      if (wuss_gridview_selected_count(gv) != 1 ||
+          !wuss_gridview_is_selected(gv, 0)) goto GridViewFail;
+      wuss_gridview_clear_selection(gv);
+
+      /* an accepting drag callback starts a core drag; Escape cancels it */
+      wuss_gridview_set_drag(gv, gridview_test_accept_drag);
+      ev.data.mouse.button = wuss_BUTTON_SELECT;
+      (void) wuss_gridview_handle_event(gv, &ev);
+      ev.data.mouse.action = wuss_MOUSE_MOVE;
+      ev.data.mouse.point  = POINT(30, 12);
+      (void) wuss_gridview_handle_event(gv, &ev);
+      if (!wuss_is_dragging(gvwuss)) goto GridViewFail;
+      rc = wuss_key(gvwuss, wuss_KEY_ESCAPE, wuss_KEY_MOD_NONE, &claimed);
+      if (rc != result_OK || wuss_is_dragging(gvwuss)) goto GridViewFail;
+      wuss_gridview_set_drag(gv, NULL);
+      wuss_gridview_clear_selection(gv);
+
+      /* a gridview window needs somewhere to return both handles */
+      if (wuss_gridview_window_create(NULL, gvowner, NULL, "Grid", 1,
+                                      gridview_test_item, 8, NULL, NULL, 0,
+                                      &glyph_win) != result_NULL_ARG)
+        goto GridViewFail;
+
+      /* fitting three of the wide cells across the screen drops to the
+       * columns that fit; glyphs draw above the labels */
+      memset(glyph_px, 0xFF, sizeof(glyph_px));
+      rc = bitmap_init(&glyph, SIZE2D(4, 4), pixelfmt_bgrx8888, 4 * 4, NULL,
+                       glyph_px);
+      if (rc != result_OK) goto GridViewFail;
+      rc = wuss_gridview_window_create(&glyph_gv, gvowner, NULL, "Grid",
+                                       NELEMS(gridview_test_labels),
+                                       gridview_test_glyph_item, 8, NULL,
+                                       &glyph, 0, &glyph_win);
+      if (rc != result_OK) goto GridViewFail;
+      wuss_gridview_fit_window(glyph_gv, 3, 1);
+      wuss_window_get_content_bounds(glyph_win, &glyph_content);
+      if (glyph_content.x1 - glyph_content.x0 <
+          wuss_gridview_get_cell_size(glyph_gv).w ||
+          glyph_content.x1 > 200)
+      {
+        wuss_gridview_destroy(glyph_gv);
+        goto GridViewFail;
+      }
+
+      gvscr.clip             = glyph_content;
+      ev.kind                = wuss_EVENT_REDRAW;
+      ev.data.redraw.scr     = &gvscr;
+      ev.data.redraw.content = &glyph_content;
+      ev.data.redraw.bounds  = &glyph_content;
+      ev.data.redraw.scroll  = POINT(0, 0);
+      if (!wuss_gridview_handle_event(glyph_gv, &ev))
+      {
+        wuss_gridview_destroy(glyph_gv);
+        goto GridViewFail;
+      }
+
+      wuss_gridview_destroy(glyph_gv);
+      wuss_window_close(glyph_win);
+    }
 
     wuss_gridview_destroy(gv);
 
