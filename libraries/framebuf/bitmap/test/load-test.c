@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "base/result.h"
+#include "base/utils.h"
 #include "io/path.h"
 
 #include "framebuf/bitmap.h"
@@ -455,6 +456,94 @@ static int test_errors(const char *resources)
   return ok;
 }
 
+#ifndef DPTLIB_IMAGES_READ_ONLY
+
+/* Saving each deep channel order writes R, G, B (and A) in PNG order, so each
+ * reloads as the same rgbx8888 or rgba8888 bytes. A paletted bitmap with no
+ * palette and an unwritable path are refused. */
+static int test_save(void)
+{
+  static const struct
+  {
+    pixelfmt_t   fmt;
+    unsigned int px; /* R=0x11, G=0x22, B=0x33, A=0x44 */
+    int          alpha;
+  }
+  cases[] =
+  {
+    { pixelfmt_rgbx8888, 0xFF332211u, 0 },
+    { pixelfmt_rgba8888, 0x44332211u, 1 },
+    { pixelfmt_bgrx8888, 0xFF112233u, 0 },
+    { pixelfmt_bgra8888, 0x44112233u, 1 },
+    { pixelfmt_xbgr8888, 0x112233FFu, 0 },
+    { pixelfmt_abgr8888, 0x11223344u, 1 },
+    { pixelfmt_xrgb8888, 0x332211FFu, 0 },
+    { pixelfmt_argb8888, 0x33221144u, 1 }
+  };
+  static const unsigned char rgb[]  = { 0x11, 0x22, 0x33, 0xFF };
+  static const unsigned char rgba[] = { 0x11, 0x22, 0x33, 0x44 };
+
+  const char   *fn;
+  unsigned int  px;
+  unsigned char p8;
+  bitmap_t      bm;
+  bitmap_t      rt;
+  result_t      rc;
+  size_t        i;
+  int           ok;
+
+  fn = pathf("%sload-test-save.png", DPTLIB_TMPPREFIX);
+  ok = 1;
+  for (i = 0; i < NELEMS(cases); i++)
+  {
+    px = cases[i].px;
+    bitmap_init(&bm, SIZE2D(1, 1), cases[i].fmt, 4, NULL, &px);
+    rc = bitmap_save_png(&bm, fn);
+    if (rc == result_OK)
+      rc = bitmap_load_png(&rt, fn);
+    remove(fn);
+    if (rc != result_OK)
+    {
+      printf("save: format %d: rc=&%x\n", (int) cases[i].fmt, rc);
+      ok = 0;
+      continue;
+    }
+
+    if (rt.format != (cases[i].alpha ? pixelfmt_rgba8888 : pixelfmt_rgbx8888))
+    {
+      printf("save: format %d: reloaded as format %d\n", (int) cases[i].fmt,
+             (int) rt.format);
+      ok = 0;
+    }
+    else
+    {
+      ok &= row_is(&rt, "save", 0, cases[i].alpha ? rgba : rgb, 4);
+    }
+    load_free(&rt);
+  }
+
+  p8 = 0;
+  bitmap_init(&bm, SIZE2D(1, 1), pixelfmt_p8, 1, NULL, &p8);
+  if (bitmap_save_png(&bm, fn) != result_NOT_SUPPORTED)
+  {
+    printf("save: p8 with no palette was not refused\n");
+    ok = 0;
+  }
+
+  px = 0;
+  bitmap_init(&bm, SIZE2D(1, 1), pixelfmt_rgbx8888, 4, NULL, &px);
+  if (bitmap_save_png(&bm, "/nonexistent-dptlib/x.png") !=
+      result_FOPEN_FAILED)
+  {
+    printf("save: unwritable path was not refused\n");
+    ok = 0;
+  }
+
+  return ok;
+}
+
+#endif /* DPTLIB_IMAGES_READ_ONLY */
+
 /* ----------------------------------------------------------------------- */
 
 result_t bitmap_load_test(const char *resources)
@@ -469,6 +558,9 @@ result_t bitmap_load_test(const char *resources)
   ok &= test_deep(resources);
   ok &= test_colour_key(resources);
   ok &= test_errors(resources);
+#ifndef DPTLIB_IMAGES_READ_ONLY
+  ok &= test_save();
+#endif
 
   return ok ? result_TEST_PASSED : result_TEST_FAILED;
 }
