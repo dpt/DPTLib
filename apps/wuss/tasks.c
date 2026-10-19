@@ -50,6 +50,7 @@
 #include "tasks/compositing.h"
 #include "tasks/saturn.h"
 #include "tasks/sofa.h"
+#include "tasks/sudoku.h"
 #include "tasks/orbing.h"
 #include "tasks/reading.h"
 #include "tasks/taskapp.h"
@@ -127,7 +128,8 @@ g_games_tasks[] =
 #ifdef WUSS_GREATESCAPE
   { "The Great Escape", greatescape_app_create },
 #endif
-  { "Minesweeping", minesweeping_app_create }
+  { "Minesweeping", minesweeping_app_create },
+  { "Sudoku", sudoku_app_create }
 },
 g_image_tasks[] =
 {

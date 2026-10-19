@@ -94,6 +94,9 @@ Direct keys:
 | saturn                              | Left / Right        | Previous / next seed                                    |
 | sofa                                | Left / Right        | Previous / next model                                   |
 | sofa                                | Up / Down           | Step rotation (paused only)                             |
+| sudoku                              | Arrows              | Move cursor                                             |
+| sudoku                              | 1-9                 | Enter digit                                             |
+| sudoku                              | 0 Space Backspace   | Clear cell                                              |
 | zxtask                              | Arrows              | Kempston joystick                                       |
 | zxtask                              | `.`                 | Kempston fire                                           |
 | zxtask                              | Other ASCII         | Spectrum keyboard (Shift = Caps Shift)                  |
