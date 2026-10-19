@@ -50,11 +50,21 @@ result_t layout_place(const layout_spec_t    *spec,
       {
         /* MAYBE if (need > elements[i].data.box.max_width) bad spec; */
 
-        chosen_width[i] = MIN(remaining, elements[i].data.box.max_width);
-        remaining -= chosen_width[i];
+        /* the spacing before this element, if any, comes out first */
+        remaining -= need - elements[i].data.box.min_width;
+
+        chosen_width[i - first] = MIN(remaining,
+                                      elements[i].data.box.max_width);
+        remaining -= chosen_width[i - first];
 
         if (++i >= nelements)
           break;
+
+        if (i - first == (int) NELEMS(chosen_width))
+        {
+          clear = 1; /* no room to record more: the rest wrap */
+          break;
+        }
 
         if (elements[i].type != layout_BOX)
           break;
@@ -109,7 +119,7 @@ result_t layout_place(const layout_spec_t    *spec,
 
         err = packer_place_by(spec->packer,
                               spec->loc,
-                              chosen_width[k],
+                              chosen_width[k - first],
                               elements[k].data.box.height,
                              &placed);
         if (err == result_PACKER_DIDNT_FIT)
