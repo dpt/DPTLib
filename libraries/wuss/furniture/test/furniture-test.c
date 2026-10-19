@@ -11,6 +11,9 @@
 #include "base/result.h"
 #include "base/utils.h"
 #include "geom/box.h"
+#include "framebuf/bitmap.h"
+#include "framebuf/bmfont.h"
+#include "io/path.h"
 #include "wuss/wuss.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
@@ -26,6 +29,27 @@
 
 /* ----------------------------------------------------------------------- */
 
+/* Sets *sum to the sum of the pixels in box "b" of a 200-pixel-wide screen,
+ * as a cheap fingerprint. Returns 1 if every pixel in the box is the same. */
+static int box_uniform(const unsigned int *px,
+                       const box_t        *b,
+                       unsigned long      *sum)
+{
+  int x, y;
+  int uniform;
+
+  uniform = 1;
+  *sum    = 0;
+  for (y = b->y0; y < b->y1; y++)
+    for (x = b->x0; x < b->x1; x++)
+    {
+      *sum += px[y * 200 + x];
+      if (px[y * 200 + x] != px[b->y0 * 200 + b->x0])
+        uniform = 0;
+    }
+
+  return uniform;
+}
 
 /* Sweep every pixel of a window's visible box through wuss__furniture_hit_test
  * and check the tiling invariant: no pixel is wuss_FURNITURE_NONE, and a pixel
@@ -459,6 +483,160 @@ result_t wuss_furniture_test(const char *resources)
       if (wuss__furniture_element(element->region) != element)
         goto Failure;
     }
+  }
+
+  printf("test: titles are drawn between the titlebar icons, and a held "
+         "arrow is drawn pressed\n");
+
+  /* needs its own font-equipped wuss so titles are really drawn */
+  {
+    const char      *fontfile;
+    bmfont_t        *font;
+    void            *pixels;
+    bitmap_t         bm;
+    screen_t         scr;
+    wuss_font_desc_t fdesc;
+    wuss_t          *fw;
+    test_task_t      tc;
+    wuss_task_desc_t desc;
+    wuss_task_t     *owner;
+    wuss_window_t   *wa, *wb, *wc;
+    box_t            b, tb, slot, vdown;
+    point_t          at;
+    unsigned long    before, after;
+
+    fw     = NULL;
+    pixels = NULL;
+    font   = NULL;
+
+    fontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
+    rc = bmfont_create(fontfile, &font);
+    if (rc != result_OK)
+      goto TitleFail;
+
+    pixels = malloc(200 * 4 * 200);
+    if (pixels == NULL)
+    {
+      rc = result_OOM;
+      goto TitleFail;
+    }
+    rc = bitmap_init(&bm, SIZE2D(200, 200), pixelfmt_bgrx8888, 200 * 4,
+                     NULL, pixels);
+    if (rc != result_OK)
+      goto TitleFail;
+    screen_for_bitmap(&scr, &bm);
+
+    fdesc.font       = font;
+    fdesc.font_class = wuss_FONT_CLASS_NONE;
+    fdesc.name       = NULL;
+    rc = wuss_create(&scr, &fdesc, 1, NULL, 0, NULL, NULL, NULL, &fw);
+    if (rc != result_OK)
+      goto TitleFail;
+
+    memset(&tc, 0, sizeof(tc));
+    desc.handle    = test_handle;
+    desc.task_data = &tc;
+    desc.name      = "wuss-test";
+    rc = wuss_task_create(fw, &desc, &owner);
+    if (rc != result_OK)
+      goto TitleFail;
+
+    /* close and toggle-size icons bound the title's slot */
+    b = (box_t) BOX_POS_SIZE(5, 5, 120, 80);
+    rc = wuss_window_create(owner, &b, "Title", wuss_WINDOW_DEFAULT,
+                            wuss_NO_BACKDROP, SIZE2D(400, 400), SIZE2D(0, 0),
+                            &wa);
+    if (rc != result_OK)
+      goto TitleFail;
+
+    /* a back icon alone bounds it on the left */
+    b = (box_t) BOX_POS_SIZE(130, 5, 65, 50);
+    rc = wuss_window_create(owner, &b, "B", wuss_WINDOW_BACK,
+                            wuss_NO_BACKDROP, SIZE2D(65, 50), SIZE2D(0, 0),
+                            &wb);
+    if (rc != result_OK)
+      goto TitleFail;
+
+    /* a title too long for its slot is right justified */
+    b = (box_t) BOX_POS_SIZE(130, 70, 65, 50);
+    rc = wuss_window_create(owner, &b, "A title far too long to fit", 0,
+                            wuss_NO_BACKDROP, SIZE2D(65, 50), SIZE2D(0, 0),
+                            &wc);
+    if (rc != result_OK)
+      goto TitleFail;
+
+    rc = wuss_redraw_dirty(fw);
+    if (rc != result_OK)
+      goto TitleFail;
+
+    tb = wa->furniture_layout.titlebar;
+    wuss__close_box(wa, &b);
+    slot = tb;
+    slot.x0 = b.x1 + 2;
+    wuss__toggle_box(wa, &b);
+    slot.x1 = b.x0 - 2;
+    if (box_uniform(pixels, &slot, &before))
+      goto TitleFail;
+
+    tb = wb->furniture_layout.titlebar;
+    wuss__back_box(wb, &b);
+    slot = tb;
+    slot.x0 = b.x1 + 2;
+    slot.x1 = tb.x1 - 2;
+    if (box_uniform(pixels, &slot, &before))
+      goto TitleFail;
+
+    /* right justified: the title's end reaches the slot's right edge */
+    slot = wc->furniture_layout.titlebar;
+    slot.x0 = slot.x1 - 2 - 6;
+    slot.x1 -= 2;
+    if (box_uniform(pixels, &slot, &before))
+      goto TitleFail;
+
+    /* an empty title draws nothing; nor does a window outside the area */
+    wuss_window_set_title(wc, "");
+    wuss_window_invalidate(wc, NULL);
+    rc = wuss_redraw_dirty(fw);
+    if (rc != result_OK)
+      goto TitleFail;
+    slot = wc->furniture_layout.titlebar;
+    slot.x0 += 2;
+    slot.x1 -= 2;
+    slot.y1 -= WUSS_DIVIDER_PX;
+    if (!box_uniform(pixels, &slot, &before))
+      goto TitleFail;
+    b = (box_t) BOX_POS_SIZE(0, 190, 4, 4);
+    wuss__furniture_draw(fw, wa, &b);
+
+    /* a held scroll arrow is drawn in the pressed colour until released */
+    wuss__vscroll_down_box(wa, &vdown);
+    (void) box_uniform(pixels, &vdown, &before);
+    at = POINT((vdown.x0 + vdown.x1) / 2, (vdown.y0 + vdown.y1) / 2);
+    wuss_mouse_click(fw, at, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, NULL);
+    wuss_window_invalidate(wa, NULL);
+    rc = wuss_redraw_dirty(fw);
+    if (rc != result_OK)
+      goto TitleFail;
+    (void) box_uniform(pixels, &vdown, &after);
+    wuss_mouse_click(fw, at, wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
+    if (after == before)
+      goto TitleFail;
+
+    wuss_task_destroy(owner);
+    wuss_destroy(fw);
+    free(pixels);
+    bmfont_destroy(font);
+    goto TitleOK;
+
+TitleFail:
+    printf("wuss_furniture_test: title check failed\n");
+    if (fw != NULL)
+      wuss_destroy(fw);
+    free(pixels);
+    if (font != NULL)
+      bmfont_destroy(font);
+    goto Failure;
+TitleOK: ;
   }
 
   wuss_fixture_close(&fixture);
