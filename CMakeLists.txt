@@ -880,6 +880,7 @@ if(BUILD_TESTS)
         libraries/text/txtfmt/test/txtfmt-test.c
         libraries/text/utf8/test/utf8-test.c
         libraries/utils/array/test/array-test.c
+        libraries/utils/barith/test/barith-test.c
         libraries/utils/bsearch/test/bsearch-test.c
         libraries/utils/bytesex/test/bytesex-test.c
         libraries/utils/easing/test/easing-test.c

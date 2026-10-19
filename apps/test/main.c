@@ -84,6 +84,7 @@ static const test_t tests[] =
   { "stream",     stream_test     },
 
   { "array",      array_test      },
+  { "barith",     barith_test     },
   { "bsearch",    bsearch_test    },
   { "bytesex",    bytesex_test    },
   { "easing",     easing_test     },

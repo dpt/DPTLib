@@ -64,6 +64,7 @@ extern testfn_t txtfmt_test,
 
 /* utils */
 extern testfn_t array_test,
+                barith_test,
                 bsearch_test,
                 bytesex_test,
                 easing_test,
