@@ -19,8 +19,10 @@ result_t layout_place(const layout_spec_t    *spec,
   int      j;
   int      i;
   int      chosen_width[32];
+  int      stalled;
 
-  j = 0;
+  j       = 0;
+  stalled = -1;
 
   for (i = 0; i < nelements;)
   {
@@ -75,7 +77,17 @@ result_t layout_place(const layout_spec_t    *spec,
       if (remaining < need)
         clear = 1;
 
+      if (i == first)
+      {
+        /* nothing fitted: give up if it didn't fit on a fresh line either */
+        if (stalled == first)
+        {
+          err = result_PACKER_DIDNT_FIT;
+          goto failure;
+        }
 
+        stalled = first;
+      }
 
       /* place vertical padding */
 
@@ -87,13 +99,8 @@ result_t layout_place(const layout_spec_t    *spec,
                               nextw,
                               spec->leading,
                               NULL);
-        if (err == result_PACKER_DIDNT_FIT)
-          break;
-        else if (err)
+        if (err)
           goto failure;
-
-        if (elements[first].type == layout_NEWLINE)
-          continue;
       }
 
       for (k = first; k < i; k++)
@@ -109,9 +116,7 @@ result_t layout_place(const layout_spec_t    *spec,
                                 spec->spacing,
                                 elements[k].data.box.height,
                                 NULL);
-          if (err == result_PACKER_DIDNT_FIT)
-            break;
-          else if (err)
+          if (err)
             goto failure;
         }
 
@@ -122,9 +127,7 @@ result_t layout_place(const layout_spec_t    *spec,
                               chosen_width[k - first],
                               elements[k].data.box.height,
                              &placed);
-        if (err == result_PACKER_DIDNT_FIT)
-          break;
-        else if (err)
+        if (err)
           goto failure;
 
         if (placed)
@@ -138,11 +141,6 @@ result_t layout_place(const layout_spec_t    *spec,
           boxes[j++] = *placed;
         }
       }
-
-      if (err == result_PACKER_DIDNT_FIT)
-        break;
-      else if (err)
-        goto failure;
     }
     else if (elements[first].type == layout_NEWLINE)
     {
