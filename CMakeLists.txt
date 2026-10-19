@@ -857,6 +857,7 @@ if(BUILD_TESTS)
         libraries/framebuf/bmfont/test/bmfont-test.c
         libraries/framebuf/bmfont/test/bmfontcache-test.c
         libraries/framebuf/bmfont/test/bmfontfamily-test.c
+        libraries/framebuf/colour/test/colour-test.c
         libraries/framebuf/colourspace/test/colourspace-test.c
         libraries/framebuf/composite/test/composite-test.c
         libraries/framebuf/curve/test/curve-test.c
