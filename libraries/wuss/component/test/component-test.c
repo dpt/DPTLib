@@ -91,6 +91,33 @@ static result_t dialogue_test_cancel(void *opaque, wuss_button_t button)
 }
 #endif
 
+/* Task owning a colour list's menu: answers PRE_SUBMENU_OPEN through
+ * wuss_colourlist_pre_open, recording whether it claimed the event and the
+ * result it gave. */
+typedef struct colourlist_task
+{
+  wuss_colourlist_t *list;
+  const wuss_t      *wuss;
+  int                claimed;
+  result_t           rc;
+}
+colourlist_task_t;
+
+static result_t colourlist_test_handle(wuss_window_t      *window,
+                                       const wuss_event_t *event,
+                                       void               *task_data)
+{
+  colourlist_task_t *tc;
+
+  NOT_USED(window);
+
+  tc = task_data;
+  if (wuss_colourlist_pre_open(tc->list, tc->wuss, event, &tc->rc))
+    tc->claimed++;
+
+  return result_OK;
+}
+
 /* wuss_saveas end-to-end test: a scratch directory plus a minimal fake
  * receiver task standing in for the real Filer (BUILD_APPS only), driving
  * the core DataSave protocol via wuss_saveas_handle_event. POSIX only, as
@@ -610,6 +637,74 @@ FontMenuOK: ;
       if (rc != result_OK) goto ColourMenuFail;
 
       wuss_menu_close(wuss__menu_chain(cmwuss));
+
+      /* a colour list opens the colour menu as a real submenu of its row,
+       * titled after it, with None hidden and the field's colour ticked;
+       * a pick lands in the field, but None has no RGB to give */
+      {
+        wuss_colourlist_t  cl;
+        colour_t           fg, bg;
+        wuss_menu_handle_t clh;
+        wuss_event_t       ev;
+        result_t           clrc;
+        colourlist_task_t  cltc;
+        wuss_task_desc_t   cldesc;
+        wuss_task_t       *clowner;
+        const colour_t    *pal;
+        int                npal;
+
+        pal = wuss_get_palette(cmwuss, &npal);
+        fg  = pal[1];
+        bg  = pal[0];
+        wuss_colourlist_init_pair(&cl, cmwuss, &fg, &bg);
+
+        memset(&cltc, 0, sizeof(cltc));
+        cltc.list = &cl;
+        cltc.wuss = cmwuss;
+        cldesc.handle    = colourlist_test_handle;
+        cldesc.task_data = &cltc;
+        cldesc.name      = "colourlist";
+        rc = wuss_task_create(cmwuss, &cldesc, &clowner);
+        if (rc != result_OK) goto ColourMenuFail;
+
+        rc = wuss_menu_open(clowner, &cl.menu, POINT(40, 40), &clh);
+        if (rc != result_OK) goto ColourMenuFail;
+
+        ev.kind                         = wuss_EVENT_PRE_SUBMENU_OPEN;
+        ev.data.pre_submenu_open.handle = clh;
+        ev.data.pre_submenu_open.index  = 2;
+        clrc = result_OK;
+        if (wuss_colourlist_pre_open(&cl, cmwuss, &ev, &clrc))
+          goto ColourMenuFail; /* row out of range */
+
+        /* hovering row 0's arrow fires the real PRE_SUBMENU_OPEN */
+        menu_move_over_row(cmwuss, clh, 0, 1);
+        clrc = cltc.rc;
+        if (cltc.claimed != 1)                           goto ColourMenuFail;
+        if (clrc != result_OK || cl.target != &fg)       goto ColourMenuFail;
+        cmrealm = wuss_colourmenu_menu(cmwuss);
+        if (strcmp(cmrealm->title, "Foreground") != 0)   goto ColourMenuFail;
+        if (cmrealm->nitems != npal)                     goto ColourMenuFail;
+        if ((cmrealm->items[1].flags & wuss_MENU_ITEM_TICKED) == 0)
+          goto ColourMenuFail;
+
+        ev.kind                    = wuss_EVENT_MENU_SELECT;
+        ev.data.menu_select.menu   = cmrealm;
+        ev.data.menu_select.index  = 0;
+        ev.data.menu_select.button = wuss_BUTTON_ADJUST;
+        if (!wuss_colourlist_selected(&cl, &ev))         goto ColourMenuFail;
+        if (fg.primary != pal[0].primary)                goto ColourMenuFail;
+
+        /* close first: an open menu's row count must not change */
+        wuss_menu_close(wuss__menu_chain(cmwuss));
+        wuss_colourmenu_set_none(1);
+        ev.data.menu_select.index = npal;
+        if (wuss_colourlist_selected(&cl, &ev))          goto ColourMenuFail;
+        if (fg.primary != pal[0].primary)                goto ColourMenuFail;
+
+        wuss_task_destroy(clowner); /* before cltc goes out of scope */
+      }
+
       wuss_destroy(cmwuss);
       free(cmpixels);
       bmfont_destroy(cmfont);

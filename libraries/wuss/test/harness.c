@@ -15,6 +15,8 @@
 #include "framebuf/pixelfmt.h"
 #ifdef WUSS_MENUS
 #include "wuss/menu.h"
+#include "../icon.h"
+#include "../menu.h"
 #endif
 
 #include "harness.h"
@@ -321,3 +323,31 @@ result_t paint_handle(wuss_window_t      *window,
 
   return result_OK;
 }
+
+#ifdef WUSS_MENUS
+/* Move the pointer over row `row` of menu level `level`: to the text column
+ * (`over_arrow` == 0) or into the submenu-arrow gutter at the row's right edge
+ * (`over_arrow` == 1). Used to drive submenu open/close from the tests. */
+void menu_move_over_row(wuss_t            *wuss,
+                        struct wuss__menu *level,
+                        int                row,
+                        int                over_arrow)
+{
+  box_t   content;
+  box_t   bbox;
+  box_t   screen_box;
+  point_t scroll;
+  point_t at;
+
+  wuss_window_get_content_bounds(wuss__menu_level_window(level), &content);
+  wuss_window_get_scroll(wuss__menu_level_window(level), &scroll);
+  wuss_icon_get_bbox(wuss__menu_level_icon(level, row), &bbox);
+  wuss__icon_box_to_screen(&content, scroll, &bbox, &screen_box);
+
+  at.x = over_arrow ? screen_box.x1 - 4
+                    : screen_box.x0 + 4;
+  at.y = (screen_box.y0 + screen_box.y1) / 2;
+
+  wuss_mouse_move(wuss, at, NULL);
+}
+#endif
