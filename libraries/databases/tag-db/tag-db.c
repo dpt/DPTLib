@@ -710,6 +710,9 @@ result_t tagdb_untagid(tagdb_t *db, const unsigned char *id, tagdb_tag_t tag)
   if (!val)
     return result_TAGDB_UNKNOWN_ID;
 
+  if (!bitvec_get(val, tag)) /* if not set, don't decrement counter */
+    return result_OK;
+
   bitvec_clear(val, tag);
 
   tagdb__tagdec(db, tag);
@@ -1006,8 +1009,26 @@ Failure:
 
 void tagdb_forget(tagdb_t *db, const unsigned char *id)
 {
+  bitvec_t *val;
+  int       index;
+
   assert(db);
   assert(id);
+
+  val = (bitvec_t *) hash_lookup(db->hash, id);
+  if (!val)
+    return;
+
+  /* drop the id's contribution to each of its tags' counts */
+  index = -1;
+  for (;;)
+  {
+    index = bitvec_next(val, index);
+    if (index < 0)
+      break;
+
+    tagdb__tagdec(db, index);
+  }
 
   hash_remove(db->hash, id);
 }
