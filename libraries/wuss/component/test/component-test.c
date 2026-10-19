@@ -53,6 +53,42 @@ static result_t colourset_test_changed(wuss_colourset_t *colourset,
   (*(int *) opaque)++;
   return result_OK;
 }
+
+/* dialogue callbacks: record what was called into a dialogue_test_t */
+typedef struct dialogue_test
+{
+  int           fillouts;
+  result_t      fillout_rc;
+  int           which;       /* 1 OK, 2 Cancel */
+  wuss_button_t button;
+}
+dialogue_test_t;
+
+static result_t dialogue_test_fillout(void *opaque)
+{
+  dialogue_test_t *dt = opaque;
+
+  dt->fillouts++;
+  return dt->fillout_rc;
+}
+
+static result_t dialogue_test_ok(void *opaque, wuss_button_t button)
+{
+  dialogue_test_t *dt = opaque;
+
+  dt->which  = 1;
+  dt->button = button;
+  return result_OK;
+}
+
+static result_t dialogue_test_cancel(void *opaque, wuss_button_t button)
+{
+  dialogue_test_t *dt = opaque;
+
+  dt->which  = 2;
+  dt->button = button;
+  return result_BAD_ARG; /* distinctive, to check it is passed back */
+}
 #endif
 
 /* wuss_saveas end-to-end test: a scratch directory plus a minimal fake
@@ -166,6 +202,150 @@ result_t wuss_component_test(const char *resources)
   if (rc != result_OK)
     goto Failure;
   wuss = fixture.wuss;
+
+  printf("test: wuss_dialogue dispatches clicks, keys, close and show\n");
+  {
+    static test_task_t     dtc;
+    wuss_task_t           *dtask;
+    wuss_dialogue_t       *dlg;
+    wuss_dialogue_t       *borrow;
+    wuss_window_t         *dwin;
+    wuss_icon_spec_t       spec;
+    wuss_icon_t           *ok;
+    wuss_icon_t           *cancel;
+    wuss_icon_t           *other;
+    wuss_dialogue_action_t actions[2];
+    dialogue_test_t        dt;
+    wuss_event_t           ev;
+    result_t               out;
+
+    memset(&dt, 0, sizeof(dt));
+
+    memset(&dtc, 0, sizeof(dtc));
+    dtask = mk_task(wuss, test_handle, &dtc);
+    if (dtask == NULL)                                   goto DialogueFail;
+
+    if (wuss_dialogue_create(NULL, dtask, SIZE2D(100, 60), "D",
+                             NULL, NULL) != result_NULL_ARG)
+      goto DialogueFail;
+    rc = wuss_dialogue_create(&dlg, dtask, SIZE2D(100, 60), "D",
+                              dialogue_test_fillout, NULL);
+    if (rc != result_OK)                                 goto DialogueFail;
+    wuss_dialogue_set_opaque(dlg, &dt);
+
+    dwin = wuss_dialogue_window(dlg);
+    if (dwin == NULL || wuss_dialogue_window(NULL) != NULL)
+      goto DialogueFail;
+
+    wuss_icon_spec_action(&spec, (box_t) BOX_POS_SIZE(0, 0, 40, 40), "OK",
+                          1);
+    rc = wuss_icon_create(dwin, &spec, &ok);
+    if (rc != result_OK)                                 goto DialogueFail;
+    wuss_icon_spec_action(&spec, (box_t) BOX_POS_SIZE(40, 0, 40, 40),
+                          "Cancel", 0);
+    rc = wuss_icon_create(dwin, &spec, &cancel);
+    if (rc != result_OK)                                 goto DialogueFail;
+    rc = wuss_icon_create(dwin, &spec, &other);
+    if (rc != result_OK)                                 goto DialogueFail;
+
+    actions[0].icon = ok;
+    actions[0].fn   = dialogue_test_ok;
+    actions[1].icon = cancel;
+    actions[1].fn   = dialogue_test_cancel;
+    if (wuss_dialogue_set_actions(dlg, actions, -1) != result_BAD_ARG ||
+        wuss_dialogue_set_actions(dlg, actions,
+                                  WUSS_DIALOGUE_MAX_ACTIONS + 1) !=
+        result_BAD_ARG)
+      goto DialogueFail;
+    rc = wuss_dialogue_set_actions(dlg, actions, 2);
+    if (rc != result_OK)                                 goto DialogueFail;
+
+    /* only a release over a registered icon is consumed */
+    memset(&ev, 0, sizeof(ev));
+    ev.kind               = wuss_EVENT_ICON;
+    ev.data.icon.icon     = ok;
+    ev.data.icon.action   = wuss_MOUSE_DOWN;
+    ev.data.icon.button   = wuss_BUTTON_ADJUST;
+    if (wuss_dialogue_handle_icon(dlg, &ev, &out))       goto DialogueFail;
+    ev.data.icon.action   = wuss_MOUSE_UP;
+    ev.data.icon.icon     = other;
+    if (wuss_dialogue_handle_icon(dlg, &ev, &out))       goto DialogueFail;
+    if (wuss_dialogue_handle_icon(NULL, &ev, &out))      goto DialogueFail;
+    ev.data.icon.icon     = cancel;
+    out = result_OK;
+    if (!wuss_dialogue_handle_icon(dlg, &ev, &out))      goto DialogueFail;
+    if (dt.which != 2 || dt.button != wuss_BUTTON_ADJUST ||
+        out != result_BAD_ARG)
+      goto DialogueFail;
+
+    /* RETURN runs the default action; ESCAPE needs a cancel icon */
+    memset(&ev, 0, sizeof(ev));
+    ev.kind = wuss_EVENT_IDLE;
+    if (wuss_dialogue_handle_key(dlg, &ev, &out))        goto DialogueFail;
+    ev.kind          = wuss_EVENT_KEY;
+    ev.data.key.code = 'a';
+    if (wuss_dialogue_handle_key(dlg, &ev, &out))        goto DialogueFail;
+    ev.data.key.code = wuss_KEY_RETURN;
+    if (!wuss_dialogue_handle_key(dlg, &ev, &out))       goto DialogueFail;
+    if (dt.which != 1 || dt.button != wuss_BUTTON_SELECT || out != result_OK)
+      goto DialogueFail;
+    ev.data.key.code = wuss_KEY_ESCAPE;
+    if (wuss_dialogue_handle_key(dlg, &ev, &out))        goto DialogueFail;
+    wuss_dialogue_set_cancel(dlg, cancel);
+    if (!wuss_dialogue_handle_key(dlg, &ev, &out))       goto DialogueFail;
+    if (dt.which != 2)                                   goto DialogueFail;
+
+    /* a close request runs Cancel, or hides the window if there is none */
+    dt.which = 0;
+    if (wuss_dialogue_handle_pre_close(dlg) != result_STOP_WALK ||
+        dt.which != 2)
+      goto DialogueFail;
+    wuss_dialogue_set_cancel(dlg, NULL);
+    rc = wuss_window_set_hidden(dwin, 0);
+    if (rc != result_OK)                                 goto DialogueFail;
+    dt.which = 0;
+    if (wuss_dialogue_handle_pre_close(dlg) != result_STOP_WALK ||
+        dt.which != 0 || (dwin->flags & wuss_WINDOW_HIDDEN) == 0)
+      goto DialogueFail;
+
+    /* fillout runs on every show and can veto it */
+    if (wuss_dialogue_handle_pre_show(dlg) != result_OK || dt.fillouts != 1)
+      goto DialogueFail;
+    dt.fillout_rc = result_BAD_ARG;
+    if (wuss_dialogue_handle_pre_show(dlg) != result_BAD_ARG ||
+        dt.fillouts != 2)
+      goto DialogueFail;
+
+    wuss_dialogue_set_focusable(dlg, 0);
+    if (dwin->flags & wuss_WINDOW_FOCUSABLE)             goto DialogueFail;
+    wuss_dialogue_set_focusable(dlg, 1);
+    if ((dwin->flags & wuss_WINDOW_FOCUSABLE) == 0)      goto DialogueFail;
+
+    /* a dialogue on a borrowed window leaves it alone when destroyed */
+    if (wuss_dialogue_create_on_window(&borrow, wuss, NULL, NULL, NULL) !=
+        result_NULL_ARG)
+      goto DialogueFail;
+    rc = wuss_dialogue_create_on_window(&borrow, wuss, dwin, NULL, NULL);
+    if (rc != result_OK)                                 goto DialogueFail;
+    if (wuss_dialogue_window(borrow) != dwin ||
+        wuss_dialogue_handle_pre_show(borrow) != result_OK)
+      goto DialogueFail;
+    wuss_dialogue_handle_close(borrow, NULL);
+    wuss_dialogue_handle_close(NULL, dwin);
+    wuss_dialogue_handle_close(borrow, dwin);
+    if (wuss_dialogue_window(borrow) != NULL)            goto DialogueFail;
+    wuss_dialogue_destroy(borrow);
+    wuss_dialogue_destroy(NULL);
+
+    wuss_dialogue_destroy(dlg);
+    reap_test_tasks();
+    goto DialogueOK;
+
+DialogueFail:
+    printf("wuss_test: dialogue check failed\n");
+    goto Failure;
+DialogueOK: ;
+  }
 
   printf("test: wuss_fontmenu lists the bmfonts dir and resolves a pick\n");
   {
