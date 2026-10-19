@@ -269,6 +269,102 @@ static result_t curve_basic_test(curveteststate_t *state)
 
 /* ----------------------------------------------------------------------- */
 
+static int near(point_t a, point_t b, int slack)
+{
+  return abs(a.x - b.x) <= slack && abs(a.y - b.y) <= slack;
+}
+
+/* The recursive evaluators and the forward-differencing steppers must hit
+ * the end points and track the scaled evaluators. */
+static result_t curve_eval_test(curveteststate_t *state)
+{
+  static const point_t p[6] =
+  {
+    {  10,  20 }, { 200, 400 }, { 600, -50 },
+    { 300, 300 }, { 700, 500 }, { 780,  40 }
+  };
+  enum { NSTEPS = 16 };
+
+  point_t steps[NSTEPS + 1];
+  point_t stepsf[NSTEPS + 1];
+  int     i;
+  fix16_t t;
+  point_t want;
+
+  NOT_USED(state);
+
+  printf("test: recursive evaluators\n");
+
+  for (i = 0; i <= NSTEPS; i++)
+  {
+    t = FIX16_ONE * i / NSTEPS;
+
+    want = curve_bezier_point_on_cubic(p[0], p[1], p[2], p[3], t);
+    if (!near(curve_bezier_point_on_cubic_r(p[0], p[1], p[2], p[3], t),
+              want, 2))
+    {
+      printf("Failure: cubic_r strays at step %d\n", i);
+      return result_TEST_FAILED;
+    }
+
+    want = curve_bezier_point_on_quartic(p[0], p[1], p[2], p[3], p[4], t);
+    if (!near(curve_bezier_point_on_quartic_r(p[0], p[1], p[2], p[3], p[4],
+                                              t),
+              want, 2))
+    {
+      printf("Failure: quartic_r strays at step %d\n", i);
+      return result_TEST_FAILED;
+    }
+
+    want = curve_bezier_point_on_quintic(p[0], p[1], p[2], p[3], p[4], p[5],
+                                         t);
+    if (!near(curve_bezier_point_on_quintic_r(p[0], p[1], p[2], p[3], p[4],
+                                              p[5], t),
+              want, 2))
+    {
+      printf("Failure: quintic_r strays at step %d\n", i);
+      return result_TEST_FAILED;
+    }
+  }
+
+  if (!near(curve_bezier_point_on_quintic_r(p[0], p[1], p[2], p[3], p[4],
+                                            p[5], 0), p[0], 0) ||
+      !near(curve_bezier_point_on_quintic_r(p[0], p[1], p[2], p[3], p[4],
+                                            p[5], FIX16_ONE), p[5], 0))
+  {
+    printf("Failure: quintic_r misses an end point\n");
+    return result_TEST_FAILED;
+  }
+
+  printf("test: forward differencing\n");
+
+  curve_bezier_cubic(p[0], p[1], p[2], p[3], NSTEPS, steps);
+  curve_bezier_cubic_f(p[0], p[1], p[2], p[3], NSTEPS, stepsf);
+
+  for (i = 0; i <= NSTEPS; i++)
+  {
+    want = curve_bezier_point_on_cubic(p[0], p[1], p[2], p[3],
+                                       FIX16_ONE * i / NSTEPS);
+    if (!near(steps[i], want, 2) || !near(stepsf[i], want, 2))
+    {
+      printf("Failure: step %d at (%d,%d) and (%d,%d), want (%d,%d)\n", i,
+             steps[i].x, steps[i].y, stepsf[i].x, stepsf[i].y,
+             want.x, want.y);
+      return result_TEST_FAILED;
+    }
+  }
+
+  if (!near(steps[0], p[0], 0) || !near(stepsf[0], p[0], 0))
+  {
+    printf("Failure: stepping does not start at p0\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 static point_t jitter_on(point_t p)
 {
   point_t q;
@@ -826,6 +922,7 @@ result_t curve_test_one_format(const char *resources,
   static const curvetestfn_t tests[] =
   {
     curve_basic_test,
+    curve_eval_test,
     curve_interactive_test
   };
 
