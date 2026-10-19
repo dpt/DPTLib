@@ -203,7 +203,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
           a = va_arg(args, int32_t *);                                   \
           while (n--)                                                    \
           {                                                              \
-            *a++ = (int32_t) (bp[h0] | (bp[h1] << 8));                   \
+            *a++ = (int16_t) (bp[h0] | (bp[h1] << 8));                   \
             bp += 2;                                                     \
           }                                                              \
         }                                                                \
@@ -229,7 +229,7 @@ static size_t name(const unsigned char *buf, const char *fmt, va_list args) \
           a = va_arg(args, int64_t *);                                   \
           while (n--)                                                    \
           {                                                              \
-            *a++ = (int64_t) (bp[h0] | (bp[h1] << 8));                   \
+            *a++ = (int16_t) (bp[h0] | (bp[h1] << 8));                   \
             bp += 2;                                                     \
           }                                                              \
         }                                                                \
