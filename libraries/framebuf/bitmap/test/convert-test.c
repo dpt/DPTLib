@@ -9,6 +9,7 @@
 
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
+#include "framebuf/pattern.h"
 #include "framebuf/pixelfmt.h"
 
 #include "test/all-tests.h"
@@ -416,6 +417,133 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
+/* Reads pixel (x,y) of an 8, 16 or 32bpp bitmap. */
+static unsigned int read_pixel(const bitmap_t *bm, int x, int y)
+{
+  const unsigned char *row;
+
+  row = (const unsigned char *) bm->base + (size_t) y * bm->rowbytes;
+  switch (pixelfmt_log2bpp(bm->format))
+  {
+  case 3:
+    return row[x];
+  case 4:
+    return ((const unsigned short *) row)[x];
+  default:
+    return ((const unsigned int *) row)[x];
+  }
+}
+
+/* Fills a cleared bitmap through a box with a phased pattern, plain then as
+ * a stencil, and checks every pixel against the tile. */
+static int fill_pattern_one(pixelfmt_t fmt, const colour_t *palette)
+{
+  static const box_t area = { 2, 1, 9, 4 };
+
+  unsigned int px[10 * 5];
+  bitmap_t     bm;
+  pattern_t    pat;
+  int          n;
+  unsigned int fg;
+  unsigned int bg;
+  unsigned int old;
+  int          pass;
+  int          x, y;
+  int          inside;
+  int          set;
+  unsigned int want;
+
+  bitmap_init(&bm, SIZE2D(10, 5), fmt, 10 * 4, palette, px);
+  memset(px, 0x11, sizeof(px));
+
+  pat.bits[0] = 0xF0; pat.bits[1] = 0x81; pat.bits[2] = 0x3C;
+  pat.bits[3] = 0xAA; pat.bits[4] = 0x55; pat.bits[5] = 0x00;
+  pat.bits[6] = 0xFF; pat.bits[7] = 0x18;
+  pat.fg     = palette ? palette[3] : colour_rgb(255, 0, 0);
+  pat.bg     = palette ? palette[200] : colour_rgb(0, 0, 255);
+  pat.origin = POINT(1, 2);
+
+  n   = palette ? 256 : 0;
+  fg  = (unsigned int) colour_to_pixel(palette, n, pat.fg, fmt);
+  bg  = (unsigned int) colour_to_pixel(palette, n, pat.bg, fmt);
+  old = read_pixel(&bm, 0, 0);
+
+  if (palette && (fg != 3 || bg != 200))
+    FAIL("palette indices");
+
+  /* plain fill of the box, then a stencil over the whole bitmap in the
+   * opposite colours: the clear bits outside the box keep the old value */
+  for (pass = 0; pass < 2; pass++)
+  {
+    pat.flags = pass ? pattern_FLAG_STENCIL : 0;
+    if (bitmap_fill_pattern(&bm, pass ? NULL : &area, &pat) != result_OK)
+      FAIL("fill_pattern");
+
+    for (y = 0; y < 5; y++)
+      for (x = 0; x < 10; x++)
+      {
+        inside = x >= area.x0 && x < area.x1 && y >= area.y0 && y < area.y1;
+        set    = (pat.bits[(y - pat.origin.y) & 7] >>
+                  (7 - ((x - pat.origin.x) & 7))) & 1;
+        if (set && (pass || inside))
+          want = fg;
+        else if (inside)
+          want = bg;
+        else
+          want = old;
+        if (read_pixel(&bm, x, y) != want)
+        {
+          printf("  fmt %d pass %d pixel (%d,%d) is %x, want %x\n",
+                 fmt, pass, x, y, read_pixel(&bm, x, y), want);
+          goto Failure;
+        }
+      }
+  }
+
+  /* a box wholly off the bitmap fills nothing */
+  memset(px, 0x11, sizeof(px));
+  pat.flags = 0;
+  if (bitmap_fill_pattern(&bm, &(box_t) { 20, 20, 30, 30 }, &pat) !=
+      result_OK || read_pixel(&bm, 9, 4) != old)
+    FAIL("fill_pattern off the bitmap");
+
+  return 1;
+
+Failure:
+  return 0;
+}
+
+static int test_fill_pattern(void)
+{
+  colour_t     pal[256];
+  unsigned int px[1];
+  bitmap_t     bm;
+  pattern_t    pat;
+
+  printf("test: fill_pattern at 8, 16 and 32bpp\n");
+
+  mk_palette(pal);
+  if (!fill_pattern_one(pixelfmt_p8, pal) ||
+      !fill_pattern_one(pixelfmt_rgb565, NULL) ||
+      !fill_pattern_one(pixelfmt_bgrx8888, NULL))
+    return 0;
+
+  memset(&pat, 0, sizeof(pat));
+  bitmap_init(&bm, SIZE2D(1, 1), pixelfmt_p4, 4, pal, px);
+  if (bitmap_fill_pattern(&bm, NULL, &pat) != result_NOT_SUPPORTED)
+    FAIL("fill_pattern p4");
+  bm.format = (pixelfmt_t) (pixelfmt_p8 | pixelfmt_RLE_FLAG);
+  if (bitmap_fill_pattern(&bm, NULL, &pat) != result_NOT_SUPPORTED)
+    FAIL("fill_pattern compressed");
+
+  return 1;
+
+Failure:
+  return 0;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t bitmap_convert_test(const char *resources)
 {
   NOT_USED(resources);
@@ -428,7 +556,8 @@ result_t bitmap_convert_test(const char *resources)
   if (!test_clear() ||
       !test_convert_paletted() ||
       !test_convert_16bpp() ||
-      !test_convert_unsupported())
+      !test_convert_unsupported() ||
+      !test_fill_pattern())
     return result_TEST_FAILED;
 
   return result_TEST_PASSED;
