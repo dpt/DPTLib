@@ -499,6 +499,77 @@ result_t wuss_icon_test(const char *resources)
     wuss_window_close(win_sl);
   }
 
+  printf("test: wuss_icon_set_disabled shades, blocks clicks, drops the caret and invalidates\n");
+
+  {
+    static test_task_t tc_dis;
+    wuss_task_t       *delegate_dis;
+    wuss_window_t     *win_dis;
+    box_t              box_dis, content_dis;
+    wuss_icon_spec_t   specs_dis[2];
+    wuss_icon_t       *icons_dis[2];
+    point_t            at_action;
+
+    delegate_dis = mk_task(wuss, test_handle, &tc_dis);
+    if (delegate_dis == NULL) goto Failure;
+
+    box_dis.x0 = 10; box_dis.y0 = 30; box_dis.x1 = 110; box_dis.y1 = 130;
+    rc = wuss_window_create(delegate_dis, &box_dis, "D",
+                            wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                            wuss_NO_BACKDROP,
+                            SIZE2D(0, 0), SIZE2D(0, 0), &win_dis);
+    if (rc != result_OK) goto Failure;
+
+    wuss_icon_spec_action(&specs_dis[0], (box_t) { 0, 0, 80, 16 }, "Go", 0);
+    wuss_icon_spec_writable(&specs_dis[1], (box_t) { 0, 20, 80, 36 }, NULL, 8, 0);
+    rc = wuss_icon_create_array(win_dis, specs_dis, 2, icons_dis);
+    if (rc != result_OK) goto Failure;
+
+    wuss_window_get_content_bounds(win_dis, &content_dis);
+    at_action = POINT(content_dis.x0 + 5, content_dis.y0 + 5);
+
+    /* an enabled action icon reports a click */
+    tc_dis.icon_count = 0;
+    wuss_mouse_click(wuss, at_action, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_click(wuss, at_action, wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
+    if (tc_dis.icon_count == 0) goto Failure;
+
+    /* shading sets the flag, invalidates the icon and blocks clicks */
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK) goto Failure;
+    wuss_icon_set_disabled(win_dis, icons_dis[0], 1);
+    if (!(icons_dis[0]->spec.flags & wuss_ICON_FLAGS_DISABLED) ||
+        wuss_get_dirty_count(wuss) == 0)
+      goto Failure;
+    tc_dis.icon_count = 0;
+    wuss_mouse_click(wuss, at_action, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_click(wuss, at_action, wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
+    if (tc_dis.icon_count != 0) goto Failure;
+
+    /* the shaded icon still draws */
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK) goto Failure;
+
+    /* unshading clears the flag and clicks work again */
+    wuss_icon_set_disabled(win_dis, icons_dis[0], 0);
+    if ((icons_dis[0]->spec.flags & wuss_ICON_FLAGS_DISABLED) ||
+        wuss_get_dirty_count(wuss) == 0)
+      goto Failure;
+    wuss_mouse_click(wuss, at_action, wuss_BUTTON_SELECT, wuss_MOUSE_DOWN, NULL);
+    wuss_mouse_click(wuss, at_action, wuss_BUTTON_SELECT, wuss_MOUSE_UP, NULL);
+    if (tc_dis.icon_count == 0) goto Failure;
+
+    /* shading the field holding the caret drops the caret */
+    rc = wuss_icon_set_caret(win_dis, icons_dis[1], 0);
+    if (rc != result_OK || wuss->caret.icon != icons_dis[1]) goto Failure;
+    wuss_icon_set_disabled(win_dis, icons_dis[1], 1);
+    if (wuss->caret.icon != NULL) goto Failure;
+
+    wuss_window_close(win_dis);
+    rc = wuss_redraw_dirty(wuss);
+    if (rc != result_OK) goto Failure;
+  }
+
   printf("test: wuss_icon_create rejects type-scoped flags on the wrong icon type\n");
 
   {
