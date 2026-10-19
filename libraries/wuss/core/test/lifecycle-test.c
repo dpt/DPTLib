@@ -364,6 +364,17 @@ result_t wuss_lifecycle_test(const char *resources)
       goto Failure;
     }
 
+    /* the grey backdrop paints its dither: neither all black nor all
+     * white */
+    rc = wuss_set_backdrop(pw, &wuss_BACKDROP_COLOUR(1));
+    if (rc == result_OK)
+      rc = wuss_redraw(pw);
+    if (rc != result_OK || pixels[0] == 0x00 || pixels[0] == 0xFF)
+    {
+      wuss_destroy(pw);
+      goto Failure;
+    }
+
     wuss_destroy(pw);
 
     /* direct-colour screen: everything is solid */
@@ -378,6 +389,130 @@ result_t wuss_lifecycle_test(const char *resources)
     }
 
     wuss_destroy(pw);
+  }
+
+  printf("test: deeper physical palettes create\n");
+  {
+    static const pixelfmt_t formats[] =
+    {
+      pixelfmt_p2, pixelfmt_p4, pixelfmt_p8
+    };
+    static colour_t       phys[256];
+    static const colour_t desktop[2] = { { 0xFF000000 }, { 0xFF808080 } };
+    static unsigned char  pixels[64 * 8];
+
+    screen_t              pscr;
+    wuss_t               *pw;
+    int                   i;
+
+    for (i = 0; i < (int) NELEMS(formats); i++)
+    {
+      screen_init(&pscr, SIZE2D(8, 8), formats[i], 64, phys, pixels);
+      rc = wuss_create(&pscr, NULL, 0, desktop, 2, NULL, NULL, NULL, &pw);
+      if (rc != result_OK)
+        goto Failure;
+      wuss_destroy(pw);
+    }
+  }
+
+  printf("test: backdrops draw patterns, colour fills and a centred "
+         "image\n");
+  {
+    static const colour_t desktop[3] =
+    {
+      { 0xFF000000 }, { 0xFFFFFFFF }, { 0xFF0000FF }
+    };
+
+    const unsigned int *px;
+    int                 w;
+    wuss_t             *bw;
+    unsigned int        red;
+    wuss_fill_t         fill;
+    unsigned int        image_px[4];
+    bitmap_t            image;
+    wuss_backdrop_t     backdrop;
+
+#define PX(x, y) (px[(y) * w + (x)])
+#define PATTERNED (PX(0, 0) != PX(1, 0) || PX(0, 0) != PX(0, 1))
+
+    px = (const unsigned int *) fixture.pixels;
+    w  = fixture.scr.size.w;
+
+    rc = wuss_create(&fixture.scr, NULL, 0, desktop, 3, NULL, NULL, NULL, &bw);
+    if (rc != result_OK)
+      goto Failure;
+
+    rc = wuss_set_backdrop(bw, &wuss_BACKDROP_COLOUR(2));
+    if (rc == result_OK)
+      rc = wuss_redraw(bw);
+    if (rc != result_OK)
+      goto BackdropFail;
+    red = PX(0, 0);
+
+    /* out-of-range pattern, then out-of-range pattern background */
+    if (wuss_set_backdrop(bw, &wuss_BACKDROP_PATTERN(0, screen_PATTERN__LIMIT,
+                                                     1)) !=
+        result_WUSS_BAD_COLOUR)
+      goto BackdropFail;
+    if (wuss_set_backdrop(bw, &wuss_BACKDROP_PATTERN(0, screen_PATTERN_GREY50,
+                                                     9)) !=
+        result_WUSS_BAD_COLOUR)
+      goto BackdropFail;
+
+    /* a patterned backdrop */
+    rc = wuss_set_backdrop(bw, &wuss_BACKDROP_PATTERN(0, screen_PATTERN_GREY50,
+                                                      1));
+    if (rc == result_OK)
+      rc = wuss_redraw(bw);
+    if (rc != result_OK || !PATTERNED)
+      goto BackdropFail;
+
+    /* red given a pattern fill: a solid red backdrop paints the pattern */
+    fill.colour     = 0;
+    fill.pattern    = screen_PATTERN_GREY50;
+    fill.pattern_bg = 1;
+    rc = wuss_set_colour_fill(bw, 2, &fill);
+    if (rc == result_OK)
+      rc = wuss_set_backdrop(bw, &wuss_BACKDROP_COLOUR(2));
+    if (rc == result_OK)
+      rc = wuss_redraw(bw);
+    if (rc != result_OK || !PATTERNED || PX(0, 0) == red)
+      goto BackdropFail;
+
+    /* red given white's fill: a solid red backdrop paints flat white */
+    fill.colour     = 1;
+    fill.pattern    = screen_PATTERN_SOLID;
+    fill.pattern_bg = wuss_NO_BACKGROUND;
+    rc = wuss_set_colour_fill(bw, 2, &fill);
+    if (rc == result_OK)
+      rc = wuss_redraw(bw);
+    if (rc != result_OK || PATTERNED || PX(0, 0) == red)
+      goto BackdropFail;
+
+    /* a red image centred over a black backdrop */
+    image_px[0] = image_px[1] = image_px[2] = image_px[3] = red;
+    rc = bitmap_init(&image, SIZE2D(2, 2), pixelfmt_bgrx8888, 8, NULL,
+                     image_px);
+    if (rc != result_OK)
+      goto BackdropFail;
+    backdrop       = wuss_BACKDROP_COLOUR(0);
+    backdrop.image = &image;
+    rc = wuss_set_backdrop(bw, &backdrop);
+    if (rc == result_OK)
+      rc = wuss_redraw(bw);
+    if (rc != result_OK || PX(w / 2, w / 2) != red || PX(0, 0) == red)
+      goto BackdropFail;
+
+#undef PATTERNED
+#undef PX
+
+    wuss_destroy(bw);
+    goto BackdropOK;
+
+BackdropFail:
+    wuss_destroy(bw);
+    goto Failure;
+BackdropOK: ;
   }
 
   printf("test: wuss_set_font re-derives the titlebar height and keeps each "
