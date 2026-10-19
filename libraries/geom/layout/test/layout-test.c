@@ -75,6 +75,10 @@ result_t layout_test(const char *resources)
   {
     { layout_BOX, { .box = { 2, 2, 20 } } },
   };
+  static const layout_element_t wide_box[] =
+  {
+    { layout_BOX, { .box = { 20, 20, 2 } } },
+  };
 
   result_t         err;
   box_t            boxes[40];
@@ -140,7 +144,14 @@ result_t layout_test(const char *resources)
 
   printf("test: a box that does not fit stops the layout\n");
 
-  if (run(&dims, 2, tall, NELEMS(tall), boxes, NELEMS(boxes)) != result_OK)
+  if (run(&dims, 2, tall, NELEMS(tall), boxes, NELEMS(boxes)) !=
+      result_PACKER_DIDNT_FIT)
+    goto failure;
+
+  printf("test: a box too wide for any line stops the layout\n");
+
+  if (run(&dims, 2, wide_box, NELEMS(wide_box), boxes, NELEMS(boxes)) !=
+      result_PACKER_DIDNT_FIT)
     goto failure;
 
   return result_TEST_PASSED;
