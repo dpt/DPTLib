@@ -79,7 +79,9 @@ result_t colour_test(const char *resources)
       colour_to_pixel(NULL, 0, c, pixelfmt_bgrx8888) != 0xFF123456u ||
       colour_to_pixel(NULL, 0, c, pixelfmt_bgra8888) != 0x78123456u ||
       colour_to_pixel(NULL, 0, c, pixelfmt_rgb565)   != 0x51A2u ||
-      colour_to_pixel(NULL, 0, c, pixelfmt_rgbx5551) != 0x28C2u)
+      colour_to_pixel(NULL, 0, c, pixelfmt_bgr565)   != 0x11AAu ||
+      colour_to_pixel(NULL, 0, c, pixelfmt_rgbx5551) != 0x28C2u ||
+      colour_to_pixel(NULL, 0, c, pixelfmt_bgrx5551) != 0x08CAu)
     FAIL("direct formats");
 
   /* every paletted depth picks the nearest entry */

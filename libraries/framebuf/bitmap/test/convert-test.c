@@ -525,6 +525,7 @@ static int test_fill_pattern(void)
   mk_palette(pal);
   if (!fill_pattern_one(pixelfmt_p8, pal) ||
       !fill_pattern_one(pixelfmt_rgb565, NULL) ||
+      !fill_pattern_one(pixelfmt_bgr565, NULL) ||
       !fill_pattern_one(pixelfmt_bgrx8888, NULL))
     return 0;
 
