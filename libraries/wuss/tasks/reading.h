@@ -30,8 +30,8 @@ reading_span_t;
 /* window B's task: flows a text file dropped on its icon or window
  * (DataLoad) over its wuss-filled background, one line per bmfont_draw call.
  * A MENU click on the window opens a top-level menu with three submenus --
- * "Font" (the shared wuss_fontmenu singleton over resources/bmfonts,
- * swapping the paragraph font in place),
+ * "Font" (the shared wuss_fontmenu singleton listing the font families
+ * under resources/bmfonts, swapping the paragraph's family in place),
  * "Spacing" (swaps the letter/word spacing), "Alignment" (Left, Centre or
  * Right per line) and "Colours" (a submenu of "Foreground"/"Background",
  * each retargeting the shared wuss_colourmenu singleton on hover) -- whose
@@ -48,11 +48,11 @@ typedef struct reading_task
   wuss_task_t        *delegate;   /* the wuss task backing this window */
   wuss_t             *wuss;       /* for wuss_get_pointer when opening the
                                    * menu */
-  bmfont_t           *font;       /* currently shown; fonts[current] or
-                                   * sysfont */
-  bmfont_t          **fonts;      /* one slot per menu item, lazily loaded */
-  int                 nfonts;     /* length of fonts[]; == menu item count */
-  int                 current;    /* index into fonts[], or -1 for sysfont */
+  bmfont_t           *font;       /* currently shown: the current family's
+                                   * Regular face (acquired from the font
+                                   * cache), or the borrowed sysfont */
+  int                current;    /* font menu row of the current family, or
+                                   * -1 for sysfont */
   wuss_colour_t      *colourmenu_target; /* &task->fg_index or
                                    * &task->bg_index: which field the open
                                    * colourmenu picks into, set by

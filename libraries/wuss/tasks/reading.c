@@ -285,54 +285,64 @@ static const wuss_menu_t *reading_fontmenu(reading_task_t *task)
   resources   = wuss_get_resources(task->wuss);
   bmfonts_dir = pathf("%s/resources/bmfonts", resources);
   return wuss_fontmenu_menu(bmfonts_dir, "Font", task->wuss,
-                            wuss_FONTMENU_NONE);
+                            wuss_FONTMENU_FAMILIES);
 }
 
-/* load fonts[idx] if not already in hand; returns it or NULL on failure.
- * name is the menu label for that row -- "Family Style". */
-static bmfont_t *reading_load_font(reading_task_t *task,
-                                   const char     *resources,
+/* release the font this task acquired; the system font (current == -1) is
+ * wuss's, not ours */
+static void reading_release_fonts(reading_task_t *task)
+{
+  if (task->current < 0)
+    return;
+
+  bmfontcache_release(wuss_get_font_cache(task->wuss), task->font);
+}
+
+/* make family name (font menu row idx) the paragraph's: its Regular face,
+ * or its first face if it has none. On failure the current font stays. */
+static result_t reading_load_family(reading_task_t *task,
+                                    int             idx,
+                                    const char     *name)
+{
+  result_t            rc;
+  const char         *resources;
+  bmfontfamily_t     *family;
+  const bmfontface_t *face;
+  bmfont_t           *font;
+
+  resources = wuss_get_resources(task->wuss);
+  rc = bmfontfamily_scan(pathf("%s/resources/bmfonts/%s", resources, name),
+                         &family);
+  if (rc != result_OK)
+    return rc;
+
+  face = bmfontfamily_find(family, bmfontfamily_WEIGHT_REGULAR,
+                           bmfontfamily_SLANT_UPRIGHT);
+  if (face == NULL)
+    face = bmfontfamily_face(family, 0); /* a scanned family has a face */
+
+  rc = bmfontcache_acquire(wuss_get_font_cache(task->wuss), face->path,
+                           &font);
+  bmfontfamily_destroy(family);
+  if (rc != result_OK)
+    return rc;
+
+  reading_release_fonts(task);
+  task->font    = font;
+  task->current = idx;
+  return result_OK;
+}
+
+/* switch the paragraph to the family at font menu row idx (label name) */
+static result_t reading_set_family(reading_task_t *task,
                                    int             idx,
                                    const char     *name)
 {
-  result_t    rc;
-  const char *dir;
-  char        filename[512];
-  bmfont_t   *font;
-
-  if (task->fonts[idx] != NULL)
-    return task->fonts[idx];
-
-  dir = pathf("%s/resources/bmfonts", resources);
-
-  rc = bmfontfamily_label_path(dir, name, filename, sizeof(filename));
-  if (rc != result_OK)
-    return NULL;
-
-  rc = bmfontcache_acquire(wuss_get_font_cache(task->wuss), filename, &font);
-  if (rc != result_OK)
-    return NULL;
-
-  task->fonts[idx] = font;
-  return font;
-}
-
-/* switch the paragraph to the font at menu row idx (label name) */
-static result_t reading_set_font(reading_task_t *task,
-                                 int             idx,
-                                 const char     *name)
-{
-  bmfont_t *font;
-
-  if (idx < 0 || idx >= task->nfonts || idx == task->current)
+  if (idx == task->current)
     return result_OK;
 
-  font = reading_load_font(task, wuss_get_resources(task->wuss), idx, name);
-  if (font == NULL)
+  if (reading_load_family(task, idx, name) != result_OK)
     return result_OK; /* leave the current font in place */
-
-  task->font    = font;
-  task->current = idx;
 
   wuss_window_invalidate_visible(task->window);
   return result_OK;
@@ -601,6 +611,8 @@ result_t reading_create(wuss_t *wuss, reading_task_t **out)
   wuss_task_desc_t   delegate_desc;
   const wuss_menu_t *menu;
   const char        *sysname;
+  const char        *space;
+  size_t             len;
   int                i;
   size2d_t           sz;
 
@@ -619,7 +631,7 @@ result_t reading_create(wuss_t *wuss, reading_task_t **out)
   task->bg_transparent = true; /* "None": blend onto the window backdrop */
   task->colourmenu_target = NULL;
 
-  /* the shared picker: every ".png" font under resources/bmfonts, sorted,
+  /* the shared picker: every font family under resources/bmfonts, sorted,
    * less any SYSTEM-class font (e.g. the one wuss draws menu ticks/arrows
    * from) */
   menu = reading_fontmenu(task);
@@ -629,25 +641,22 @@ result_t reading_create(wuss_t *wuss, reading_task_t **out)
     return result_OOM;
   }
 
-  task->nfonts = menu->nitems;
-  task->fonts  = calloc((size_t) task->nfonts, sizeof(*task->fonts));
-  if (task->nfonts > 0 && task->fonts == NULL)
-  {
-    free(task);
-    return result_OOM;
-  }
-
-  /* tick the system font's row, if the picker lists it. fonts[current]
-   * stays NULL: the system font is wuss's, not ours to release. */
+  /* start in the system font's family ("Family Style"), if the picker lists
+   * it; else stay on the system font itself with no row ticked */
   sysname = wuss_get_font_name_n(wuss, 0);
-  if (sysname != NULL)
-    for (i = 0; i < task->nfonts; i++)
-      if (strcmp(menu->items[i].text, sysname) == 0)
-        task->current = i;
+  space   = sysname != NULL ? strrchr(sysname, ' ') : NULL;
+  if (space != NULL)
+  {
+    len = (size_t) (space - sysname);
+    for (i = 0; i < menu->nitems; i++)
+      if (strncmp(menu->items[i].text, sysname, len) == 0 &&
+          menu->items[i].text[len] == '\0')
+        (void) reading_load_family(task, i, menu->items[i].text);
+  }
 
   if (wuss_colourmenu_menu(wuss) == NULL)
   {
-    free(task->fonts);
+    reading_release_fonts(task);
     free(task);
     return result_OOM;
   }
@@ -725,7 +734,7 @@ result_t reading_create(wuss_t *wuss, reading_task_t **out)
   rc = wuss_task_create(wuss, &delegate_desc, &delegate);
   if (rc != result_OK)
   {
-    free(task->fonts);
+    reading_release_fonts(task);
     free(task->text);
     free(task->markdown_spans);
     free(task); /* nothing registered yet; the spawner will not free it */
@@ -803,12 +812,7 @@ result_t reading_open_file(wuss_t *wuss, const char *path)
 
 void reading_destroy(reading_task_t *task)
 {
-  int i;
-
-  for (i = 0; i < task->nfonts; i++)
-    if (task->fonts[i] != NULL)
-      bmfontcache_release(wuss_get_font_cache(task->wuss), task->fonts[i]);
-  free(task->fonts);
+  reading_release_fonts(task);
   free(task->text);
   free(task->markdown_spans);
   free(task);
@@ -1157,7 +1161,7 @@ result_t reading_handle(wuss_window_t      *window,
       name = wuss_fontmenu_selected(event);
       if (name != NULL)
       {
-        rc = reading_set_font(tcx, event->data.menu_select.index, name);
+        rc = reading_set_family(tcx, event->data.menu_select.index, name);
 
         /* ADJUST keeps the chain open, so retick the still-open font level
          * in place (a no-op once a SELECT pick has closed it). Use the
