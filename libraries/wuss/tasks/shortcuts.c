@@ -17,9 +17,10 @@
 #define SHORTCUTS_COLUMNS      2 /* keys, then action */
 #define SHORTCUTS_ROWS        16 /* window opens at most this many tall */
 
-/* The chords handled by the app ahead of any window: tasks_system_key, the
- * main loop's key case and tasks_launcher_key in apps/wuss, plus the core's
- * drag cancel. Keep in step with those. */
+/* The chords handled ahead of any window's task: tasks_system_key, the main
+ * loop's key case and tasks_launcher_key in apps/wuss, the core's drag and
+ * menu cancels, and the writable field keys in wuss__writable_key. Keep in
+ * step with those. */
 static const struct
 {
   const char *keys;
@@ -53,8 +54,21 @@ shortcuts[] =
   { "Ctrl-=",         "Zoom in"             },
   { "Ctrl--",         "Zoom out"            },
   { "Ctrl-0",         "Actual size"         },
-  { "Ctrl-V",         "Paste"               },
   { "Escape",         "Cancel drag"         },
+  { "Escape",         "Close menu"          },
+  { "Ctrl-A",         "Select all text"     },
+  { "Ctrl-C",         "Copy text"           },
+  { "Ctrl-X",         "Cut text"            },
+  { "Ctrl-V",         "Paste text"          },
+  { "Insert",         "Paste text"          },
+  { "Ctrl-Z",         "Clear selection"     },
+  { "Ctrl-U",         "Clear field"         },
+  { "Tab",            "Next field"          },
+  { "Shift-Tab",      "Previous field"      },
+  { "Shift-Left",     "Word left"           },
+  { "Shift-Right",    "Word right"          },
+  { "Ctrl-Left",      "Start of field"      },
+  { "Ctrl-Right",     "End of field"        },
   { "Shift-F1",       "Debug: Redraw"       },
   { "Ctrl-Shift-F1",  "Debug: Garbage"      },
   { "Shift-F3",       "Debug: Pixel stress" }
