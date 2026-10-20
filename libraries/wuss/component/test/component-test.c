@@ -384,7 +384,7 @@ DialogueOK: ;
 
     dir = pathf("%s/resources/bmfonts", resources);
 
-    fmm = wuss_fontmenu_menu(dir, "Font", NULL);
+    fmm = wuss_fontmenu_menu(dir, "Font", NULL, wuss_FONTMENU_NONE);
     if (fmm == NULL)                                     goto FontMenuFail;
     if (fmm->title == NULL || strcmp(fmm->title, "Font") != 0)
       goto FontMenuFail;
@@ -418,7 +418,8 @@ DialogueOK: ;
     ev.data.menu_select.index = fmm->nitems;
     if (wuss_fontmenu_selected(&ev) != NULL)             goto FontMenuFail;
 
-    if (wuss_fontmenu_menu(NULL, "Font", NULL) != NULL)  goto FontMenuFail;
+    if (wuss_fontmenu_menu(NULL, "Font", NULL, wuss_FONTMENU_NONE) != NULL)
+      goto FontMenuFail;
 
     /* a SYSTEM-class wuss font is dropped from the menu; NONE-class and
      * unnamed slots are not -- also exercises the singleton rebuilding when
@@ -453,7 +454,7 @@ DialogueOK: ;
        * the now-stale pointer */
       dir = pathf("%s/resources/bmfonts", resources);
 
-      fmm = wuss_fontmenu_menu(dir, "Font", syswuss);
+      fmm = wuss_fontmenu_menu(dir, "Font", syswuss, wuss_FONTMENU_NONE);
       wuss_destroy(syswuss);
       bmfont_destroy(sysfont);
       if (fmm == NULL)                                    goto FontMenuFail;
@@ -466,9 +467,46 @@ DialogueOK: ;
       if (i == fmm->nitems)                               goto FontMenuFail;
     }
 
+    /* wuss_FONTMENU_FAMILIES lists each family once, by family name alone --
+     * including one whose name has spaces in it -- and resolves picks to it */
+    {
+      int found;
+
+      dir = pathf("%s/resources/bmfonts", resources);
+      fmm = wuss_fontmenu_menu(dir, "Font", NULL, wuss_FONTMENU_FAMILIES);
+      if (fmm == NULL)                                    goto FontMenuFail;
+
+      found = 0;
+      for (i = 0; i < fmm->nitems; i++)
+      {
+        if (i > 0 && strcmp(fmm->items[i - 1].text, fmm->items[i].text) >= 0)
+          goto FontMenuFail;
+        if (strcmp(fmm->items[i].text, "GrongyUI") == 0 ||
+            strcmp(fmm->items[i].text, "MS Sans Serif") == 0)
+          found++;
+      }
+      if (found != 2)                                     goto FontMenuFail;
+
+      ev.kind                    = wuss_EVENT_MENU_SELECT;
+      ev.data.menu_select.menu   = fmm;
+      ev.data.menu_select.index  = 0;
+      ev.data.menu_select.button = wuss_BUTTON_SELECT;
+      name = wuss_fontmenu_selected(&ev);
+      if (name == NULL || strcmp(name, fmm->items[0].text) != 0)
+        goto FontMenuFail;
+
+      /* changing flags alone rebuilds back to faces (the build's own pathf
+       * calls clobbered dir, so re-derive it) */
+      dir = pathf("%s/resources/bmfonts", resources);
+      fmm = wuss_fontmenu_menu(dir, "Font", NULL, wuss_FONTMENU_NONE);
+      if (fmm == NULL || strchr(fmm->items[0].text, ' ') == NULL)
+        goto FontMenuFail;
+    }
+
     /* missing directory is surfaced by leaving the singleton unbuilt, not
      * swallowed */
-    if (wuss_fontmenu_menu("no/such/dir/here", NULL, NULL) != NULL)
+    if (wuss_fontmenu_menu("no/such/dir/here", NULL, NULL,
+                           wuss_FONTMENU_NONE) != NULL)
       goto FontMenuFail;
 
     rc = result_OK;

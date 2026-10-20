@@ -60,7 +60,8 @@ static const wuss_menu_t *chars_fontmenu(chars_task_t *task)
 
   resources   = wuss_get_resources(task->wuss);
   bmfonts_dir = pathf("%s/resources/bmfonts", resources);
-  return wuss_fontmenu_menu(bmfonts_dir, "Font", task->wuss);
+  return wuss_fontmenu_menu(bmfonts_dir, "Font", task->wuss,
+                            wuss_FONTMENU_NONE);
 }
 
 /* the rows of the grid for page that hold at least one glyph of font:

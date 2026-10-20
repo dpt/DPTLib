@@ -22,20 +22,22 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* ponytail: flat list, one item per font, no family/weight grouping into
- * submenus. wuss_fontmenu_selected then needs only a single pointer compare.
- * Add a grouping pass (and widen the identity check to the submenus) if a
- * font directory ever gets big enough to want it. One process-wide
+/* ponytail: flat list, one item per face (or, with wuss_FONTMENU_FAMILIES,
+ * per family), no family/weight grouping into submenus.
+ * wuss_fontmenu_selected then needs only a single pointer compare. Add a
+ * grouping pass (and widen the identity check to the submenus) if a font
+ * directory ever gets big enough to want it. One process-wide
  * singleton -- no per-task instances, no create/destroy -- rebuilt lazily
- * when the caller's dir or wuss_t changes. */
+ * when the caller's dir, wuss_t or flags change. */
 static struct
 {
-  wuss_alloc_t  alloc;
-  char         *dir;   /* owned copy; whose fonts the menu was built from --
-                        * callers pass a pathf() scratch pointer, so this
-                        * cannot just borrow it */
-  const wuss_t *wuss;  /* borrowed; consulted to skip SYSTEM fonts */
-  wuss_menu_t  *menu;
+  wuss_alloc_t          alloc;
+  char                 *dir;   /* owned copy; whose fonts the menu was built
+                                * from -- callers pass a pathf() scratch
+                                * pointer, so this cannot just borrow it */
+  const wuss_t         *wuss;  /* borrowed; consulted to skip SYSTEM fonts */
+  wuss_fontmenu_flags_t flags; /* what the menu was built with */
+  wuss_menu_t          *menu;
 }
 g;
 
@@ -68,9 +70,10 @@ static void fontmenu_free(void)
  * scratch never touches raw stdlib. */
 typedef struct namelist
 {
-  const wuss_alloc_t *alloc; /* borrowed; the resolved hooks */
-  const wuss_t       *wuss;  /* borrowed; consulted to skip SYSTEM fonts, or
-                              * NULL to skip nothing */
+  const wuss_alloc_t *alloc;    /* borrowed; the resolved hooks */
+  const wuss_t       *wuss;     /* borrowed; consulted to skip SYSTEM fonts,
+                                 * or NULL to skip nothing */
+  int                 families; /* keep only the family part of each name */
   char              **names;
   int                 n;
   int                 cap;
@@ -112,6 +115,7 @@ static result_t collect_name(const char *name,
 {
   namelist_t *nl = opaque;
   char       *copy;
+  char       *space;
 
   (void) path;
 
@@ -131,6 +135,12 @@ static result_t collect_name(const char *name,
     nl->oom = 1;
     return result_OOM;
   }
+
+  /* "MS Sans Serif Bold" -> "MS Sans Serif": the style follows the last
+   * space (see bmfontfamily_label_path) */
+  space = strrchr(copy, ' ');
+  if (nl->families && space != NULL)
+    *space = '\0';
 
   nl->names[nl->n++] = copy;
   return result_OK;
@@ -208,11 +218,31 @@ static result_t build_menu(char **names, int nnames, const char *title)
   return result_OK;
 }
 
+/* Drop adjacent duplicate names from a sorted list -- one per family once
+ * collect_name has cut the styles off. */
+static void namelist_uniq(namelist_t *nl)
+{
+  int i;
+  int j;
+
+  if (nl->n == 0)
+    return;
+
+  j = 0;
+  for (i = 1; i < nl->n; i++)
+    if (strcmp(nl->names[j], nl->names[i]) == 0)
+      nl->alloc->free(nl->names[i]);
+    else
+      nl->names[++j] = nl->names[i];
+  nl->n = j + 1;
+}
+
 /* (Re)build the singleton from dir's fonts, less any wuss's SYSTEM-class
  * ones. */
-static result_t fontmenu_build(const char   *dir,
-                               const char   *title,
-                               const wuss_t *wuss)
+static result_t fontmenu_build(const char           *dir,
+                               const char           *title,
+                               const wuss_t         *wuss,
+                               wuss_fontmenu_flags_t flags)
 {
   result_t     rc;
   wuss_alloc_t alloc;
@@ -232,8 +262,9 @@ static result_t fontmenu_build(const char   *dir,
     return result_OOM;
 
   memset(&nl, 0, sizeof(nl));
-  nl.alloc = &alloc;
-  nl.wuss  = wuss;
+  nl.alloc    = &alloc;
+  nl.wuss     = wuss;
+  nl.families = (flags & wuss_FONTMENU_FAMILIES) != 0;
 
   rc = bmfont_enumerate(dir, collect_name, &nl);
   if (rc != result_OK)
@@ -245,6 +276,8 @@ static result_t fontmenu_build(const char   *dir,
 
   if (nl.n > 1)
     qsort(nl.names, (size_t) nl.n, sizeof(nl.names[0]), name_cmp);
+  if (nl.families)
+    namelist_uniq(&nl);
 
   g.alloc = alloc;
 
@@ -256,24 +289,26 @@ static result_t fontmenu_build(const char   *dir,
     return rc;
   }
 
-  g.dir  = dir_copy;
-  g.wuss = wuss;
+  g.dir   = dir_copy;
+  g.wuss  = wuss;
+  g.flags = flags;
 
   return result_OK;
 }
 
 /* ----------------------------------------------------------------------- */
 
-const wuss_menu_t *wuss_fontmenu_menu(const char   *dir,
-                                      const char   *title,
-                                      const wuss_t *wuss)
+const wuss_menu_t *wuss_fontmenu_menu(const char           *dir,
+                                      const char           *title,
+                                      const wuss_t         *wuss,
+                                      wuss_fontmenu_flags_t flags)
 {
   if (dir == NULL)
     return NULL;
 
   if (g.menu == NULL || g.dir == NULL || strcmp(dir, g.dir) != 0 ||
-      wuss != g.wuss)
-    if (fontmenu_build(dir, title, wuss) != result_OK)
+      wuss != g.wuss || flags != g.flags)
+    if (fontmenu_build(dir, title, wuss, flags) != result_OK)
       return NULL;
 
   return g.menu;

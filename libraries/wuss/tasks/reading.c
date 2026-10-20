@@ -284,7 +284,8 @@ static const wuss_menu_t *reading_fontmenu(reading_task_t *task)
 
   resources   = wuss_get_resources(task->wuss);
   bmfonts_dir = pathf("%s/resources/bmfonts", resources);
-  return wuss_fontmenu_menu(bmfonts_dir, "Font", task->wuss);
+  return wuss_fontmenu_menu(bmfonts_dir, "Font", task->wuss,
+                            wuss_FONTMENU_NONE);
 }
 
 /* load fonts[idx] if not already in hand; returns it or NULL on failure.

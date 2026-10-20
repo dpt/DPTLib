@@ -865,7 +865,7 @@ static const wuss_menu_t *configuring_fontmenu(configuring_task_t *task)
 
   resources = wuss_get_resources(task->wuss);
   return wuss_fontmenu_menu(pathf("%s/resources/bmfonts", resources), "Font",
-                            task->wuss);
+                            task->wuss, wuss_FONTMENU_NONE);
 }
 
 /* Open the font menu at the pointer with the system font's row ticked. */
