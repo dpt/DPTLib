@@ -120,12 +120,57 @@ static void filing_rescan(filing_window_t *fw)
   (void) wuss_gridview_set_count(fw->gridview, dirlist_count(fresh));
 }
 
+static int filing_parent_path(const char *path, char *out, size_t cap);
+
+/* whether a window is open on the directory leaf within dir. Matched by
+ * parent and leaf rather than by joining them, as joining onto "/" gives
+ * "//leaf". */
+static int filing_is_open(const filing_task_t *task,
+                          const char          *dir,
+                          const char          *leaf)
+{
+  char parent[DPTLIB_MAXPATH];
+  int  i;
+
+  for (i = 0; i < task->nwindows; i++)
+    if (task->windows[i].window != NULL &&
+        strcmp(path_leaf(task->windows[i].path), leaf) == 0 &&
+        filing_parent_path(task->windows[i].path, parent, sizeof(parent)) &&
+        strcmp(parent, dir) == 0)
+      return 1;
+
+  return 0;
+}
+
+/* a window on path opened or closed: redraw its parent's window, if open, so
+ * the directory's glyph there shows it */
+static void filing_invalidate_parent(filing_task_t *task, const char *path)
+{
+  char             parent[DPTLIB_MAXPATH];
+  filing_window_t *fw;
+
+  if (!filing_parent_path(path, parent, sizeof(parent)))
+    return;
+
+  fw = filing_find_window(task, parent);
+  if (fw != NULL)
+    wuss_window_invalidate_visible(fw->window);
+}
+
 /* wuss_gridview_item_fn_t's opaque is fw (set at wuss_gridview_create); the
  * owning task (for its shared glyphs) is reached via fw->owner. */
 
-static const bitmap_t *filing_glyph_for(filing_task_t         *task,
+static const bitmap_t *filing_glyph_for(const filing_window_t *fw,
                                         const dirlist_entry_t *entry)
 {
+  filing_task_t *task;
+
+  task = fw->owner;
+
+  if (entry->is_dir && task->glyph_directory_open != NULL &&
+      filing_is_open(task, fw->path, entry->leaf))
+    return task->glyph_directory_open;
+
   if (entry->is_dir)
     return task->glyph_directory;
 
@@ -150,7 +195,7 @@ static void filing_item(int index, void *opaque, wuss_gridview_item_t *out)
   }
 
   out->label = entry->leaf;
-  out->glyph = filing_glyph_for(fw->owner, entry);
+  out->glyph = filing_glyph_for(fw, entry);
 }
 
 static result_t filing_open_path(filing_task_t       *task,
@@ -409,6 +454,8 @@ static result_t filing_open_path(filing_task_t       *task,
    * what actually reflows the grid to the new width. */
   wuss_gridview_fit_window(fw->gridview, FILING_COLUMNS, FILING_MAX_ROWS);
 
+  filing_invalidate_parent(task, fw->path);
+
   return result_OK;
 }
 
@@ -483,9 +530,10 @@ result_t filing_create(wuss_t *wuss, filing_task_t **out)
     return rc;
   }
 
-  task->glyph_file      = filing_find_glyph(task->delegate, "file_unk");
-  task->glyph_directory = filing_find_glyph(task->delegate, "file_dir");
-  task->glyph_png       = filing_find_glyph(task->delegate, "file_b60");
+  task->glyph_file           = filing_find_glyph(task->delegate, "file_unk");
+  task->glyph_directory      = filing_find_glyph(task->delegate, "file_dir");
+  task->glyph_directory_open = filing_find_glyph(task->delegate, "file_diro");
+  task->glyph_png            = filing_find_glyph(task->delegate, "file_b60");
 
   spec.text  = "Filing";
   spec.side  = wuss_ICONBAR_LEFT;
@@ -943,6 +991,8 @@ result_t filing_handle(wuss_window_t      *window,
     fw->window   = NULL;
     fw->gridview = NULL;
     fw->listing  = NULL;
+
+    filing_invalidate_parent(task, fw->path);
     return result_OK;
   }
 

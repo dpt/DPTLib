@@ -60,6 +60,8 @@ struct apps_task
   apps_window_t         windows[1 + APPS_MAX_CATEGORIES]; /* [0] root,
                                                            * [c + 1] category c */
   const bitmap_t       *glyph_directory; /* borrowed from the icon pool */
+  const bitmap_t       *glyph_directory_open; /* for a category with its
+                                               * window open */
   const bitmap_t       *glyph_apps;
 
   wuss_menu_handle_t    menu_handle;
@@ -86,6 +88,9 @@ static void apps_item(int index, void *opaque, wuss_gridview_item_t *out)
   {
     out->label = tasks_category_name(index);
     out->glyph = aw->owner->glyph_directory;
+    if (aw->owner->windows[index + 1].window != NULL &&
+        aw->owner->glyph_directory_open != NULL)
+      out->glyph = aw->owner->glyph_directory_open;
     return;
   }
 
@@ -176,6 +181,9 @@ static result_t apps_open(apps_task_t         *task,
   aw->window = window;
 
   wuss_gridview_fit_window(aw->gridview, APPS_COLUMNS, APPS_MAX_ROWS);
+
+  /* the root's folder for this category now shows open */
+  wuss_window_invalidate_visible(task->windows[0].window);
   return result_OK;
 }
 
@@ -353,6 +361,9 @@ static result_t apps_handle(wuss_window_t      *window,
     wuss_gridview_destroy(aw->gridview);
     aw->gridview = NULL;
     aw->window   = NULL;
+
+    /* the root's folder for this category now shows closed */
+    wuss_window_invalidate_visible(task->windows[0].window);
     return result_OK;
 
   case wuss_EVENT_QUIT:
@@ -420,8 +431,9 @@ result_t appsfiler_create(wuss_t *wuss)
     return rc;
   }
 
-  task->glyph_directory = apps_find_glyph(task->delegate, "file_dir");
-  task->glyph_apps      = apps_find_glyph(task->delegate, "apps");
+  task->glyph_directory      = apps_find_glyph(task->delegate, "file_dir");
+  task->glyph_directory_open = apps_find_glyph(task->delegate, "file_diro");
+  task->glyph_apps           = apps_find_glyph(task->delegate, "apps");
 
   spec.text  = "Apps";
   spec.side  = wuss_ICONBAR_LEFT;
