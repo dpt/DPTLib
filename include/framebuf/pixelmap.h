@@ -29,7 +29,11 @@ extern "C"
  * a little colour accuracy for a table small enough to stay resident (2KB
  * for a 32bpp-to-p4 map). \ref entries is packed to the destination bit
  * width, LSB-first within each byte: p4 holds two 4-bit entries per byte, p2
- * four, p1 eight, p8 one byte per entry. \ref entry_bytes is 0.
+ * four, p1 eight, p8 one byte per entry. \ref entry_bytes is 0. \ref step is
+ * the typical per-channel gap between adjacent output colours: the wider of
+ * the quantiser's bucket and the median distance from each palette entry to
+ * its nearest neighbour (largest single-channel difference). An ordered
+ * dither spreads each channel across one step.
  *
  * **Paletted source to deep destination.** The index is the raw palette
  * index (0..\ref nentries - 1); there is no quantisation and
@@ -53,6 +57,7 @@ typedef struct pixelmap
   unsigned char        rshift, gshift, bshift; /* into the source pixel */
   unsigned char        rmask, gmask, bmask;    /* pre-shift, source width */
   unsigned char        rsrcbits, gsrcbits, bsrcbits; /* source chan. bits */
+  unsigned char        step;            /* deep->paletted only, 1..255 */
   unsigned int         nentries;
   const unsigned char *entries;
 }

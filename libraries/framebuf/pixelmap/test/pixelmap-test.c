@@ -196,6 +196,44 @@ result_t pixelmap_test(const char *resources)
       printf("pixelmap: p2 white did not resolve to index 3\n");
       return result_TEST_FAILED;
     }
+    if (pm2->step != 0x55)
+    {
+      printf("pixelmap: p2 grey ramp step %u, expected 85\n", pm2->step);
+      return result_TEST_FAILED;
+    }
+  }
+
+  /* 4d. step on p8: a 6x6x6 cube padded with duplicate black spans one cube
+   *     step; 256 greys are finer than the 5:6:5 quantiser, so its bucket
+   *     width wins */
+  {
+    const pixelmap_t *pmc;
+    colour_t          p8pal[256];
+
+    for (i = 0; i < 256; i++)
+      p8pal[i] = (i < 216) ? colour_rgb((unsigned int) (i / 36) * 51,
+                                        (unsigned int) (i / 6 % 6) * 51,
+                                        (unsigned int) (i % 6) * 51)
+                           : colour_rgb(0, 0, 0);
+
+    pmc = pixelmap_get(pixelfmt_rgba8888, pixelfmt_p8, p8pal, 256);
+    if (pmc == NULL || pmc->step != 51)
+    {
+      printf("pixelmap: p8 cube step %u, expected 51\n",
+             pmc ? pmc->step : 0);
+      return result_TEST_FAILED;
+    }
+
+    for (i = 0; i < 256; i++)
+      p8pal[i] = colour_rgb((unsigned int) i, (unsigned int) i, (unsigned int) i);
+
+    pmc = pixelmap_get(pixelfmt_rgba8888, pixelfmt_p8, p8pal, 256);
+    if (pmc == NULL || pmc->step != 255 / 31)
+    {
+      printf("pixelmap: p8 grey step %u, expected %d\n",
+             pmc ? pmc->step : 0, 255 / 31);
+      return result_TEST_FAILED;
+    }
   }
 
   /* 5. paletted -> deep: p4 -> bgrx8888, one deep pixel per palette index */
