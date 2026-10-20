@@ -3,12 +3,15 @@
 #ifdef WUSS_APP
 
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
 #endif
 
 #include "base/utils.h"
+#include "framebuf/bmfont.h"
+#include "wuss/icon.h"
 
 #include "shortcuts.h"
 #include "taskapp.h"
@@ -20,7 +23,7 @@
 /* The chords handled ahead of any window's task: tasks_system_key, the main
  * loop's key case and tasks_launcher_key in apps/wuss, the core's drag and
  * menu cancels, and the writable field keys in wuss__writable_key. Keep in
- * step with those. */
+ * step with those. A row with no action is a group heading. */
 static const struct
 {
   const char *keys;
@@ -28,10 +31,14 @@ static const struct
 }
 shortcuts[] =
 {
+  { "Windows",        NULL                  },
   { "F7",             "Next window"         },
   { "Shift-F7",       "Previous window"     },
   { "Ctrl-`",         "Next window"         },
   { "Ctrl-Shift-`",   "Previous window"     },
+  { "Ctrl-Shift-F",   "Toggle window size"  },
+  { "Ctrl-F2",        "Close window"        },
+  { "Apps",           NULL                  },
   { "F10",            "Next app"            },
   { "Shift-F10",      "Previous app"        },
   { "Ctrl-Tab",       "Next app"            },
@@ -42,11 +49,10 @@ shortcuts[] =
   { "Ctrl-H",         "Hide app"            },
   { "Ctrl-Shift-H",   "Hide other apps"     },
   { "Ctrl-F11",       "Show all apps"       },
-  { "Ctrl-Shift-F",   "Toggle window size"  },
-  { "Ctrl-F2",        "Close window"        },
   { "Ctrl-F9",        "Quit app"            },
   { "Ctrl-Q",         "Quit app"            },
   { "Ctrl-Shift-Esc", "Kill app"            },
+  { "Wuss",           NULL                  },
 #ifndef __EMSCRIPTEN__
   { "Ctrl-Shift-Q",   "Quit Wuss"           },
   { "Ctrl-Shift-3",   "Save screenshot"     },
@@ -56,25 +62,30 @@ shortcuts[] =
   { "Ctrl-0",         "Actual size"         },
   { "Escape",         "Cancel drag"         },
   { "Escape",         "Close menu"          },
+  { "Clipboard",      NULL                  },
   { "Ctrl-A",         "Select all text"     },
   { "Ctrl-C",         "Copy text"           },
   { "Ctrl-X",         "Cut text"            },
   { "Ctrl-V",         "Paste text"          },
   { "Insert",         "Paste text"          },
+  { "Field",          NULL                  },
   { "Ctrl-Z",         "Clear selection"     },
   { "Ctrl-U",         "Clear field"         },
   { "Tab",            "Next field"          },
   { "Shift-Tab",      "Previous field"      },
+  { "Caret",          NULL                  },
   { "Shift-Left",     "Word left"           },
   { "Shift-Right",    "Word right"          },
   { "Ctrl-Left",      "Start of field"      },
   { "Ctrl-Right",     "End of field"        },
-  { "Shift-F1",       "Debug: Redraw"       },
-  { "Ctrl-Shift-F1",  "Debug: Garbage"      },
-  { "Shift-F3",       "Debug: Pixel stress" }
+  { "Debug",          NULL                  },
+  { "Shift-F1",       "Redraw"              },
+  { "Ctrl-Shift-F1",  "Garbage"             },
+  { "Shift-F3",       "Pixel stress"        }
 };
 
-/* wuss_gridview_item_fn_t: even cells are keys, odd cells actions */
+/* wuss_gridview_item_fn_t: even cells are keys, odd cells actions; used
+ * only to measure the cell, since shortcuts_draw_cell does the drawing */
 static void shortcuts_item(int                   index,
                            void                 *opaque,
                            wuss_gridview_item_t *out)
@@ -84,6 +95,52 @@ static void shortcuts_item(int                   index,
   out->glyph = NULL;
   out->label = (index & 1) ? shortcuts[index / 2].action
                            : shortcuts[index / 2].keys;
+}
+
+/* the system palette's nearest entry to an RGB value */
+static colour_t shortcuts_colour(const shortcuts_task_t *task,
+                                 int                     r,
+                                 int                     g,
+                                 int                     b)
+{
+  return wuss_get_palette(task->wuss, NULL)[wuss_nearest_colour(task->wuss,
+                                                                r, g, b)];
+}
+
+/* wuss_gridview_draw_fn_t: the cell's text left-aligned, a group heading in
+ * the bold weight (font slot 1) when one was supplied. The gridview has
+ * already filled the background. */
+static void shortcuts_draw_cell(wuss_gridview_t    *gv,
+                                const wuss_event_t *event,
+                                int                 index,
+                                const box_t        *screen_box,
+                                void               *opaque)
+{
+  shortcuts_task_t *task;
+  const char       *text;
+  int               slot;
+  int               height, ascent;
+  point_t           pos;
+
+  NOT_USED(gv);
+
+  task = opaque;
+  text = (index & 1) ? shortcuts[index / 2].action
+                     : shortcuts[index / 2].keys;
+  if (text == NULL)
+    return;
+
+  slot = (shortcuts[index / 2].action == NULL &&
+          wuss_get_font_n(task->wuss, 1) != NULL) ? 1 : 0;
+  bmfont_get_info(wuss_get_font_n(task->wuss, slot), NULL, &height, &ascent,
+                  NULL);
+  pos.x = screen_box->x0 + wuss_STD_GAP;
+  pos.y = screen_box->y0 + (screen_box->y1 - screen_box->y0 - height) / 2 +
+          ascent;
+  (void) wuss_text_draw(task->wuss, slot, event->data.redraw.scr, text,
+                        (int) strlen(text),
+                        shortcuts_colour(task, 0x00, 0x00, 0x00),
+                        shortcuts_colour(task, 0xFF, 0xFF, 0xFF), &pos, NULL);
 }
 
 result_t shortcuts_create(wuss_t *wuss, shortcuts_task_t **out)
@@ -123,7 +180,9 @@ result_t shortcuts_create(wuss_t *wuss, shortcuts_task_t **out)
 
   /* one or two columns, so each pair keeps to a row when there is room */
   wuss_gridview_set_layout(task->gv, SHORTCUTS_COLUMNS, 1, 0);
-  wuss_gridview_set_draw(task->gv, NULL, 0);
+  wuss_gridview_set_draw(task->gv, shortcuts_draw_cell, 0);
+  wuss_gridview_set_background(task->gv,
+                               shortcuts_colour(task, 0xFF, 0xFF, 0xFF));
   wuss_gridview_fit_window(task->gv, SHORTCUTS_COLUMNS, SHORTCUTS_ROWS);
 
   if (out)
@@ -167,6 +226,15 @@ result_t shortcuts_handle(wuss_window_t      *window,
 
   case wuss_EVENT_QUIT:
     shortcuts_destroy(st);
+    return result_OK;
+
+  case wuss_EVENT_PALETTE:
+    if (st->gv != NULL)
+    {
+      wuss_gridview_set_background(st->gv,
+                                   shortcuts_colour(st, 0xFF, 0xFF, 0xFF));
+      (void) wuss_gridview_handle_event(st->gv, event);
+    }
     return result_OK;
 
   default:
