@@ -5,8 +5,15 @@
 # generated tables in libraries/io/filetype/filetype.c, between the
 # "BEGIN GENERATED" and "END GENERATED" marker comments:
 #
-#   g_filetypes[]   { number, canonical extension, name }, ascending by number
-#   g_extensions[]  { extension, number }, every extension listed, ascending
+#   g_types[64]     bitmap of allocated numbers, bit (n & 63) of word n >> 6
+#   g_names[64]     per bitmap word, the names of its set bits in ascending
+#                   order as one NUL-separated literal
+#   g_exts          every extension, undotted and NUL-separated, each type's
+#                   own in turn with its canonical one first
+#   g_ext_types[]   the type each g_exts entry maps to
+#
+# No per-type pointers are stored: a name is found by skipping as many names
+# in its word's block as there are set bits below it.
 #
 # Rows marked unregistered or "do not use" are skipped. Where several rows
 # share a number, the first OS-defined row wins, then the first registered
@@ -24,6 +31,8 @@ import urllib.request
 
 URL = 'https://www.riscosopen.org/wiki/documentation/source/File%20Types'
 TARGET = 'libraries/io/filetype/filetype.c'
+
+NWORDS = 4096 // 64  # filetype numbers are 12 bits
 
 STATUS_RANK = {'✔': 0, '✓': 1, '': 2}  # OS-defined, registered, unknown
 
@@ -90,16 +99,55 @@ def main():
             if ext not in owners or key < owners[ext][0]:
                 owners[ext] = (key, number)
 
-    lines = ['static const filetype_t g_filetypes[] =', '{']
-    for number in sorted(types):
-        exts, name, _, _ = types[number]
-        ext = c_string('.' + exts[0] if exts else '') + ','
-        lines.append('  { 0x%03X, %-8s %s },' % (number, ext, c_string(name)))
+    # bitmap of allocated numbers, one bit per number
+    words = [0] * NWORDS
+    for number in types:
+        words[number >> 6] |= 1 << (number & 63)
+
+    lines = ['static const uint64_t g_types[%d] =' % NWORDS, '{']
+    for w in range(0, NWORDS, 3):
+        lines.append('  ' + ' '.join('UINT64_C(0x%016X),' % x
+                                     for x in words[w:w + 3]))
     lines[-1] = lines[-1].rstrip(',')
-    lines += ['};', '', 'static const filetype_ext_t g_extensions[] =', '{']
-    for ext in sorted(owners):
-        lines.append('  { %-13s 0x%03X },'
-                     % (c_string('.' + ext) + ',', owners[ext][1]))
+    lines += ['};', '']
+
+    # each block's names, NUL-separated in ascending order of number; split
+    # into one literal per name so a "\0" never runs into a following digit
+    lines += ['static const char *const g_names[%d] =' % NWORDS, '{']
+    for w in range(NWORDS):
+        numbers = [n for n in sorted(types) if n >> 6 == w]
+        if not numbers:
+            lines.append('  %-30s /* %03X-%03X */'
+                         % ('"",', w << 6, (w << 6) + 63))
+            continue
+        for n in numbers:
+            literal = c_string(types[n][1])[:-1] + '\\0"'
+            if n == numbers[-1] and w != NWORDS - 1:
+                literal += ','
+            lines.append('  %-30s /* %03X */' % (literal, n))
+    lines += ['};', '']
+
+    # extensions: each type's own, canonical first, ascending by type; then
+    # the canonical extension of each type that owns none, which only the
+    # type-to-extension lookup can reach, since from_ext stops at the owner
+    pool = []
+    for number in sorted(types):
+        for ext in types[number][0]:
+            if owners[ext][1] == number:
+                pool.append((ext, number))
+    for number in sorted(types):
+        exts = types[number][0]
+        if exts and all(owners[ext][1] != number for ext in exts):
+            pool.append((exts[0], number))
+
+    lines += ['static const char g_exts[] =']
+    for ext, _ in pool:
+        lines.append('  ' + c_string(ext + '\0').replace('\0', '\\0'))
+    lines[-1] += ';'
+    lines += ['', 'static const unsigned short g_ext_types[%d] =' % len(pool),
+              '{']
+    for p in range(0, len(pool), 10):
+        lines.append('  ' + ' '.join('0x%03X,' % n for _, n in pool[p:p + 10]))
     lines[-1] = lines[-1].rstrip(',')
     lines.append('};')
 

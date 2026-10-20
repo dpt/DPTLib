@@ -12,7 +12,7 @@ static result_t test_from_ext_known(void)
   filetype_t t;
 
   t = filetype_from_ext(".png");
-  if (t.riscos != 0xB60 || strcmp(t.ext, ".png") != 0)
+  if (t.riscos != 0xB60 || strcmp(t.ext, "png") != 0)
     return result_TEST_FAILED;
 
   return result_TEST_PASSED;
@@ -22,7 +22,7 @@ static result_t test_from_ext_case_insensitive(void)
 {
   filetype_t t;
 
-  t = filetype_from_ext(".PNG");
+  t = filetype_from_ext("PNG");
   if (t.riscos != 0xB60)
     return result_TEST_FAILED;
 
@@ -57,7 +57,7 @@ static result_t test_from_riscos_known(void)
   filetype_t t;
 
   t = filetype_from_riscos(0xFFF);
-  if (strcmp(t.ext, ".txt") != 0)
+  if (strcmp(t.ext, "txt") != 0)
     return result_TEST_FAILED;
 
   return result_TEST_PASSED;
@@ -86,7 +86,7 @@ static result_t test_from_ext_alias(void)
   filetype_t t;
 
   t = filetype_from_ext(".JPEG");
-  if (t.riscos != 0xC85 || strcmp(t.ext, ".jpg") != 0 ||
+  if (t.riscos != 0xC85 || strcmp(t.ext, "jpg") != 0 ||
       strcmp(t.name, "JPEG") != 0)
     return result_TEST_FAILED;
 
@@ -102,7 +102,7 @@ static result_t test_markdown_round_trip(void)
     return result_TEST_FAILED;
 
   t = filetype_from_riscos(filetype_RISCOS_MARKDOWN);
-  if (strcmp(t.ext, ".md") != 0)
+  if (strcmp(t.ext, "md") != 0)
     return result_TEST_FAILED;
 
   return result_TEST_PASSED;

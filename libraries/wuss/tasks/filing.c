@@ -174,7 +174,7 @@ static const bitmap_t *filing_glyph_for(const filing_window_t *fw,
   if (entry->is_dir)
     return task->glyph_directory;
 
-  if (entry->type.ext != NULL && strcmp(entry->type.ext, ".png") == 0)
+  if (entry->type.riscos == filetype_RISCOS_PNG)
     return task->glyph_png;
 
   return task->glyph_file;
