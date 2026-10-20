@@ -755,13 +755,19 @@ result_t reading_create(wuss_t *wuss, reading_task_t **out)
   return result_OK;
 }
 
+static const unsigned short reading_opens[] =
+{
+  filetype_RISCOS_TEXT, filetype_RISCOS_MARKDOWN, 0
+};
+
 static const taskapp_desc_t reading_desc =
 {
-  "Reading",
-  "Read Markdown and text files",
-  (taskapp_create_fn_t) reading_create,
-  (taskapp_data_load_fn_t) reading_drop,
-  true
+  .name      = "Reading",
+  .purpose   = "Read Markdown and text files",
+  .create    = (taskapp_create_fn_t) reading_create,
+  .data_load = (taskapp_data_load_fn_t) reading_drop,
+  .drop_only = true,
+  .opens     = reading_opens
 };
 
 result_t reading_app_create(wuss_t *wuss)

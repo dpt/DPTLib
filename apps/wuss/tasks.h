@@ -9,6 +9,7 @@
 #include "framebuf/colour.h"
 #include "geom/point.h"
 #include "geom/size.h"
+#include "io/filetype.h"
 #include "wuss/task.h"
 #include "wuss/wuss.h"
 
@@ -122,6 +123,11 @@ void tasks_set_pointer(bool on);
  * than aborting the rest. Called once at startup, after g_tasks.wuss is
  * set. */
 void tasks_spawn(const char *names);
+
+/* Install the app that opens files of type, as tasks_spawn does: Filing's
+ * run function (see filing_set_run_fn). Returns result_NOT_FOUND if no app
+ * opens that type. */
+result_t tasks_run_type(filetype_t type);
 
 /* The launchable tasks, grouped into categories (the folders AppsFiler
  * shows). Indices are valid below the matching count; names are static. */

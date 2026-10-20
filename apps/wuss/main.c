@@ -1094,6 +1094,7 @@ int main(int argc, char *argv[])
 
 #ifdef WUSS_ICONBAR
   filing_set_root(opts.root);
+  filing_set_run_fn(tasks_run_type);
 #endif
 
   if (opts.script != NULL)

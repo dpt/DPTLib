@@ -5,8 +5,10 @@
 
 #if defined(WUSS_APP) && defined(WUSS_ICONBAR)
 
+#include "base/result.h"
 #include "framebuf/bitmap.h"
 #include "io/dirlist.h"
+#include "io/filetype.h"
 #include "io/path.h"
 #include "wuss/gadget/gridview.h"
 #include "wuss/iconbar.h"
@@ -54,11 +56,28 @@ enum
  * \param[in] root Directory path; copied. NULL restores the default. */
 void filing_set_root(const char *root);
 
+/* Start the app that opens files of type, for a DataOpen nobody claimed.
+ * Returns result_OK once the app is installed, or result_NOT_FOUND if no app
+ * opens that type. */
+typedef result_t (*filing_run_fn_t)(filetype_t type);
+
+/* Set the function a Filer calls when the DataOpen for a double-clicked file
+ * bounces: the RISC OS Alias$@RunType_XXX equivalent. With none set, or if
+ * it fails, the Filer reports that no application opens the file's type.
+ *
+ * \param[in] fn Run function, or NULL for none. */
+void filing_set_run_fn(filing_run_fn_t fn);
+
 /* window D's task: a RISC OS-style Filer. A System menu row and an icon bar
  * icon both open (or, if already open, bring to the front) a window on the
  * root directory (see filing_set_root); each subsequent window is opened by
  * double-clicking a directory entry in an existing window, one window per
- * path, never duplicated. Double-clicking a file does nothing. Dragging a
+ * path, never duplicated. Double-clicking a file broadcasts a recorded
+ * wuss_MESSAGE_DATA_OPEN (see wuss_data_open_t) for a running app to claim;
+ * if it bounces, the Filer starts the app for the file's type through the
+ * run function (see filing_set_run_fn) and broadcasts it once more, then
+ * reports an error if that bounces too. A double ADJUST click on a file also
+ * closes its window, as for a directory. Dragging a
  * file out of a window starts a core drag; when it ends over a window of
  * another task, the Filer sends that window a wuss_MESSAGE_DATA_LOAD whose
  * payload is the file's full path as a NUL-terminated string.
@@ -100,6 +119,8 @@ struct filing_task
 
   char                   drag_path[DPTLIB_MAXPATH]; /* file being dragged,
                                        * or "" */
+  unsigned int           open_retry; /* my_ref of the DataOpen re-sent after
+                                      * starting an app for it, or 0 */
 
   wuss_menu_handle_t     menu_handle;
   wuss_window_t         *menu_window; /* Filer window the menu was opened

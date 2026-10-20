@@ -20,9 +20,11 @@ const filetype_t filetype_DATA = { 0xFFD, "" };
  * table so filetype_from_riscos(0xFFD) returns it via the normal scan. */
 static const filetype_t g_filetypes[] =
 {
-  { 0xB60, ".png"  },
-  { 0xFFF, ".txt"  },
-  { 0xFFD, ""      }  /* directory has no host extension of its own */
+  { filetype_RISCOS_PNG,      ".png" },
+  { filetype_RISCOS_TEXT,     ".txt" },
+  { filetype_RISCOS_MARKDOWN, ".md"  },
+  { 0xFFD,                    ""     }  /* directory has no host extension of
+                                         * its own */
 };
 
 #define NFILETYPES (sizeof(g_filetypes) / sizeof(g_filetypes[0]))

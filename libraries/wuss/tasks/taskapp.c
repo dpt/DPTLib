@@ -208,6 +208,34 @@ static result_t app_data_load(app_t *app, const wuss_message_t *msg)
   return result_OK;
 }
 
+/* A file double-clicked in a Filer: claim it if its type is in desc->opens,
+ * then open an instance and load it. Claimed even if the load fails: the app
+ * reports its own load errors, so the Filer must not report another. */
+static result_t app_data_open(app_t *app, const wuss_message_t *msg)
+{
+  const wuss_data_open_t *open;
+  const unsigned short   *type;
+  void                   *instance;
+
+  if (app->desc->opens == NULL || app->desc->data_load == NULL ||
+      msg->size < sizeof(*open))
+    return result_OK;
+
+  open = (const wuss_data_open_t *) msg->data;
+  for (type = app->desc->opens; *type != 0; type++)
+    if (*type == open->filetype.riscos)
+      break;
+  if (*type == 0)
+    return result_OK;
+
+  (void) wuss_acknowledge(app->wuss, app->task, msg);
+
+  if (app_spawn_instance(app, &instance) == result_OK)
+    (void) app->desc->data_load(instance, open->path);
+
+  return result_OK;
+}
+
 result_t taskapp_window_data_load(wuss_t                *wuss,
                                   wuss_task_t           *delegate,
                                   void                  *instance,
@@ -273,9 +301,11 @@ static result_t app_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_MESSAGE:
-    if (window == NULL)
-      return app_data_load(app, event->data.message);
-    return result_OK;
+    if (window != NULL)
+      return result_OK;
+    if (event->data.message->action == wuss_MESSAGE_DATA_OPEN)
+      return app_data_open(app, event->data.message);
+    return app_data_load(app, event->data.message);
 
   case wuss_EVENT_MENU_SELECT:
     if (event->data.menu_select.menu != &app->menu)

@@ -587,6 +587,32 @@ static bool tasks_spawn_one(const char *name)
   return false;
 }
 
+/* The app that opens each filetype when no running app claims a file's
+ * DataOpen: wuss's Alias$@RunType_XXX. Names are as in the tables above. */
+static const struct
+{
+  unsigned short filetype;
+  const char    *name;
+}
+g_run_types[] =
+{
+  { filetype_RISCOS_PNG,      "Viewing" },
+  { filetype_RISCOS_TEXT,     "Reading" },
+  { filetype_RISCOS_MARKDOWN, "Reading" }
+};
+
+result_t tasks_run_type(filetype_t type)
+{
+  size_t i;
+
+  for (i = 0; i < NELEMS(g_run_types); i++)
+    if (g_run_types[i].filetype == type.riscos)
+      return tasks_spawn_one(g_run_types[i].name) ? result_OK
+                                                   : result_NOT_FOUND;
+
+  return result_NOT_FOUND;
+}
+
 void tasks_spawn(const char *names)
 {
   const char *p;

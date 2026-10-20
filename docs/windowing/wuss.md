@@ -292,6 +292,23 @@ The window is created `wuss_WINDOW_NO_CLOSE` and `wuss_WINDOW_NO_REDRAW` — it 
 
 Point a menu item's `window` field at `wuss_proginfo_window()` to have Wuss show the dialogue where a submenu would open.
 
+## Opening files
+
+Double-clicking a file in a Filing window opens it the RISC OS way, through a `wuss_MESSAGE_DATA_OPEN` message (`wuss/message.h`):
+
+1. Filing sends a recorded broadcast whose payload is a `wuss_data_open_t`: the file's `filetype_t` and its full path.
+2. Each running task gets it in turn, as a task-view `wuss_EVENT_MESSAGE` (`window` is NULL). A task that opens files of that type calls `wuss_acknowledge` and loads the file. The first acknowledgement stops delivery.
+3. If no task acknowledges it, the message bounces back to Filing as `wuss_EVENT_MESSAGE_BOUNCED`. Filing calls its run function (`filing_set_run_fn`), the equivalent of `Alias$@RunType_XXX`, to start the app for the type. It then broadcasts the message once more.
+4. If there is no app for the type, or the second broadcast bounces too, Filing reports "No application to open files of type &XXX".
+
+A double ADJUST click opens the file and then closes the Filing window, as it does for a directory.
+
+The demo app's tasks claim types through `taskapp_desc_t::opens`, a 0-terminated list of RISC OS filetype numbers. taskapp acknowledges a matching message as soon as the type matches, then opens a new instance and passes it the path through `data_load`. A load that fails is reported by the app itself, so Filing never reports a second error. The run function in `apps/wuss/tasks.c` maps PNG (&B60) to Viewing, and text (&FFF) and Markdown to Reading.
+
+Markdown has no allocated RISC OS filetype. `filetype_RISCOS_MARKDOWN` (&1D0) is a placeholder from the user range until one is allocated.
+
+On RISC OS, `io/dirlist` still takes a file's type from its extension rather than from the filing system, so a file without one is `&FFD` and finds no app.
+
 ## Glossary
 
 Terms as this document and the API use them. Several are RISC OS conventions, which Wuss follows.

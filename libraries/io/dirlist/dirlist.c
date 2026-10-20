@@ -47,6 +47,9 @@ static result_t dirlist_add_entry(const char *leaf, void *opaque)
 
   e->is_dir = 0;
 
+  /* ponytail: the type comes from the extension only. On RISC OS that misses
+   * the filesystem's own filetype (OS_File 23), so every file is &FFD and a
+   * Filer double-click finds no app; read it there if that matters. */
   dot = strrchr(leaf, '.');
   e->type = (dot != NULL) ? filetype_from_ext(dot) : filetype_DATA;
 

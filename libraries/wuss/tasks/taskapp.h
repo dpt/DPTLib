@@ -54,6 +54,10 @@ typedef struct taskapp_desc
                                       * adjust_label */
   const char          *create_label; /* menu row for create, if adjust */
   const char          *adjust_label; /* menu row for adjust, if adjust */
+  const unsigned short *opens;       /* optional: 0-terminated RISC OS
+                                      * filetypes this app claims from a
+                                      * wuss_MESSAGE_DATA_OPEN; needs
+                                      * data_load */
 }
 taskapp_desc_t;
 
@@ -63,7 +67,10 @@ taskapp_desc_t;
  * instance a child task of the app's, so no window opens until asked for.
  * A wuss_MESSAGE_DATA_LOAD sent to the icon (a file dropped on it) opens an
  * instance the same way and passes it the path through desc->data_load; it
- * is acknowledged only if that returns result_OK. With desc->drop_only,
+ * is acknowledged only if that returns result_OK. A wuss_MESSAGE_DATA_OPEN
+ * broadcast (a file double-clicked in a Filer) whose filetype is in
+ * desc->opens is acknowledged at once and then opened the same way; a load
+ * that fails is left for desc->data_load to report. With desc->drop_only,
  * SELECT does nothing, so a drop is the only way to open an instance.
  * Does nothing, returning result_OK, if desc is already installed. Without
  * the icon bar, calls desc->create at once instead. */

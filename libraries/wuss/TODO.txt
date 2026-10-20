@@ -5,7 +5,6 @@ Items marked (blocks: X) are prerequisites for X.
 
 
 Filer
-- DataOpen
 - Draw some icons - 'open' directory icon variant
 - Allow multiple selections?
 - Drags within the filer

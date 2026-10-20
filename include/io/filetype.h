@@ -19,6 +19,13 @@ typedef struct filetype
 }
 filetype_t;
 
+/** RISC OS filetype numbers of the types in the table. */
+#define filetype_RISCOS_PNG      0xB60
+#define filetype_RISCOS_TEXT     0xFFF
+/** Markdown has no allocated RISC OS filetype yet; this is a placeholder in
+ *  the user range (&100-&3FF) until RISC OS Open allocates one. */
+#define filetype_RISCOS_MARKDOWN 0x1D0
+
 /** Unknown/data filetype: RISC OS &FFD, no host extension. */
 extern const filetype_t filetype_DATA;
 

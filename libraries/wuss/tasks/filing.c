@@ -17,6 +17,7 @@
 #include "base/debug.h"
 #include "base/utils.h"
 #include "io/path.h"
+#include "wuss/component/error.h"
 #include "wuss/component/proginfo.h"
 #include "wuss/icon-spec.h"
 #include "wuss/icon.h"
@@ -31,6 +32,13 @@
 #define FILING_MAX_ROWS    4  /* initial window height cap, in cells */
 
 static char g_filing_root[DPTLIB_MAXPATH] = "";
+
+static filing_run_fn_t g_filing_run;
+
+void filing_set_run_fn(filing_run_fn_t fn)
+{
+  g_filing_run = fn;
+}
 
 void filing_set_root(const char *root)
 {
@@ -183,6 +191,54 @@ static result_t filing_set_hidden(filing_task_t *task, int hidden)
   return wuss_task_set_hidden(task->wuss, task->delegate, hidden);
 }
 
+/* Broadcast a recorded DataOpen for the file at path, of the given type, for
+ * a running app to claim. The send's reference goes in *my_ref if my_ref is
+ * non-NULL. */
+static void filing_send_open(filing_task_t *task,
+                             const char    *path,
+                             filetype_t     type,
+                             unsigned int  *my_ref)
+{
+  wuss_data_open_t open;
+
+  open.filetype = type;
+  snprintf(open.path, sizeof(open.path), "%s", path);
+
+  (void) wuss_send_recorded(task->wuss, task->delegate, NULL,
+                            wuss_MESSAGE_DATA_OPEN, &open, sizeof(open), 0,
+                            my_ref);
+}
+
+/* A DataOpen that no running app claimed: start the app for its type and
+ * send it once more, or, if there is none or the second send bounced too,
+ * report that nothing opens the file. */
+static void filing_open_bounced(filing_task_t        *task,
+                                const wuss_message_t *msg)
+{
+  const wuss_data_open_t *open;
+  char                    message[64];
+
+  if (msg->action != wuss_MESSAGE_DATA_OPEN)
+    return;
+
+  open = (const wuss_data_open_t *) msg->data;
+
+  if (msg->my_ref != task->open_retry && g_filing_run != NULL &&
+      g_filing_run(open->filetype) == result_OK)
+  {
+    filing_send_open(task, open->path, open->filetype, &task->open_retry);
+    return;
+  }
+
+  task->open_retry = 0;
+
+  snprintf(message, sizeof(message),
+           "No application to open files of type &%03X",
+           open->filetype.riscos);
+  (void) wuss_error_report(task->wuss, "file_dir", "Filing", message,
+                           wuss_ERROR_BUTTONS_OK, NULL, NULL);
+}
+
 static void filing_activate(wuss_gridview_t *gridview,
                             int              index,
                             wuss_button_t    button,
@@ -196,7 +252,7 @@ static void filing_activate(wuss_gridview_t *gridview,
 
   fw    = opaque;
   entry = dirlist_get(fw->listing, index);
-  if (entry == NULL || !entry->is_dir)
+  if (entry == NULL)
     return;
 
   if (filing_join(child, sizeof(child), fw->path, entry->leaf) >=
@@ -205,9 +261,13 @@ static void filing_activate(wuss_gridview_t *gridview,
 
   /* as RISC OS: a double ADJUST opens the child in this viewer's place and
    * closes this one. That frees fw's slot and destroys gridview; neither is
-   * used after. */
-  (void) filing_open_path(fw->owner, child, fw->window,
-                         button & wuss_BUTTON_ADJUST);
+   * used after. A file is opened by whichever app claims its DataOpen, which
+   * is queued, so closing this viewer straight after does not affect it. */
+  if (entry->is_dir)
+    (void) filing_open_path(fw->owner, child, fw->window,
+                           button & wuss_BUTTON_ADJUST);
+  else
+    filing_send_open(fw->owner, child, entry->type, NULL);
 
   if (button & wuss_BUTTON_ADJUST)
     (void) wuss_window_try_close(fw->window);
@@ -837,6 +897,10 @@ result_t filing_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MESSAGE:
     return filing_message(task, window, event);
+
+  case wuss_EVENT_MESSAGE_BOUNCED:
+    filing_open_bounced(task, event->data.message);
+    return result_OK;
 
   case wuss_EVENT_DRAG_END:
     filing_drop(task, event);

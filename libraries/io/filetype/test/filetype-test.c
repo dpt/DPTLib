@@ -63,6 +63,21 @@ static result_t test_from_riscos_known(void)
   return result_TEST_PASSED;
 }
 
+static result_t test_markdown_round_trip(void)
+{
+  filetype_t t;
+
+  t = filetype_from_ext(".md");
+  if (t.riscos != filetype_RISCOS_MARKDOWN)
+    return result_TEST_FAILED;
+
+  t = filetype_from_riscos(filetype_RISCOS_MARKDOWN);
+  if (strcmp(t.ext, ".md") != 0)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
 /* An unrecognised RISC OS number is carried through unchanged rather than
  * being silently rewritten to filetype_DATA's own number -- round-tripping
  * a number the table doesn't know must not lose it. */
@@ -114,6 +129,7 @@ result_t filetype_test(const char *resources)
     test_from_ext_unknown,
     test_from_ext_null,
     test_from_riscos_known,
+    test_markdown_round_trip,
     test_from_riscos_unknown,
     test_set_off_riscos,
     test_set_null_path

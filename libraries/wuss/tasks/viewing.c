@@ -159,13 +159,15 @@ static result_t viewing_show(viewing_task_t *ic, const char *path);
 
 result_t viewing_app_create(wuss_t *wuss)
 {
+  static const unsigned short opens[] = { filetype_RISCOS_PNG, 0 };
   static const taskapp_desc_t desc =
   {
-    "Viewing",
-    "View PNG images",
-    (taskapp_create_fn_t) viewing_create,
-    (taskapp_data_load_fn_t) viewing_show,
-    true
+    .name      = "Viewing",
+    .purpose   = "View PNG images",
+    .create    = (taskapp_create_fn_t) viewing_create,
+    .data_load = (taskapp_data_load_fn_t) viewing_show,
+    .drop_only = true,
+    .opens     = opens
   };
 
   return taskapp_install(wuss, &desc);
