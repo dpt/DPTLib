@@ -53,9 +53,9 @@ static const reading_spacing_preset_t reading_spacing_presets[] =
 
 #define READING_DEFAULT_SPACING 0 /* "Normal" */
 
-/* fixed tint colours reading__markdown_parse assigns to styled runs -- palette-
- * independent since bmfont has no bold/italic glyph variants to switch to,
- * so emphasis is shown by colour instead */
+/* fixed tint colours reading__markdown_parse assigns to styled runs --
+ * palette-independent. Bold runs are also drawn in the family's Bold face
+ * where it has one; other emphasis is shown by colour alone. */
 #define READING_MD_HEADER_COLOUR colour_rgb(0x20, 0x60, 0xd0)
 #define READING_MD_BOLD_COLOUR   colour_rgb(0xd0, 0x20, 0x20)
 #define READING_MD_ITALIC_COLOUR colour_rgb(0x20, 0x90, 0x40)
@@ -98,6 +98,7 @@ static bool reading__markdown_emphasis(const char    **p,
   const char *marker;
   int         markerlen;
   colour_t    colour;
+  bool        bold;
   const char *close;
   const char *run;
   int         runlen;
@@ -107,16 +108,19 @@ static bool reading__markdown_emphasis(const char    **p,
   {
     markerlen = 2;
     colour    = READING_MD_BOLD_COLOUR;
+    bold      = true;
   }
   else if (start[0] == '*' || start[0] == '_')
   {
     markerlen = 1;
     colour    = READING_MD_ITALIC_COLOUR;
+    bold      = false;
   }
   else /* '`' */
   {
     markerlen = 1;
     colour    = READING_MD_CODE_COLOUR;
+    bold      = false;
   }
   marker = start;
   run    = start + markerlen;
@@ -138,6 +142,7 @@ static bool reading__markdown_emphasis(const char    **p,
     spans[*nspans].start  = *outlen;
     spans[*nspans].len    = runlen;
     spans[*nspans].colour = colour;
+    spans[*nspans].bold   = bold;
     (*nspans)++;
   }
   *outlen += runlen;
@@ -172,6 +177,7 @@ static void reading__markdown_emit_header(reading_md_state_t state,
   spans[*nspans].start  = line_start;
   spans[*nspans].len    = textlen - line_start;
   spans[*nspans].colour = READING_MD_HEADER_COLOUR;
+  spans[*nspans].bold   = false;
   (*nspans)++;
 }
 
@@ -288,7 +294,7 @@ static const wuss_menu_t *reading_fontmenu(reading_task_t *task)
                             wuss_FONTMENU_FAMILIES);
 }
 
-/* release the font this task acquired; the system font (current == -1) is
+/* release the fonts this task acquired; the system font (current == -1) is
  * wuss's, not ours */
 static void reading_release_fonts(reading_task_t *task)
 {
@@ -296,10 +302,13 @@ static void reading_release_fonts(reading_task_t *task)
     return;
 
   bmfontcache_release(wuss_get_font_cache(task->wuss), task->font);
+  if (task->bold != NULL)
+    bmfontcache_release(wuss_get_font_cache(task->wuss), task->bold);
 }
 
-/* make family name (font menu row idx) the paragraph's: its Regular face,
- * or its first face if it has none. On failure the current font stays. */
+/* make family name (font menu row idx) the paragraph's: its Regular face
+ * (or its first face if it has none) and its Bold face, if any. On failure
+ * the current fonts stay. */
 static result_t reading_load_family(reading_task_t *task,
                                     int             idx,
                                     const char     *name)
@@ -308,7 +317,9 @@ static result_t reading_load_family(reading_task_t *task,
   const char         *resources;
   bmfontfamily_t     *family;
   const bmfontface_t *face;
+  bmfontcache_t      *cache;
   bmfont_t           *font;
+  bmfont_t           *bold;
 
   resources = wuss_get_resources(task->wuss);
   rc = bmfontfamily_scan(pathf("%s/resources/bmfonts/%s", resources, name),
@@ -321,14 +332,29 @@ static result_t reading_load_family(reading_task_t *task,
   if (face == NULL)
     face = bmfontfamily_face(family, 0); /* a scanned family has a face */
 
-  rc = bmfontcache_acquire(wuss_get_font_cache(task->wuss), face->path,
-                           &font);
+  cache = wuss_get_font_cache(task->wuss);
+  rc = bmfontcache_acquire(cache, face->path, &font);
+  if (rc != result_OK)
+  {
+    bmfontfamily_destroy(family);
+    return rc;
+  }
+
+  bold = NULL;
+  face = bmfontfamily_find(family, bmfontfamily_WEIGHT_BOLD,
+                           bmfontfamily_SLANT_UPRIGHT);
+  if (face != NULL)
+    rc = bmfontcache_acquire(cache, face->path, &bold);
   bmfontfamily_destroy(family);
   if (rc != result_OK)
+  {
+    bmfontcache_release(cache, font);
     return rc;
+  }
 
   reading_release_fonts(task);
   task->font    = font;
+  task->bold    = bold;
   task->current = idx;
   return result_OK;
 }
@@ -821,10 +847,99 @@ void reading_destroy(reading_task_t *task)
 #define READING_INSET 4
 #define LEADING    2
 
+/* the face a run is drawn in: a bold span's in tcx->bold where the family
+ * has one, everything else in tcx->font */
+static bmfont_t *reading__run_font(const reading_task_t *tcx,
+                                   const reading_span_t *span)
+{
+  return span != NULL && span->bold && tcx->bold != NULL ? tcx->bold
+                                                         : tcx->font;
+}
+
+/* split off the next run of up to len bytes at byte offset off of tcx->text:
+ * either part of one span, or unstyled text up to the next span. Returns the
+ * span, or NULL for unstyled text, and sets *run_len. */
+static const reading_span_t *reading__run(const reading_task_t *tcx,
+                                          int                   off,
+                                          int                   len,
+                                          int                  *run_len)
+{
+  int j;
+
+  for (j = 0; j < tcx->markdown_nspans; j++)
+  {
+    const reading_span_t *s;
+
+    s = &tcx->markdown_spans[j];
+    if (off >= s->start && off < s->start + s->len)
+    {
+      *run_len = MIN(len, s->start + s->len - off);
+      return s;
+    }
+  }
+
+  *run_len = len;
+  for (j = 0; j < tcx->markdown_nspans; j++)
+  {
+    int rel;
+
+    rel = tcx->markdown_spans[j].start - off;
+    if (rel > 0 && rel < *run_len)
+      *run_len = rel;
+  }
+
+  return NULL;
+}
+
+/* bmtext_measure_fn over tcx->text: as bmfont_measure, but measuring each run
+ * in the face reading__draw_styled draws it in, so bold text wraps and
+ * aligns at its own width */
+static result_t reading__measure(const char     *text,
+                                 int             len,
+                                 bmfont_width_t  target_width,
+                                 int            *split_point,
+                                 bmfont_width_t *actual_width,
+                                 void           *opaque)
+{
+  result_t        rc;
+  reading_task_t *tcx = opaque;
+  int             cursor;
+  bmfont_width_t  width;
+
+  rc     = result_OK;
+  cursor = 0;
+  width  = 0;
+  while (cursor < len)
+  {
+    const reading_span_t *span;
+    int                   run_len;
+    int                   split;
+    bmfont_width_t        run_width;
+
+    span = reading__run(tcx, (int) (text - tcx->text) + cursor, len - cursor,
+                        &run_len);
+    rc   = bmfont_measure(reading__run_font(tcx, span), text + cursor,
+                          run_len, &tcx->spacing, target_width - width,
+                          &split, &run_width);
+    if (rc != result_OK)
+      break;
+
+    cursor += split;
+    width  += run_width;
+    if (split < run_len)
+      break; /* the rest does not fit */
+  }
+
+  *split_point  = cursor;
+  *actual_width = width;
+  return rc;
+}
+
 /* like bmtext_draw, but each line is split against tcx->markdown_spans (byte
  * offsets into tcx->text) so a span's run is drawn in its own colour
- * instead of fg; used only when tcx->markdown_nspans > 0. Line i starts
- * dx[i] pixels right of origin. */
+ * instead of fg, and a bold span in tcx->bold if there is one; used only
+ * when tcx->markdown_nspans > 0. Line i starts dx[i] pixels right of
+ * origin. */
 static void reading__draw_styled(reading_task_t      *tcx,
                                  screen_t            *scr,
                                  const bmtext_line_t *lines,
@@ -857,53 +972,14 @@ static void reading__draw_styled(reading_task_t      *tcx,
 
     while (cursor < line_len)
     {
-      int                   abs_pos;
       const reading_span_t *span;
-      int                   j;
-      int                   run_start;
       int                   run_len;
-      colour_t              run_colour;
 
-      abs_pos = line_off + cursor;
-      span    = NULL;
-      for (j = 0; j < tcx->markdown_nspans; j++)
-      {
-        const reading_span_t *s;
-
-        s = &tcx->markdown_spans[j];
-        if (abs_pos >= s->start && abs_pos < s->start + s->len)
-        {
-          span = s;
-          break;
-        }
-      }
-
-      run_start = cursor;
-      if (span != NULL)
-      {
-        run_len    = MIN(line_len - cursor, span->start + span->len - abs_pos);
-        run_colour = span->colour;
-      }
-      else
-      {
-        /* run up to the start of the next span that begins within this
-         * line, or to the end of the line if none does */
-        run_len = line_len - cursor;
-        for (j = 0; j < tcx->markdown_nspans; j++)
-        {
-          const reading_span_t *s;
-          int                   rel;
-
-          s   = &tcx->markdown_spans[j];
-          rel = s->start - line_off;
-          if (rel > cursor && rel - cursor < run_len)
-            run_len = rel - cursor;
-        }
-        run_colour = fg;
-      }
-
-      bmfont_draw(tcx->font, scr, line_str + run_start, run_len, run_colour,
-                 bg, &tcx->spacing, &pos, &pos);
+      span = reading__run(tcx, line_off + cursor, line_len - cursor,
+                          &run_len);
+      bmfont_draw(reading__run_font(tcx, span), scr, line_str + cursor,
+                  run_len, span != NULL ? span->colour : fg, bg,
+                  &tcx->spacing, &pos, &pos);
       cursor += run_len;
     }
 
@@ -911,20 +987,20 @@ static void reading__draw_styled(reading_task_t      *tcx,
   }
 }
 
-/* bmtext_layout doesn't treat '\n' specially -- it wraps at spaces only, so
- * a raw call over tcx->text would swallow every newline as if it were
- * whitespace and run headers/paragraphs/list items together on one line.
+/* bmtext_layout_measured doesn't treat '\n' specially -- it wraps at spaces
+ * only, so a raw call over tcx->text would swallow every newline as if it
+ * were whitespace and run headers/paragraphs/list items together on one
+ * line.
  * Split text into '\n'-separated segments first and lay out each
  * separately, appending into lines[] -- a blank segment still
  * produces one empty bmtext_line_t, so blank-line paragraph gaps survive
  * as a blank output line). Returns the number of lines written, capped at
  * max. */
-static int reading__layout_lines(bmfont_t               *font,
-                                 const char             *text,
-                                 int                     wrap_width,
-                                 const bmfont_spacing_t *spacing,
-                                 bmtext_line_t          *lines,
-                                 int                     max)
+static int reading__layout_lines(reading_task_t *tcx,
+                                 const char     *text,
+                                 int             wrap_width,
+                                 bmtext_line_t  *lines,
+                                 int             max)
 {
   int         nlines;
   const char *seg;
@@ -949,8 +1025,8 @@ static int reading__layout_lines(bmfont_t               *font,
     }
     else
     {
-      n = bmtext_layout(font, seg, seglen, wrap_width, spacing,
-                        lines + nlines, max - nlines);
+      n = bmtext_layout_measured(reading__measure, tcx, seg, seglen,
+                                 wrap_width, lines + nlines, max - nlines);
       nlines += n;
     }
 
@@ -1006,11 +1082,7 @@ static result_t reading_redraw(const wuss_event_t *event, void *task_data)
     return result_OOM;
   }
 
-  nlines = reading__layout_lines(tcx->font,
-                                 tcx->text,
-                                 wrap_width,
-                                 &tcx->spacing,
-                                 lines,
+  nlines = reading__layout_lines(tcx, tcx->text, wrap_width, lines,
                                  (int) max);
 
   /* per-line indent for the alignment; a line wider than the wrap width (a
@@ -1025,8 +1097,8 @@ static result_t reading_redraw(const wuss_event_t *event, void *task_data)
     if (tcx->align == READING_ALIGN_LEFT || lines[i].len == 0)
       continue; /* bmfont_measure refuses an empty run */
 
-    if (bmfont_measure(tcx->font, lines[i].str, lines[i].len, &tcx->spacing,
-                       wrap_width, &split, &width) != result_OK)
+    if (reading__measure(lines[i].str, lines[i].len, wrap_width, &split,
+                         &width, tcx) != result_OK)
       continue;
 
     dx[i] = wrap_width - width;
@@ -1097,8 +1169,8 @@ static result_t reading_idle(void *task_data)
   if (lines == NULL)
     return result_OOM;
 
-  nlines = reading__layout_lines(tcx->font, tcx->text, wrap_width,
-                                 &tcx->spacing, lines, (int) max);
+  nlines = reading__layout_lines(tcx, tcx->text, wrap_width, lines,
+                                 (int) max);
   free(lines);
 
   tcx->doc_wrap    = wrap_width;

@@ -17,13 +17,14 @@
 
 /* one styled run within a task's markdown_text, produced by
  * reading__markdown_parse: [start, start+len) is drawn in colour instead of
- * the paragraph's normal foreground. Runs never overlap and are sorted by
- * start. */
+ * the paragraph's normal foreground, and in the bold face if bold is set.
+ * Runs never overlap and are sorted by start. */
 typedef struct reading_span
 {
   int      start;
   int      len;
   colour_t colour;
+  bool     bold;
 }
 reading_span_t;
 
@@ -51,7 +52,10 @@ typedef struct reading_task
   bmfont_t           *font;       /* currently shown: the current family's
                                    * Regular face (acquired from the font
                                    * cache), or the borrowed sysfont */
-  int                current;    /* font menu row of the current family, or
+  bmfont_t           *bold;       /* the current family's Bold face
+                                   * (acquired), or NULL if it has none or
+                                   * sysfont is shown */
+  int                 current;    /* font menu row of the current family, or
                                    * -1 for sysfont */
   wuss_colour_t      *colourmenu_target; /* &task->fg_index or
                                    * &task->bg_index: which field the open
