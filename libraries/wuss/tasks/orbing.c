@@ -1394,6 +1394,7 @@ static result_t orbing_menu_select(orbing_task_t      *task,
   if (event->data.menu_select.menu == &task->dither_menu)
   {
     task->dithering = (screen_dither_t) index;
+    wuss_menu_tick_exclusive(&task->dither_menu, index);
     wuss_menu_tick_exclusive_live(task->menu_handle, &task->dither_menu,
                                   index);
     orbing_invalidate_preview(task);
