@@ -16,6 +16,7 @@
 #include "framebuf/octree.h"
 #include "io/namelist.h"
 #include "io/path.h"
+#include "wuss/icon.h"
 #include "wuss/menu.h"
 
 #include "common.h"
@@ -46,15 +47,6 @@ static const int dithering_counts[DITHERING_NCOUNTS] =
 static const char *const dithering_count_names[DITHERING_NCOUNTS] =
 {
   "2", "4", "8", "16", "64", "256"
-};
-
-static const int dithering_strengths[DITHERING_NSTRENGTHS] =
-{
-  0, 25, 50, 75, 100
-};
-static const char *const dithering_strength_names[DITHERING_NSTRENGTHS] =
-{
-  "0%", "25%", "50%", "75%", "100%"
 };
 
 /* ----------------------------------------------------------------------- */
@@ -135,7 +127,7 @@ static result_t dithering_apply(dithering_task_t *dt)
     opts.method     = dt->method;
     opts.palette    = palette;
     opts.ncolours   = ncolours;
-    opts.strength   = dithering_strengths[dt->strength];
+    opts.strength   = dt->strength;
     opts.serpentine = dt->serpentine;
     rc = dither_bitmap(&dt->source, &opts, &out);
   }
@@ -207,6 +199,76 @@ static result_t dithering_show(dithering_task_t *dt, const char *path)
   return dithering_apply(dt);
 }
 
+/* ----- strength dialogue ----- */
+
+static result_t dithering_strength_fillout(void *opaque)
+{
+  dithering_task_t *dt;
+
+  dt = opaque;
+
+  return wuss_slider_row_set(wuss_dialogue_window(dt->strength_dialogue),
+                             &dt->strength_row, dt->strength);
+}
+
+/* Build the Strength dialogue: a label, a 0..100% slider and its value echo
+ * in one row. Hover on the menu row opens it as a submenu; every drag
+ * re-dithers at once. */
+static result_t dithering_strength_create(dithering_task_t *dt)
+{
+  result_t         rc;
+  wuss_icon_spec_t specs[3];
+  wuss_icon_t     *made[3];
+  char             buf[WUSS_SLIDER_ROW_BUF];
+  int              label_w, value_w, width, height;
+  box_t            label_box, slider_box, value_box;
+
+  label_w = task_text_width(dt->wuss, "Strength");
+  /* +2: a label insets its text a pixel either side, and an overhang would
+   * be left behind when the text shrinks */
+  value_w = task_text_width(dt->wuss, "100%") + 2;
+  width   = 2 * wuss_STD_INSET + label_w + DITHERING_SLIDER_W + value_w +
+            2 * wuss_STD_GAP;
+  height  = 2 * wuss_STD_INSET + wuss_STD_SLIDER_HEIGHT;
+
+  rc = wuss_dialogue_create(&dt->strength_dialogue, dt->delegate,
+                            SIZE2D(width, height), "Strength",
+                            dithering_strength_fillout, dt);
+  if (rc != result_OK)
+    return rc;
+
+  wuss_dialogue_set_focusable(dt->strength_dialogue, 0);
+
+  label_box  = (box_t) BOX_POS_SIZE(wuss_STD_INSET, wuss_STD_INSET, label_w,
+                                    wuss_STD_SLIDER_HEIGHT);
+  slider_box = (box_t) BOX_POS_SIZE(label_box.x1 + wuss_STD_GAP,
+                                    wuss_STD_INSET, DITHERING_SLIDER_W,
+                                    wuss_STD_SLIDER_HEIGHT);
+  value_box  = (box_t) BOX_POS_SIZE(slider_box.x1 + wuss_STD_GAP,
+                                    wuss_STD_INSET, value_w,
+                                    wuss_STD_SLIDER_HEIGHT);
+
+  wuss_icon_spec_label(&specs[0], label_box, "Strength",
+                       wuss_ICON_FLAGS_JUSTIFY_RIGHT);
+  wuss_icon_spec_slider_row(&specs[1], &specs[2], slider_box, value_box,
+                            wuss_SLIDER_HORIZONTAL, 0, 100, dt->strength,
+                            "%d%%", 0, buf, sizeof(buf));
+
+  rc = wuss_icon_create_array(wuss_dialogue_window(dt->strength_dialogue),
+                              specs, NELEMS(specs), made);
+  if (rc != result_OK)
+  {
+    wuss_dialogue_destroy(dt->strength_dialogue);
+    dt->strength_dialogue = NULL;
+    return rc;
+  }
+
+  wuss_slider_row_bind(&dt->strength_row, made[1], made[2], "%d%%", 0, 100,
+                       0);
+
+  return result_OK;
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
@@ -224,7 +286,7 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
   task->method     = dither_FLOYD_STEINBERG;
   task->palette    = DITHERING_PALETTE_OPTIMAL;
   task->count      = 3; /* 16 */
-  task->strength   = DITHERING_NSTRENGTHS - 1; /* 100% */
+  task->strength   = 100;
   task->serpentine = 1;
   task->source.size = SIZE2D(DITHERING_EMPTYSZ, DITHERING_EMPTYSZ); /* no pixels */
 
@@ -256,20 +318,15 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
   WUSS_MENU_TITLE(task->count_menu, "Colours", task->count_items,
                   DITHERING_NCOUNTS);
 
-  for (i = 0; i < DITHERING_NSTRENGTHS; i++)
-    WUSS_MENU_ITEM(task->strength_items, i, dithering_strength_names[i],
-                   wuss_MENU_ITEM_NONE);
-  WUSS_MENU_TITLE(task->strength_menu, "Strength", task->strength_items,
-                  DITHERING_NSTRENGTHS);
-
   WUSS_MENU_ITEM_MENU(task->menu_items, DITHERING_MENU_METHOD, "Method",
                       wuss_MENU_ITEM_NONE, &task->method_menu);
   WUSS_MENU_ITEM_MENU(task->menu_items, DITHERING_MENU_PALETTE, "Palette",
                       wuss_MENU_ITEM_NONE, &task->palette_menu);
   WUSS_MENU_ITEM_MENU(task->menu_items, DITHERING_MENU_COLOURS, "Colours",
                       wuss_MENU_ITEM_NONE, &task->count_menu);
-  WUSS_MENU_ITEM_MENU(task->menu_items, DITHERING_MENU_STRENGTH, "Strength",
-                      wuss_MENU_ITEM_NONE, &task->strength_menu);
+  /* window set once the dialogue exists */
+  WUSS_MENU_ITEM(task->menu_items, DITHERING_MENU_STRENGTH, "Strength",
+                 wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
   WUSS_MENU_ITEM(task->menu_items, DITHERING_MENU_SERPENTINE, "Serpentine",
                  wuss_MENU_ITEM_NONE);
   WUSS_MENU_ITEM(task->menu_items, DITHERING_MENU_SAVE, "Save PNG",
@@ -316,6 +373,15 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
   task->menu_items[DITHERING_MENU_SAVE].window =
     wuss_saveas_window(task->saveas);
 
+  rc = dithering_strength_create(task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(task->delegate); /* QUIT frees the block */
+    return rc;
+  }
+  task->menu_items[DITHERING_MENU_STRENGTH].window =
+    wuss_dialogue_window(task->strength_dialogue);
+
   if (out)
     *out = task;
 
@@ -338,6 +404,7 @@ result_t dithering_app_create(wuss_t *wuss)
 
 void dithering_destroy(dithering_task_t *task)
 {
+  wuss_dialogue_destroy(task->strength_dialogue);
   wuss_saveas_destroy(task->saveas);
   dithering_free_dithered(task);
   free(task->source.base);
@@ -383,7 +450,6 @@ static void dithering_menu_refresh(dithering_task_t *dt)
   wuss_menu_tick_exclusive(&dt->method_menu, (int) dt->method);
   wuss_menu_tick_exclusive(&dt->palette_menu, dt->palette);
   wuss_menu_tick_exclusive(&dt->count_menu, dt->count);
-  wuss_menu_tick_exclusive(&dt->strength_menu, dt->strength);
 }
 
 static result_t dithering_menu_open(dithering_task_t *dt)
@@ -415,8 +481,6 @@ static result_t dithering_menu_select(dithering_task_t   *dt,
     dt->palette = index;
   else if (menu == &dt->count_menu)
     dt->count = index;
-  else if (menu == &dt->strength_menu)
-    dt->strength = index;
   else if (menu == &dt->menu && index == DITHERING_MENU_SERPENTINE)
     dt->serpentine = !dt->serpentine;
   else
@@ -438,6 +502,7 @@ result_t dithering_handle(wuss_window_t      *window,
                           const wuss_event_t *event,
                           void               *task_data)
 {
+  result_t          rc;
   dithering_task_t *dt;
 
   dt = task_data;
@@ -465,6 +530,25 @@ result_t dithering_handle(wuss_window_t      *window,
   case wuss_EVENT_MENU_SELECT:
     return dithering_menu_select(dt, event);
 
+  case wuss_EVENT_ICON:
+    if (window != wuss_dialogue_window(dt->strength_dialogue) ||
+        !wuss_slider_row_event(window, &dt->strength_row, event,
+                               &dt->strength))
+      return result_OK;
+    return dithering_apply(dt);
+
+  case wuss_EVENT_PRE_SHOW:
+    if (window == wuss_dialogue_window(dt->strength_dialogue))
+    {
+      rc = wuss_dialogue_handle_pre_show(dt->strength_dialogue);
+      if (rc != result_OK)
+        return rc;
+    }
+    if (event->data.pre_show.handle == NULL)
+      return result_OK;
+    return wuss_menu_open_window_now(event->data.pre_show.handle,
+                                     event->data.pre_show.index);
+
   case wuss_EVENT_MENU_CLOSED:
     dt->menu_handle = NULL; /* wuss closed the chain under us */
     return result_OK;
@@ -482,8 +566,15 @@ result_t dithering_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_CLOSE:
+    wuss_dialogue_handle_close(dt->strength_dialogue, window);
     if (window == dt->window)
+    {
       dt->window = NULL;
+      /* the hidden dialogue is a second window on this autoclose task:
+       * close it too, else the task outlives its main window */
+      wuss_dialogue_destroy(dt->strength_dialogue);
+      dt->strength_dialogue = NULL;
+    }
     return result_OK;
 
   case wuss_EVENT_QUIT:
