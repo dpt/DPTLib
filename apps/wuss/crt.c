@@ -294,7 +294,8 @@ void wuss_crt_render(wuss_crt_t *crt,
                      SDL_Window *window,
                      const void *pixels,
                      int         width,
-                     int         height)
+                     int         height,
+                     int         border)
 {
   void                        *mapped;
   SDL_GPUTextureTransferInfo   src;
@@ -302,8 +303,11 @@ void wuss_crt_render(wuss_crt_t *crt,
   SDL_GPUCommandBuffer        *cmdbuf;
   SDL_GPUCopyPass             *copy_pass;
   SDL_GPUTexture              *swapchain;
+  Uint32                       sc_w, sc_h;
+  int                          win_w, win_h;
   SDL_GPUColorTargetInfo       target;
   SDL_GPURenderPass           *render_pass;
+  SDL_GPUViewport              viewport;
   SDL_GPUTextureSamplerBinding binding;
 
   if ((width != crt->width || height != crt->height) &&
@@ -336,9 +340,11 @@ void wuss_crt_render(wuss_crt_t *crt,
   SDL_EndGPUCopyPass(copy_pass);
 
   if (SDL_WaitAndAcquireGPUSwapchainTexture(cmdbuf, window, &swapchain,
-                                            NULL, NULL) &&
+                                            &sc_w, &sc_h) &&
       swapchain != NULL)
   {
+    SDL_GetWindowSize(window, &win_w, &win_h);
+
     memset(&target, 0, sizeof(target));
     target.texture       = swapchain;
     target.load_op       = SDL_GPU_LOADOP_CLEAR;
@@ -346,6 +352,15 @@ void wuss_crt_render(wuss_crt_t *crt,
     target.clear_color.a = 1.0f;
 
     render_pass = SDL_BeginGPURenderPass(cmdbuf, &target, 1, NULL);
+
+    /* the swapchain may be denser than the window on high-DPI displays */
+    viewport.x         = (float) border * sc_w / win_w;
+    viewport.y         = (float) border * sc_h / win_h;
+    viewport.w         = sc_w - 2 * viewport.x;
+    viewport.h         = sc_h - 2 * viewport.y;
+    viewport.min_depth = 0.0f;
+    viewport.max_depth = 1.0f;
+    SDL_SetGPUViewport(render_pass, &viewport);
 
     binding.texture = crt->texture;
     binding.sampler = crt->sampler;
