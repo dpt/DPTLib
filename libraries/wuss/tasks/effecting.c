@@ -483,6 +483,17 @@ static void effecting_build_menus(effecting_task_t *task)
   WUSS_MENU_TITLE(task->add_menu, "Add", task->add_items,
                   NELEMS(task->add_items));
 
+  /* indexed by screen_dither_t */
+  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_NONE, "None",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_BAYER, "Bayer",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_BLUE_NOISE, "Blue noise",
+                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_TITLE(task->dither_menu, "Dithering", task->dither_items,
+                  NELEMS(task->dither_items));
+  wuss_menu_tick_exclusive(&task->dither_menu, (int) task->dithering);
+
   WUSS_MENU_ITEM_MENU(task->menu_items, EFFECTING_MENU_ADD, "Add",
                       wuss_MENU_ITEM_BORROWED_SUBMENU, &task->add_menu);
   WUSS_MENU_ITEM(task->menu_items, EFFECTING_MENU_EDIT, "Edit",
@@ -496,6 +507,8 @@ static void effecting_build_menus(effecting_task_t *task)
                         wuss_MENU_ITEM_PRE_OPEN,
                         effecting_edit_window(task->edit,
                                               EFFECTING_EDIT_LEVEL));
+  WUSS_MENU_ITEM_MENU(task->menu_items, EFFECTING_MENU_DITHERING, "Dithering",
+                      wuss_MENU_ITEM_BORROWED_SUBMENU, &task->dither_menu);
   WUSS_MENU_ITEM(task->menu_items, EFFECTING_MENU_APPLY, "Apply",
                  wuss_MENU_ITEM_DASHED);
   WUSS_MENU_ITEM(task->menu_items, EFFECTING_MENU_CANCEL, "Cancel",
@@ -523,6 +536,7 @@ result_t effecting_create(wuss_t *wuss, effecting_task_t **out)
   task->wuss       = wuss;
   task->level      = 100;
   task->drag_index = -1;
+  task->dithering  = screen_DITHER_BLUE_NOISE;
 
   delegate_desc.handle    = effecting_handle;
   delegate_desc.task_data = task;
@@ -646,7 +660,7 @@ static result_t effecting_redraw(const wuss_event_t *event, void *task_data)
                                      bounds->x0 - event->data.redraw.scroll.x,
                                      bounds->y0 - event->data.redraw.scroll.y,
                                      bm,
-                                     screen_DITHER_BLUE_NOISE);
+                                     ec->dithering);
 }
 
 static void effecting_menu_enable(effecting_task_t *ec, int row, int enabled)
@@ -741,6 +755,15 @@ static result_t effecting_menu_select(effecting_task_t   *ec,
 
   if (menu == &ec->add_menu)
     return effecting_add(ec, (effecting_type_t) index);
+
+  if (menu == &ec->dither_menu)
+  {
+    ec->dithering = (screen_dither_t) index;
+    wuss_window_invalidate_visible(ec->window);
+    wuss_menu_tick_exclusive(&ec->dither_menu, index);
+    wuss_menu_tick_exclusive_live(ec->menu_handle, &ec->dither_menu, index);
+    return result_OK;
+  }
 
   if (menu != &ec->menu)
     return result_OK;

@@ -62,6 +62,7 @@ enum
   EFFECTING_MENU_DELETE,
   EFFECTING_MENU_DELETE_ALL,
   EFFECTING_MENU_LEVEL,
+  EFFECTING_MENU_DITHERING,
   EFFECTING_MENU_APPLY,
   EFFECTING_MENU_CANCEL,
   EFFECTING_MENU_SAVE,
@@ -73,9 +74,9 @@ enum
  * outcome blended with the original by Level (-100% to 200%). Select toggles
  * between the result and the original. The stack is shown in a second
  * window: pick an element, drag it to reorder it. Menu adds, edits and
- * deletes elements, sets the level, makes the result permanent (Apply) or
- * discards it (Cancel) or writes it as a PNG. Every change re-applies at
- * once. */
+ * deletes elements, sets the level and the dithering used on paletted
+ * screens, makes the result permanent (Apply) or discards it (Cancel) or
+ * writes it as a PNG. Every change re-applies at once. */
 typedef struct effecting_task
 {
   wuss_window_t       *window;
@@ -101,6 +102,9 @@ typedef struct effecting_task
 
   wuss_menu_item_t     add_items[EFFECTING__LIMIT];
   wuss_menu_t          add_menu;
+  wuss_menu_item_t     dither_items[3]; /* one row per screen_dither_t */
+  wuss_menu_t          dither_menu;
+  screen_dither_t      dithering; /* method for paletted screens */
   wuss_menu_item_t     menu_items[EFFECTING_MENU__LIMIT];
   wuss_menu_t          menu;
   wuss_menu_handle_t   menu_handle; /* the open chain, if any */
