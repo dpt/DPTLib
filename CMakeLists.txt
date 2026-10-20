@@ -1022,6 +1022,7 @@ if(BUILD_APPS)
         libraries/wuss/tasks/fireworks.c
         libraries/wuss/tasks/patterns.c
         libraries/wuss/tasks/pooling.c
+        libraries/wuss/tasks/shortcuts.c
         libraries/wuss/tasks/compositing.c
         libraries/wuss/tasks/saturn.c
         libraries/wuss/tasks/snapshot.c

@@ -49,6 +49,7 @@
 #include "tasks/patterns.h"
 #include "tasks/compositing.h"
 #include "tasks/saturn.h"
+#include "tasks/shortcuts.h"
 #include "tasks/sofa.h"
 #include "tasks/sudoku.h"
 #include "tasks/orbing.h"
@@ -154,7 +155,8 @@ g_utilities_tasks[] =
 {
   { "Chars", chars_app_create },
   { "Clock", clock_app_create },
-  { "Pooling", pooling_app_create }
+  { "Pooling", pooling_app_create },
+  { "Shortcuts", shortcuts_app_create }
 },
 g_visuals_tasks[] =
 {
