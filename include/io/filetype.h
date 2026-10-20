@@ -11,11 +11,16 @@
  * protocol's DataSave message) and the host extension (used to build a
  * leafname off RISC OS, dotted, e.g. ".png"). Either representation can be
  * derived from the other via filetype_from_ext / filetype_from_riscos.
+ *
+ * The table covers every type on RISC OS Open's File Types list, except
+ * those marked unregistered or "do not use". Where a number has more than
+ * one claimant, the OS-defined or registered one is kept.
  */
 typedef struct filetype
 {
   unsigned short riscos;   /* RISC OS filetype number, e.g. 0xB60 */
   const char    *ext;      /* dotted host extension, e.g. ".png", or "" */
+  const char    *name;     /* RISC OS type name, e.g. "PNG", or "" */
 }
 filetype_t;
 
@@ -32,9 +37,12 @@ extern const filetype_t filetype_DATA;
 /**
  * Look up a filetype by its host extension.
  * \param[in] ext Dotted extension, e.g. ".png". Matched case-insensitively.
- *                NULL or unrecognised yields filetype_DATA.
- * \return The matching filetype_t (by value; the table owns 'ext', which is
- *         always a string literal, so the result is safe to copy and keep).
+ *                Any extension the type is known by is matched, so ".jpeg"
+ *                gives the JPEG type, whose 'ext' is ".jpg". NULL or
+ *                unrecognised yields filetype_DATA.
+ * \return The matching filetype_t (by value; the table owns 'ext' and
+ *         'name', which are always string literals, so the result is safe to
+ *         copy and keep).
  */
 filetype_t filetype_from_ext(const char *ext);
 
@@ -43,7 +51,7 @@ filetype_t filetype_from_ext(const char *ext);
  * \param[in] riscos RISC OS filetype number.
  * \return The matching filetype_t, or filetype_DATA if riscos is not in the
  *         table (still carrying riscos through unchanged, so round-tripping
- *         an unrecognised number does not lose it).
+ *         an unrecognised number does not lose it, and with an empty name).
  */
 filetype_t filetype_from_riscos(unsigned short riscos);
 
