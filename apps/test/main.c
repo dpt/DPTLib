@@ -45,6 +45,7 @@ static const test_t tests[] =
   { "hash",       hash_test       },
   { "list",       list_test       },
   { "ntree",      ntree_test      },
+  { "bmtext",     bmtext_test     },
   { "txtfmt",     txtfmt_test     },
   { "utf8",       utf8_test       },
   { "vector",     vector_test     },

@@ -60,7 +60,8 @@ extern testfn_t dirlist_test,
                 stream_test;
 
 /* text */
-extern testfn_t txtfmt_test,
+extern testfn_t bmtext_test,
+                txtfmt_test,
                 utf8_test;
 
 /* utils */

@@ -878,6 +878,7 @@ if(BUILD_TESTS)
         libraries/io/filetype/test/filetype-test.c
         libraries/io/path/test/path-test.c
         libraries/io/stream/test/stream-test.c
+        libraries/text/bmtext/test/bmtext-test.c
         libraries/text/txtfmt/test/txtfmt-test.c
         libraries/text/utf8/test/utf8-test.c
         libraries/utils/array/test/array-test.c

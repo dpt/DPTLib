@@ -64,6 +64,49 @@ int bmtext_layout(bmfont_t               *font,
                   int                     max);
 
 /**
+ * Callback for bmtext_layout_measured(): measure \p text as bmfont_measure()
+ * would, however the caller chooses to draw it (e.g. in more than one font).
+ *
+ * \param[in]  text         Text to measure; a pointer into the string passed
+ *                          to bmtext_layout_measured().
+ * \param[in]  len          Length of \p text in bytes.
+ * \param[in]  target_width Target width in pixels.
+ * \param[out] split_point  Bytes of \p text which fit within \p
+ *                          target_width.
+ * \param[out] actual_width Actual width of the split text in pixels.
+ * \param[in]  opaque       The pointer passed to bmtext_layout_measured().
+ * \return \ref result_OK on success, or appropriate result code otherwise.
+ */
+typedef result_t (bmtext_measure_fn)(const char     *text,
+                                     int             len,
+                                     bmfont_width_t  target_width,
+                                     int            *split_point,
+                                     bmfont_width_t *actual_width,
+                                     void           *opaque);
+
+/**
+ * As bmtext_layout(), but measuring through \p measure instead of a single
+ * font, so a line can mix fonts (e.g. bold runs within regular text).
+ *
+ * \param[in]  measure    Measures a candidate line.
+ * \param[in]  opaque     Passed through to \p measure.
+ * \param[in]  string     Text to wrap.
+ * \param[in]  stringlen  Length of \p string in bytes.
+ * \param[in]  wrap_width Width to wrap to, in pixels.
+ * \param[out] lines      Filled with up to \p max lines.
+ * \param[in]  max        Capacity of \p lines. Lines past this are dropped.
+ *
+ * \return Number of lines written to \p lines.
+ */
+int bmtext_layout_measured(bmtext_measure_fn *measure,
+                           void              *opaque,
+                           const char        *string,
+                           int                stringlen,
+                           int                wrap_width,
+                           bmtext_line_t     *lines,
+                           int                max);
+
+/**
  * Draw \p nlines pre-laid-out \p lines stacked downward from \p origin,
  * advancing by the font height plus \p leading pixels per line.
  *
