@@ -26,6 +26,10 @@ static void resize_one_window(wuss_window_t *window)
   size2d_t size, max;
   int      scr_width, scr_height;
 
+  /* a toolbar is laid out by its parent, below */
+  if (window->toolbar.parent != NULL)
+    return;
+
   /* Move first: wuss_window_resize caps the size from the window's
    * top-left, so that must already be on screen. */
   wuss_window_get_content_bounds(window, &content);
@@ -57,6 +61,10 @@ static void resize_one_window(wuss_window_t *window)
     size.h = MIN(size.h, max.h);
     wuss_window_resize(window, size);
   }
+
+  /* re-clamp the toolbars against the new screen edges even if the parent
+   * itself stayed put */
+  wuss__toolbars_layout(window, NULL);
 }
 
 /* A pinned window (the icon bar) is never nudged/shrunk like an ordinary

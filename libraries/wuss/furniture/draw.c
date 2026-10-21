@@ -46,15 +46,18 @@ static void fill_furniture_rect(wuss_t              *wuss,
                     POINT(window->visible.x0, window->visible.y0));
 }
 
-/* The titlebar fill: the focus tint while "window" holds the input focus. */
+/* The titlebar fill: the focus tint while "window", or one of its toolbars,
+ * holds the input focus. */
 static colour_t title_bg(const wuss_t *wuss, const wuss_window_t *window)
 {
   const wuss_furniture_palette_t *fc;
+  int                             focused;
 
-  fc = &wuss->furniture_colours;
+  fc      = &wuss->furniture_colours;
+  focused = wuss->focus != NULL &&
+            (wuss->focus == window || wuss->focus->toolbar.parent == window);
 
-  return wuss->palette[(wuss->focus == window) ? fc->title.focus_bg
-                                               : fc->title.bg];
+  return wuss->palette[focused ? fc->title.focus_bg : fc->title.bg];
 }
 
 /* Resolve a cached piece's paint class to a concrete palette colour. */

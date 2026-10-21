@@ -506,6 +506,7 @@ set(WUSS_CORE_SOURCES
     libraries/wuss/core/task/set-parent.c
     libraries/wuss/core/task/deliver.c
     libraries/wuss/core/window/at.c
+    libraries/wuss/core/window/attach.c
     libraries/wuss/core/window/create.c
     libraries/wuss/core/window/create-placed.c
     libraries/wuss/core/window/close.c
@@ -925,6 +926,7 @@ if(BUILD_TESTS)
         libraries/wuss/core/test/resize-test.c
         libraries/wuss/core/test/scroll-test.c
         libraries/wuss/core/test/toggle-test.c
+        libraries/wuss/core/test/toolbar-test.c
         libraries/wuss/furniture/test/furniture-test.c
         libraries/wuss/tasks/painting-doc.c
         libraries/wuss/tasks/painting-doc.h

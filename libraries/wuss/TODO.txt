@@ -21,8 +21,7 @@ LAYER 3 - SPRITES (needs masks)
 
 - Sprites (with names, with masks, with multiple sprites)
 - Masked sprites/bitmaps. Covered by RLE work?
-- Sprite scaling
-- Import Kare style icons
+- Sprite scaling everywhere
 - Icon sprite pools: implement PNG sprite sheets?
 - Custom mouse pointers
 
@@ -34,13 +33,14 @@ LAYER 4 - WINDOW FURNITURE & INTERACTION (needs bug layer, text layer)
   (outline-click bug fixed; unblocked)
 - Furniture colour selection needs improvements (e.g. losing menu
   readability when palette changed)
-- Window panes / toolbars. Automatic pane handling?
+- Inside panes: toolbars attached within a parent's content area (e.g. a
+  ribbon across the top), shrinking the content rather than sitting outside
 - Mouse clamping when the software mouse pointer is enabled
 - Window placement:
+  - Safe area concept (e.g. where menus overlap the icon bar)
   - Factor out window placement. It's a negotiation between "I need to
     display XxY" and the spare screen area.
   - Decide which windows should open centred etc.
-  - Safe area concepts (e.g. where menus overlap the icon bar)
   - Shift-toggle to avoid the icon bar
 
 
@@ -76,22 +76,22 @@ LAYER 7 - APPS & POLISH (needs most of the above)
 - Effects: upgrade until equivalent to PrivateEye
 - Chars: clicking on a character inserts it into the keyboard buffer
 - Configure: CRT shader params, default resolution, system font changing.
-  Leads to... Choices.
-- Wusswasp: PostScript style renderer
+  Requires: Choices.
 - New ninepatch test app
 - Post-Its app with explanatory text for newbies
   (Markdown rendering done in the Reading task sample; reuse from there)
   Part of Pinboard?
-- Desktop palette editor (needs named colours; see Palette Util)
-- 24-bit Colour Picker component (named colours?)
+- Desktop palette editor
+- Load system palettes as well as desktop
+- Generalise paletted mode selection to be 8bpp with a choice of palette including greyscale (or should depth and palette be separated?)
 - Proper desktop font (just iterate on existing one?)
 - Support paletted images
 - Greebling symmetry
 - Orbing: bump textures, arrays of spheres, saved presets
 - 8x8 icon libraries - share the greeble code with other parts of wuss
-- Rounded corner windows
-- Procedural noise app
 - magic: joining up tasks like unix pipes so we can CHQ-with-dither
+- Zoomboxing / App bouncing to hint to user when apps start
+- Double click an already-started app - what do we do? pop to front?
 
 
 NO STRONG DEPS (do any time)
@@ -106,6 +106,15 @@ NO STRONG DEPS (do any time)
   backwindow").
 - Stress test: moving windows in a circle a-la nested Wimp [worth it?]
 - Triangle/quad plotter for Magnetoid style rendering
+- Tiny Pi Zero build; run natively?
+
+
+NOT URGENT
+
+- Import my Kare style icons
+- Wusswasp: PostScript style renderer
+- Rounded corner windows [LOW]
+- Procedural noise app [LOW]
 
 
 NOTES

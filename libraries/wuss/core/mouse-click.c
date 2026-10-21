@@ -11,6 +11,7 @@ static result_t mouse_click(wuss_t             *wuss,
   result_t       rc;
   wuss_window_t *win;
   wuss_window_t *held;
+  wuss_window_t *taker;
   wuss_event_t   event;
 
   wuss->pointer = p;
@@ -75,11 +76,16 @@ static result_t mouse_click(wuss_t             *wuss,
     return rc;
 
   /* A Select/Adjust press on a focusable window's content takes the input
-   * focus, before the press itself is delivered. Menu never moves it. */
-  if (action == wuss_MOUSE_DOWN &&
-      (button & WUSS_BUTTON_CLICK) &&
-      (win->flags & wuss_WINDOW_FOCUSABLE))
-    (void) wuss_set_focus(wuss, win);
+   * focus, before the press itself is delivered. Menu never moves it. A
+   * toolbar that can't take the focus passes it to its parent. */
+  if (action == wuss_MOUSE_DOWN && (button & WUSS_BUTTON_CLICK))
+  {
+    taker = win;
+    if (!(taker->flags & wuss_WINDOW_FOCUSABLE))
+      taker = wuss__toolbar_root(taker);
+    if (taker->flags & wuss_WINDOW_FOCUSABLE)
+      (void) wuss_set_focus(wuss, taker);
+  }
 
 #ifdef WUSS_ICONBAR
   if (win == wuss->iconbar.window)

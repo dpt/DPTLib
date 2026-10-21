@@ -31,7 +31,7 @@ static void invalidate_grown_or_shrunk(wuss_window_t *window,
   }
 }
 
-result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
+static result_t window_resize(wuss_window_t *window, size2d_t size)
 {
   int      outline_px, titlebar_height;
   box_t    before;
@@ -211,6 +211,20 @@ result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
       wuss__chrome_repaint_for(window, &before);
     wuss__chrome_repaint(window);
   }
+
+  return result_OK;
+}
+
+result_t wuss_window_resize(wuss_window_t *window, size2d_t size)
+{
+  result_t rc;
+
+  rc = window_resize(window, size);
+  if (rc != result_OK)
+    return rc;
+
+  /* a resized toolbar shifts its siblings; a resized parent its toolbars */
+  wuss__toolbars_layout(wuss__toolbar_root(window), NULL);
 
   return result_OK;
 }

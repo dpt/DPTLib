@@ -488,6 +488,72 @@ void wuss_window_set_title(wuss_window_t *window, const char *title);
  */
 const char *wuss_window_get_title(const wuss_window_t *window);
 
+/* ----------------------------------------------------------------------- */
+
+/** The edge of a parent window that a toolbar attaches to. */
+typedef enum wuss_edge
+{
+  wuss_EDGE_LEFT,   /**< Against the parent's left edge. */
+  wuss_EDGE_RIGHT,  /**< Against the parent's right edge. */
+  wuss_EDGE_TOP,    /**< Above the parent's top edge (its titlebar). */
+  wuss_EDGE_BOTTOM  /**< Below the parent's bottom edge. */
+}
+wuss_edge_t;
+
+/**
+ * Attach a window to an edge of another window as a toolbar.
+ *
+ * The toolbar sits flush against the outside of the parent's footprint and
+ * moves with it. It keeps its own size whatever the parent's size. Several
+ * toolbars on one edge stack outwards in attach order; a hidden toolbar
+ * takes no room. Where the parent is near the screen edge, the toolbars on
+ * that side stay on the screen, overlapping the parent if necessary, until
+ * the parent's edge itself leaves the screen.
+ *
+ * The toolbar is moved into the parent's stack, directly above the parent,
+ * and from then on the group restacks together: restacking either window
+ * restacks both. Hiding or showing the parent hides or shows its toolbars.
+ * Closing the parent closes its toolbars too, as wuss_window_close does,
+ * without any events of their own. wuss_window_move does nothing to a
+ * toolbar; wuss_window_resize works and re-lays out the group.
+ *
+ * A Select or Adjust press on a toolbar that is not wuss_WINDOW_FOCUSABLE
+ * gives the input focus to its parent instead. The parent's titlebar is
+ * drawn in the focus tint while the parent or any of its toolbars has the
+ * focus.
+ *
+ * \param[in] toolbar Window to attach. Must have been created with
+ *                    wuss_WINDOW_NO_TITLEBAR and with no furniture other
+ *                    than an outline and scrollbars.
+ * \param[in] parent  Window to attach it to. Must belong to the same task.
+ * \param[in] edge    Parent edge to attach to.
+ * \param[in] align   Position along the edge, against the parent's content
+ *                    area: wuss_ALIGN_TOP, wuss_ALIGN_BOTTOM or centred for
+ *                    a left or right edge, wuss_ALIGN_LEFT, wuss_ALIGN_RIGHT
+ *                    or centred for a top or bottom edge. The other axis'
+ *                    bits are ignored.
+ * \param[in] offset  Pixels added along the edge after aligning (rightwards
+ *                    or downwards).
+ * \return \ref result_OK on success, or \ref result_BAD_ARG if the windows
+ *         belong to different tasks, either is already a toolbar, toolbar
+ *         has toolbars of its own, or toolbar has furniture other than an
+ *         outline and scrollbars.
+ */
+result_t wuss_window_attach(wuss_window_t *toolbar,
+                            wuss_window_t *parent,
+                            wuss_edge_t    edge,
+                            wuss_align_t   align,
+                            int            offset);
+
+/**
+ * Detach a toolbar from its parent. It stays where it is as an ordinary
+ * window; the parent's other toolbars close up.
+ *
+ * \param[in] toolbar Toolbar to detach. A window that is not a toolbar is
+ *                    left alone.
+ */
+void wuss_window_detach(wuss_window_t *toolbar);
+
 #ifdef __cplusplus
 }
 #endif

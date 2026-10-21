@@ -100,7 +100,8 @@ typedef enum wuss_window_state
 {
   wuss_WINDOW_STATE_NONE    = 0,
   wuss_WINDOW_STATE_TOGGLED = 1 << 0, /* currently at TOGGLE_SIZE's "full" size */
-  wuss_WINDOW_STATE_TASK_HIDDEN = 1 << 1 /* hidden by wuss_task_set_hidden */
+  wuss_WINDOW_STATE_TASK_HIDDEN = 1 << 1, /* hidden by wuss_task_set_hidden */
+  wuss_WINDOW_STATE_PARENT_HIDDEN = 1 << 2 /* toolbar hidden along with its parent */
 }
 wuss_window_state_t;
 
@@ -473,6 +474,18 @@ struct wuss_window
   size2d_t            min_doc; /* resize floor, set at creation; see
                                 * wuss__min_content */
   wuss_window_state_t state;        /* see wuss_window_state_t */
+  /* Toolbar links; see wuss_window_attach. A window is either a toolbar
+   * (parent set) or may have toolbars (first set), never both. */
+  struct
+  {
+    wuss_window_t    *parent; /* attached to, or NULL if not a toolbar */
+    wuss_window_t    *first;  /* own toolbars in attach order, or NULL */
+    wuss_window_t    *next;   /* next toolbar of the same parent */
+    wuss_edge_t       edge;
+    wuss_align_t      align;
+    int               offset; /* along the edge, after aligning */
+  }
+  toolbar;
 #ifdef WUSS_FURNITURE
   box_t               pre_toggle;   /* visible bounds to restore on the next toggle */
   char                title[WUSS_TITLE_MAX + 1];

@@ -29,14 +29,15 @@ result_t wuss_set_focus(wuss_t *wuss, wuss_window_t *window)
     wuss__caret_clear(wuss);
 #endif
 
+  /* a toolbar's focus shows in its parent's titlebar */
   if (was != NULL)
   {
-    wuss__chrome_repaint(was);
+    wuss__chrome_repaint(wuss__toolbar_root(was));
     (void) wuss__deliver_kind(was->task, was, wuss_EVENT_LOSE_FOCUS);
   }
   if (window != NULL)
   {
-    wuss__chrome_repaint(window);
+    wuss__chrome_repaint(wuss__toolbar_root(window));
     (void) wuss__deliver_kind(window->task, window, wuss_EVENT_GAIN_FOCUS);
   }
 

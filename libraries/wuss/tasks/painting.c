@@ -262,17 +262,21 @@ result_t painting_create_with(wuss_t                     *wuss,
     return rc;
   }
 
-  /* no close box: closing the canvas window is what ends the task */
+  /* a toolbar on the canvas's left edge: it moves, stacks, hides and closes
+   * with the canvas, and passes the input focus to it */
   place = task_place_after(task->window);
   rc = wuss_window_create_at(delegate,
                              &place,
                              SIZE2D(TB_W, TB_H),
-                             "Tools",
-                             wuss_WINDOW_BACK | wuss_WINDOW_FOCUSABLE,
+                             NULL,
+                             wuss_WINDOW_NO_TITLEBAR,
                              wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                              SIZE2D(TB_W, TB_H),
                              SIZE2D(0, 0),
                              &task->toolbox);
+  if (rc == result_OK)
+    rc = wuss_window_attach(task->toolbox, task->window, wuss_EDGE_LEFT,
+                            wuss_ALIGN_TOP, 0);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* closes the canvas, QUIT frees the block */
@@ -1067,19 +1071,9 @@ result_t painting_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_CLOSE:
-    if (window == pt->toolbox)
-    {
-      pt->toolbox = NULL;
-      return result_OK;
-    }
-
-    pt->window = NULL;
-
-    /* the toolbox has no close box of its own: it goes with the canvas. When
-     * it was the last window, that reaps the task and frees pt, so touch
-     * nothing afterwards */
-    if (pt->toolbox != NULL)
-      wuss_window_close(pt->toolbox);
+    /* the toolbox is a toolbar of the canvas, so it closes with it */
+    pt->window  = NULL;
+    pt->toolbox = NULL;
     return result_OK;
 
   case wuss_EVENT_QUIT:

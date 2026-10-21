@@ -118,6 +118,26 @@ All furniture actions (back, toggle-size, resize-drag, scrollbar arrow/thumb) ar
 
 Other window operations: `wuss_window_close`, `wuss_window_move`, `wuss_window_resize` (preserves content top-left), `wuss_window_restack`, `wuss_window_get_visible_bounds` (full on-screen footprint), `wuss_window_get_content_bounds`, `wuss_window_set_background`.
 
+### Toolbars
+
+A toolbar is an ordinary window of the same task, attached to one edge of a parent window so that it goes wherever the parent goes:
+
+```C
+result_t wuss_window_attach(wuss_window_t *toolbar, wuss_window_t *parent,
+                            wuss_edge_t edge, wuss_align_t align, int offset);
+void     wuss_window_detach(wuss_window_t *toolbar);
+```
+
+- **Placement.** The toolbar sits outside `edge` (`wuss_EDGE_LEFT`, `RIGHT`, `TOP` or `BOTTOM`), flush against the parent's outline. Along the edge it is aligned against the parent's content area: `wuss_ALIGN_TOP`/`BOTTOM` for a left or right edge, `wuss_ALIGN_LEFT`/`RIGHT` for a top or bottom edge, `0` to centre. `offset` then shifts it that many pixels further along. It may overhang the parent. Several toolbars on one edge stack outwards in the order they were attached. A hidden toolbar gives up its place.
+- **Size.** A toolbar keeps its own size whatever the parent's size. Resizing a toolbar is allowed and its neighbours move to suit. The parent's maximum size and toggle-size take no account of its toolbars.
+- **Screen edges.** A toolbar stays on screen, overlapping the parent if needs be, until the edge it is attached to goes off the screen; then it goes too. Only the axis at right angles to the edge is clamped, and the toolbars on one edge are clamped together.
+- **Furniture.** A toolbar has no titlebar and so no close, back, toggle-size or resize buttons. It may have an outline and scrollbars. Other flags give `result_BAD_ARG`, as does attaching a window to a toolbar, a toolbar to a second parent, or windows of different tasks.
+- **Moving and stacking.** `wuss_window_move` on a toolbar does nothing: move its parent instead. Toolbars stay in the parent's stack directly in front of it, and `wuss_window_restack` and `wuss_window_set_stack` on any member of the group act on the whole group.
+- **Hiding and closing.** Hiding or showing the parent hides or shows its toolbars, but a toolbar hidden on its own stays hidden. Closing the parent closes its toolbars with it, delivering no `wuss_EVENT_CLOSE` for them. `wuss_window_detach` leaves the toolbar where it is as an ordinary window.
+- **Focus.** A click on a toolbar gives the input focus to its parent, unless the toolbar itself was created with `wuss_WINDOW_FOCUSABLE`. The parent's titlebar shows as focused while any member of the group has the focus.
+
+A click in a toolbar's content area does not bring the group to the front, just as for any window's content area.
+
 ## Task callbacks
 
 ```C
@@ -334,6 +354,7 @@ Terms as this document and the API use them. Several are RISC OS conventions, wh
 - **Select** — the primary mouse button, `wuss_BUTTON_SELECT`. Performs the plain action, and raises a window when used on its titlebar.
 - **Task** — the client of a window: an event callback plus an opaque `task_data` pointer, held in a `wuss_task_t`. Wuss owns the window; the task owns what's drawn inside it.
 - **Titlebar** — the strip above the content area carrying the window's label and its buttons, and the drag handle for moving the window. Suppressed by `wuss_WINDOW_NO_TITLEBAR`.
+- **Toolbar** — a window attached to an edge of a parent window with `wuss_window_attach`. It moves, stacks, hides and closes with its parent. See "Toolbars".
 - **Toggle size** — the titlebar button that switches a window between its normal size and a maximised size, and back.
 - **Virtual content space** — the task's own full coordinate space, of size `doc`. Mouse and scroll events arrive in it, i.e. with the scroll offset already added.
 - **Visible bounds** — a window's whole on-screen footprint, content plus furniture; `wuss_window_get_visible_bounds`.

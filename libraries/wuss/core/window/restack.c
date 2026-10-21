@@ -2,7 +2,7 @@
 
 #include "../impl.h"
 
-void wuss_window_restack(wuss_window_t *window, wuss_zorder_t reason)
+static void restack_one(wuss_window_t *window, wuss_zorder_t reason)
 {
   list_t *stack;
 
@@ -31,5 +31,27 @@ void wuss_window_restack(wuss_window_t *window, wuss_zorder_t reason)
      * calculation as the front case, just run after the reorder instead of
      * before, so "hidden" now means "newly hidden" */
     wuss__invalidate_uncovered(window);
+  }
+}
+
+/* A toolbar group restacks as one: the toolbars stay directly above their
+ * parent, the last attached frontmost. */
+void wuss_window_restack(wuss_window_t *window, wuss_zorder_t reason)
+{
+  wuss_window_t *tb;
+
+  window = wuss__toolbar_root(window);
+
+  if (reason == wuss_ZORDER_FRONT)
+  {
+    restack_one(window, reason);
+    for (tb = window->toolbar.first; tb != NULL; tb = tb->toolbar.next)
+      restack_one(tb, reason);
+  }
+  else
+  {
+    for (tb = window->toolbar.first; tb != NULL; tb = tb->toolbar.next)
+      restack_one(tb, reason);
+    restack_one(window, reason);
   }
 }

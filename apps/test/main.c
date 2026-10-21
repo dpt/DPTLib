@@ -102,6 +102,7 @@ static const test_t tests[] =
   { "wuss-task", wuss_task_test },
   { "wuss-content", wuss_content_test },
   { "wuss-stack", wuss_stack_test },
+  { "wuss-toolbar", wuss_toolbar_test },
   { "wuss-lifecycle", wuss_lifecycle_test },
   { "wuss-invalidate", wuss_invalidate_test },
   { "wuss-placement", wuss_placement_test },

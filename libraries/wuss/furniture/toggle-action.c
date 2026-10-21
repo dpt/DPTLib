@@ -227,4 +227,6 @@ void wuss__furniture_toggle_size(wuss_window_t *window)
     wuss__invalidate_clipped(window, &dirty);
     wuss__furniture_invalidate(window);
   }
+
+  wuss__toolbars_layout(window, NULL);
 }
