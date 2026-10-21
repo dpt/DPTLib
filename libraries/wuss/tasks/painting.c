@@ -82,22 +82,11 @@ static box_t painting_tool_box(int i)
                               TB_TOOL_SIZE, TB_TOOL_SIZE);
 }
 
-/* the fixed palette, as RGB, in swatch order */
-static const unsigned long painting_swatches[PAINTING_NSWATCHES] =
+/* point the toolbox swatches at the desktop palette, which wuss owns and
+ * wuss_set_palette may move */
+static void painting_swatches_track(painting_task_t *pt)
 {
-  0x000000, 0xFFFFFF, 0x808080, 0xC0C0C0,
-  0xFF0000, 0x800000, 0xFF8000, 0xFFFF00,
-  0x00C000, 0x006000, 0x00FFFF, 0x0000FF,
-  0x000080, 0xFF00FF, 0x800080, 0x804000
-};
-
-static colour_t painting_swatch_colour(int i)
-{
-  unsigned long rgb;
-
-  rgb = painting_swatches[i];
-
-  return colour_rgb((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
+  pt->swatches.colours = wuss_get_palette(pt->wuss, &pt->swatches.ncolours);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -229,16 +218,13 @@ result_t painting_create_with(wuss_t                     *wuss,
   rng_seed(&task->rng, 1);
   task->size = 3;
 
-  for (i = 0; i < PAINTING_NSWATCHES; i++)
-    task->swatch_colours[i] = painting_swatch_colour(i);
-  task->swatches.bbox     = (box_t) BOX_POS_SIZE(TB_MARGIN, TB_SWATCH_Y,
-                                                 TB_SWATCH_GRID,
-                                                 TB_SWATCH_GRID);
-  task->swatches.columns  = TB_SWATCH_COLS;
-  task->swatches.gap      = TB_SWATCH_GAP;
-  task->swatches.outline  = 1;
-  task->swatches.colours  = task->swatch_colours;
-  task->swatches.ncolours = PAINTING_NSWATCHES;
+  task->swatches.bbox    = (box_t) BOX_POS_SIZE(TB_MARGIN, TB_SWATCH_Y,
+                                                TB_SWATCH_GRID,
+                                                TB_SWATCH_GRID);
+  task->swatches.columns = TB_SWATCH_COLS;
+  task->swatches.gap     = TB_SWATCH_GAP;
+  task->swatches.outline = 1;
+  painting_swatches_track(task);
 
   rc = paintingdoc_create_filled(params->size, params->bg, &task->doc);
   if (rc != result_OK)
@@ -665,9 +651,9 @@ static result_t painting_toolbox_mouse(painting_task_t    *pt,
     return result_OK;
 
   if (event->data.mouse.button & wuss_BUTTON_SELECT)
-    pt->fg = pt->swatch_colours[i];
+    pt->fg = pt->swatches.colours[i];
   else if (event->data.mouse.button & wuss_BUTTON_ADJUST)
-    pt->bg = pt->swatch_colours[i];
+    pt->bg = pt->swatches.colours[i];
   else
     return result_OK;
 
@@ -1073,6 +1059,11 @@ result_t painting_handle(wuss_window_t      *window,
 
   case wuss_EVENT_MENU_CLOSED:
     pt->menu_handle = NULL;
+    return result_OK;
+
+  case wuss_EVENT_PALETTE:
+    /* wuss_set_palette repaints the whole screen itself */
+    painting_swatches_track(pt);
     return result_OK;
 
   case wuss_EVENT_CLOSE:

@@ -58,8 +58,6 @@ enum
   PAINTING_SEL__COUNT
 };
 
-#define PAINTING_NSWATCHES 16 /* the toolbox's fixed colours */
-
 /* a 640x480 white canvas in a scrollable window, with a small toolbox window
  * beside it. Select paints with the foreground colour and Adjust with the
  * background colour; clicking a toolbox swatch sets either. Closing the
@@ -94,8 +92,7 @@ typedef struct painting_task
   wuss_menu_item_t   nozzle_items[paintingdoc_NOZZLE__COUNT];
   wuss_menu_t        nozzle_menu;
   char               size_text[WUSS_SLIDER_ROW_BUF];
-  colour_t           swatch_colours[PAINTING_NSWATCHES];
-  wuss_swatches_t    swatches;  /* the toolbox's colour grid */
+  wuss_swatches_t    swatches;  /* the desktop palette, as a colour grid */
 }
 painting_task_t;
 
