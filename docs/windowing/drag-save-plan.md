@@ -22,7 +22,7 @@ below is implemented.
 | Leafname validation | `io/path` |
 | Grid view | `include/wuss/gadget/gridview.h` (`WUSS_GADGETS`) |
 | Save As | `include/wuss/component/saveas.h` (`WUSS_COMPONENTS`) |
-| Filer | `libraries/wuss/tasks/filing.{c,h}`, in `g_system_tasks` beside Display and Palette |
+| Filer | `libraries/wuss/tasks/filing/filing.{c,h}`, in `g_system_tasks` beside Display and Palette |
 
 ## Design
 

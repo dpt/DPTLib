@@ -40,12 +40,12 @@
 #include "taskmanager.h"
 #include "tasks.h"
 
-#include "tasks/configuring.h"
-#include "tasks/display.h"
-#include "tasks/reading.h"
-#include "tasks/palette.h" /* palette_load_hex for the startup *.hex */
+#include "tasks/configuring/configuring.h"
+#include "tasks/display/display.h"
+#include "tasks/reading/reading.h"
+#include "tasks/palette/palette.h" /* palette_load_hex for the startup *.hex */
 #ifdef WUSS_ICONBAR
-#include "tasks/filing.h" /* filing_set_root for -root */
+#include "tasks/filing/filing.h" /* filing_set_root for -root */
 #endif
 
 /* ----------------------------------------------------------------------- */

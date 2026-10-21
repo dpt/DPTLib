@@ -1,0 +1,63 @@
+/* wuss/tasks/clock/clock.h -- analogue clock task */
+
+#ifndef TASKS_CLOCK_H
+#define TASKS_CLOCK_H
+
+#ifdef WUSS_APP
+
+#include <stdbool.h>
+#include <time.h>
+
+#include "framebuf/bmfont.h"
+#include "framebuf/colour.h"
+#include "wuss/component/colourmenu.h"
+#include "wuss/component/saveas.h"
+#include "wuss/menu.h"
+#include "wuss/window.h"
+
+/* a round-faced analogue clock: a tick-marked bezel with 1..12 numerals and
+ * hour, minute and second hands read from the system clock and advanced on
+ * every idle tick. A Select click, or Menu > Seconds, shows or hides the
+ * seconds. An Adjust click, or Menu > Digital, swaps the face for an
+ * HH:MM:SS readout (and back); Menu > 12-hour shows that readout as
+ * 12-hour time with AM/PM; Menu > Save PNG opens a Save As dialogue (drag
+ * its icon onto a Filer window, or Save with a full path already typed)
+ * that writes the window's content out. Once a click has given the window
+ * the input focus, D, S and H toggle Digital, Seconds and 12-hour. */
+typedef struct clock_task
+{
+  wuss_t             *wuss;     /* for wuss_get_pointer when opening the menu */
+  wuss_task_t        *delegate; /* the task that owns the menu */
+  wuss_saveas_t       *saveas;
+  wuss_window_t      *window;
+  wuss_menu_handle_t  menu_handle; /* live only between open and a pick */
+  wuss_menu_item_t    menu_items[5]; /* per-instance: a shared static would
+                                       * leak one instance's .window pointer
+                                       * into another's menu */
+  wuss_menu_t         menu;
+  bmfont_t           *font; /* borrowed; the numerals are drawn with it */
+  colour_t            bg, bezel, hand, second_hand;
+  bool                show_second;
+  bool                digital; /* Menu > Digital: text readout, no face */
+  bool                twelve_hour; /* Menu > 12-hour: AM/PM readout */
+  time_t              shown; /* time last painted, to the second or minute */
+}
+clock_task_t;
+
+wuss_window_fn_t clock_handle;
+
+/* create the clock window against the given wuss instance, lettering the
+ * face with wuss's own regular font (wuss_get_font_n(wuss, 0)). if out is
+ * non-NULL, the task block is also returned through it */
+result_t clock_create(wuss_t *wuss, clock_task_t **out);
+
+/* install the icon bar app that opens clock windows on demand */
+result_t clock_app_create(wuss_t *wuss);
+
+/* free a task block allocated by clock_create; normally called by the
+ * window's wuss_EVENT_QUIT handler, not by callers directly */
+void clock_destroy(clock_task_t *task);
+
+#endif /* WUSS_APP */
+
+#endif /* TASKS_CLOCK_H */

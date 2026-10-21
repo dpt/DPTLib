@@ -992,51 +992,51 @@ if(BUILD_APPS)
         apps/wuss/taskmanager.c
         apps/wuss/taskmanager.h
         apps/wuss/tasks.c
-        libraries/wuss/tasks/ball.c
-        libraries/wuss/tasks/chasehq.c
-        libraries/wuss/tasks/greatescape.c
-        libraries/wuss/tasks/chars.c
-        libraries/wuss/tasks/checker.c
-        libraries/wuss/tasks/clock.c
-        libraries/wuss/tasks/configuring.c
-        libraries/wuss/tasks/curving.c
-        libraries/wuss/tasks/dithering.c
-        libraries/wuss/tasks/display.c
-        libraries/wuss/tasks/doughnut.c
-        libraries/wuss/tasks/effecting.c
-        libraries/wuss/tasks/effecting-edit.c
-        libraries/wuss/tasks/filing.c
-        libraries/wuss/tasks/fireball.c
-        libraries/wuss/tasks/gradient.c
-        libraries/wuss/tasks/greebling.c
-        libraries/wuss/tasks/icons.c
-        libraries/wuss/tasks/viewing.c
-        libraries/wuss/tasks/keys.c
-        libraries/wuss/tasks/oscillating.c
-        libraries/wuss/tasks/minesweeping.c
+        libraries/wuss/tasks/ball/ball.c
+        libraries/wuss/tasks/chasehq/chasehq.c
+        libraries/wuss/tasks/greatescape/greatescape.c
+        libraries/wuss/tasks/chars/chars.c
+        libraries/wuss/tasks/checker/checker.c
+        libraries/wuss/tasks/clock/clock.c
+        libraries/wuss/tasks/configuring/configuring.c
+        libraries/wuss/tasks/curving/curving.c
+        libraries/wuss/tasks/dithering/dithering.c
+        libraries/wuss/tasks/display/display.c
+        libraries/wuss/tasks/doughnut/doughnut.c
+        libraries/wuss/tasks/effecting/effecting.c
+        libraries/wuss/tasks/effecting/effecting-edit.c
+        libraries/wuss/tasks/filing/filing.c
+        libraries/wuss/tasks/minesweeping/fireball.c
+        libraries/wuss/tasks/gradient/gradient.c
+        libraries/wuss/tasks/greebling/greebling.c
+        libraries/wuss/tasks/icons/icons.c
+        libraries/wuss/tasks/viewing/viewing.c
+        libraries/wuss/tasks/keys/keys.c
+        libraries/wuss/tasks/oscillating/oscillating.c
+        libraries/wuss/tasks/minesweeping/minesweeping.c
         libraries/wuss/tasks/painting/painting-doc.c
         libraries/wuss/tasks/painting/painting-doc.h
         libraries/wuss/tasks/painting/painting-new.c
         libraries/wuss/tasks/painting/painting-new.h
-        libraries/wuss/tasks/fern.c
-        libraries/wuss/tasks/fern.h
+        libraries/wuss/tasks/fern/fern.c
+        libraries/wuss/tasks/fern/fern.h
         libraries/wuss/tasks/painting/painting.c
         libraries/wuss/tasks/painting/painting.h
-        libraries/wuss/tasks/palette.c
-        libraries/wuss/tasks/fireworks.c
-        libraries/wuss/tasks/patterns.c
-        libraries/wuss/tasks/pooling.c
-        libraries/wuss/tasks/shortcuts.c
-        libraries/wuss/tasks/compositing.c
-        libraries/wuss/tasks/saturn.c
+        libraries/wuss/tasks/palette/palette.c
+        libraries/wuss/tasks/fireworks/fireworks.c
+        libraries/wuss/tasks/patterns/patterns.c
+        libraries/wuss/tasks/pooling/pooling.c
+        libraries/wuss/tasks/shortcuts/shortcuts.c
+        libraries/wuss/tasks/compositing/compositing.c
+        libraries/wuss/tasks/saturn/saturn.c
         libraries/wuss/tasks/snapshot.c
-        libraries/wuss/tasks/sofa.c
-        libraries/wuss/tasks/sudoku.c
-        libraries/wuss/tasks/orbing.c
-        libraries/wuss/tasks/reading.c
-        libraries/wuss/tasks/resizing.c
-        libraries/wuss/tasks/resizing.h
-        libraries/wuss/tasks/tiling.c
+        libraries/wuss/tasks/sofa/sofa.c
+        libraries/wuss/tasks/sudoku/sudoku.c
+        libraries/wuss/tasks/orbing/orbing.c
+        libraries/wuss/tasks/reading/reading.c
+        libraries/wuss/tasks/resizing/resizing.c
+        libraries/wuss/tasks/resizing/resizing.h
+        libraries/wuss/tasks/tiling/tiling.c
         libraries/wuss/tasks/taskapp.c
         libraries/wuss/tasks/taskapp.h
         libraries/wuss/tasks/zxtask.c)
@@ -1164,7 +1164,7 @@ if(BUILD_APPS)
         # handed only to the file that needs it, not to all of wuss
         target_include_directories(chasehq
             PRIVATE "${CHQ_DIR}/include" "${CHQ}")
-        set_source_files_properties(libraries/wuss/tasks/chasehq.c
+        set_source_files_properties(libraries/wuss/tasks/chasehq/chasehq.c
             PROPERTIES INCLUDE_DIRECTORIES "${CHQ_DIR}/include")
         # third-party code: its warnings are policed by its own build
         target_compile_options(chasehq PRIVATE -w)
@@ -1225,7 +1225,7 @@ if(BUILD_APPS)
         # replace with a TGE build option if it ever gains one
         set_source_files_properties(${TGE}/ZXSpectrum/Spectrum.c
             PROPERTIES COMPILE_DEFINITIONS "__riscos")
-        set_source_files_properties(libraries/wuss/tasks/greatescape.c
+        set_source_files_properties(libraries/wuss/tasks/greatescape/greatescape.c
             PROPERTIES
                 INCLUDE_DIRECTORIES "${TGE_DIR}/include"
                 COMPILE_DEFINITIONS "${TGE_ZX_RENAMES}")
