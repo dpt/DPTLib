@@ -17,8 +17,8 @@
 
 #define DITHERING_MAX_NAME_LEN 64
 #define DITHERING_EMPTYSZ      64 /* window size before the first DataLoad */
-#define DITHERING_NCOUNTS      6 /* rows in the Colours submenu */
-#define DITHERING_SLIDER_W     128 /* Strength dialogue's slider */
+#define DITHERING_SLIDER_W     128 /* slider dialogues' slider */
+#define DITHERING_COLOURS_STEPS 8 /* Colours slider positions per doubling */
 
 /* Palette submenu rows: these two, then one per *.hex file */
 #define DITHERING_PALETTE_OPTIMAL 0
@@ -40,8 +40,8 @@ enum
 /* window's task: a PNG dropped on its icon or window (DataLoad) reduced by
  * dither_bitmap, optionally to an octree palette. A Select click toggles
  * between the dithered result and the original; Menu picks the options, and
- * every change re-dithers at once; Strength is a slider dialogue. Save
- * writes the dithered result as a PNG. */
+ * every change re-dithers at once; Colours and Strength are slider
+ * dialogues. Save writes the dithered result as a PNG. */
 typedef struct dithering_task
 {
   wuss_window_t     *window;
@@ -54,7 +54,8 @@ typedef struct dithering_task
 
   dither_method_t    method;
   int                palette;  /* a DITHERING_PALETTE_* row */
-  int                count;    /* index into the Colours rows */
+  int                colours_pos; /* Colours slider position: optimal
+                                   * palette size is 2^(pos / STEPS) */
   int                strength; /* percent */
   int                serpentine;
 
@@ -68,14 +69,14 @@ typedef struct dithering_task
   wuss_menu_item_t   palette_items[DITHERING_PALETTE_FIRST_HEX +
                                    PALETTE_MAX_FILES];
   wuss_menu_t        palette_menu;
-  wuss_menu_item_t   count_items[DITHERING_NCOUNTS];
-  wuss_menu_t        count_menu;
   wuss_menu_item_t   menu_items[DITHERING_MENU__LIMIT];
   wuss_menu_t        menu;
   wuss_menu_handle_t menu_handle; /* the open chain, if any */
   wuss_saveas_t     *saveas;
   wuss_dialogue_t   *strength_dialogue; /* NULL once the window closes */
   wuss_slider_row_t  strength_row;
+  wuss_dialogue_t   *colours_dialogue; /* NULL once the window closes */
+  wuss_slider_row_t  colours_row;
 }
 dithering_task_t;
 
