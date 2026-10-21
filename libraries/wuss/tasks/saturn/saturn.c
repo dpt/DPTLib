@@ -62,16 +62,20 @@
 /* BBC BASIC RND(n>0) returns an integer 1..n. utils/rng's LCG stands in for
  * it (its high bits, which is where an LCG's usable randomness sits) so a
  * Select click can re-seed for a fresh sketch. */
-static rng_t saturn_rnd_state;
+static struct
+{
+  rng_t rnd_state;
+}
+g;
 
 static void saturn_rnd_seed(unsigned long seed)
 {
-  rng_seed(&saturn_rnd_state, (uint32_t) seed);
+  rng_seed(&g.rnd_state, (uint32_t) seed);
 }
 
 static int saturn_rnd(int n)
 {
-  return (int) ((rng_lcg32(&saturn_rnd_state) >> 16) % (uint32_t) n) + 1;
+  return (int) ((rng_lcg32(&g.rnd_state) >> 16) % (uint32_t) n) + 1;
 }
 
 /* one signed sample in the original -128..127 space, scaled to half/range */

@@ -98,9 +98,15 @@ static int gridview_test_accept_drag(wuss_gridview_t *gridview,
   return 1;
 }
 
+static struct
+{
+  int              gridview_test_drawn;     /* cells gridview_test_draw drew */
+  wuss_gridview_t *gridview_forward_target; /* gridview_forward's recipient */
+}
+g;
+
 /* gridview draw callback: counts the cells drawn and records the last index
  * at opaque */
-static int gridview_test_drawn;
 
 static void gridview_test_draw(wuss_gridview_t    *gridview,
                                const wuss_event_t *event,
@@ -112,7 +118,7 @@ static void gridview_test_draw(wuss_gridview_t    *gridview,
   NOT_USED(event);
   NOT_USED(screen_box);
 
-  gridview_test_drawn++;
+  g.gridview_test_drawn++;
   *(int *) opaque = index;
 }
 
@@ -128,8 +134,7 @@ static void gridview_test_glyph_item(int                   index,
 #endif
 
 #ifdef WUSS_GADGETS
-/* task handler that hands every event to gridview_forward_target */
-static wuss_gridview_t *gridview_forward_target;
+/* task handler that hands every event to g.g.gridview_forward_target */
 
 static result_t gridview_forward(wuss_window_t      *window,
                                  const wuss_event_t *event,
@@ -138,8 +143,8 @@ static result_t gridview_forward(wuss_window_t      *window,
   NOT_USED(window);
   NOT_USED(task_data);
 
-  if (gridview_forward_target != NULL)
-    (void) wuss_gridview_handle_event(gridview_forward_target, event);
+  if (g.gridview_forward_target != NULL)
+    (void) wuss_gridview_handle_event(g.gridview_forward_target, event);
 
   return result_OK;
 }
@@ -625,12 +630,12 @@ StringSetOK: ;
 
       /* a draw callback replaces the cell drawing, and a clip over the
        * second row draws only item 1 */
-      gridview_test_drawn = 0;
+      g.gridview_test_drawn = 0;
       activated           = -1;
       wuss_gridview_set_draw(gv, gridview_test_draw, 1);
       gvscr.clip = (box_t) BOX_POS_SIZE(10, 20, 40, 10);
       if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
-      if (gridview_test_drawn != 1 || activated != 1) goto GridViewFail;
+      if (g.gridview_test_drawn != 1 || activated != 1) goto GridViewFail;
       gvscr.clip = gvcontent;
       wuss_gridview_set_draw(gv, NULL, 1);
 
@@ -795,7 +800,7 @@ GridViewOK: ;
     rc = wuss_gridview_create(&rlgv, rlwin, NELEMS(gridview_test_labels),
                               gridview_test_item, 8, NULL, NULL);
     if (rc != result_OK) goto RelayoutFail;
-    gridview_forward_target = rlgv; /* events now reach the gridview */
+    g.gridview_forward_target = rlgv; /* events now reach the gridview */
 
     big_doc_w = rlwin->doc.w;
     min_w     = wuss_gridview_width_for_columns(rlgv, 1);
@@ -817,7 +822,7 @@ GridViewOK: ;
     if (rlwin->doc.w != big_doc_w) goto RelayoutFail;
 
     wuss_gridview_destroy(rlgv);
-    gridview_forward_target = NULL;
+    g.gridview_forward_target = NULL;
 
     reap_test_tasks();
     wuss_destroy(rlwuss);

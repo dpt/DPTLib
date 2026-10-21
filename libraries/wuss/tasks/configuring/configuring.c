@@ -466,7 +466,7 @@ static struct
   bmfont_t *fonts[2];      /* [0] regular, [1] bold */
   char      names[2][128]; /* "Family Style" */
 }
-g_configuring_font;
+g;
 
 /* The pattern shown in grid cell i, 0 <= i < CONFIGURING_NPATTERNS: the named
  * hatches first, then the full Bayer run (EMPTY, dither levels 1..63,
@@ -955,21 +955,21 @@ static result_t configuring_set_font(configuring_task_t *task,
   {
     result_t frc;
 
-    snprintf(g_configuring_font.names[i], sizeof(g_configuring_font.names[i]),
+    snprintf(g.names[i], sizeof(g.names[i]),
              "%s %s", family_name, faces[i]->style);
 
     desc.font       = fonts[i];
     desc.font_class = wuss_FONT_CLASS_NONE;
-    desc.name       = g_configuring_font.names[i];
+    desc.name       = g.names[i];
 
     /* the slot is replaced even when a task's relayout handler fails */
     frc = wuss_set_font(task->wuss, i, &desc);
     if (frc != result_OK && rc == result_OK)
       rc = frc;
 
-    if (g_configuring_font.fonts[i] != NULL)
-      bmfontcache_release(cache, g_configuring_font.fonts[i]);
-    g_configuring_font.fonts[i] = fonts[i];
+    if (g.fonts[i] != NULL)
+      bmfontcache_release(cache, g.fonts[i]);
+    g.fonts[i] = fonts[i];
   }
 
   bmfontfamily_destroy(family);
@@ -979,7 +979,7 @@ static result_t configuring_set_font(configuring_task_t *task,
     result_t trc;
 
     trc = wuss_icon_set_text(task->window, task->font_name_icon,
-                             g_configuring_font.names[0]);
+                             g.names[0]);
     if (trc != result_OK && rc == result_OK)
       rc = trc;
   }

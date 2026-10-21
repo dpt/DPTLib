@@ -360,7 +360,11 @@ result_t painting_create_with(wuss_t                     *wuss,
 
 /* the New dialogue: made when first wanted, as a child of the app's task so
  * Quit takes it too, which also clears this */
-static paintingnew_t *g_painting_new;
+static struct
+{
+  paintingnew_t *painting_new;
+}
+g;
 
 static result_t painting_new_dialogue(wuss_t *wuss);
 
@@ -394,14 +398,14 @@ static result_t painting_new_dialogue(wuss_t *wuss)
 {
   result_t rc;
 
-  if (g_painting_new == NULL)
+  if (g.painting_new == NULL)
   {
-    rc = paintingnew_create(&g_painting_new, wuss, painting_accept_new, wuss);
+    rc = paintingnew_create(&g.painting_new, wuss, painting_accept_new, wuss);
     if (rc != result_OK)
       return rc;
   }
 
-  return paintingnew_open(g_painting_new);
+  return paintingnew_open(g.painting_new);
 }
 
 result_t painting_app_create(wuss_t *wuss)

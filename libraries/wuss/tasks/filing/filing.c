@@ -31,24 +31,31 @@
 #define FILING_COLUMNS     4  /* initial window width, in cells */
 #define FILING_MAX_ROWS    4  /* initial window height cap, in cells */
 
-static char g_filing_root[DPTLIB_MAXPATH] = "";
+static struct
+{
+  char             root[DPTLIB_MAXPATH];
+  filing_run_fn_t  run;
 
-static filing_run_fn_t g_filing_run;
+  /* the task installed by filing_app_create, so installing it again (e.g.
+   * from both the startup list and AppsFiler) does not add a second icon */
+  filing_task_t   *filing;
+}
+g;
 
 void filing_set_run_fn(filing_run_fn_t fn)
 {
-  g_filing_run = fn;
+  g.run = fn;
 }
 
 void filing_set_root(const char *root)
 {
   if (root == NULL)
   {
-    g_filing_root[0] = '\0';
+    g.root[0] = '\0';
     return;
   }
 
-  snprintf(g_filing_root, sizeof(g_filing_root), "%s", root);
+  snprintf(g.root, sizeof(g.root), "%s", root);
 }
 
 static const char *filing_default_root(void)
@@ -78,7 +85,7 @@ static int filing_join(char       *out,
 
 static const char *filing_root(void)
 {
-  return g_filing_root[0] != '\0' ? g_filing_root : filing_default_root();
+  return g.root[0] != '\0' ? g.root : filing_default_root();
 }
 
 /* ----------------------------------------------------------------------- */
@@ -268,8 +275,8 @@ static void filing_open_bounced(filing_task_t        *task,
 
   open = (const wuss_data_open_t *) msg->data;
 
-  if (msg->my_ref != task->open_retry && g_filing_run != NULL &&
-      g_filing_run(open->filetype) == result_OK)
+  if (msg->my_ref != task->open_retry && g.run != NULL &&
+      g.run(open->filetype) == result_OK)
   {
     filing_send_open(task, open->path, open->filetype, &task->open_retry);
     return;
@@ -553,24 +560,20 @@ result_t filing_create(wuss_t *wuss, filing_task_t **out)
   return result_OK;
 }
 
-/* the task installed by filing_app_create, so installing it again (e.g. from
- * both the startup list and AppsFiler) does not add a second icon */
-static filing_task_t *g_filing;
-
 result_t filing_app_create(wuss_t *wuss)
 {
-  if (g_filing != NULL)
+  if (g.filing != NULL)
     return result_OK;
 
-  return filing_create(wuss, &g_filing);
+  return filing_create(wuss, &g.filing);
 }
 
 void filing_destroy(filing_task_t *task)
 {
   int i;
 
-  if (g_filing == task)
-    g_filing = NULL;
+  if (g.filing == task)
+    g.filing = NULL;
 
   for (i = 0; i < task->nwindows; i++)
   {

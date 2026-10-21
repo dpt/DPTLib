@@ -141,8 +141,12 @@ static const wuss_place_t palette_place =
 
 /* the open desktop and Screen palette tasks, if any: each window is a
  * singleton, raised rather than opened twice. Cleared by palette_destroy. */
-static palette_task_t *g_desktop;
-static palette_task_t *g_screen;
+static struct
+{
+  palette_task_t *desktop;
+  palette_task_t *screen;
+}
+g;
 
 /* Make a task block and open one window on it: the desktop palette, or with
  * screen the physical screen's ("Screen") */
@@ -160,7 +164,7 @@ static result_t palette_open(wuss_t *wuss, bool screen, palette_task_t **out)
   int              kept;
   int              i;
 
-  existing = screen ? g_screen : g_desktop;
+  existing = screen ? g.screen : g.desktop;
   if (existing != NULL)
   {
     wuss_window_t *open_window;
@@ -265,9 +269,9 @@ static result_t palette_open(wuss_t *wuss, bool screen, palette_task_t **out)
   wuss_task_set_autoclose(task->delegate, 1);
 
   if (screen)
-    g_screen = task;
+    g.screen = task;
   else
-    g_desktop = task;
+    g.desktop = task;
 
   if (out)
     *out = task;
@@ -306,10 +310,10 @@ result_t palette_app_create(wuss_t *wuss)
 
 void palette_destroy(palette_task_t *task)
 {
-  if (task == g_desktop)
-    g_desktop = NULL;
-  if (task == g_screen)
-    g_screen = NULL;
+  if (task == g.desktop)
+    g.desktop = NULL;
+  if (task == g.screen)
+    g.screen = NULL;
 
   free(task);
 }

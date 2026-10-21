@@ -50,7 +50,7 @@ typedef struct app app_t;
 
 struct app
 {
-  app_t                *next; /* g_apps */
+  app_t                *next; /* g.apps */
   wuss_t               *wuss;
   const taskapp_desc_t *desc;
   wuss_task_t          *task;
@@ -67,7 +67,11 @@ struct app
   bool                  quit; /* Quit picked; taskapp_reap destroys the task */
 };
 
-static app_t *g_apps; /* every installed app */
+static struct
+{
+  app_t *apps; /* every installed app */
+}
+g;
 
 static void app_label_hide(app_t *app, bool hidden)
 {
@@ -173,7 +177,7 @@ result_t taskapp_spawn(wuss_t               *wuss,
 {
   app_t *app;
 
-  for (app = g_apps; app != NULL; app = app->next)
+  for (app = g.apps; app != NULL; app = app->next)
     if (app->desc == desc)
       return app_spawn(app, fn, param, out);
 
@@ -343,7 +347,7 @@ static result_t app_handle(wuss_window_t      *window,
 
   case wuss_EVENT_QUIT:
     wuss_proginfo_release(app->task);
-    for (link = &g_apps; *link != app; link = &(*link)->next)
+    for (link = &g.apps; *link != app; link = &(*link)->next)
       ;
     *link = app->next;
     free(app);
@@ -386,7 +390,7 @@ result_t taskapp_install(wuss_t *wuss, const taskapp_desc_t *desc)
   wuss_iconbar_icon_spec_t spec;
   int                      n;
 
-  for (app = g_apps; app != NULL; app = app->next)
+  for (app = g.apps; app != NULL; app = app->next)
     if (app->desc == desc)
       return result_OK;
 
@@ -440,8 +444,8 @@ result_t taskapp_install(wuss_t *wuss, const taskapp_desc_t *desc)
     free(app);
     return rc;
   }
-  app->next = g_apps;
-  g_apps    = app;
+  app->next = g.apps;
+  g.apps    = app;
 
   spec.image = taskapp_glyph(app->task, desc->name);
   spec.text  = desc->name;
@@ -465,7 +469,7 @@ void taskapp_reap(void)
 {
   app_t *app, *next;
 
-  for (app = g_apps; app != NULL; app = next)
+  for (app = g.apps; app != NULL; app = next)
   {
     next = app->next;
     if (app->quit)

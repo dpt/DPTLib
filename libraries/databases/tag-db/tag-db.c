@@ -49,13 +49,17 @@
 
 /* ----------------------------------------------------------------------- */
 
-static unsigned int tagdb_refcount = 0;
+static struct
+{
+  unsigned int refcount;
+}
+g;
 
 result_t tagdb_init(void)
 {
   result_t err;
 
-  if (tagdb_refcount == 0)
+  if (g.refcount == 0)
   {
     /* dependencies */
 
@@ -64,17 +68,17 @@ result_t tagdb_init(void)
       return err;
   }
 
-  tagdb_refcount++;
+  g.refcount++;
 
   return result_OK;
 }
 
 void tagdb_fin(void)
 {
-  if (tagdb_refcount == 0)
+  if (g.refcount == 0)
     return;
 
-  if (--tagdb_refcount == 0)
+  if (--g.refcount == 0)
   {
     /* dependencies */
 

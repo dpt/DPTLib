@@ -50,12 +50,63 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* run_wuss's framebuffer bitmap and the screen_t wrapping it for wuss:
- * file-scope, like g_tasks, since run_wuss runs at most once per process
- * and app_set_mode (called from the Display task, well after run_wuss's own
- * locals have gone out of scope) needs to reallocate and re-derive them. */
-static bitmap_t g_bm;
-static screen_t g_scr;
+/* one iteration of the event/redraw loop; a struct because Emscripten drives
+ * it as a callback (emscripten_set_main_loop_arg) rather than a plain while */
+struct wuss_frame_ctx
+{
+  wuss_t          *wuss;
+  wuss_frontend_t *frontend;
+  bitmap_t        *bm;
+  unsigned char   *pixels;
+  int              rowbytes;
+  int              scr_width;
+  int              scr_height;
+  colour_t        *palette;
+  int              npalette;
+};
+
+static struct
+{
+  /* run_wuss's framebuffer bitmap and the screen_t wrapping it for wuss:
+   * file-scope, like g_tasks, since run_wuss runs at most once per process
+   * and app_set_mode (called from the Display task, well after run_wuss's
+   * own locals have gone out of scope) needs to reallocate and re-derive
+   * them. */
+  bitmap_t bm;
+  screen_t scr;
+
+  /* The optional software pointer (--pointer, Display > Software pointer):
+   * an arrow drawn into the framebuffer itself, so it scales with the window
+   * zoom and goes through the CRT shader like everything else. wuss never
+   * learns of it: each frame puts back the pixels under it before wuss can
+   * draw (a window drag's screen_copy_rect would otherwise smear it along),
+   * then saves them afresh and redraws it once wuss is done. */
+  struct
+  {
+    const bitmap_t *image;    /* the arrow, from the icon pool; hotspot at
+                               * its top-left; NULL if the pool lacks it */
+    bool           loaded;
+    unsigned char *under;     /* framebuffer bytes beneath the drawn arrow */
+    box_t          drawn;     /* where it was drawn, if is_drawn */
+    bool           is_drawn;
+    point_t        pos;       /* last reported mouse position */
+    bool           in_window; /* false until a mouse event, or after a
+                               * leave */
+  }
+  pointer;
+
+  /* file scope so app_set_mode (called from the Display task, long after
+   * run_wuss's own locals are gone) can update pixels/rowbytes/scr_width/
+   * scr_height on the very instance the main loop below is reading */
+  struct wuss_frame_ctx frame_ctx;
+
+  /* --script given: script_poll feeds input ahead of the frontend's own */
+  bool         scripted;
+
+  /* wuss_set_time's clock while scripted, in place of the frontend's */
+  unsigned int script_ms;
+}
+g;
 
 /* Fill config with the chrome colours for the PICO-8 (default) or RISC OS
  * 16-colour Wimp palette. */
@@ -153,26 +204,7 @@ static void pixel_stress(wuss_t *wuss, int scr_width, int scr_height)
 
 /* ----------------------------------------------------------------------- */
 
-/* The optional software pointer (--pointer, Display > Software pointer): an
- * arrow drawn into the framebuffer itself, so it scales with the window zoom
- * and goes through the CRT shader like everything else. wuss never learns of
- * it: each frame puts back the pixels under it before wuss can draw (a window
- * drag's screen_copy_rect would otherwise smear it along), then saves them
- * afresh and redraws it once wuss is done. */
-static struct
-{
-  const bitmap_t *image;    /* the arrow, from the icon pool; hotspot at its
-                             * top-left; NULL if the pool lacks it */
-  bool           loaded;
-  unsigned char *under;     /* framebuffer bytes beneath the drawn arrow */
-  box_t          drawn;     /* where it was drawn, if is_drawn */
-  bool           is_drawn;
-  point_t        pos;       /* last reported mouse position */
-  bool           in_window; /* false until a mouse event, or after a leave */
-}
-g_pointer;
-
-/* Copy the framebuffer bytes spanning box to (save) or from g_pointer.under.
+/* Copy the framebuffer bytes spanning box to (save) or from g.pointer.under.
  * Whole bytes, so a sub-byte format needs no masking: the stray pixels
  * either side go back exactly as they were saved. */
 static void pointer_copy_under(const box_t *box, bool save)
@@ -183,13 +215,13 @@ static void pointer_copy_under(const box_t *box, bool save)
   int            y;
   unsigned char *row;
 
-  log2bpp = pixelfmt_log2bpp(g_bm.format);
+  log2bpp = pixelfmt_log2bpp(g.bm.format);
   bx0     = (box->x0 << log2bpp) >> 3;
   nbytes  = (((box->x1 << log2bpp) + 7) >> 3) - bx0;
-  under   = g_pointer.under;
+  under   = g.pointer.under;
   for (y = box->y0; y < box->y1; y++)
   {
-    row = (unsigned char *) g_bm.base + y * g_bm.rowbytes + bx0;
+    row = (unsigned char *) g.bm.base + y * g.bm.rowbytes + bx0;
     if (save)
       memcpy(under, row, nbytes);
     else
@@ -202,12 +234,12 @@ static void pointer_copy_under(const box_t *box, bool save)
  * setting *box to where, for the caller to present. */
 static bool pointer_undraw(box_t *box)
 {
-  if (!g_pointer.is_drawn)
+  if (!g.pointer.is_drawn)
     return false;
 
-  pointer_copy_under(&g_pointer.drawn, false);
-  g_pointer.is_drawn = false;
-  *box = g_pointer.drawn;
+  pointer_copy_under(&g.pointer.drawn, false);
+  g.pointer.is_drawn = false;
+  *box = g.pointer.drawn;
   return true;
 }
 
@@ -219,57 +251,39 @@ static bool pointer_draw(box_t *box)
   box_t    screen;
   screen_t scr;
 
-  if (!g_tasks.pointer || !g_pointer.in_window)
+  if (!g_tasks.pointer || !g.pointer.in_window)
     return false;
 
-  arrow.x0  = g_pointer.pos.x;
-  arrow.y0  = g_pointer.pos.y;
-  arrow.x1  = g_pointer.pos.x + g_pointer.image->size.w;
-  arrow.y1  = g_pointer.pos.y + g_pointer.image->size.h;
+  arrow.x0  = g.pointer.pos.x;
+  arrow.y0  = g.pointer.pos.y;
+  arrow.x1  = g.pointer.pos.x + g.pointer.image->size.w;
+  arrow.y1  = g.pointer.pos.y + g.pointer.image->size.h;
   screen.x0 = 0;
   screen.y0 = 0;
-  screen.x1 = g_bm.size.w;
-  screen.y1 = g_bm.size.h;
+  screen.x1 = g.bm.size.w;
+  screen.y1 = g.bm.size.h;
   if (box_intersection(&arrow, &screen, box))
     return false;
 
   pointer_copy_under(box, true);
 
   /* a private screen_t: wuss's own may be left clipped to its last redraw */
-  screen_for_bitmap(&scr, &g_bm);
-  (void) screen_copy_bitmap(&scr, g_pointer.pos.x, g_pointer.pos.y,
-                            g_pointer.image);
+  screen_for_bitmap(&scr, &g.bm);
+  (void) screen_copy_bitmap(&scr, g.pointer.pos.x, g.pointer.pos.y,
+                            g.pointer.image);
 
-  g_pointer.drawn    = *box;
-  g_pointer.is_drawn = true;
+  g.pointer.drawn    = *box;
+  g.pointer.is_drawn = true;
   return true;
 }
 
 bool app_set_pointer(bool on)
 {
-  return wuss_frontend_hide_pointer(g_tasks.frontend, on && g_pointer.loaded);
+  return wuss_frontend_hide_pointer(g_tasks.frontend, on && g.pointer.loaded);
 }
 
 /* ----------------------------------------------------------------------- */
 
-/* one iteration of the event/redraw loop; a struct because Emscripten drives
- * it as a callback (emscripten_set_main_loop_arg) rather than a plain while */
-struct wuss_frame_ctx
-{
-  wuss_t          *wuss;
-  wuss_frontend_t *frontend;
-  bitmap_t        *bm;
-  unsigned char   *pixels;
-  int              rowbytes;
-  int              scr_width;
-  int              scr_height;
-  colour_t        *palette;
-  int              npalette;
-};
-
-/* file scope so app_set_mode (called from the Display task, long after
- * run_wuss's own locals are gone) can update pixels/rowbytes/scr_width/
- * scr_height on the very instance the main loop below is reading */
 #ifndef __EMSCRIPTEN__
 /* Save the framebuffer as wuss-N.png in the current directory, N being the
  * first number not already taken. */
@@ -289,18 +303,10 @@ static void save_screenshot(void)
     fclose(f);
   }
 
-  if (script_save_png(&g_bm, name) != result_OK)
+  if (script_save_png(&g.bm, name) != result_OK)
     logf_error("screenshot save failed: %s", name);
 }
 #endif
-
-static struct wuss_frame_ctx g_frame_ctx;
-
-/* --script given: script_poll feeds input ahead of the frontend's own */
-static bool         g_scripted;
-
-/* wuss_set_time's clock while g_scripted, in place of the frontend's */
-static unsigned int g_script_ms;
 
 /* Next input for this frame: the script's until it ends its part of the
  * frame, then the frontend's. */
@@ -330,14 +336,14 @@ static void wuss_frame(void *arg)
   box_t        new_pointer;
   bool         has_pointer;
 
-  /* before anything below can draw: see g_pointer */
+  /* before anything below can draw: see g.pointer */
   had_pointer = pointer_undraw(&old_pointer);
 
   /* a script runs on a synthetic 50Hz clock so its double-clicks (and their
    * absence across a "wait") don't depend on how fast frames go headless */
-  if (g_scripted)
-    g_script_ms += 20;
-  wuss_set_time(c->wuss, g_scripted ? g_script_ms
+  if (g.scripted)
+    g.script_ms += 20;
+  wuss_set_time(c->wuss, g.scripted ? g.script_ms
                                     : wuss_frontend_ms(c->frontend));
 
   /* A move is only delivered once the pointer has stopped for a poll, or
@@ -349,13 +355,13 @@ static void wuss_frame(void *arg)
   move_pending = false;
   move_pos     = POINT(0, 0);
 
-  scripting = g_scripted;
+  scripting = g.scripted;
   while (frame_poll(c, &scripting, &ev))
   {
     if (ev.kind == wuss_INPUT_MOUSE_MOVE)
     {
-      g_pointer.pos       = ev.pos;
-      g_pointer.in_window = true;
+      g.pointer.pos       = ev.pos;
+      g.pointer.in_window = true;
       move_pos            = ev.pos;
       move_pending        = true;
       continue;
@@ -372,11 +378,11 @@ static void wuss_frame(void *arg)
     case wuss_INPUT_MOUSE_DOWN:
     case wuss_INPUT_MOUSE_UP:
     case wuss_INPUT_WHEEL:
-      g_pointer.pos       = ev.pos;
-      g_pointer.in_window = true;
+      g.pointer.pos       = ev.pos;
+      g.pointer.in_window = true;
       break;
     case wuss_INPUT_MOUSE_LEAVE:
-      g_pointer.in_window = false;
+      g.pointer.in_window = false;
       break;
     default:
       break;
@@ -683,15 +689,15 @@ static result_t run_wuss(const char *resources,
   tasks_build_screen_palette(scr_palette, scr_nentries,
                              palette, NELEMS(palette));
 
-  rc = bitmap_init(&g_bm, SIZE2D(scr_width, scr_height), fmt, rowbytes,
+  rc = bitmap_init(&g.bm, SIZE2D(scr_width, scr_height), fmt, rowbytes,
                    scr_palette, pixels);
   logf_info("wuss: bitmap_init -> rc=0x%X (%s)", rc, result_string(rc));
   if (rc != result_OK)
     goto Failure;
 
-  bitmap_clear(&g_bm, palette[palette_PICO8_WHITE]);
+  bitmap_clear(&g.bm, palette[palette_PICO8_WHITE]);
 
-  screen_for_bitmap(&g_scr, &g_bm);
+  screen_for_bitmap(&g.scr, &g.bm);
 
   {
     wuss_config_t    config;
@@ -709,7 +715,7 @@ static result_t run_wuss(const char *resources,
       descs[i].name       = names[i];
     }
 
-    rc = wuss_create(&g_scr, descs, nfonts, palette, NELEMS(palette), &config,
+    rc = wuss_create(&g.scr, descs, nfonts, palette, NELEMS(palette), &config,
                      NULL, resources, &wuss);
     logf_info("wuss: wuss_create -> rc=0x%X (%s)", rc, result_string(rc));
     if (rc != result_OK)
@@ -724,9 +730,9 @@ static result_t run_wuss(const char *resources,
     else
       (void) wuss_set_backdrop(wuss, &config.backdrop);
 
-    g_pointer.image = wuss_iconpool_bitmap(wuss,
+    g.pointer.image = wuss_iconpool_bitmap(wuss,
                         wuss_iconpool_lookup(wuss, "pointer"));
-    if (g_pointer.image == NULL)
+    if (g.pointer.image == NULL)
     {
       logf_error("wuss: icon 'pointer' unavailable -- "
                  "software pointer unavailable");
@@ -735,15 +741,15 @@ static result_t run_wuss(const char *resources,
     {
       /* under holds the bytes beneath the arrow at any depth: at most 4 per
        * pixel, which also covers a sub-byte format's extra partial byte */
-      g_pointer.under = malloc((size_t) g_pointer.image->size.w * 4 *
-                               g_pointer.image->size.h);
-      g_pointer.loaded = (g_pointer.under != NULL);
+      g.pointer.under = malloc((size_t) g.pointer.image->size.w * 4 *
+                               g.pointer.image->size.h);
+      g.pointer.loaded = (g.pointer.under != NULL);
     }
   }
 
   g_tasks.wuss           = wuss;
   g_tasks.frontend       = frontend;
-  g_tasks.bm             = &g_bm;
+  g_tasks.bm             = &g.bm;
 
   /* --crt: the frontend opens plain; switch over now so the Display
    * window's option agrees */
@@ -796,26 +802,26 @@ static result_t run_wuss(const char *resources,
 #endif
 
   wuss_redraw(wuss);
-  wuss_frontend_present(frontend, &g_bm, NULL);
+  wuss_frontend_present(frontend, &g.bm, NULL);
 
-  g_frame_ctx.wuss          = wuss;
-  g_frame_ctx.frontend      = frontend;
-  g_frame_ctx.bm            = &g_bm;
-  g_frame_ctx.pixels        = pixels;
-  g_frame_ctx.rowbytes      = rowbytes;
-  g_frame_ctx.scr_width     = scr_width;
-  g_frame_ctx.scr_height    = scr_height;
-  g_frame_ctx.palette       = palette;
-  g_frame_ctx.npalette      = NELEMS(palette);
+  g.frame_ctx.wuss       = wuss;
+  g.frame_ctx.frontend   = frontend;
+  g.frame_ctx.bm         = &g.bm;
+  g.frame_ctx.pixels     = pixels;
+  g.frame_ctx.rowbytes   = rowbytes;
+  g.frame_ctx.scr_width  = scr_width;
+  g.frame_ctx.scr_height = scr_height;
+  g.frame_ctx.palette    = palette;
+  g.frame_ctx.npalette   = NELEMS(palette);
 
 #ifdef __EMSCRIPTEN__
   /* the browser owns the loop; simulate_infinite_loop=1 means this call
    * never returns -- fine, the page dies on navigation. fps=0 asks for
    * requestAnimationFrame pacing. */
-  emscripten_set_main_loop_arg(wuss_frame, &g_frame_ctx, 0, 1);
+  emscripten_set_main_loop_arg(wuss_frame, &g.frame_ctx, 0, 1);
 #else
   while (!g_tasks.quit)
-    wuss_frame(&g_frame_ctx);
+    wuss_frame(&g.frame_ctx);
 #endif
 
   rc = result_OK;
@@ -834,7 +840,7 @@ Failure:
   wuss_destroy(wuss); /* also sweeps g.menu_task and closes any open chain,
                        * including the shared proginfo singleton's window */
 
-  free(g_pointer.under);
+  free(g.pointer.under);
 
   for (i = 0; i < nfonts; i++)
     bmfont_destroy(fonts[i]);
@@ -869,41 +875,41 @@ result_t app_set_mode(size2d_t size, int depth)
   /* drop the old palette buffer: it's sized for the old format, and
    * bitmap_init would otherwise copy out of it (overrunning if the new
    * format has more entries) and leak it. Rebuilt below. */
-  bitmap_set_palette(&g_bm, NULL);
-  rc = bitmap_init(&g_bm, size, fmt, rowbytes, NULL, pixels);
+  bitmap_set_palette(&g.bm, NULL);
+  rc = bitmap_init(&g.bm, size, fmt, rowbytes, NULL, pixels);
   if (rc != result_OK)
     return rc;
 
   palette      = wuss_get_palette(g_tasks.wuss, &npalette);
-  scr_nentries = pixelfmt_paletted_nentries(g_bm.format);
+  scr_nentries = pixelfmt_paletted_nentries(g.bm.format);
   if (scr_nentries > 0)
   {
     tasks_build_screen_palette(scr_palette, scr_nentries, palette, npalette);
-    bitmap_set_palette(&g_bm, scr_palette);
+    bitmap_set_palette(&g.bm, scr_palette);
   }
 
-  screen_for_bitmap(&g_scr, &g_bm);
+  screen_for_bitmap(&g.scr, &g.bm);
 
-  rc = wuss_resize(g_tasks.wuss, &g_scr);
+  rc = wuss_resize(g_tasks.wuss, &g.scr);
   if (rc != result_OK)
     return rc;
 
-  g_frame_ctx.pixels     = pixels;
-  g_frame_ctx.rowbytes   = rowbytes;
-  g_frame_ctx.scr_width  = size.w;
-  g_frame_ctx.scr_height = size.h;
+  g.frame_ctx.pixels     = pixels;
+  g.frame_ctx.rowbytes   = rowbytes;
+  g.frame_ctx.scr_width  = size.w;
+  g.frame_ctx.scr_height = size.h;
 
   return result_OK;
 }
 
 int app_get_depth(void)
 {
-  switch (g_bm.format)
+  switch (g.bm.format)
   {
   case pixelfmt_rgbx5551: return 15;
   case pixelfmt_rgb565:   return 16;
   case pixelfmt_p8:       return g_tasks.grey ? app_DEPTH_GREY256 : 8;
-  default:                return 1 << pixelfmt_log2bpp(g_bm.format);
+  default:                return 1 << pixelfmt_log2bpp(g.bm.format);
   }
 }
 
@@ -1101,13 +1107,13 @@ int main(int argc, char *argv[])
   {
     if (script_open(opts.script) != result_OK)
       return EXIT_FAILURE;
-    g_scripted = true;
+    g.scripted = true;
   }
 
   rc = run_wuss(opts.resources, opts.palette_name, opts.font_family,
                opts.depth, opts.scale, opts.res_width, opts.res_height, opts.tasks);
 
-  if (g_scripted && script_close() != result_OK)
+  if (g.scripted && script_close() != result_OK)
     rc = result_TEST_FAILED;
 
   return rc == result_TEST_PASSED ? EXIT_SUCCESS : EXIT_FAILURE;

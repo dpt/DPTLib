@@ -22,41 +22,40 @@ static struct
 {
   /* We use an atom set as the store at the moment. This is a bit wasteful as
    * a length field is stored per entry and it's always 16 bytes. */
-  atom_set_t *digests;
+  atom_set_t  *digests;
+  unsigned int refcount;
 }
-LOCALS;
+g;
 
 /* ----------------------------------------------------------------------- */
 
-static unsigned int digestdb_refcount = 0;
-
 result_t digestdb_init(void)
 {
-  if (digestdb_refcount == 0)
+  if (g.refcount == 0)
   {
     /* initialise */
 
-    LOCALS.digests = atom_create_tuned(ATOMBUFSZ / digestdb_DIGESTSZ,
+    g.digests = atom_create_tuned(ATOMBUFSZ / digestdb_DIGESTSZ,
                                        ATOMBUFSZ);
-    if (LOCALS.digests == NULL)
+    if (g.digests == NULL)
       return result_OOM;
   }
 
-  digestdb_refcount++;
+  g.refcount++;
 
   return result_OK;
 }
 
 void digestdb_fin(void)
 {
-  if (digestdb_refcount == 0)
+  if (g.refcount == 0)
     return;
 
-  if (--digestdb_refcount == 0)
+  if (--g.refcount == 0)
   {
     /* finalise */
 
-    atom_destroy(LOCALS.digests);
+    atom_destroy(g.digests);
   }
 }
 
@@ -66,7 +65,7 @@ result_t digestdb_add(const unsigned char *digest, int *index)
 {
   result_t err;
 
-  err = atom_new(LOCALS.digests, digest, digestdb_DIGESTSZ, (atom_t *) index);
+  err = atom_new(g.digests, digest, digestdb_DIGESTSZ, (atom_t *) index);
   if (err == result_ATOM_NAME_EXISTS)
     err = result_OK;
 
@@ -75,7 +74,7 @@ result_t digestdb_add(const unsigned char *digest, int *index)
 
 const unsigned char *digestdb_get(int index)
 {
-  return atom_get(LOCALS.digests, index, NULL);
+  return atom_get(g.digests, index, NULL);
 }
 
 /* ----------------------------------------------------------------------- */
