@@ -24,8 +24,8 @@
 #include "wuss/component/error.h"
 
 #include "reading.h"
-#include "../taskapp.h"
-#include "../common.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
 
 /* "Colours" leads to a submenu with one row per task->fg_index/bg_index;
  * both rows share the colourmenu singleton, retargeted per hover by

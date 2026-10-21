@@ -11,7 +11,7 @@
 #include "wuss/icon.h"
 
 #include "pooling.h"
-#include "../taskapp.h"
+#include "../common/taskapp.h"
 
 #define POOLING_LABEL_CHARS 16 /* label column width */
 #define POOLING_COLUMNS      6 /* window opens this many cells wide */

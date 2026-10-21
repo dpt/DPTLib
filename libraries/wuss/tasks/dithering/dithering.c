@@ -20,12 +20,12 @@
 #include "wuss/icon.h"
 #include "wuss/menu.h"
 
-#include "../common.h"
+#include "../common/common.h"
 #include "../palette/palette.h"
 
 #include "dithering.h"
-#include "../snapshot.h"
-#include "../taskapp.h"
+#include "../common/snapshot.h"
+#include "../common/taskapp.h"
 
 /* ----------------------------------------------------------------------- */
 

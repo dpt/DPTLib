@@ -1,4 +1,4 @@
-/* wuss/tasks/snapshot.h -- save a task window's content as a PNG */
+/* wuss/tasks/common/snapshot.h -- save a task window's content as a PNG */
 
 #ifndef TASKS_SNAPSHOT_H
 #define TASKS_SNAPSHOT_H

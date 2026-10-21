@@ -15,9 +15,9 @@
 #include "geom/box.h"
 
 #include "ball.h"
-#include "../snapshot.h"
-#include "../taskapp.h"
-#include "../common.h"
+#include "../common/snapshot.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
 
 #define BALL_BASE_RADIUS 8 /* +/-50% at spawn -> 4..12 */
 #define BALL_SAVE_NAME "ball.png" /* Save As's initial leafname */

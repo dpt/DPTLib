@@ -1006,7 +1006,7 @@ if(BUILD_APPS)
         libraries/wuss/tasks/effecting/effecting.c
         libraries/wuss/tasks/effecting/effecting-edit.c
         libraries/wuss/tasks/filing/filing.c
-        libraries/wuss/tasks/minesweeping/fireball.c
+        libraries/wuss/tasks/common/fireball.c
         libraries/wuss/tasks/gradient/gradient.c
         libraries/wuss/tasks/greebling/greebling.c
         libraries/wuss/tasks/icons/icons.c
@@ -1029,7 +1029,7 @@ if(BUILD_APPS)
         libraries/wuss/tasks/shortcuts/shortcuts.c
         libraries/wuss/tasks/compositing/compositing.c
         libraries/wuss/tasks/saturn/saturn.c
-        libraries/wuss/tasks/snapshot.c
+        libraries/wuss/tasks/common/snapshot.c
         libraries/wuss/tasks/sofa/sofa.c
         libraries/wuss/tasks/sudoku/sudoku.c
         libraries/wuss/tasks/orbing/orbing.c
@@ -1037,9 +1037,9 @@ if(BUILD_APPS)
         libraries/wuss/tasks/resizing/resizing.c
         libraries/wuss/tasks/resizing/resizing.h
         libraries/wuss/tasks/tiling/tiling.c
-        libraries/wuss/tasks/taskapp.c
-        libraries/wuss/tasks/taskapp.h
-        libraries/wuss/tasks/zxtask.c)
+        libraries/wuss/tasks/common/taskapp.c
+        libraries/wuss/tasks/common/taskapp.h
+        libraries/wuss/tasks/common/zxtask.c)
 
     if(TARGET_RISCOS)
         list(APPEND WUSS_APP_SOURCES apps/wuss/frontend-riscos.c)

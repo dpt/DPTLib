@@ -25,7 +25,7 @@
 #include "wuss/message.h"
 
 #include "filing.h"
-#include "../common.h"
+#include "../common/common.h"
 
 #define FILING_LABEL_CHARS 12
 #define FILING_COLUMNS     4  /* initial window width, in cells */

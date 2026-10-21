@@ -14,7 +14,7 @@
 #include "wuss/icon.h"
 
 #include "shortcuts.h"
-#include "../taskapp.h"
+#include "../common/taskapp.h"
 
 #define SHORTCUTS_LABEL_CHARS 20 /* label column width */
 #define SHORTCUTS_COLUMNS      2 /* keys, then action */

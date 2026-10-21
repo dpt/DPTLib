@@ -20,7 +20,7 @@
 #include "wuss/task.h"
 #include "wuss/window.h"
 
-#include "../common.h"
+#include "../common/common.h"
 #include "painting-new.h"
 
 /* ----------------------------------------------------------------------- */

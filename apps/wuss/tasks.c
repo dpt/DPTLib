@@ -26,7 +26,7 @@
 #include "tasks/chars/chars.h"
 #include "tasks/checker/checker.h"
 #include "tasks/clock/clock.h"
-#include "tasks/common.h"
+#include "tasks/common/common.h"
 #include "tasks/configuring/configuring.h"
 #include "tasks/curving/curving.h"
 #include "tasks/dithering/dithering.h"
@@ -54,7 +54,7 @@
 #include "tasks/sudoku/sudoku.h"
 #include "tasks/orbing/orbing.h"
 #include "tasks/reading/reading.h"
-#include "tasks/taskapp.h"
+#include "tasks/common/taskapp.h"
 #include "tasks/tiling/tiling.h"
 
 /* ----------------------------------------------------------------------- */

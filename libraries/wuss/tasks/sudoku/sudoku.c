@@ -15,8 +15,8 @@
 #include "geom/point.h"
 
 #include "sudoku.h"
-#include "../taskapp.h"
-#include "../common.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
 
 #define SUDOKU_CELL   20 /* pixels per cell */
 #define SUDOKU_BORDER 2  /* frame round the board */

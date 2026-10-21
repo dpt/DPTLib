@@ -16,8 +16,8 @@
 #include "ZXSpectrum/Keyboard.h"
 
 #include "greatescape.h"
-#include "../taskapp.h"
-#include "../zxtask.h"
+#include "../common/taskapp.h"
+#include "../common/zxtask.h"
 
 /* The game's timings are in T-states of a 48K Spectrum's Z80. */
 #define GREATESCAPE_CLOCK_HZ (3.5e6)

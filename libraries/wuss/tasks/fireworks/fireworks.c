@@ -15,10 +15,10 @@
 #include "geom/size.h"
 #include "geom/stack.h"
 
-#include "../common.h"
+#include "../common/common.h"
 #include "fireworks.h"
-#include "../snapshot.h"
-#include "../taskapp.h"
+#include "../common/snapshot.h"
+#include "../common/taskapp.h"
 
 #define FIREWORKS_WIDTH     480
 #define FIREWORKS_HEIGHT    384

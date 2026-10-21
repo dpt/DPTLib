@@ -15,8 +15,8 @@
 #include "wuss/menu-desc.h"
 
 #include "tiling.h"
-#include "../taskapp.h"
-#include "../common.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
 
 result_t tiling_create(wuss_t *wuss, tiling_task_t **out)
 {

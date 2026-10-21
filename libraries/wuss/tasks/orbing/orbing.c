@@ -23,9 +23,9 @@
 #include "wuss/task.h"
 
 #include "orbing.h"
-#include "../snapshot.h"
-#include "../taskapp.h"
-#include "../common.h"
+#include "../common/snapshot.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
 
 /* After Kai's Power Tools 3's Spheroid Designer (MetaTools, 1995): one big
  * sphere lit by up to four coloured lights, with knobs for the highlight's

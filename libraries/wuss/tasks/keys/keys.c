@@ -15,8 +15,8 @@
 #include "wuss/task.h"
 
 #include "keys.h"
-#include "../taskapp.h"
-#include "../common.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
 
 /* MENU click pops this menu; the item table lives per-instance in
  * keys_task_t so each window's Info row can hold its own .window pointer to

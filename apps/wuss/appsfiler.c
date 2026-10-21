@@ -21,8 +21,8 @@
 
 #include "appsfiler.h"
 #include "tasks.h"
-#include "tasks/common.h"
-#include "tasks/taskapp.h"
+#include "tasks/common/common.h"
+#include "tasks/common/taskapp.h"
 
 #define APPS_LABEL_CHARS 12
 #define APPS_COLUMNS     4

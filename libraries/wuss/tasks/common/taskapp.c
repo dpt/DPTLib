@@ -1,4 +1,4 @@
-/* wuss/tasks/taskapp.c -- icon bar app wrapper for the demo tasks */
+/* wuss/tasks/common/taskapp.c -- icon bar app wrapper for the demo tasks */
 
 #ifdef WUSS_APP
 

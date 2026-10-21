@@ -19,8 +19,8 @@
 #include "tasks.h" /* app_set_mode, app_get_depth */
 
 #include "display.h"
-#include "../taskapp.h"
-#include "../common.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
 
 #define DISPLAY_G_LABEL      1 /* size group, see stack_item_t::group */
 #define DISPLAY_SET_W        120

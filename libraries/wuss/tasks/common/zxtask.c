@@ -1,4 +1,4 @@
-/* wuss/tasks/zxtask.c -- shared host for ZX Spectrum game tasks */
+/* wuss/tasks/common/zxtask.c -- shared host for ZX Spectrum game tasks */
 
 #if defined(WUSS_APP) && (defined(WUSS_CHASEHQ) || defined(WUSS_GREATESCAPE))
 

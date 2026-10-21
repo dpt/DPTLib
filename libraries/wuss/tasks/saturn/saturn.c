@@ -22,9 +22,9 @@
 #include "wuss/menu.h"
 
 #include "saturn.h"
-#include "../taskapp.h"
-#include "../common.h"
-#include "../snapshot.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
+#include "../common/snapshot.h"
 
 /* A recreation of the ringed planet from the loading screen of Elite (Ian
  * Bell and David Braben, Acornsoft, 1984), the stippled Saturn-like world

@@ -19,9 +19,9 @@
 #include "utils/rng.h"
 
 #include "fern.h"
-#include "../taskapp.h"
-#include "../common.h"
-#include "../snapshot.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
+#include "../common/snapshot.h"
 
 /* Barnsley's fern: start at (0,0) and repeatedly apply one of four affine
  * maps chosen at random (1%, 85%, 7%, 7%), plotting each result. The fern

@@ -15,7 +15,7 @@
 #include "wuss/task.h"
 #include "wuss/window.h"
 
-#include "fireball.h"
+#include "../common/fireball.h"
 
 #define MINESWEEPING_CELL 22 /* pixels per cell; matches mine.png/flag.png */
 

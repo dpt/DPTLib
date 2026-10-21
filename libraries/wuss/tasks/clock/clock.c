@@ -21,9 +21,9 @@
 #include "utils/fxp.h"
 
 #include "clock.h"
-#include "../taskapp.h"
-#include "../common.h"
-#include "../snapshot.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
+#include "../common/snapshot.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live per-instance
  * in clock_task_t, not as a file-scope static, so that each window's Info row

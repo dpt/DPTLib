@@ -15,9 +15,9 @@
 #include "utils/easing.h"
 
 #include "oscillating.h"
-#include "../taskapp.h"
-#include "../common.h"
-#include "../snapshot.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
+#include "../common/snapshot.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live
  * per-instance in oscillating_task_t, not as a file-scope static, so that each

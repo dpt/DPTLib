@@ -16,8 +16,8 @@
 #include "ZXSpectrum/Keyboard.h"
 
 #include "chasehq.h"
-#include "../taskapp.h"
-#include "../zxtask.h"
+#include "../common/taskapp.h"
+#include "../common/zxtask.h"
 
 /* The game blocks inside chq_start for its whole life; zxtask runs it on its
  * own thread. */

@@ -15,10 +15,10 @@
 #include "geom/box.h"
 #include "utils/fxp.h"
 
-#include "../snapshot.h"
+#include "../common/snapshot.h"
 #include "sofa.h"
-#include "../taskapp.h"
-#include "../common.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
 
 /* MENU click pops this menu; the item table and wuss_menu_t live per-instance
  * in sofa_task_t, not as a file-scope static, so that each window's Info row

@@ -17,9 +17,9 @@
 #include "wuss/task.h"
 
 #include "doughnut.h"
-#include "../taskapp.h"
-#include "../common.h"
-#include "../snapshot.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
+#include "../common/snapshot.h"
 
 /* Andy Sloane's "donut.c" (www.a1k0n.net/2011/07/20/donut-math.html):
  * a torus (tube radius R1, ring radius R2) is swept over its two surface

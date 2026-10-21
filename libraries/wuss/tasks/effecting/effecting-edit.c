@@ -18,7 +18,7 @@
 #include "wuss/icon-spec.h"
 
 #include "effecting-edit.h"
-#include "../common.h"
+#include "../common/common.h"
 
 #define EDIT_PLOT_SIZE 128
 #define EDIT_SLIDER_W  128

@@ -22,9 +22,9 @@
 
 #include "effecting.h"
 #include "effecting-edit.h"
-#include "../snapshot.h"
-#include "../taskapp.h"
-#include "../common.h"
+#include "../common/snapshot.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
 
 #define EFFECTING_LABEL_CHARS 22
 #define EFFECTING_LIST_MIN_W  150 /* content width that fits the title */

@@ -17,9 +17,9 @@
 #include "utils/rng.h"
 
 #include "patterns.h"
-#include "../taskapp.h"
-#include "../common.h"
-#include "../snapshot.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
+#include "../common/snapshot.h"
 
 #define PATTERNS_STEP 4 /* pixels per gradient step */
 

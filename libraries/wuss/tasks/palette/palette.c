@@ -21,8 +21,8 @@
 #include "wuss/menu.h"
 
 #include "palette.h"
-#include "../taskapp.h"
-#include "../common.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
 
 #define PALETTE_HEX_EXT     ".hex"
 #define PALETTE_NCOLOURS    wuss_SYSTEM_PALETTE_LENGTH /* one colour_t[] row

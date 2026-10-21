@@ -1,4 +1,4 @@
-/* wuss/tasks/common.h -- helpers shared by the wuss demo tasks */
+/* wuss/tasks/common/common.h -- helpers shared by the wuss demo tasks */
 
 #ifndef TASKS_COMMON_H
 #define TASKS_COMMON_H

@@ -1,4 +1,4 @@
-/* wuss/tasks/taskapp.h -- icon bar app wrapper for the demo tasks */
+/* wuss/tasks/common/taskapp.h -- icon bar app wrapper for the demo tasks */
 
 #ifndef TASKS_TASKAPP_H
 #define TASKS_TASKAPP_H

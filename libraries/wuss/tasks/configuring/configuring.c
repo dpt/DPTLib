@@ -26,8 +26,8 @@
 #include "tasks.h" /* g_tasks.swap_mouse_buttons */
 
 #include "configuring.h"
-#include "../taskapp.h"
-#include "../common.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
 
 /* ----------------------------------------------------------------------- */
 

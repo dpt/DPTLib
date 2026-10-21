@@ -18,8 +18,8 @@
 #include "wuss/message.h"
 
 #include "viewing.h"
-#include "../taskapp.h"
-#include "../common.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
 
 #define VIEWING_BORDERSZ 8 /* solid band drawn around the image */
 #define VIEWING_MARGINSZ VIEWING_BORDERSZ

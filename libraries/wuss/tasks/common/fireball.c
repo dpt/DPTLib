@@ -1,4 +1,4 @@
-/* wuss/tasks/minesweeping/fireball.c -- fire-coloured particle burst */
+/* wuss/tasks/common/fireball.c -- fire-coloured particle burst */
 
 #ifdef WUSS_APP
 

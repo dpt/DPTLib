@@ -1,4 +1,4 @@
-/* wuss/tasks/zxtask.h -- shared host for ZX Spectrum game tasks */
+/* wuss/tasks/common/zxtask.h -- shared host for ZX Spectrum game tasks */
 
 #ifndef TASKS_ZXTASK_H
 #define TASKS_ZXTASK_H

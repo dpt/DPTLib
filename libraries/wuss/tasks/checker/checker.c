@@ -13,9 +13,9 @@
 #include "geom/box.h"
 
 #include "checker.h"
-#include "../taskapp.h"
-#include "../common.h"
-#include "../snapshot.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
+#include "../common/snapshot.h"
 
 #define CHECKER_BAND_DEFAULT 8  /* pixels per band, so each pattern reads clearly */
 #define CHECKER_BAND_MIN     1

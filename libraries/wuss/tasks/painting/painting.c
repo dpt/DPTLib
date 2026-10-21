@@ -17,9 +17,9 @@
 
 #include "painting.h"
 #include "painting-new.h"
-#include "../snapshot.h"
-#include "../taskapp.h"
-#include "../common.h"
+#include "../common/snapshot.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
 
 #define PAINTING_CANVAS_W 640
 #define PAINTING_CANVAS_H 480

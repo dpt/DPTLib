@@ -17,10 +17,10 @@
 #include "wuss/menu.h"
 
 #include "greebling.h"
-#include "../taskapp.h"
-#include "../common.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
 #include "greebling-tiles.h"
-#include "../snapshot.h"
+#include "../common/snapshot.h"
 
 /* ----------------------------------------------------------------------- */
 

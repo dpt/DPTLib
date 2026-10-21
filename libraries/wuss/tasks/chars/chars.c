@@ -23,9 +23,9 @@
 #include "wuss/menu.h"
 
 #include "chars.h"
-#include "../taskapp.h"
-#include "../common.h"
-#include "../snapshot.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
+#include "../common/snapshot.h"
 
 #define CHARS_COLS 16 /* initial columns; see chars_task_t.cols */
 #define CHARS_PAD  1

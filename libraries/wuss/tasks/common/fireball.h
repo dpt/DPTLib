@@ -1,4 +1,4 @@
-/* wuss/tasks/minesweeping/fireball.h -- fire-coloured particle burst */
+/* wuss/tasks/common/fireball.h -- fire-coloured particle burst */
 
 #ifndef TASKS_FIREBALL_H
 #define TASKS_FIREBALL_H

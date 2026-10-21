@@ -21,8 +21,8 @@
 #include "wuss/icon-spec.h"
 
 #include "icons.h"
-#include "../taskapp.h"
-#include "../common.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
 
 #define ICONS_DOC_W    260
 #define ICONS_DOC_H    1670 /* taller than the window, so scrolling is exercised */

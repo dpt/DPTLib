@@ -22,8 +22,8 @@
 #include "wuss/menu.h"
 
 #include "minesweeping.h"
-#include "../taskapp.h"
-#include "../common.h"
+#include "../common/taskapp.h"
+#include "../common/common.h"
 
 #define MS_BORDER MINESWEEPING_CELL /* one grid unit all round */
 
