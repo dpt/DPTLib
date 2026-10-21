@@ -36,6 +36,26 @@
 #define PALETTE_MENU_GREY_INDEX    2
 
 /* ----------------------------------------------------------------------- */
+/* Size in bytes of a *.hex file, or -1 if it can't be opened. Each line is
+ * "rrggbb\n", so a file of n colours is 7n bytes. */
+
+static long palette_hex_size(const char *resources, const char *name)
+{
+  const char *path;
+  FILE       *fp;
+  long        size;
+
+  path = pathf("%s/resources/wuss-tasks/palettes/%s.hex", resources, name);
+
+  fp = fopen(path, "r");
+  if (fp == NULL)
+    return -1;
+
+  size = fseek(fp, 0, SEEK_END) == 0 ? ftell(fp) : -1;
+  fclose(fp);
+  return size;
+}
+
 /* Parse a *.hex file: one "rrggbb" line per colour, no leading '#'. Fails
  * (leaving *out untouched) unless the file is 1..max well-formed lines,
  * setting *n to the count. */
@@ -136,6 +156,8 @@ static result_t palette_open(wuss_t *wuss, bool screen, palette_task_t **out)
   const char      *dir;
   const colour_t  *current;
   int              ncurrent;
+  bool             matched;
+  int              kept;
   int              i;
 
   existing = screen ? g_screen : g_desktop;
@@ -166,22 +188,34 @@ static result_t palette_open(wuss_t *wuss, bool screen, palette_task_t **out)
                 sizeof(task->names[0]), PALETTE_MAX_FILES, 1 /* sorted */,
                 &task->nnames);
 
-  /* tick whichever *.hex file matches wuss's current system palette, so the
-   * picker starts in sync with what wuss_create actually loaded, without the
-   * caller having to tell us its leafname separately */
+  /* list only the *.hex files the desktop can take, i.e. those of exactly
+   * PALETTE_NCOLOURS entries, and tick whichever matches wuss's current
+   * system palette, so the picker starts in sync with what wuss_create
+   * actually loaded, without the caller having to tell us its leafname
+   * separately */
   current = wuss_get_palette(wuss, &ncurrent);
-  if (ncurrent == PALETTE_NCOLOURS)
-    for (i = 0; i < task->nnames; i++)
-    {
-      colour_t candidate[PALETTE_NCOLOURS];
+  matched = false;
+  kept    = 0;
+  for (i = 0; i < task->nnames; i++)
+  {
+    colour_t candidate[PALETTE_NCOLOURS];
 
-      if (palette_load_hex(resources, task->names[i], candidate) == result_OK &&
-          memcmp(candidate, current, sizeof(candidate)) == 0)
-      {
-        task->selected = i;
-        break;
-      }
+    if (palette_hex_size(resources, task->names[i]) != PALETTE_NCOLOURS * 7)
+      continue;
+
+    if (kept != i)
+      strcpy(task->names[kept], task->names[i]);
+    if (!matched && ncurrent == PALETTE_NCOLOURS &&
+        palette_load_hex(resources, task->names[kept],
+                         candidate) == result_OK &&
+        memcmp(candidate, current, sizeof(candidate)) == 0)
+    {
+      task->selected = kept;
+      matched        = true;
     }
+    kept++;
+  }
+  task->nnames = kept;
 
   /* built once; ticks are refreshed from task->selected/invert on each open */
   for (i = 0; i < task->nnames; i++)
