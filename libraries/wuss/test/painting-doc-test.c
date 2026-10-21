@@ -14,7 +14,7 @@
 #include "geom/point.h"
 #include "geom/size.h"
 
-#include "../tasks/painting-doc.h"
+#include "../tasks/painting/painting-doc.h"
 
 #include "test/all-tests.h"
 #include "test/tmpdir.h"

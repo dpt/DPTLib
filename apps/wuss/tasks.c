@@ -43,7 +43,7 @@
 #include "tasks/keys.h"
 #include "tasks/oscillating.h"
 #include "tasks/minesweeping.h"
-#include "tasks/painting.h"
+#include "tasks/painting/painting.h"
 #include "tasks/palette.h"
 #include "tasks/fireworks.h"
 #include "tasks/patterns.h"

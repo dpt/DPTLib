@@ -928,8 +928,8 @@ if(BUILD_TESTS)
         libraries/wuss/core/test/toggle-test.c
         libraries/wuss/core/test/toolbar-test.c
         libraries/wuss/furniture/test/furniture-test.c
-        libraries/wuss/tasks/painting-doc.c
-        libraries/wuss/tasks/painting-doc.h
+        libraries/wuss/tasks/painting/painting-doc.c
+        libraries/wuss/tasks/painting/painting-doc.h
         libraries/wuss/test/wuss-test.c)
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})
@@ -1014,14 +1014,14 @@ if(BUILD_APPS)
         libraries/wuss/tasks/keys.c
         libraries/wuss/tasks/oscillating.c
         libraries/wuss/tasks/minesweeping.c
-        libraries/wuss/tasks/painting-doc.c
-        libraries/wuss/tasks/painting-doc.h
-        libraries/wuss/tasks/painting-new.c
-        libraries/wuss/tasks/painting-new.h
+        libraries/wuss/tasks/painting/painting-doc.c
+        libraries/wuss/tasks/painting/painting-doc.h
+        libraries/wuss/tasks/painting/painting-new.c
+        libraries/wuss/tasks/painting/painting-new.h
         libraries/wuss/tasks/fern.c
         libraries/wuss/tasks/fern.h
-        libraries/wuss/tasks/painting.c
-        libraries/wuss/tasks/painting.h
+        libraries/wuss/tasks/painting/painting.c
+        libraries/wuss/tasks/painting/painting.h
         libraries/wuss/tasks/palette.c
         libraries/wuss/tasks/fireworks.c
         libraries/wuss/tasks/patterns.c

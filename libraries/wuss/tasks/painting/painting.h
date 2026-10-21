@@ -1,4 +1,4 @@
-/* wuss/tasks/painting.h -- basic painting task */
+/* wuss/tasks/painting/painting.h -- basic painting task */
 
 #ifndef TASKS_PAINTING_H
 #define TASKS_PAINTING_H

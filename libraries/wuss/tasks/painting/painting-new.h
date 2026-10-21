@@ -1,4 +1,4 @@
-/* wuss/tasks/painting-new.h -- Painting's New dialogue */
+/* wuss/tasks/painting/painting-new.h -- Painting's New dialogue */
 
 #ifndef TASKS_PAINTING_NEW_H
 #define TASKS_PAINTING_NEW_H

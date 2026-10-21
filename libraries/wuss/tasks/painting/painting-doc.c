@@ -1,4 +1,4 @@
-/* wuss/tasks/painting-doc.c -- paint canvas, drawing operations and undo */
+/* wuss/tasks/painting/painting-doc.c -- paint canvas, drawing and undo */
 
 #include <stdint.h>
 #include <stdlib.h>

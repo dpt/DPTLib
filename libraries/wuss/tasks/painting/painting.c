@@ -1,4 +1,4 @@
-/* wuss/tasks/painting.c -- basic painting task */
+/* wuss/tasks/painting/painting.c -- basic painting task */
 
 #ifdef WUSS_APP
 
@@ -17,9 +17,9 @@
 
 #include "painting.h"
 #include "painting-new.h"
-#include "snapshot.h"
-#include "taskapp.h"
-#include "common.h"
+#include "../snapshot.h"
+#include "../taskapp.h"
+#include "../common.h"
 
 #define PAINTING_CANVAS_W 640
 #define PAINTING_CANVAS_H 480

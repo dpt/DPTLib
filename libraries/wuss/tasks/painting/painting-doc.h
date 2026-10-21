@@ -1,4 +1,4 @@
-/* wuss/tasks/painting-doc.h -- paint canvas, drawing operations and undo */
+/* wuss/tasks/painting/painting-doc.h -- paint canvas, drawing and undo */
 
 #ifndef TASKS_PAINTING_DOC_H
 #define TASKS_PAINTING_DOC_H

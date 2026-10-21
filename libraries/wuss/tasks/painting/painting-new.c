@@ -1,4 +1,4 @@
-/* wuss/tasks/painting-new.c -- Painting's New dialogue */
+/* wuss/tasks/painting/painting-new.c -- Painting's New dialogue */
 
 #ifdef WUSS_APP
 
@@ -20,7 +20,7 @@
 #include "wuss/task.h"
 #include "wuss/window.h"
 
-#include "common.h"
+#include "../common.h"
 #include "painting-new.h"
 
 /* ----------------------------------------------------------------------- */
