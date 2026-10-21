@@ -17,6 +17,7 @@
 #include "geom/box.h"
 #include "io/namelist.h"
 #include "io/path.h"
+#include "wuss/gadget/swatches.h"
 #include "wuss/menu.h"
 
 #include "palette.h"
@@ -280,37 +281,25 @@ void palette_destroy(palette_task_t *task)
 }
 
 /* shared by both windows: paint a roughly-square grid of npalette swatches
- * across bounds */
-static void palette_draw_grid(screen_t       *scr,
-                              const box_t    *bounds,
-                              int             sx,
-                              int             sy,
-                              const colour_t *palette,
-                              int             npalette)
+ * across the visible content */
+static void palette_draw_grid(const wuss_event_t *event,
+                              const colour_t     *palette,
+                              int                 npalette)
 {
-  int cols, rows;
-  int cell_w, cell_h;
-  int i;
+  const box_t    *bounds;
+  wuss_swatches_t swatches;
 
-  cols = 1;
-  while (cols * cols < npalette)
-    cols++;
-  rows = (npalette + cols - 1) / cols;
+  bounds = event->data.redraw.bounds;
 
-  cell_w = (bounds->x1 - bounds->x0) / cols;
-  cell_h = (bounds->y1 - bounds->y0) / rows;
+  swatches.bbox     = (box_t) BOX_POS_SIZE(0, 0, bounds->x1 - bounds->x0,
+                                           bounds->y1 - bounds->y0);
+  swatches.columns  = 0;
+  swatches.gap      = 0;
+  swatches.outline  = 0;
+  swatches.colours  = palette;
+  swatches.ncolours = npalette;
 
-  for (i = 0; i < npalette; i++)
-  {
-    int col, row, x, y;
-
-    col = i % cols;
-    row = i / cols;
-    x   = bounds->x0 - sx + col * cell_w;
-    y   = bounds->y0 - sy + row * cell_h;
-
-    screen_fill_rect(scr, x, y, SIZE2D(cell_w, cell_h), palette[i]);
-  }
+  wuss_swatches_draw(&swatches, event);
 }
 
 static result_t palette_redraw(const wuss_event_t *event, void *task_data)
@@ -318,22 +307,11 @@ static result_t palette_redraw(const wuss_event_t *event, void *task_data)
   palette_task_t *pc;
   const colour_t *palette;
   int             npalette;
-  screen_t       *scr;
-  const box_t    *bounds;
-  int             sx, sy;
 
   pc      = task_data;
   palette = wuss_get_palette(pc->wuss, &npalette);
 
-  if (npalette <= 0)
-    return result_OK;
-
-  scr    = event->data.redraw.scr;
-  bounds = event->data.redraw.bounds;
-  sx     = event->data.redraw.scroll.x;
-  sy     = event->data.redraw.scroll.y;
-
-  palette_draw_grid(scr, bounds, sx, sy, palette, npalette);
+  palette_draw_grid(event, palette, npalette);
 
   return result_OK;
 }
@@ -386,7 +364,7 @@ static result_t palette_redraw_screen(palette_task_t     *pc,
 
   npalette = 1 << (1 << pixelfmt_log2bpp(scr->format));
 
-  palette_draw_grid(scr, bounds, sx, sy, scr->palette, npalette);
+  palette_draw_grid(event, scr->palette, npalette);
 
   return result_OK;
 }

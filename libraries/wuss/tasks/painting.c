@@ -28,9 +28,8 @@
 
 /* Toolbox layout, in its window's content space: a grid of tool buttons, the
  * rect Fill option, the size slider, then a grid of colour swatches and the
- * current colours. The swatches and the colour chips are drawn by
- * painting_toolbox_redraw and the swatches hit-tested by painting_toolbox_mouse, not
- * icons */
+ * current colours. The swatches are a wuss_swatches_t gadget and the colour
+ * chips are drawn by painting_toolbox_redraw, not icons */
 #define TB_W           96
 #define TB_H           312
 #define TB_MARGIN      5
@@ -40,18 +39,17 @@
 #define TB_TOOL_SIZE   24  /* button size, including its bevel */
 #define TB_SLIDER_Y    164
 #define TB_SWATCH_COLS 4
-#define TB_SWATCH_ROWS 4
 #define TB_SWATCH      20  /* swatch size */
 #define TB_SWATCH_GAP  2
 #define TB_SWATCH_Y    192
+#define TB_SWATCH_GRID (TB_SWATCH_COLS * (TB_SWATCH + TB_SWATCH_GAP) - \
+                        TB_SWATCH_GAP) /* swatch grid's width and height */
 #define TB_CHIPS_Y     286
 
 #define PAINTING_ANTS_IDLES 6 /* idles between steps of the marching ants */
 
 /* the spray's radius in pixels per unit of the size slider */
 #define PAINTING_SPRAY_SCALE 3
-
-#define PAINTING_NSWATCHES (TB_SWATCH_COLS * TB_SWATCH_ROWS)
 
 /* the tools' images, in the task's icon pool under
  * resources/wuss-tasks/painting/iconpool */
@@ -100,20 +98,6 @@ static colour_t painting_swatch_colour(int i)
   rgb = painting_swatches[i];
 
   return colour_rgb((rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
-}
-
-/* the swatch's box in toolbox content space */
-static box_t painting_swatch_box(int i)
-{
-  int   x, y;
-  box_t box;
-
-  x = TB_MARGIN + (i % TB_SWATCH_COLS) * (TB_SWATCH + TB_SWATCH_GAP);
-  y = TB_SWATCH_Y + (i / TB_SWATCH_COLS) * (TB_SWATCH + TB_SWATCH_GAP);
-
-  box = (box_t) BOX_POS_SIZE(x, y, TB_SWATCH, TB_SWATCH);
-
-  return box;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -244,6 +228,17 @@ result_t painting_create_with(wuss_t                     *wuss,
   task->tool = painting_TOOL_BRUSH;
   rng_seed(&task->rng, 1);
   task->size = 3;
+
+  for (i = 0; i < PAINTING_NSWATCHES; i++)
+    task->swatch_colours[i] = painting_swatch_colour(i);
+  task->swatches.bbox     = (box_t) BOX_POS_SIZE(TB_MARGIN, TB_SWATCH_Y,
+                                                 TB_SWATCH_GRID,
+                                                 TB_SWATCH_GRID);
+  task->swatches.columns  = TB_SWATCH_COLS;
+  task->swatches.gap      = TB_SWATCH_GAP;
+  task->swatches.outline  = 1;
+  task->swatches.colours  = task->swatch_colours;
+  task->swatches.ncolours = PAINTING_NSWATCHES;
 
   rc = paintingdoc_create_filled(params->size, params->bg, &task->doc);
   if (rc != result_OK)
@@ -632,9 +627,8 @@ static result_t painting_toolbox_redraw(painting_task_t    *pt,
 {
   screen_t    *scr;
   const box_t *bounds;
-  box_t        box;
   colour_t     black;
-  int          i, ox, oy;
+  int          ox, oy;
 
   scr    = event->data.redraw.scr;
   bounds = event->data.redraw.bounds;
@@ -642,15 +636,7 @@ static result_t painting_toolbox_redraw(painting_task_t    *pt,
   oy     = bounds->y0 - event->data.redraw.scroll.y;
   black  = colour_rgb(0x00, 0x00, 0x00);
 
-  for (i = 0; i < PAINTING_NSWATCHES; i++)
-  {
-    box = painting_swatch_box(i);
-
-    screen_fill_rect(scr, ox + box.x0, oy + box.y0,
-                     SIZE2D(TB_SWATCH, TB_SWATCH), painting_swatch_colour(i));
-    screen_draw_rect(scr, ox + box.x0, oy + box.y0,
-                     SIZE2D(TB_SWATCH, TB_SWATCH), black);
-  }
+  wuss_swatches_draw(&pt->swatches, event);
 
   screen_fill_rect(scr, ox + TB_MARGIN + 18, oy + TB_CHIPS_Y + 6,
                    SIZE2D(30, 16), pt->bg);
@@ -669,32 +655,23 @@ static result_t painting_toolbox_redraw(painting_task_t    *pt,
 static result_t painting_toolbox_mouse(painting_task_t    *pt,
                                        const wuss_event_t *event)
 {
-  box_t box;
-  int   i;
+  int i;
 
   if (event->data.mouse.action != wuss_MOUSE_DOWN)
     return result_OK;
 
-  for (i = 0; i < PAINTING_NSWATCHES; i++)
-  {
-    box = painting_swatch_box(i);
-
-    if (event->data.mouse.point.x < box.x0 ||
-        event->data.mouse.point.x >= box.x1 ||
-        event->data.mouse.point.y < box.y0 ||
-        event->data.mouse.point.y >= box.y1)
-      continue;
-
-    if (event->data.mouse.button & wuss_BUTTON_SELECT)
-      pt->fg = painting_swatch_colour(i);
-    else if (event->data.mouse.button & wuss_BUTTON_ADJUST)
-      pt->bg = painting_swatch_colour(i);
-    else
-      return result_OK;
-
-    wuss_window_invalidate_visible(pt->toolbox);
+  i = wuss_swatches_hit_test(&pt->swatches, event->data.mouse.point);
+  if (i < 0)
     return result_OK;
-  }
+
+  if (event->data.mouse.button & wuss_BUTTON_SELECT)
+    pt->fg = pt->swatch_colours[i];
+  else if (event->data.mouse.button & wuss_BUTTON_ADJUST)
+    pt->bg = pt->swatch_colours[i];
+  else
+    return result_OK;
+
+  wuss_window_invalidate_visible(pt->toolbox);
 
   return result_OK;
 }

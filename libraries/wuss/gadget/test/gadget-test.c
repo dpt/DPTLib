@@ -21,6 +21,7 @@
 #include "wuss/icon-spec.h"
 #include "wuss/gadget/stringset.h"
 #include "wuss/gadget/gridview.h"
+#include "wuss/gadget/swatches.h"
 
 #include "test/all-tests.h"
 
@@ -829,6 +830,35 @@ RelayoutFail:
     printf("wuss_test: gridview relayout check failed\n");
     return result_TEST_FAILED;
 RelayoutOK: ;
+  }
+
+  printf("test: wuss_swatches hit-tests cells and misses gaps\n");
+  {
+    colour_t        swcolours[5];
+    wuss_swatches_t sw;
+
+    memset(swcolours, 0, sizeof(swcolours));
+
+    /* 5 colours, roughly square: 3 columns of 10px cells, 2px gaps */
+    sw.bbox     = (box_t) BOX_POS_SIZE(10, 20, 34, 22);
+    sw.columns  = 0;
+    sw.gap      = 2;
+    sw.outline  = 0;
+    sw.colours  = swcolours;
+    sw.ncolours = 5;
+
+    if (wuss_swatches_hit_test(&sw, POINT(10, 20)) != 0 ||
+        wuss_swatches_hit_test(&sw, POINT(19, 29)) != 0 ||
+        wuss_swatches_hit_test(&sw, POINT(20, 20)) != -1 || /* gap */
+        wuss_swatches_hit_test(&sw, POINT(22, 20)) != 1 ||
+        wuss_swatches_hit_test(&sw, POINT(22, 32)) != 4 || /* row 1 */
+        wuss_swatches_hit_test(&sw, POINT(34, 32)) != -1 || /* no 6th */
+        wuss_swatches_hit_test(&sw, POINT(9, 20)) != -1 ||
+        wuss_swatches_hit_test(&sw, POINT(10, 42)) != -1)
+    {
+      printf("wuss_test: swatches hit-test failed\n");
+      return result_TEST_FAILED;
+    }
   }
 
   wuss_fixture_close(&fixture);

@@ -165,6 +165,7 @@ endif()
 if(WUSS_GADGETS OR WUSS_COMPONENTS)
     list(APPEND PUBLIC_HEADERS include/wuss/gadget/stringset.h)
     list(APPEND PUBLIC_HEADERS include/wuss/gadget/gridview.h)
+    list(APPEND PUBLIC_HEADERS include/wuss/gadget/swatches.h)
 endif()
 if(WUSS_COMPONENTS)
     list(APPEND PUBLIC_HEADERS include/wuss/component/fontmenu.h)
@@ -600,7 +601,8 @@ set(WUSS_MENU_SOURCES
 set(WUSS_GADGET_SOURCES
     libraries/wuss/gadget/stringset.c
     libraries/wuss/gadget/popup.c
-    libraries/wuss/gadget/gridview.c)
+    libraries/wuss/gadget/gridview.c
+    libraries/wuss/gadget/swatches.c)
 
 set(WUSS_COMPONENT_SOURCES
     libraries/wuss/component/fontmenu.c
