@@ -44,7 +44,7 @@ result_t taskmanager_create(wuss_t *wuss)
 
   spec.text  = NULL;
   spec.side  = wuss_ICONBAR_RIGHT;
-  spec.image = wuss_task_iconpool_find(wtask, "file_app");
+  spec.image = wuss_task_iconpool_find(wtask, "app_taskmanager");
   if (spec.image == NULL)
     logf_warning("taskmanager: icon 'file_app' unavailable");
   rc = wuss_iconbar_icon_create(wuss, wtask, &spec, &icon);
