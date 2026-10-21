@@ -503,12 +503,13 @@ wuss_edge_t;
 /**
  * Attach a window to an edge of another window as a toolbar.
  *
- * The toolbar sits flush against the outside of the parent's footprint and
- * moves with it. It keeps its own size whatever the parent's size. Several
- * toolbars on one edge stack outwards in attach order; a hidden toolbar
- * takes no room. Where the parent is near the screen edge, the toolbars on
- * that side stay on the screen, overlapping the parent if necessary, until
- * the parent's edge itself leaves the screen.
+ * The toolbar sits against the outside of the parent's footprint, its
+ * outline overlapping the parent's so they draw as one line, and moves with
+ * it. It keeps its own size whatever the parent's size. Several toolbars on
+ * one edge stack outwards in attach order; a hidden toolbar takes no room.
+ * Where the parent is near the screen edge, the toolbars on that side stay
+ * on the screen, overlapping the parent if necessary, until the parent's
+ * edge itself leaves the screen.
  *
  * The toolbar is moved into the parent's stack, directly above the parent,
  * and from then on the group restacks together: restacking either window

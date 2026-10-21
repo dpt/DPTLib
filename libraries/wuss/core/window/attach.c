@@ -18,6 +18,13 @@
 
 /* ----------------------------------------------------------------------- */
 
+/* How far "toolbar" overlaps "inner", the window it stacks against: by the
+ * thinner of their outlines, so that the two outlines draw as one line. */
+static int overlap(const wuss_window_t *toolbar, const wuss_window_t *inner)
+{
+  return MIN(wuss__outline_px(toolbar), wuss__outline_px(inner));
+}
+
 /* Non-zero if "toolbar" takes room in its edge's stack. */
 static int takes_room(const wuss_window_t *toolbar,
                       const wuss_window_t *reveal)
@@ -25,9 +32,11 @@ static int takes_room(const wuss_window_t *toolbar,
   return !(toolbar->flags & wuss_WINDOW_HIDDEN) || toolbar == reveal;
 }
 
-/* Lay out the toolbars of "parent" on one edge. Along the edge each is
- * aligned against the parent's content area; across it they stack outwards
- * from the parent's footprint. The whole stack is clamped as one block so
+/* Lay out the toolbars of "parent" on one edge. Along the edge each one's
+ * content area is aligned against the parent's content area, so their
+ * outlines line up; across it they stack outwards
+ * from the parent's footprint, each overlapping the outline of the window
+ * inside it. The whole stack is clamped as one block so
  * that it stays on the screen, overlapping the parent if needs be, but once
  * the parent's edge itself is off the screen the block goes with it. */
 static void layout_edge(wuss_window_t *parent,
@@ -36,20 +45,29 @@ static void layout_edge(wuss_window_t *parent,
 {
   wuss_window_t *tb;
   int            horizontal;
+  wuss_window_t *inner;
   box_t          content;
   int            total, start, used, thick, length, along;
   int            screen_far, near, far;
   box_t          tb_content;
+  int            lead, ov;
   point_t        p;
 
   horizontal = (edge == wuss_EDGE_LEFT || edge == wuss_EDGE_RIGHT);
   wuss__content_box(parent, &content);
 
+  /* total is the room the block takes outside the parent's footprint */
   total = 0;
+  inner = parent;
   for (tb = parent->toolbar.first; tb != NULL; tb = tb->toolbar.next)
-    if (tb->toolbar.edge == edge && takes_room(tb, reveal))
-      total += horizontal ? tb->visible.x1 - tb->visible.x0
-                          : tb->visible.y1 - tb->visible.y0;
+  {
+    if (tb->toolbar.edge != edge || !takes_room(tb, reveal))
+      continue;
+
+    total += (horizontal ? tb->visible.x1 - tb->visible.x0
+                         : tb->visible.y1 - tb->visible.y0) - overlap(tb, inner);
+    inner  = tb;
+  }
 
   if (horizontal)
   {
@@ -70,16 +88,22 @@ static void layout_edge(wuss_window_t *parent,
   else
     start = MAX(MIN(far, screen_far - total), far - total);
 
-  used = 0;
+  used  = 0;
+  inner = parent;
   for (tb = parent->toolbar.first; tb != NULL; tb = tb->toolbar.next)
   {
     if (tb->toolbar.edge != edge || !takes_room(tb, reveal))
       continue;
 
+    wuss__content_box(tb, &tb_content);
+
+    /* length is the toolbar's content length along the edge, lead the
+     * furniture before its content */
     if (horizontal)
     {
       thick  = tb->visible.x1 - tb->visible.x0;
-      length = tb->visible.y1 - tb->visible.y0;
+      length = tb_content.y1 - tb_content.y0;
+      lead   = tb_content.y0 - tb->visible.y0;
       if (tb->toolbar.align & wuss_ALIGN_TOP)
         along = content.y0;
       else if (tb->toolbar.align & wuss_ALIGN_BOTTOM)
@@ -90,7 +114,8 @@ static void layout_edge(wuss_window_t *parent,
     else
     {
       thick  = tb->visible.y1 - tb->visible.y0;
-      length = tb->visible.x1 - tb->visible.x0;
+      length = tb_content.x1 - tb_content.x0;
+      lead   = tb_content.x0 - tb->visible.x0;
       if (tb->toolbar.align & wuss_ALIGN_LEFT)
         along = content.x0;
       else if (tb->toolbar.align & wuss_ALIGN_RIGHT)
@@ -98,19 +123,20 @@ static void layout_edge(wuss_window_t *parent,
       else
         along = (content.x0 + content.x1 - length) / 2;
     }
-    along += tb->toolbar.offset;
+    along += tb->toolbar.offset - lead;
 
     /* p is the toolbar's footprint top-left; first attached is innermost */
+    ov = overlap(tb, inner);
     if (edge == wuss_EDGE_LEFT || edge == wuss_EDGE_TOP)
-      p.x = start + total - used - thick;
+      p.x = start + total - used - thick + ov;
     else
-      p.x = start + used;
+      p.x = start + used - ov;
     p.y = along;
     if (!horizontal)
       SWAP(p.x, p.y);
-    used += thick;
+    used  += thick - ov;
+    inner  = tb;
 
-    wuss__content_box(tb, &tb_content);
     wuss__window_move(tb, POINT(p.x + tb_content.x0 - tb->visible.x0,
                                 p.y + tb_content.y0 - tb->visible.y0));
   }

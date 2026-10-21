@@ -78,7 +78,7 @@ result_t wuss_toolbar_test(const char *resources)
     wuss_task_t   *owner, *other;
     wuss_window_t *parent, *left1, *left2, *right, *top, *stray, *bad;
     wuss_window_t *order[4];
-    box_t          box, pc, pv, v1, v2, vr, vt;
+    box_t          box, pc, pv, v1, v2, vr, vt, c1, c2, cr, ct;
 
     owner = mk_task(wuss, paint_handle, NULL);
     other = mk_task(wuss, paint_handle, NULL);
@@ -128,31 +128,35 @@ result_t wuss_toolbar_test(const char *resources)
     if (wuss_window_attach(parent, left1, wuss_EDGE_LEFT, wuss_ALIGN_TOP, 0)
         != result_BAD_ARG) goto Failure;
 
-    /* flush outside the footprint, aligned against the content area, the
-     * second left toolbar stacked outside the first */
+    /* outside the footprint, outlines overlapping, content aligned against
+     * the content area, the second left toolbar stacked outside the first */
     wuss_window_get_visible_bounds(parent, &pv);
     wuss_window_get_content_bounds(parent, &pc);
     wuss_window_get_visible_bounds(left1, &v1);
     wuss_window_get_visible_bounds(left2, &v2);
     wuss_window_get_visible_bounds(right, &vr);
     wuss_window_get_visible_bounds(top, &vt);
-    if (v1.x1 != pv.x0 || v1.y0 != pc.y0) goto Failure;
-    if (v2.x1 != v1.x0 || v2.y0 != pc.y0 + 5) goto Failure;
-    if (vr.x0 != pv.x1 || vr.y1 != pc.y1) goto Failure;
-    if (vt.y1 != pv.y0 ||
-        vt.x0 != (pc.x0 + pc.x1 - (vt.x1 - vt.x0)) / 2) goto Failure;
+    wuss_window_get_content_bounds(left1, &c1);
+    wuss_window_get_content_bounds(left2, &c2);
+    wuss_window_get_content_bounds(right, &cr);
+    wuss_window_get_content_bounds(top, &ct);
+    if (v1.x1 != pv.x0 + 1 || c1.y0 != pc.y0) goto Failure;
+    if (v2.x1 != v1.x0 + 1 || c2.y0 != pc.y0 + 5) goto Failure;
+    if (vr.x0 != pv.x1 - 1 || cr.y1 != pc.y1) goto Failure;
+    if (vt.y1 != pv.y0 + 1 ||
+        ct.x0 != (pc.x0 + pc.x1 - (ct.x1 - ct.x0)) / 2) goto Failure;
 
     /* a toolbar can't be moved by itself */
     wuss_window_move(left1, POINT(5, 5));
     wuss_window_get_visible_bounds(left1, &v1);
-    if (v1.x1 != pv.x0) goto Failure;
+    if (v1.x1 != pv.x0 + 1) goto Failure;
 
     /* the group moves together */
     wuss_window_move(parent, POINT(pc.x0 + 10, pc.y0 + 20));
     wuss_window_get_visible_bounds(parent, &pv);
     wuss_window_get_visible_bounds(left1, &v1);
     wuss_window_get_visible_bounds(top, &vt);
-    if (v1.x1 != pv.x0 || vt.y1 != pv.y0) goto Failure;
+    if (v1.x1 != pv.x0 + 1 || vt.y1 != pv.y0 + 1) goto Failure;
 
     /* near the left screen edge the left stack clamps as a block,
      * overlapping the parent... */
@@ -161,7 +165,7 @@ result_t wuss_toolbar_test(const char *resources)
     wuss_window_get_visible_bounds(parent, &pv);
     wuss_window_get_visible_bounds(left1, &v1);
     wuss_window_get_visible_bounds(left2, &v2);
-    if (pv.x0 != 10 || v2.x0 != 0 || v2.x1 != v1.x0) goto Failure;
+    if (pv.x0 != 10 || v2.x0 != 0 || v2.x1 != v1.x0 + 1) goto Failure;
 
     /* ...until the parent's edge itself leaves the screen */
     wuss_window_get_content_bounds(parent, &pc);
@@ -169,7 +173,7 @@ result_t wuss_toolbar_test(const char *resources)
     wuss_window_get_visible_bounds(parent, &pv);
     wuss_window_get_visible_bounds(left1, &v1);
     wuss_window_get_visible_bounds(left2, &v2);
-    if (pv.x0 != -5 || v2.x0 != -5 || v2.x1 != v1.x0) goto Failure;
+    if (pv.x0 != -5 || v2.x0 != -5 || v2.x1 != v1.x0 + 1) goto Failure;
 
     /* near the right edge: clamped, overlapping the parent */
     wuss_window_get_content_bounds(parent, &pc);
@@ -185,7 +189,8 @@ result_t wuss_toolbar_test(const char *resources)
     wuss_window_get_visible_bounds(parent, &pv);
     wuss_window_get_content_bounds(parent, &pc);
     wuss_window_get_visible_bounds(right, &vr);
-    if (vr.x0 != pv.x1 || vr.y1 != pc.y1 || vr.x1 - vr.x0 != 16 + 2)
+    wuss_window_get_content_bounds(right, &cr);
+    if (vr.x0 != pv.x1 - 1 || cr.y1 != pc.y1 || vr.x1 - vr.x0 != 16 + 2)
       goto Failure;
 
     /* resizing a toolbar re-lays out its siblings */
@@ -193,7 +198,7 @@ result_t wuss_toolbar_test(const char *resources)
     if (rc != result_OK) goto Failure;
     wuss_window_get_visible_bounds(left1, &v1);
     wuss_window_get_visible_bounds(left2, &v2);
-    if (v1.x1 != pv.x0 || v2.x1 != v1.x0) goto Failure;
+    if (v1.x1 != pv.x0 + 1 || v2.x1 != v1.x0 + 1) goto Failure;
 
     /* the group restacks together, toolbars directly above the parent */
     box = (box_t) BOX_POS_SIZE(20, 20, 50, 50);
@@ -220,12 +225,12 @@ result_t wuss_toolbar_test(const char *resources)
     rc = wuss_window_set_hidden(left1, 1);
     if (rc != result_OK) goto Failure;
     wuss_window_get_visible_bounds(left2, &v2);
-    if (v2.x1 != pv.x0) goto Failure;
+    if (v2.x1 != pv.x0 + 1) goto Failure;
     rc = wuss_window_set_hidden(left1, 0);
     if (rc != result_OK) goto Failure;
     wuss_window_get_visible_bounds(left1, &v1);
     wuss_window_get_visible_bounds(left2, &v2);
-    if (v1.x1 != pv.x0 || v2.x1 != v1.x0) goto Failure;
+    if (v1.x1 != pv.x0 + 1 || v2.x1 != v1.x0 + 1) goto Failure;
 
     /* hiding the parent hides its toolbars; showing brings back only the
      * ones it hid */
@@ -260,7 +265,7 @@ result_t wuss_toolbar_test(const char *resources)
     wuss_window_detach(left1);
     wuss_window_get_visible_bounds(left1, &box);
     wuss_window_get_visible_bounds(left2, &v2);
-    if (box.x0 != v1.x0 || v2.x1 != pv.x0) goto Failure;
+    if (box.x0 != v1.x0 || v2.x1 != pv.x0 + 1) goto Failure;
     wuss_window_close(left1);
 
     /* closing a toolbar alone leaves the parent's list intact */
