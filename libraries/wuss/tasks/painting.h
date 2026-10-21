@@ -58,16 +58,19 @@ enum
   PAINTING_SEL__COUNT
 };
 
-/* a 640x480 white canvas in a scrollable window, with a small toolbox window
- * beside it. Select paints with the foreground colour and Adjust with the
- * background colour; clicking a toolbox swatch sets either. Closing the
- * canvas window closes the toolbox too */
+/* a 640x480 white canvas in a scrollable window, with a toolbox of tools on
+ * its left edge and an option bar of colours and tool options on its bottom
+ * edge. Select paints with the foreground colour and Adjust with the
+ * background colour; clicking an option bar swatch sets either. Closing the
+ * canvas window closes both toolbars too */
 typedef struct painting_task
 {
   wuss_t            *wuss;
   wuss_task_t       *delegate;
   wuss_window_t     *window;    /* the canvas window; NULL once closed */
-  wuss_window_t     *toolbox;   /* the toolbox window; NULL once closed */
+  wuss_window_t     *toolbox;   /* the tools toolbar; NULL once closed */
+  wuss_window_t     *optionbar; /* the colours and options toolbar; NULL once
+                                 * closed */
   paintingdoc_t     *doc;
   wuss_saveas_t     *saveas;
   colour_t           fg, bg;

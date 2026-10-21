@@ -26,25 +26,32 @@
 #define PAINTING_VIEW_W   400 /* initial visible size of the canvas window */
 #define PAINTING_VIEW_H   300
 
-/* Toolbox layout, in its window's content space: a grid of tool buttons, the
- * rect Fill option, the size slider, then a grid of colour swatches and the
- * current colours. The swatches are a wuss_swatches_t gadget and the colour
- * chips are drawn by painting_toolbox_redraw, not icons */
-#define TB_W           96
-#define TB_H           312
-#define TB_MARGIN      5
-#define TB_TOOL_COLS   2
-#define TB_TOOL_X      23
-#define TB_TOOL_CELL   26  /* pitch of the tool buttons */
-#define TB_TOOL_SIZE   24  /* button size, including its bevel */
-#define TB_SLIDER_Y    164
-#define TB_SWATCH_COLS 4
-#define TB_SWATCH      20  /* swatch size */
-#define TB_SWATCH_GAP  2
-#define TB_SWATCH_Y    192
-#define TB_SWATCH_GRID (TB_SWATCH_COLS * (TB_SWATCH + TB_SWATCH_GAP) - \
-                        TB_SWATCH_GAP) /* swatch grid's width and height */
-#define TB_CHIPS_Y     286
+/* Toolbox layout, in its window's content space: a single column of tool
+ * buttons */
+#define TB_MARGIN    2
+#define TB_TOOL_CELL 26  /* pitch of the tool buttons */
+#define TB_TOOL_SIZE 24  /* button size, including its bevel */
+#define TB_W         (TB_MARGIN + TB_TOOL_SIZE + TB_MARGIN)
+#define TB_H         (TB_MARGIN + painting_TOOL__COUNT * TB_TOOL_CELL - \
+                      (TB_TOOL_CELL - TB_TOOL_SIZE) + TB_MARGIN)
+
+/* Option bar layout, in its window's content space: from the left, the
+ * current colours, a single row of colour swatches and the size slider. The
+ * swatches are a wuss_swatches_t gadget and the colour chips are drawn by
+ * painting_optionbar_redraw, not icons */
+#define OB_MARGIN      5
+#define OB_CHIPS_X     OB_MARGIN
+#define OB_SWATCHES    16  /* the desktop palette's size */
+#define OB_SWATCH      14  /* swatch size */
+#define OB_SWATCH_GAP  2
+#define OB_SWATCH_X    59
+#define OB_SWATCH_Y    9
+#define OB_SWATCH_ROW  (OB_SWATCHES * (OB_SWATCH + OB_SWATCH_GAP) - \
+                        OB_SWATCH_GAP) /* swatch row's width */
+#define OB_SLIDER_X    (OB_SWATCH_X + OB_SWATCH_ROW + 6)
+#define OB_SLIDER_Y    7
+#define OB_W           (OB_SLIDER_X + 86 + OB_MARGIN)
+#define OB_H           32
 
 #define PAINTING_ANTS_IDLES 6 /* idles between steps of the marching ants */
 
@@ -77,12 +84,11 @@ static const char *const painting_nozzle_names[paintingdoc_NOZZLE__COUNT] =
 /* the tool's button box in toolbox content space */
 static box_t painting_tool_box(int i)
 {
-  return (box_t) BOX_POS_SIZE(TB_TOOL_X + (i % TB_TOOL_COLS) * TB_TOOL_CELL,
-                              TB_MARGIN + (i / TB_TOOL_COLS) * TB_TOOL_CELL,
+  return (box_t) BOX_POS_SIZE(TB_MARGIN, TB_MARGIN + i * TB_TOOL_CELL,
                               TB_TOOL_SIZE, TB_TOOL_SIZE);
 }
 
-/* point the toolbox swatches at the desktop palette, which wuss owns and
+/* point the option bar swatches at the desktop palette, which wuss owns and
  * wuss_set_palette may move */
 static void painting_swatches_track(painting_task_t *pt)
 {
@@ -91,12 +97,12 @@ static void painting_swatches_track(painting_task_t *pt)
 
 /* ----------------------------------------------------------------------- */
 
-/* the tool buttons and size slider */
-static result_t painting_toolbox_icons(painting_task_t *pt)
+/* the tool buttons on the toolbox and the size slider on the option bar */
+static result_t painting_toolbar_icons(painting_task_t *pt)
 {
   result_t         rc;
-  wuss_icon_spec_t specs[painting_TOOL__COUNT + 2];
-  wuss_icon_t     *icons[painting_TOOL__COUNT + 2];
+  wuss_icon_spec_t specs[painting_TOOL__COUNT];
+  wuss_icon_t     *icons[painting_TOOL__COUNT];
   int              i, n;
 
   rc = wuss_task_iconpool_load_resource(pt->delegate,
@@ -123,17 +129,6 @@ static result_t painting_toolbox_icons(painting_task_t *pt)
     n++;
   }
 
-  wuss_icon_spec_slider_row(&specs[n], &specs[n + 1],
-                            (box_t) BOX_POS_SIZE(TB_MARGIN, TB_SLIDER_Y,
-                                                 58, 18),
-                            (box_t) BOX_POS_SIZE(TB_MARGIN + 60, TB_SLIDER_Y,
-                                                 26, 18),
-                            wuss_SLIDER_HORIZONTAL,
-                            PAINTING_SIZE_MIN, PAINTING_SIZE_MAX, pt->size,
-                            NULL, 0,
-                            pt->size_text, sizeof(pt->size_text));
-  n += 2;
-
   rc = wuss_icon_create_array(pt->toolbox, specs, n, icons);
   if (rc != result_OK)
     return rc;
@@ -141,12 +136,25 @@ static result_t painting_toolbox_icons(painting_task_t *pt)
   for (i = 0; i < painting_TOOL__COUNT; i++)
     pt->tool_icons[i] = icons[i];
 
-  wuss_slider_row_bind(&pt->size_row,
-                       icons[painting_TOOL__COUNT],
-                       icons[painting_TOOL__COUNT + 1],
-                       NULL, PAINTING_SIZE_MIN, PAINTING_SIZE_MAX, 0);
-
   wuss_icon_set_selected(pt->toolbox, pt->tool_icons[pt->tool], 1);
+
+  memset(specs, 0, 2 * sizeof(*specs));
+  wuss_icon_spec_slider_row(&specs[0], &specs[1],
+                            (box_t) BOX_POS_SIZE(OB_SLIDER_X, OB_SLIDER_Y,
+                                                 58, 18),
+                            (box_t) BOX_POS_SIZE(OB_SLIDER_X + 60, OB_SLIDER_Y,
+                                                 26, 18),
+                            wuss_SLIDER_HORIZONTAL,
+                            PAINTING_SIZE_MIN, PAINTING_SIZE_MAX, pt->size,
+                            NULL, 0,
+                            pt->size_text, sizeof(pt->size_text));
+
+  rc = wuss_icon_create_array(pt->optionbar, specs, 2, icons);
+  if (rc != result_OK)
+    return rc;
+
+  wuss_slider_row_bind(&pt->size_row, icons[0], icons[1],
+                       NULL, PAINTING_SIZE_MIN, PAINTING_SIZE_MAX, 0);
 
   return result_OK;
 }
@@ -218,11 +226,10 @@ result_t painting_create_with(wuss_t                     *wuss,
   rng_seed(&task->rng, 1);
   task->size = 3;
 
-  task->swatches.bbox    = (box_t) BOX_POS_SIZE(TB_MARGIN, TB_SWATCH_Y,
-                                                TB_SWATCH_GRID,
-                                                TB_SWATCH_GRID);
-  task->swatches.columns = TB_SWATCH_COLS;
-  task->swatches.gap     = TB_SWATCH_GAP;
+  task->swatches.bbox    = (box_t) BOX_POS_SIZE(OB_SWATCH_X, OB_SWATCH_Y,
+                                                OB_SWATCH_ROW, OB_SWATCH);
+  task->swatches.columns = OB_SWATCHES;
+  task->swatches.gap     = OB_SWATCH_GAP;
   task->swatches.outline = 1;
   painting_swatches_track(task);
 
@@ -262,14 +269,15 @@ result_t painting_create_with(wuss_t                     *wuss,
     return rc;
   }
 
-  /* a toolbar on the canvas's left edge: it moves, stacks, hides and closes
-   * with the canvas, and passes the input focus to it */
+  /* toolbars on the canvas's left and bottom edges: they move, stack, hide
+   * and close with the canvas, and pass the input focus to it. The toolbox
+   * is nothing but icons */
   place = task_place_after(task->window);
   rc = wuss_window_create_at(delegate,
                              &place,
                              SIZE2D(TB_W, TB_H),
                              NULL,
-                             wuss_WINDOW_NO_TITLEBAR,
+                             wuss_WINDOW_NO_TITLEBAR | wuss_WINDOW_NO_REDRAW,
                              wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
                              SIZE2D(TB_W, TB_H),
                              SIZE2D(0, 0),
@@ -277,13 +285,26 @@ result_t painting_create_with(wuss_t                     *wuss,
   if (rc == result_OK)
     rc = wuss_window_attach(task->toolbox, task->window, wuss_EDGE_LEFT,
                             wuss_ALIGN_TOP, 0);
+  if (rc == result_OK)
+    rc = wuss_window_create_at(delegate,
+                               &place,
+                               SIZE2D(OB_W, OB_H),
+                               NULL,
+                               wuss_WINDOW_NO_TITLEBAR,
+                               wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
+                               SIZE2D(OB_W, OB_H),
+                               SIZE2D(0, 0),
+                               &task->optionbar);
+  if (rc == result_OK)
+    rc = wuss_window_attach(task->optionbar, task->window, wuss_EDGE_BOTTOM,
+                            wuss_ALIGN_LEFT, 0);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate); /* closes the canvas, QUIT frees the block */
     return rc;
   }
 
-  rc = painting_toolbox_icons(task);
+  rc = painting_toolbar_icons(task);
   if (rc != result_OK)
   {
     wuss_task_destroy(delegate);
@@ -610,10 +631,10 @@ static result_t painting_redraw(painting_task_t    *pt,
   return rc;
 }
 
-/* the swatch grid and, below it, the background colour behind the foreground
- * colour. The icons draw over the window's own backdrop */
-static result_t painting_toolbox_redraw(painting_task_t    *pt,
-                                        const wuss_event_t *event)
+/* the background colour behind the foreground colour and the swatch row. The
+ * icons draw over the window's own backdrop */
+static result_t painting_optionbar_redraw(painting_task_t    *pt,
+                                          const wuss_event_t *event)
 {
   screen_t    *scr;
   const box_t *bounds;
@@ -628,13 +649,13 @@ static result_t painting_toolbox_redraw(painting_task_t    *pt,
 
   wuss_swatches_draw(&pt->swatches, event);
 
-  screen_fill_rect(scr, ox + TB_MARGIN + 18, oy + TB_CHIPS_Y + 6,
+  screen_fill_rect(scr, ox + OB_CHIPS_X + 18, oy + OB_MARGIN + 6,
                    SIZE2D(30, 16), pt->bg);
-  screen_draw_rect(scr, ox + TB_MARGIN + 18, oy + TB_CHIPS_Y + 6,
+  screen_draw_rect(scr, ox + OB_CHIPS_X + 18, oy + OB_MARGIN + 6,
                    SIZE2D(30, 16), black);
-  screen_fill_rect(scr, ox + TB_MARGIN, oy + TB_CHIPS_Y,
+  screen_fill_rect(scr, ox + OB_CHIPS_X, oy + OB_MARGIN,
                    SIZE2D(30, 16), pt->fg);
-  screen_draw_rect(scr, ox + TB_MARGIN, oy + TB_CHIPS_Y,
+  screen_draw_rect(scr, ox + OB_CHIPS_X, oy + OB_MARGIN,
                    SIZE2D(30, 16), black);
 
   return result_OK;
@@ -642,8 +663,8 @@ static result_t painting_toolbox_redraw(painting_task_t    *pt,
 
 /* Select sets the foreground colour from the swatch under the pointer, Adjust
  * the background colour */
-static result_t painting_toolbox_mouse(painting_task_t    *pt,
-                                       const wuss_event_t *event)
+static result_t painting_optionbar_mouse(painting_task_t    *pt,
+                                         const wuss_event_t *event)
 {
   int i;
 
@@ -661,18 +682,18 @@ static result_t painting_toolbox_mouse(painting_task_t    *pt,
   else
     return result_OK;
 
-  wuss_window_invalidate_visible(pt->toolbox);
+  wuss_window_invalidate_visible(pt->optionbar);
 
   return result_OK;
 }
 
-static result_t painting_toolbox_icon(painting_task_t    *pt,
+static result_t painting_toolbar_icon(painting_task_t    *pt,
                                       const wuss_event_t *event)
 {
   wuss_icon_t *icon;
   int          i, size;
 
-  if (wuss_slider_row_event(pt->toolbox, &pt->size_row, event, &size))
+  if (wuss_slider_row_event(pt->optionbar, &pt->size_row, event, &size))
   {
     pt->size = size;
     return result_OK;
@@ -744,8 +765,8 @@ static result_t painting_mouse(painting_task_t    *pt,
         pt->fg = colour;
       else
         pt->bg = colour;
-      if (pt->toolbox != NULL)
-        wuss_window_invalidate_visible(pt->toolbox);
+      if (pt->optionbar != NULL)
+        wuss_window_invalidate_visible(pt->optionbar);
       return result_OK;
 
     case painting_TOOL_FILL:
@@ -891,11 +912,11 @@ static void painting_set_tool(painting_task_t *pt, painting_tool_t tool)
   wuss_icon_set_selected(pt->toolbox, pt->tool_icons[tool], 1);
 }
 
-/* step the brush size by delta, keeping the toolbox slider in step */
+/* step the brush size by delta, keeping the option bar slider in step */
 static void painting_step_size(painting_task_t *pt, int delta)
 {
   pt->size = CLAMP(pt->size + delta, PAINTING_SIZE_MIN, PAINTING_SIZE_MAX);
-  (void) wuss_slider_row_set(pt->toolbox, &pt->size_row, pt->size);
+  (void) wuss_slider_row_set(pt->optionbar, &pt->size_row, pt->size);
 }
 
 /* N steps the nozzle. B, H, E, L, R, X, F, P, S, O and I pick the matching
@@ -982,8 +1003,8 @@ result_t painting_handle(wuss_window_t      *window,
   switch (event->kind)
   {
   case wuss_EVENT_REDRAW:
-    if (window == pt->toolbox)
-      return painting_toolbox_redraw(pt, event);
+    if (window == pt->optionbar)
+      return painting_optionbar_redraw(pt, event);
     return painting_redraw(pt, event);
 
   case wuss_EVENT_MOUSE:
@@ -991,12 +1012,14 @@ result_t painting_handle(wuss_window_t      *window,
         (event->data.mouse.button & wuss_BUTTON_MENU))
       return painting_menu_open(pt);
 
+    if (window == pt->optionbar)
+      return painting_optionbar_mouse(pt, event);
     if (window == pt->toolbox)
-      return painting_toolbox_mouse(pt, event);
+      return result_OK; /* between the tool buttons */
     return painting_mouse(pt, event);
 
   case wuss_EVENT_ICON:
-    return painting_toolbox_icon(pt, event);
+    return painting_toolbar_icon(pt, event);
 
   case wuss_EVENT_KEY:
   {
@@ -1071,9 +1094,10 @@ result_t painting_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_CLOSE:
-    /* the toolbox is a toolbar of the canvas, so it closes with it */
-    pt->window  = NULL;
-    pt->toolbox = NULL;
+    /* the toolbars belong to the canvas, so they close with it */
+    pt->window    = NULL;
+    pt->toolbox   = NULL;
+    pt->optionbar = NULL;
     return result_OK;
 
   case wuss_EVENT_QUIT:
