@@ -39,7 +39,7 @@
  * current colours, a single row of colour swatches and the size slider. The
  * swatches are a wuss_swatches_t gadget and the colour chips are drawn by
  * painting_optionbar_redraw, not icons */
-#define OB_MARGIN      5
+#define OB_MARGIN      2
 #define OB_CHIPS_X     OB_MARGIN
 #define OB_SWATCHES    16  /* the desktop palette's size */
 #define OB_SWATCH      14  /* swatch size */
