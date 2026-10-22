@@ -196,7 +196,7 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
                           wuss_MENU_ITEM_NONE, "H");
 
   WUSS_MENU_ITEM_MENU(task->menu_items, CLOCK_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
+                      wuss_MENU_ITEM_NONE, &task->colours.menu);
 
   WUSS_MENU_TITLE(task->menu, "Clock", task->menu_items,
                  NELEMS(task->menu_items));

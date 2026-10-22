@@ -323,7 +323,7 @@ result_t painting_create_with(wuss_t                     *wuss,
                           wuss_MENU_ITEM_NONE, "F8");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PAINTING_MENU_SAVE, "Save",
-                          wuss_MENU_ITEM_DASHED, "F3"); /* window set below */
+                          wuss_MENU_ITEM_NONE, "F3"); /* window set below */
 
   WUSS_MENU_ITEM_SHORTCUT(task->sel_items, PAINTING_SEL_ALL, "Select all",
                           wuss_MENU_ITEM_NONE, "^A");
@@ -334,7 +334,7 @@ result_t painting_create_with(wuss_t                     *wuss,
   WUSS_MENU_TITLE(task->sel_menu, "Selection", task->sel_items,
                   NELEMS(task->sel_items));
   WUSS_MENU_ITEM_MENU(task->menu_items, PAINTING_MENU_SELECTION, "Selection",
-                      wuss_MENU_ITEM_DASHED, &task->sel_menu);
+                      wuss_MENU_ITEM_NONE, &task->sel_menu);
 
   for (i = 0; i < paintingdoc_NOZZLE__COUNT; i++)
     WUSS_MENU_ITEM(task->nozzle_items, i, painting_nozzle_names[i],
@@ -348,7 +348,7 @@ result_t painting_create_with(wuss_t                     *wuss,
 
   dithermenu_init(&task->dither, task->dithering);
   WUSS_MENU_ITEM_MENU(task->menu_items, PAINTING_MENU_DITHERING, "Dithering",
-                      wuss_MENU_ITEM_DASHED, &task->dither.menu);
+                      wuss_MENU_ITEM_NONE, &task->dither.menu);
 
   WUSS_MENU_TITLE(task->menu, "Painting", task->menu_items,
                   NELEMS(task->menu_items));

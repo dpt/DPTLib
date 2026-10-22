@@ -598,7 +598,7 @@ result_t greebling_create(wuss_t *wuss, greebling_task_t **out)
                  GREEBLING_NPALETTE);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, GREEBLING_MENU_PALETTE, "Palette",
-                      wuss_MENU_ITEM_DASHED, &task->palette_menu);
+                      wuss_MENU_ITEM_NONE, &task->palette_menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GREEBLING_MENU_RANDPAL,
                           "Random palettes", wuss_MENU_ITEM_NONE, "R");

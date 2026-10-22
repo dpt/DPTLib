@@ -747,7 +747,7 @@ result_t reading_create(wuss_t *wuss, reading_task_t **out)
   task->top_items[2].submenu = &task->align_menu;
   task->top_items[2].window  = NULL;
   task->top_items[3].text    = "Colours";
-  task->top_items[3].flags   = wuss_MENU_ITEM_DASHED;
+  task->top_items[3].flags   = wuss_MENU_ITEM_NONE;
   task->top_items[3].submenu = &task->colours_menu;
   task->top_items[3].window  = NULL;
 

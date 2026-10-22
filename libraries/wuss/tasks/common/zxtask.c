@@ -129,7 +129,7 @@ void zxtask_init(zxtask_t *task, const zxtask_ops_t *ops)
   WUSS_MENU_ITEM_SHORTCUT(task->speed_items, ZXTASK_SPEED_MENU_PAUSE, "Pause",
                           wuss_MENU_ITEM_NONE, "^P");
   WUSS_MENU_ITEM(task->speed_items, ZXTASK_SPEED_MENU_NORMAL, "100%",
-                 wuss_MENU_ITEM_TICKED);
+                 wuss_MENU_ITEM_DASHED | wuss_MENU_ITEM_TICKED);
   WUSS_MENU_ITEM(task->speed_items, ZXTASK_SPEED_MENU_MAXIMUM, "Maximum",
                  wuss_MENU_ITEM_NONE);
   WUSS_MENU_ITEM_SHORTCUT(task->speed_items, ZXTASK_SPEED_MENU_FASTER, "Faster",
@@ -144,7 +144,7 @@ void zxtask_init(zxtask_t *task, const zxtask_ops_t *ops)
   WUSS_MENU_ITEM_MENU(task->menu_items, ZXTASK_MENU_SPEED, "Speed",
                       wuss_MENU_ITEM_NONE, &task->speed_menu);
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, ZXTASK_MENU_MONO, "Monochromatic",
-                          wuss_MENU_ITEM_DASHED, "^M");
+                          wuss_MENU_ITEM_NONE, "^M");
   WUSS_MENU_ITEM(task->menu_items, ZXTASK_MENU_ZOOM, "Double size",
                  wuss_MENU_ITEM_NONE);
   WUSS_MENU_TITLE(task->menu, ops->title, task->menu_items,

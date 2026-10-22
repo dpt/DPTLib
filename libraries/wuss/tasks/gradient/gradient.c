@@ -307,10 +307,10 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
                  NELEMS(task->shape_items));
 
   WUSS_MENU_ITEM_MENU(task->menu_items, GRADIENT_MENU_SHAPE, "Shape",
-                      wuss_MENU_ITEM_DASHED, &task->shape_menu);
+                      wuss_MENU_ITEM_NONE, &task->shape_menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GRADIENT_MENU_RESET, "Reset",
-                          wuss_MENU_ITEM_DASHED, "R");
+                          wuss_MENU_ITEM_NONE, "R");
 
   WUSS_MENU_TITLE(task->menu, "Gradient", task->menu_items,
                  NELEMS(task->menu_items));

@@ -537,7 +537,7 @@ static void effecting_build_menus(effecting_task_t *task)
                         effecting_edit_window(task->edit,
                                               EFFECTING_EDIT_LEVEL));
   WUSS_MENU_ITEM_MENU(task->menu_items, EFFECTING_MENU_DITHERING, "Dithering",
-                      wuss_MENU_ITEM_DASHED | wuss_MENU_ITEM_BORROWED_SUBMENU,
+                      wuss_MENU_ITEM_BORROWED_SUBMENU,
                       &task->dither.menu);
   WUSS_MENU_ITEM(task->menu_items, EFFECTING_MENU_APPLY, "Apply",
                  wuss_MENU_ITEM_DASHED);

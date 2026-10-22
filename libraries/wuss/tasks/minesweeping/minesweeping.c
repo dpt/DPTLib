@@ -100,9 +100,9 @@ g_minesweeping_difficulties[minesweeping_NDIFFICULTIES] =
 enum
 {
   MINESWEEPING_MENU_NEW_GAME,
+  MINESWEEPING_MENU_GIVE_UP,
   MINESWEEPING_MENU_SIZE,
-  MINESWEEPING_MENU_DIFFICULTY,
-  MINESWEEPING_MENU_GIVE_UP
+  MINESWEEPING_MENU_DIFFICULTY
 };
 
 /* cache all constant palette entries; call once at create and again whenever
@@ -421,15 +421,15 @@ result_t minesweeping_create(wuss_t *wuss, minesweeping_task_t **out)
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, MINESWEEPING_MENU_NEW_GAME,
                           "New game", wuss_MENU_ITEM_NONE, "N");
 
+  WUSS_MENU_ITEM(task->menu_items, MINESWEEPING_MENU_GIVE_UP,
+                "Give up", wuss_MENU_ITEM_NONE);
+
   WUSS_MENU_ITEM_MENU(task->menu_items, MINESWEEPING_MENU_SIZE, "Grid size",
                       wuss_MENU_ITEM_DASHED, &task->size_menu);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, MINESWEEPING_MENU_DIFFICULTY,
                       "Difficulty", wuss_MENU_ITEM_NONE,
                       &task->difficulty_menu);
-
-  WUSS_MENU_ITEM(task->menu_items, MINESWEEPING_MENU_GIVE_UP,
-                "Give up", wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Minesweeping", task->menu_items,
                  NELEMS(task->menu_items));

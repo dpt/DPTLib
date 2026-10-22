@@ -139,7 +139,7 @@ result_t fern_create(wuss_t *wuss, fern_task_t **out)
                           wuss_MENU_ITEM_NONE, "SPACE");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FERN_MENU_SAVE, "Save",
-                          wuss_MENU_ITEM_DASHED, "F3");
+                          wuss_MENU_ITEM_NONE, "F3");
   task->menu_items[FERN_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   WUSS_MENU_ITEM(task->menu_items, FERN_MENU_SIZE, "Configuration",
@@ -147,7 +147,7 @@ result_t fern_create(wuss_t *wuss, fern_task_t **out)
                  wuss_MENU_ITEM_PRE_OPEN);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, FERN_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
+                      wuss_MENU_ITEM_NONE, &task->colours.menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FERN_MENU_RANDOMISE, "Randomise",
                           wuss_MENU_ITEM_DASHED, "^R");

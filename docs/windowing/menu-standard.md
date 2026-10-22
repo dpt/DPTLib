@@ -11,8 +11,7 @@ choices system.
 ## Order
 
 A window menu is titled with the app's name. Its rows come in these groups,
-top to bottom. Leave out any group the app has nothing for. Put a separator
-between groups, never inside one.
+top to bottom. Leave out any group the app has nothing for.
 
 1. **First item** — one row:
    - `File ⇒` if the app has a document (Info on it, and other
@@ -29,17 +28,33 @@ between groups, never inside one.
    scale, zoom, `Double size`.
 6. **Generate** — `Mutate`, `Randomise`, `Reset`.
 
+## Dividers
+
+A divider marks a change in the kind of row, as in Ovation Pro. It is not
+there to break up length.
+
+- For dividing, the six groups merge into four blocks:
+  - **actions** — first item and Save;
+  - **Edit**;
+  - **options** — Settings and Display;
+  - **Generate**.
+- Put a divider between each pair of neighbouring blocks, never inside one.
+- A one-row block may stand alone only at the top or bottom of the menu
+  (Ovation Pro's Info and Find). In the middle, it joins the neighbour closer
+  in kind.
+- A menu of three rows or fewer has no dividers.
+- In a submenu, divide commands from a list of choices (Ovation Pro's
+  `Edit style, Remove` above its list of styles).
+
 For example, Sofa:
 
 ```
 Sofa
   Pause          Space
-  ----------------------
   Save         ⇒ F3
   ----------------------
   Model        ⇒
   Auto-cycle
-  ----------------------
   Colours      ⇒
   ----------------------
   Randomise      ^R

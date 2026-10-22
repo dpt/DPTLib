@@ -39,9 +39,9 @@ enum
   FIREWORKS_MENU_PAUSE,
   FIREWORKS_MENU_SAVE,
   FIREWORKS_MENU_ADD,
+  FIREWORKS_MENU_CLEAR,
   FIREWORKS_MENU_GRAVITY,
   FIREWORKS_MENU_WALLS,
-  FIREWORKS_MENU_CLEAR,
   FIREWORKS_MENU_COLOURS,
   FIREWORKS_MENU_MARKERS
 };
@@ -369,7 +369,7 @@ result_t fireworks_create(wuss_t *wuss, fireworks_task_t **out)
   }
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_SAVE, "Save",
-                          wuss_MENU_ITEM_DASHED, "F3");
+                          wuss_MENU_ITEM_NONE, "F3");
   /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
   task->menu_items[FIREWORKS_MENU_SAVE].window =
     wuss_saveas_window(task->saveas);
@@ -403,6 +403,9 @@ result_t fireworks_create(wuss_t *wuss, fireworks_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, FIREWORKS_MENU_ADD, "Add",
                       wuss_MENU_ITEM_DASHED, &task->add_menu);
 
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_CLEAR, "Clear",
+                          wuss_MENU_ITEM_NONE, "C");
+
   task->gravity = FIREWORKS_GRAVITY_NORMAL;
   for (i = 0; i < NELEMS(task->gravity_items); i++)
     WUSS_MENU_ITEM(task->gravity_items, i, fireworks_gravities[i].name,
@@ -412,16 +415,13 @@ result_t fireworks_create(wuss_t *wuss, fireworks_task_t **out)
                  NELEMS(task->gravity_items));
 
   WUSS_MENU_ITEM_MENU(task->menu_items, FIREWORKS_MENU_GRAVITY, "Gravity",
-                      wuss_MENU_ITEM_NONE, &task->gravity_menu);
+                      wuss_MENU_ITEM_DASHED, &task->gravity_menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_WALLS, "Walls",
                           wuss_MENU_ITEM_NONE, "W");
 
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_CLEAR, "Clear",
-                          wuss_MENU_ITEM_NONE, "C");
-
   WUSS_MENU_ITEM_MENU(task->menu_items, FIREWORKS_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
+                      wuss_MENU_ITEM_NONE, &task->colours.menu);
 
   task->markers = 1;
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_MARKERS, "Markers",

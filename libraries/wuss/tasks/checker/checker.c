@@ -157,7 +157,7 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
                       wuss_MENU_ITEM_DASHED, &task->pattern_menu);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, CHECKER_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
+                      wuss_MENU_ITEM_NONE, &task->colours.menu);
 
   WUSS_MENU_ITEM(task->menu_items, CHECKER_MENU_SWAP, "Swap colours",
                  wuss_MENU_ITEM_NONE);

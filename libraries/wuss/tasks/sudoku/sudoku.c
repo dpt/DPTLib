@@ -210,7 +210,7 @@ result_t sudoku_create(wuss_t *wuss, sudoku_task_t **out)
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SUDOKU_MENU_NEW, "New game",
                           wuss_MENU_ITEM_NONE, "N");
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SUDOKU_MENU_RESTART, "Restart",
-                          wuss_MENU_ITEM_DASHED, "R");
+                          wuss_MENU_ITEM_NONE, "R");
   WUSS_MENU_TITLE(task->menu, "Sudoku", task->menu_items,
                   NELEMS(task->menu_items));
 

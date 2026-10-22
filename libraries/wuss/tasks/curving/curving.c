@@ -223,7 +223,7 @@ result_t curving_create(wuss_t *wuss, curving_task_t **out)
                       wuss_MENU_ITEM_NONE, &task->width_menu);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, CURVING_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
+                      wuss_MENU_ITEM_NONE, &task->colours.menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CURVING_MENU_HULL, "Hull",
                           wuss_MENU_ITEM_NONE, "H");

@@ -150,7 +150,7 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
                       wuss_MENU_ITEM_DASHED, &task->colours.menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_RANDOMISE,
-                          "Randomise", wuss_MENU_ITEM_DASHED, "^R");
+                          "Randomise", wuss_MENU_ITEM_NONE, "^R");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_RESET, "Reset",
                           wuss_MENU_ITEM_NONE, "R");

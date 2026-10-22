@@ -795,7 +795,7 @@ result_t orbing_create(wuss_t *wuss, orbing_task_t **out)
   dithermenu_init(&task->dither, task->dithering);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, ORBING_MENU_DITHERING, "Dithering",
-                      wuss_MENU_ITEM_DASHED, &task->dither.menu);
+                      wuss_MENU_ITEM_NONE, &task->dither.menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, ORBING_MENU_MUTATE, "Mutate",
                           wuss_MENU_ITEM_DASHED, "M");

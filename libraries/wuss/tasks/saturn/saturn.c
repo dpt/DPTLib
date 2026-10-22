@@ -232,7 +232,7 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
                           wuss_MENU_ITEM_NONE, "SPACE");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_SAVE, "Save",
-                          wuss_MENU_ITEM_DASHED, "F3");
+                          wuss_MENU_ITEM_NONE, "F3");
   /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
   task->menu_items[SATURN_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
@@ -241,7 +241,7 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
                 wuss_MENU_ITEM_PRE_OPEN);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, SATURN_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
+                      wuss_MENU_ITEM_NONE, &task->colours.menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_RANDOMISE,
                           "Randomise", wuss_MENU_ITEM_DASHED, "^R");

@@ -530,8 +530,7 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
   task->menu_items[CHARS_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, CHARS_MENU_FONT, "Font",
-                      wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN |
-                      wuss_MENU_ITEM_DASHED,
+                      wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
                       menu);
 
   /* rows filled in by chars_build_page_menu each time it opens */
