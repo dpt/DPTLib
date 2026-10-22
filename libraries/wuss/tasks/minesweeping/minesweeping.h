@@ -19,7 +19,7 @@
 
 #define MINESWEEPING_CELL 22 /* pixels per cell; matches mine.png/flag.png */
 
-/* board sizes offered on the "Grid Size" menu; arrays are sized for the
+/* board sizes offered on the "Grid size" menu; arrays are sized for the
  * largest so a resize just changes ms->rows/cols/mines and re-clears */
 #define MINESWEEPING_MAX_ROWS 24
 #define MINESWEEPING_MAX_COLS 24
@@ -60,9 +60,9 @@ minesweeping_cell_state_t;
  * placed on the first reveal so the opening click is never a mine. A win
  * that beats the session's fastest time at that size and difficulty says
  * so on its banner. A
- * MENU-button click pops a menu with "New Game", a "Grid Size" submenu
+ * MENU-button click pops a menu with "New game", a "Grid size" submenu
  * that resets the board at a new size and a "Difficulty" submenu that
- * resets it with more or fewer mines; "Give Up" ends a game in progress
+ * resets it with more or fewer mines; "Give up" ends a game in progress
  * and shows every mine. With the input focus, the arrow keys move a cursor
  * cell, Return reveals it, Space toggles its flag and N starts a new
  * game. Hitting a mine sets off a particle explosion at the clicked cell. */
@@ -70,7 +70,7 @@ typedef struct minesweeping_task
 {
   wuss_t                  *wuss;
   wuss_window_t           *window;
-  wuss_task_t             *task; /* delegate; opens the New Game menu */
+  wuss_task_t             *task; /* delegate; opens the New game menu */
   wuss_menu_handle_t       menu_handle; /* live only between open and a pick */
   wuss_menu_item_t         size_items[minesweeping_NSIZES];
   wuss_menu_t              size_menu;

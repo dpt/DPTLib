@@ -26,13 +26,13 @@
  * just before wuss_menu_open */
 enum
 {
-  SOFA_MENU_COLOURS = 0,
+  SOFA_MENU_PAUSE = 0,
+  SOFA_MENU_SAVE,
   SOFA_MENU_MODEL,
-  SOFA_MENU_PAUSE,
   SOFA_MENU_CYCLE,
+  SOFA_MENU_COLOURS,
   SOFA_MENU_RANDOMISE,
-  SOFA_MENU_RESET,
-  SOFA_MENU_SAVE
+  SOFA_MENU_RESET
 };
 
 #define SOFA_SAVE_NAME "sofa.png" /* Save As's initial leafname */
@@ -468,8 +468,13 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
 
   wuss_colourlist_init_pair(&task->colours, wuss, &task->line, &task->bg);
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, SOFA_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_NONE, &task->colours.menu);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SOFA_MENU_PAUSE, "Pause",
+                          wuss_MENU_ITEM_NONE, "SPACE");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SOFA_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_DASHED, "F3");
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
+  task->menu_items[SOFA_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   for (i = 0; i < sofa_SHAPE__LIMIT; i++)
     WUSS_MENU_ITEM(task->model_items, i, sofa_shape_names[i],
@@ -479,20 +484,18 @@ result_t sofa_create(wuss_t *wuss, sofa_task_t **out)
                  NELEMS(task->model_items));
 
   WUSS_MENU_ITEM_MENU(task->menu_items, SOFA_MENU_MODEL, "Model",
-                      wuss_MENU_ITEM_NONE, &task->model_menu);
+                      wuss_MENU_ITEM_DASHED, &task->model_menu);
 
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SOFA_MENU_PAUSE, "Pause",
-                          wuss_MENU_ITEM_NONE, "SPACE");
   WUSS_MENU_ITEM(task->menu_items, SOFA_MENU_CYCLE, "Auto-cycle",
                  wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, SOFA_MENU_COLOURS, "Colours",
+                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
+
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SOFA_MENU_RANDOMISE, "Randomise",
-                          wuss_MENU_ITEM_NONE, "^R");
+                          wuss_MENU_ITEM_DASHED, "^R");
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SOFA_MENU_RESET, "Reset",
                           wuss_MENU_ITEM_NONE, "R");
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SOFA_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_NONE, "F3");
-  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
-  task->menu_items[SOFA_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Sofa", task->menu_items,
                  NELEMS(task->menu_items));

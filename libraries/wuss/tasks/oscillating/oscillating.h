@@ -27,7 +27,7 @@
  * Colours
  * row has Foreground and Background rows that pick fg and bg from the shared
  * colourmenu; Randomise (^R) picks every setting afresh and Reset (R)
- * restores the starting ones; Save PNG
+ * restores the starting ones; Save
  * opens a Save As dialogue (drag its icon onto a Filer window, or Save with
  * a full path already typed) that writes the window's content out. Once a
  * click has given the window the input focus, Space pauses/resumes and

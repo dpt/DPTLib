@@ -19,7 +19,7 @@
  * ordered-dither pattern from pattern_from_colour against the system
  * palette. a and b start random and are chosen from the Colour A / Colour B
  * menu rows; Menu > Randomise (^R) picks both afresh and Menu > Reset (R)
- * makes it black to white; Menu > Save PNG opens a Save As dialogue (drag its icon onto a
+ * makes it black to white; Menu > Save opens a Save As dialogue (drag its icon onto a
  * Filer window, or Save with a full path already typed) that writes the
  * window's content out */
 

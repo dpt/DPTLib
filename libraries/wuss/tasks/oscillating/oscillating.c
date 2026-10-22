@@ -25,15 +25,15 @@
  * singleton, retargeted just before wuss_menu_open */
 enum
 {
-  OSCILLATING_MENU_RATIO = 0,
+  OSCILLATING_MENU_PAUSE = 0,
+  OSCILLATING_MENU_SAVE,
+  OSCILLATING_MENU_RATIO,
   OSCILLATING_MENU_REVERSALS,
   OSCILLATING_MENU_EASING,
   OSCILLATING_MENU_DECAY,
   OSCILLATING_MENU_COLOURS,
-  OSCILLATING_MENU_PAUSE,
   OSCILLATING_MENU_RANDOMISE,
-  OSCILLATING_MENU_RESET,
-  OSCILLATING_MENU_SAVE
+  OSCILLATING_MENU_RESET
 };
 
 #define OSCILLATING_SAVE_NAME "oscillating.png" /* Save As's initial leafname */
@@ -159,6 +159,15 @@ result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
     return rc;
   }
 
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, OSCILLATING_MENU_PAUSE, "Pause",
+                          wuss_MENU_ITEM_NONE, "SPACE");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, OSCILLATING_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_DASHED, "F3");
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
+  task->menu_items[OSCILLATING_MENU_SAVE].window =
+    wuss_saveas_window(task->saveas);
+
   for (i = 0; i < OSCILLATING_NFREQS; i++)
     WUSS_MENU_ITEM(task->ratio_items, i, oscillating_freqs[i].name,
                    wuss_MENU_ITEM_NONE);
@@ -167,7 +176,7 @@ result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
                  NELEMS(task->ratio_items));
 
   WUSS_MENU_ITEM_MENU(task->menu_items, OSCILLATING_MENU_RATIO, "Ratio",
-                      wuss_MENU_ITEM_NONE, &task->ratio_menu);
+                      wuss_MENU_ITEM_DASHED, &task->ratio_menu);
 
   WUSS_MENU_ITEM(task->menu_items, OSCILLATING_MENU_REVERSALS, "Reversals",
                  wuss_MENU_ITEM_NONE);
@@ -195,22 +204,13 @@ result_t oscillating_create(wuss_t *wuss, oscillating_task_t **out)
   wuss_colourlist_init_pair(&task->colours, wuss, &task->fg, &task->bg);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, OSCILLATING_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_NONE, &task->colours.menu);
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, OSCILLATING_MENU_PAUSE, "Pause",
-                          wuss_MENU_ITEM_NONE, "SPACE");
+                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, OSCILLATING_MENU_RANDOMISE,
-                          "Randomise", wuss_MENU_ITEM_NONE, "^R");
+                          "Randomise", wuss_MENU_ITEM_DASHED, "^R");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, OSCILLATING_MENU_RESET, "Reset",
                           wuss_MENU_ITEM_NONE, "R");
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, OSCILLATING_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_NONE, "F3");
-  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
-  task->menu_items[OSCILLATING_MENU_SAVE].window =
-    wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Oscillating", task->menu_items,
                  NELEMS(task->menu_items));

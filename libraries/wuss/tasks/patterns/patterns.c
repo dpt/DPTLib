@@ -27,10 +27,10 @@
  * per-instance in patterns_task_t, not as a file-scope static */
 enum
 {
+  PATTERNS_MENU_SAVE,
   PATTERNS_MENU_COLOURS,
   PATTERNS_MENU_RANDOMISE,
-  PATTERNS_MENU_RESET,
-  PATTERNS_MENU_SAVE
+  PATTERNS_MENU_RESET
 };
 
 #define PATTERNS_SAVE_NAME "patterns.png" /* Save As's initial leafname */
@@ -140,20 +140,20 @@ result_t patterns_create(wuss_t *wuss, patterns_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, PATTERNS_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_NONE, &task->colours.menu);
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_RANDOMISE,
-                          "Randomise", wuss_MENU_ITEM_NONE, "^R");
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_RESET, "Reset",
-                          wuss_MENU_ITEM_NONE, "R");
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_SAVE, "Save PNG",
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_SAVE, "Save",
                           wuss_MENU_ITEM_NONE, "F3");
   /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
   task->menu_items[PATTERNS_MENU_SAVE].window =
     wuss_saveas_window(task->saveas);
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, PATTERNS_MENU_COLOURS, "Colours",
+                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_RANDOMISE,
+                          "Randomise", wuss_MENU_ITEM_DASHED, "^R");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PATTERNS_MENU_RESET, "Reset",
+                          wuss_MENU_ITEM_NONE, "R");
 
   WUSS_MENU_TITLE(task->menu, "Patterns", task->menu_items,
                  NELEMS(task->menu_items));

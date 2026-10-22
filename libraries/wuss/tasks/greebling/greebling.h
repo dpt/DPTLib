@@ -34,7 +34,7 @@
  * Select reseeds the pattern; Adjust steps the base palette, which Menu >
  * Palette also picks directly; Menu > Random palettes toggles per-prefab
  * random palettes; Menu > Size sets the grid (and window) to a preset size;
- * Menu > Save PNG opens a Save As dialogue (drag its icon onto a Filer
+ * Menu > Save opens a Save As dialogue (drag its icon onto a Filer
  * window, or Save with a full path already typed) that writes the window's
  * content out. Once a click has given the window the input focus, Space
  * reseeds, Left/Right step the base palette and R toggles random

@@ -45,10 +45,10 @@ painting_tool_t;
 enum
 {
   PAINTING_MENU_UNDO,
+  PAINTING_MENU_SAVE,
   PAINTING_MENU_SELECTION, /* submenu: PAINTING_SEL_* */
   PAINTING_MENU_NOZZLE,    /* submenu: one row per paintingdoc_nozzle_t */
   PAINTING_MENU_DITHERING, /* submenu: one row per screen_dither_t */
-  PAINTING_MENU_SAVE,
   PAINTING_MENU__COUNT
 };
 

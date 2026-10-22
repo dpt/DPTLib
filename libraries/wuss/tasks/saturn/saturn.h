@@ -23,14 +23,14 @@
  * one-liner stipples it out of three rejection-sampled point clouds - a
  * ring of dots, a sheared streak across it and a filled disc for the
  * planet body. Select re-seeds the RNG for a fresh sketch and Adjust
- * steps back to the previous one; Menu > Animate re-seeds every null
- * event so it churns; Menu > Randomise (^R) picks a fresh seed and colours;
+ * steps back to the previous one; Menu > Pause, unticked, re-seeds every
+ * null event so it churns; Menu > Randomise (^R) picks a fresh seed and colours;
  * Menu > Reset (R) restores the starting configuration, colours and seed;
- * Menu > Save PNG opens a Save As dialogue (drag its
+ * Menu > Save opens a Save As dialogue (drag its
  * icon onto a Filer window, or Save with a full path already typed) that
  * writes the window's content out. Once a click has given the window the
  * input focus, Left/Right step back and forward through the sketches and
- * Space toggles Animate. The wheel zooms in and out about the centre. The plot
+ * Space toggles Pause. The wheel zooms in and out about the centre. The plot
  * is deterministic in the seed. */
 /* iteration counts for the three rejection-sampling loops, plus the window's
  * size, in document pixels (the window is always square); saturn_create
@@ -94,7 +94,7 @@ typedef struct saturn_task
   wuss_colourlist_t  colours; /* per-instance: Foreground/Background rows */
   wuss_menu_item_t   menu_items[6];
   wuss_menu_t        menu;
-  int                animate; /* Menu > Animate: re-seed on every idle */
+  int                animate; /* Menu > Pause, inverted: re-seed on idle */
   double             zoom;    /* wheel-adjustable */
   rng_t              rng;     /* Randomise */
 }

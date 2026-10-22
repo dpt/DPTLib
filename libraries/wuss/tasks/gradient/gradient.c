@@ -27,9 +27,9 @@
  * per-instance in gradient_task_t, not as a file-scope static */
 enum
 {
-  GRADIENT_MENU_RESET,
+  GRADIENT_MENU_SAVE,
   GRADIENT_MENU_SHAPE,
-  GRADIENT_MENU_SAVE
+  GRADIENT_MENU_RESET
 };
 
 #define GRADIENT_SAVE_NAME "gradient.png" /* Save As's initial leafname */
@@ -293,8 +293,11 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GRADIENT_MENU_RESET, "Reset",
-                          wuss_MENU_ITEM_NONE, "R");
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GRADIENT_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_NONE, "F3");
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
+  task->menu_items[GRADIENT_MENU_SAVE].window =
+    wuss_saveas_window(task->saveas);
 
   for (i = 0; i < gradient_NSHAPES; i++)
     WUSS_MENU_ITEM(task->shape_items, i, gradient_shape_names[i],
@@ -304,13 +307,10 @@ result_t gradient_create(wuss_t *wuss, gradient_task_t **out)
                  NELEMS(task->shape_items));
 
   WUSS_MENU_ITEM_MENU(task->menu_items, GRADIENT_MENU_SHAPE, "Shape",
-                      wuss_MENU_ITEM_NONE, &task->shape_menu);
+                      wuss_MENU_ITEM_DASHED, &task->shape_menu);
 
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GRADIENT_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_NONE, "F3");
-  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
-  task->menu_items[GRADIENT_MENU_SAVE].window =
-    wuss_saveas_window(task->saveas);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GRADIENT_MENU_RESET, "Reset",
+                          wuss_MENU_ITEM_DASHED, "R");
 
   WUSS_MENU_TITLE(task->menu, "Gradient", task->menu_items,
                  NELEMS(task->menu_items));
@@ -499,7 +499,7 @@ static void gradient_reset(gradient_task_t *gc)
 }
 
 /* Menu pick: a Shape row switches the fill; Reset restores the default
- * shape, dither matrix, brightness and saturation; Save PNG shows the Save
+ * shape, dither matrix, brightness and saturation; Save shows the Save
  * As dialogue. A SELECT pick has already closed and freed the chain, so
  * drop the handle then. */
 static result_t gradient_menu_select(gradient_task_t    *gc,

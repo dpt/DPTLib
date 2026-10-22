@@ -88,12 +88,12 @@ static int saturn_rnd(int n)
  * there. */
 enum
 {
-  SATURN_MENU_COLOURS = 0,
+  SATURN_MENU_PAUSE = 0,
+  SATURN_MENU_SAVE,
   SATURN_MENU_SIZE,
-  SATURN_MENU_ANIMATE,
+  SATURN_MENU_COLOURS,
   SATURN_MENU_RANDOMISE,
-  SATURN_MENU_RESET,
-  SATURN_MENU_SAVE
+  SATURN_MENU_RESET
 };
 
 #define SATURN_SAVE_NAME "saturn.png" /* Save As's initial leafname */
@@ -228,25 +228,26 @@ result_t saturn_create(wuss_t *wuss, saturn_task_t **out)
 
   wuss_colourlist_init_pair(&task->colours, wuss, &task->fg, &task->bg);
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, SATURN_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_NONE, &task->colours.menu);
-
-  WUSS_MENU_ITEM(task->menu_items, SATURN_MENU_SIZE, "Configuration",
-                wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_ANIMATE, "Animate",
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_PAUSE, "Pause",
                           wuss_MENU_ITEM_NONE, "SPACE");
 
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_DASHED, "F3");
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
+  task->menu_items[SATURN_MENU_SAVE].window = wuss_saveas_window(task->saveas);
+
+  WUSS_MENU_ITEM(task->menu_items, SATURN_MENU_SIZE, "Configuration",
+                wuss_MENU_ITEM_DASHED | wuss_MENU_ITEM_BORROWED_SUBMENU |
+                wuss_MENU_ITEM_PRE_OPEN);
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, SATURN_MENU_COLOURS, "Colours",
+                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
+
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_RANDOMISE,
-                          "Randomise", wuss_MENU_ITEM_NONE, "^R");
+                          "Randomise", wuss_MENU_ITEM_DASHED, "^R");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_RESET, "Reset",
                           wuss_MENU_ITEM_NONE, "R");
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, SATURN_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_NONE, "F3");
-  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
-  task->menu_items[SATURN_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Saturn", task->menu_items,
                  NELEMS(task->menu_items));
@@ -432,7 +433,7 @@ static result_t saturn_mouse(saturn_task_t      *task,
 
   if (button & wuss_BUTTON_MENU)
   {
-    wuss_menu_tick_item(&task->menu, SATURN_MENU_ANIMATE, task->animate);
+    wuss_menu_tick_item(&task->menu, SATURN_MENU_PAUSE, !task->animate);
 
     return wuss_menu_open_at_pointer(task->delegate, &task->menu,
                                      &task->menu_handle);
@@ -854,7 +855,7 @@ static result_t saturn_pre_submenu_open(saturn_task_t      *task,
  * last retargeted at (see wuss_colourlist_pre_open). "Configuration" is a wuss_menu_item_t::window
  * leaf, not a leaf pick, so it never reaches here -- see
  * saturn_conf_dialogue_icon and saturn_sizedlg_pre_show. */
-/* Menu > Animate: a fresh sketch every null event. The
+/* Unless Menu > Pause is ticked: a fresh sketch every null event. The
  * Configuration window shares this (autoclose) delegate, so the task can
  * outlive the planet window; skip the dangling window in the meantime. */
 static result_t saturn_idle(saturn_task_t *task)
@@ -871,11 +872,11 @@ static result_t saturn_idle(saturn_task_t *task)
 static result_t saturn_menu_select(saturn_task_t      *task,
                                    const wuss_event_t *event)
 {
-  if (wuss_menu_select_is(event, &task->menu, SATURN_MENU_ANIMATE))
+  if (wuss_menu_select_is(event, &task->menu, SATURN_MENU_PAUSE))
   {
     task->animate = !task->animate;
     wuss_menu_tick_item_live(task->menu_handle, &task->menu,
-                             SATURN_MENU_ANIMATE, task->animate);
+                             SATURN_MENU_PAUSE, !task->animate);
     return result_OK;
   }
 
@@ -900,7 +901,7 @@ static result_t saturn_menu_select(saturn_task_t      *task,
     old_size = task->config.size;
     saturn_defaults(task);
     wuss_menu_tick_item_live(task->menu_handle, &task->menu,
-                             SATURN_MENU_ANIMATE, task->animate);
+                             SATURN_MENU_PAUSE, !task->animate);
     return saturn_resize(task, old_size);
   }
 

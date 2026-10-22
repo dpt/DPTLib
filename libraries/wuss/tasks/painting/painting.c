@@ -322,16 +322,19 @@ result_t painting_create_with(wuss_t                     *wuss,
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PAINTING_MENU_UNDO, "Undo",
                           wuss_MENU_ITEM_NONE, "F8");
 
-  WUSS_MENU_ITEM_SHORTCUT(task->sel_items, PAINTING_SEL_ALL, "Select All",
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PAINTING_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_DASHED, "F3"); /* window set below */
+
+  WUSS_MENU_ITEM_SHORTCUT(task->sel_items, PAINTING_SEL_ALL, "Select all",
                           wuss_MENU_ITEM_NONE, "^A");
-  WUSS_MENU_ITEM_SHORTCUT(task->sel_items, PAINTING_SEL_NONE, "Deselect",
-                          wuss_MENU_ITEM_NONE, "^Z");
+  WUSS_MENU_ITEM_SHORTCUT(task->sel_items, PAINTING_SEL_NONE,
+                          "Clear selection", wuss_MENU_ITEM_NONE, "^Z");
   WUSS_MENU_ITEM_SHORTCUT(task->sel_items, PAINTING_SEL_INVERT, "Invert",
                           wuss_MENU_ITEM_NONE, "^I");
   WUSS_MENU_TITLE(task->sel_menu, "Selection", task->sel_items,
                   NELEMS(task->sel_items));
   WUSS_MENU_ITEM_MENU(task->menu_items, PAINTING_MENU_SELECTION, "Selection",
-                      wuss_MENU_ITEM_NONE, &task->sel_menu);
+                      wuss_MENU_ITEM_DASHED, &task->sel_menu);
 
   for (i = 0; i < paintingdoc_NOZZLE__COUNT; i++)
     WUSS_MENU_ITEM(task->nozzle_items, i, painting_nozzle_names[i],
@@ -339,16 +342,14 @@ result_t painting_create_with(wuss_t                     *wuss,
   WUSS_MENU_TITLE(task->nozzle_menu, "Nozzle", task->nozzle_items,
                   NELEMS(task->nozzle_items));
   WUSS_MENU_ITEM_MENU(task->menu_items, PAINTING_MENU_NOZZLE, "Nozzle",
-                      wuss_MENU_ITEM_NONE, &task->nozzle_menu);
+                      wuss_MENU_ITEM_DASHED, &task->nozzle_menu);
   /* the shortcut, or a click on the row, steps to the next nozzle */
   task->menu_items[PAINTING_MENU_NOZZLE].shortcut = "N";
 
   dithermenu_init(&task->dither, task->dithering);
   WUSS_MENU_ITEM_MENU(task->menu_items, PAINTING_MENU_DITHERING, "Dithering",
-                      wuss_MENU_ITEM_NONE, &task->dither.menu);
+                      wuss_MENU_ITEM_DASHED, &task->dither.menu);
 
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PAINTING_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_DASHED, "F3");
   WUSS_MENU_TITLE(task->menu, "Painting", task->menu_items,
                   NELEMS(task->menu_items));
 
@@ -359,7 +360,7 @@ result_t painting_create_with(wuss_t                     *wuss,
     wuss_task_destroy(delegate); /* closes both windows, QUIT frees the block */
     return rc;
   }
-  /* hover opens the Save As dialogue as a submenu */
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
   task->menu_items[PAINTING_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   /* both windows up: from here, closing the last one reaps the task and its
@@ -890,7 +891,7 @@ static result_t painting_mouse(painting_task_t    *pt,
   return result_OK;
 }
 
-/* shade Undo when there is nothing to undo and Deselect when nothing is
+/* shade Undo when there is nothing to undo and Clear selection when nothing is
  * selected, also on the menu if it is open (an ADJUST pick keeps it open) */
 static void painting_menu_shade(painting_task_t *pt)
 {
@@ -999,7 +1000,8 @@ static result_t painting_selection_op(painting_task_t *pt, int op)
 }
 
 /* a MENU click on the canvas opens the menu, with Undo greyed out when
- * there is nothing to undo and Deselect when there is nothing selected */
+ * there is nothing to undo and Clear selection when there is nothing
+ * selected */
 static result_t painting_menu_open(painting_task_t *pt)
 {
   painting_menu_shade(pt);

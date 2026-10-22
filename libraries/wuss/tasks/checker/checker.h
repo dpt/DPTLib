@@ -26,7 +26,7 @@ checker_pattern_t;
 /* fills the whole content area with a two-tone pattern, black and white
  * until Menu > Colours recolours it (Menu > Swap colours exchanges the
  * two); the pattern cycles forward on a Select click and back on Adjust, or
- * is picked from Menu > Pattern; Menu > Save PNG opens a Save As dialogue
+ * is picked from Menu > Pattern; Menu > Save opens a Save As dialogue
  * (drag its icon onto a Filer window, or Save with a full path already
  * typed) that writes the window out; Menu > Randomise (^R) picks a pattern,
  * band width and colours afresh and Menu > Reset (R) restores the starting

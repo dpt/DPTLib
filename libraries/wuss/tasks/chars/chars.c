@@ -39,9 +39,9 @@
  * singleton, retargeted just before wuss_menu_open */
 enum
 {
-  CHARS_MENU_FONT = 0,
-  CHARS_MENU_PAGE,
-  CHARS_MENU_SAVE
+  CHARS_MENU_SAVE = 0,
+  CHARS_MENU_FONT,
+  CHARS_MENU_PAGE
 };
 
 #define CHARS_SAVE_NAME "chars.png" /* Save As's initial leafname */
@@ -524,18 +524,19 @@ result_t chars_create(wuss_t *wuss, chars_task_t **out)
     return rc;
   }
 
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CHARS_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_NONE, "F3");
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
+  task->menu_items[CHARS_MENU_SAVE].window = wuss_saveas_window(task->saveas);
+
   WUSS_MENU_ITEM_MENU(task->menu_items, CHARS_MENU_FONT, "Font",
-                      wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN,
+                      wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN |
+                      wuss_MENU_ITEM_DASHED,
                       menu);
 
   /* rows filled in by chars_build_page_menu each time it opens */
   WUSS_MENU_ITEM_MENU(task->menu_items, CHARS_MENU_PAGE, "Page",
                       wuss_MENU_ITEM_PRE_OPEN, &task->page_menu);
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CHARS_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_NONE, "F3");
-  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
-  task->menu_items[CHARS_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Chars", task->menu_items,
                  NELEMS(task->menu_items));

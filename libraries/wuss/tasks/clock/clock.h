@@ -20,7 +20,7 @@
  * every idle tick. A Select click, or Menu > Seconds, shows or hides the
  * seconds. An Adjust click, or Menu > Digital, swaps the face for an
  * HH:MM:SS readout (and back); Menu > 12-hour shows that readout as
- * 12-hour time with AM/PM; Menu > Save PNG opens a Save As dialogue (drag
+ * 12-hour time with AM/PM; Menu > Save opens a Save As dialogue (drag
  * its icon onto a Filer window, or Save with a full path already typed)
  * that writes the window's content out. Once a click has given the window
  * the input focus, D, S and H toggle Digital, Seconds and 12-hour. */
@@ -37,6 +37,7 @@ typedef struct clock_task
   wuss_menu_t         menu;
   bmfont_t           *font; /* borrowed; the numerals are drawn with it */
   colour_t            bg, bezel, hand, second_hand;
+  wuss_colourlist_t   colours; /* Menu > Colours, its one row Background */
   bool                show_second;
   bool                digital; /* Menu > Digital: text readout, no face */
   bool                twelve_hour; /* Menu > 12-hour: AM/PM readout */

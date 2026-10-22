@@ -344,8 +344,11 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
   WUSS_MENU_TITLE(task->palette_menu, "Palette", task->palette_items,
                   DITHERING_PALETTE_FIRST_HEX + task->npalettes);
 
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, DITHERING_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_NONE, "F3");
+  /* window set once saveas exists */
   WUSS_MENU_ITEM_MENU(task->menu_items, DITHERING_MENU_METHOD, "Method",
-                      wuss_MENU_ITEM_NONE, &task->method_menu);
+                      wuss_MENU_ITEM_DASHED, &task->method_menu);
   WUSS_MENU_ITEM_MENU(task->menu_items, DITHERING_MENU_PALETTE, "Palette",
                       wuss_MENU_ITEM_NONE, &task->palette_menu);
   /* windows set once the dialogues exist */
@@ -355,8 +358,6 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
                  wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
   WUSS_MENU_ITEM(task->menu_items, DITHERING_MENU_SERPENTINE, "Serpentine",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->menu_items, DITHERING_MENU_SAVE, "Save PNG",
-                 wuss_MENU_ITEM_DASHED); /* window set once saveas exists */
   WUSS_MENU_TITLE(task->menu, "Dithering", task->menu_items,
                   DITHERING_MENU__LIMIT);
 
@@ -381,7 +382,7 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
     wuss_task_destroy(task->delegate); /* QUIT frees the block */
     return rc;
   }
-  /* hover opens the Save As dialogue as a submenu */
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
   task->menu_items[DITHERING_MENU_SAVE].window =
     wuss_saveas_window(task->saveas);
 
@@ -624,7 +625,7 @@ result_t dithering_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_KEY:
-    return result_WUSS_KEY_UNCLAIMED;
+    return wuss_menu_dispatch_shortcut(dt->delegate, &dt->menu, event);
 
   default:
     return result_OK;

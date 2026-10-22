@@ -25,11 +25,11 @@
  * chosen intensity, where the menu was opened; Menu > Add > Attractor and
  * Menu > Add > Repeller open a shared Strength dialogue (a 1..100 slider,
  * Cancel/Apply) and add an attractor/repeller there too, at the applied
- * strength; Menu > Background picks the fill; Menu > Gravity scales every
- * style's pull; Menu > Walls bounces
- * particles off the edges; Menu > Markers shows rings round emitters (green),
+ * strength; Menu > Colours > Background picks the fill; Menu > Gravity
+ * scales every style's pull; Menu > Walls bounces particles off the edges;
+ * Menu > Markers shows rings round emitters (green),
  * repellers (red) and attractors (orange); Menu > Clear removes every
- * particle and emitter; Menu > Save PNG opens a Save As dialogue (drag its
+ * particle and emitter; Menu > Save opens a Save As dialogue (drag its
  * icon onto a Filer window, or Save with a full path already typed) that
  * writes the window's content out.
  * Space toggles pause, W toggles walls, M markers and C clears, once a click has given
@@ -69,6 +69,7 @@ typedef struct fireworks_task
   unsigned int        now_ms;   /* simulated clock, advanced per idle tick */
   particle_style_t    styles[FIREWORKS_NSTYLES];
   colour_t            bg;
+  wuss_colourlist_t   colours; /* Menu > Colours, its one row Background */
   colour_t            palette[FIREWORKS_NSTYLES * PALETTE_SIZE];
   particle_system_t   ps;
 

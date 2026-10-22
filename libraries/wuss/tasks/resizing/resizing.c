@@ -195,14 +195,15 @@ result_t resizing_create(wuss_t *wuss, resizing_task_t **out)
   WUSS_MENU_TITLE(task->scale_menu, "Scale", task->scale_items,
                   RESIZING_NSCALES);
 
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, RESIZING_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_NONE, "F3");
+  /* window set once saveas exists */
   WUSS_MENU_ITEM_MENU(task->menu_items, RESIZING_MENU_METHOD, "Method",
-                      wuss_MENU_ITEM_NONE, &task->method_menu);
+                      wuss_MENU_ITEM_DASHED, &task->method_menu);
   WUSS_MENU_ITEM_MENU(task->menu_items, RESIZING_MENU_SCALE, "Scale",
                       wuss_MENU_ITEM_NONE, &task->scale_menu);
   WUSS_MENU_ITEM(task->menu_items, RESIZING_MENU_LINEAR, "Linear light",
                  wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->menu_items, RESIZING_MENU_SAVE, "Save PNG",
-                 wuss_MENU_ITEM_DASHED); /* window set once saveas exists */
   WUSS_MENU_TITLE(task->menu, "Resizing", task->menu_items,
                   RESIZING_MENU__LIMIT);
 
@@ -227,7 +228,7 @@ result_t resizing_create(wuss_t *wuss, resizing_task_t **out)
     wuss_task_destroy(task->delegate); /* QUIT frees the block */
     return rc;
   }
-  /* hover opens the Save As dialogue as a submenu */
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
   task->menu_items[RESIZING_MENU_SAVE].window =
     wuss_saveas_window(task->saveas);
 
@@ -374,7 +375,7 @@ result_t resizing_handle(wuss_window_t      *window,
     return result_OK;
 
   case wuss_EVENT_KEY:
-    return result_WUSS_KEY_UNCLAIMED;
+    return wuss_menu_dispatch_shortcut(rt->delegate, &rt->menu, event);
 
   default:
     return result_OK;

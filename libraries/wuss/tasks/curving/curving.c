@@ -31,13 +31,15 @@
  * just before wuss_menu_open */
 enum
 {
-  CURVING_MENU_BACKGROUND = 0,
+  CURVING_MENU_SAVE = 0,
   CURVING_MENU_TYPE,
   CURVING_MENU_WIDTH,
+  CURVING_MENU_COLOURS,
   CURVING_MENU_HULL,
-  CURVING_MENU_RESET,
-  CURVING_MENU_SAVE
+  CURVING_MENU_RESET
 };
+
+static const char *const curving_colour_names[] = { "Background" };
 
 #define CURVING_SAVE_NAME "curving.png" /* Save As's initial leafname */
 
@@ -140,6 +142,7 @@ result_t curving_create(wuss_t *wuss, curving_task_t **out)
   curving_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  colour_t        *fields[1];
   int              i;
 
   task = calloc(1, sizeof(*task));
@@ -185,8 +188,19 @@ result_t curving_create(wuss_t *wuss, curving_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, CURVING_MENU_BACKGROUND, "Background",
-                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+  fields[0] = &task->bg;
+  rc = wuss_colourlist_init(&task->colours, wuss, NELEMS(fields), fields,
+                            curving_colour_names);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CURVING_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_NONE, "F3");
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
+  task->menu_items[CURVING_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   for (i = 0; i < CURVING_NKINDS; i++)
     WUSS_MENU_ITEM(task->type_items, i, curving_kind_names[i],
@@ -196,7 +210,7 @@ result_t curving_create(wuss_t *wuss, curving_task_t **out)
                  NELEMS(task->type_items));
 
   WUSS_MENU_ITEM_MENU(task->menu_items, CURVING_MENU_TYPE, "Type",
-                      wuss_MENU_ITEM_NONE, &task->type_menu);
+                      wuss_MENU_ITEM_DASHED, &task->type_menu);
 
   for (i = 0; i < CURVING_NWIDTHS; i++)
     WUSS_MENU_ITEM(task->width_items, i, curving_width_names[i],
@@ -208,16 +222,14 @@ result_t curving_create(wuss_t *wuss, curving_task_t **out)
   WUSS_MENU_ITEM_MENU(task->menu_items, CURVING_MENU_WIDTH, "Width",
                       wuss_MENU_ITEM_NONE, &task->width_menu);
 
+  WUSS_MENU_ITEM_MENU(task->menu_items, CURVING_MENU_COLOURS, "Colours",
+                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
+
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CURVING_MENU_HULL, "Hull",
                           wuss_MENU_ITEM_NONE, "H");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CURVING_MENU_RESET, "Reset points",
-                          wuss_MENU_ITEM_NONE, "R");
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CURVING_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_NONE, "F3");
-  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
-  task->menu_items[CURVING_MENU_SAVE].window = wuss_saveas_window(task->saveas);
+                          wuss_MENU_ITEM_DASHED, "R");
 
   WUSS_MENU_TITLE(task->menu, "Curving", task->menu_items,
                  NELEMS(task->menu_items));
@@ -566,7 +578,7 @@ static result_t curving_menu_select(curving_task_t     *task,
     return result_OK;
   }
 
-  if (wuss_colourmenu_selected_rgb(event, &task->bg))
+  if (wuss_colourlist_selected(&task->colours, event))
     wuss_window_invalidate_visible(task->window);
 
   return result_OK;
@@ -610,8 +622,15 @@ result_t curving_handle(wuss_window_t      *window,
   }
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
-    /* the "Background" row: the shared colourmenu, set up per open */
-    return wuss_colourmenu_open_rgb(task->wuss, event, "Background", task->bg);
+  {
+    result_t rc;
+
+    /* Colours > Background: the shared colourmenu, set up per open */
+    if (wuss_colourlist_pre_open(&task->colours, task->wuss, event, &rc))
+      return rc;
+
+    return result_OK;
+  }
 
   case wuss_EVENT_MENU_SELECT:
     return curving_menu_select(task, event);

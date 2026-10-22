@@ -26,7 +26,7 @@ gradient_shape_t;
  * ADJUST drag sets brightness (vertical, up is brighter) and saturation
  * (horizontal, right is more saturated). Menu > Shape swaps the two-axis
  * ramp for a radial or conical hue sweep; Menu > Reset restores the shape,
- * dither, brightness and saturation; Menu > Save PNG opens a Save As
+ * dither, brightness and saturation; Menu > Save opens a Save As
  * dialogue (drag its icon onto a Filer window, or Save with a full path
  * already typed) that writes the window's content out. Once a click has
  * given the window the input focus, S steps the shape, D steps the dither

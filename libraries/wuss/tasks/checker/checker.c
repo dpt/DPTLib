@@ -27,12 +27,12 @@
  * singleton, retargeted just before wuss_menu_open */
 enum
 {
-  CHECKER_MENU_COLOURS = 0,
+  CHECKER_MENU_SAVE = 0,
   CHECKER_MENU_PATTERN,
+  CHECKER_MENU_COLOURS,
   CHECKER_MENU_SWAP,
   CHECKER_MENU_RANDOMISE,
-  CHECKER_MENU_RESET,
-  CHECKER_MENU_SAVE
+  CHECKER_MENU_RESET
 };
 
 #define CHECKER_SAVE_NAME "checker.png" /* Save As's initial leafname */
@@ -141,8 +141,10 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, CHECKER_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_NONE, &task->colours.menu);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CHECKER_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_NONE, "F3");
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
+  task->menu_items[CHECKER_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   for (i = 0; i < checker_PATTERN__COUNT; i++)
     WUSS_MENU_ITEM(task->pattern_items, i, checker_pattern_names[i],
@@ -152,21 +154,19 @@ result_t checker_create(wuss_t *wuss, checker_task_t **out)
                  NELEMS(task->pattern_items));
 
   WUSS_MENU_ITEM_MENU(task->menu_items, CHECKER_MENU_PATTERN, "Pattern",
-                      wuss_MENU_ITEM_NONE, &task->pattern_menu);
+                      wuss_MENU_ITEM_DASHED, &task->pattern_menu);
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, CHECKER_MENU_COLOURS, "Colours",
+                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
 
   WUSS_MENU_ITEM(task->menu_items, CHECKER_MENU_SWAP, "Swap colours",
                  wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CHECKER_MENU_RANDOMISE,
-                          "Randomise", wuss_MENU_ITEM_NONE, "^R");
+                          "Randomise", wuss_MENU_ITEM_DASHED, "^R");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CHECKER_MENU_RESET, "Reset",
                           wuss_MENU_ITEM_NONE, "R");
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CHECKER_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_NONE, "F3");
-  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
-  task->menu_items[CHECKER_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Checker", task->menu_items,
                  NELEMS(task->menu_items));

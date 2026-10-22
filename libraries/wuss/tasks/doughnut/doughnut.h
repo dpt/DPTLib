@@ -24,7 +24,7 @@
  * the tube ([ and ] step the major density, comma and full stop the
  * minor, minus and plus the tube); Menu > Randomise (^R)
  * picks every setting afresh; Menu > Reset (R) restores the starting
- * angles, zoom, tube, densities and colours; Menu > Save PNG opens a Save As
+ * angles, zoom, tube, densities and colours; Menu > Save opens a Save As
  * dialogue (drag its icon onto a Filer window, or Save with a full path
  * already typed) that writes the window's content out. */
 typedef struct doughnut_task

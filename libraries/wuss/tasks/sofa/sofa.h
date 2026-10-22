@@ -34,7 +34,7 @@ sofa_shape_t;
  * pauses/resumes the spin, an Adjust click or Menu > Model changes the
  * model, Menu > Auto-cycle turns the automatic change of model after a few
  * turns on or off, Menu > Randomise (^R) picks a model and colours afresh,
- * Menu > Reset (R) restores the starting view and Menu > Save PNG opens a
+ * Menu > Reset (R) restores the starting view and Menu > Save opens a
  * Save As dialogue (drag its icon onto a Filer window, or Save with a full
  * path already typed) that writes the window's content out. Once a click has given the window the
  * input focus, Space pauses/resumes, Left/Right step the model

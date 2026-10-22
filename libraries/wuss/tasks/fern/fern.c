@@ -35,12 +35,12 @@
 
 enum
 {
-  FERN_MENU_COLOURS = 0,
+  FERN_MENU_PAUSE = 0,
+  FERN_MENU_SAVE,
   FERN_MENU_SIZE,
-  FERN_MENU_ANIMATE,
+  FERN_MENU_COLOURS,
   FERN_MENU_RANDOMISE,
-  FERN_MENU_RESET,
-  FERN_MENU_SAVE
+  FERN_MENU_RESET
 };
 
 enum
@@ -135,24 +135,25 @@ result_t fern_create(wuss_t *wuss, fern_task_t **out)
 
   wuss_colourlist_init_pair(&task->colours, wuss, &task->fg, &task->bg);
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, FERN_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_NONE, &task->colours.menu);
-
-  WUSS_MENU_ITEM(task->menu_items, FERN_MENU_SIZE, "Configuration",
-                 wuss_MENU_ITEM_BORROWED_SUBMENU | wuss_MENU_ITEM_PRE_OPEN);
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FERN_MENU_ANIMATE, "Animate",
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FERN_MENU_PAUSE, "Pause",
                           wuss_MENU_ITEM_NONE, "SPACE");
 
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FERN_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_DASHED, "F3");
+  task->menu_items[FERN_MENU_SAVE].window = wuss_saveas_window(task->saveas);
+
+  WUSS_MENU_ITEM(task->menu_items, FERN_MENU_SIZE, "Configuration",
+                 wuss_MENU_ITEM_DASHED | wuss_MENU_ITEM_BORROWED_SUBMENU |
+                 wuss_MENU_ITEM_PRE_OPEN);
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, FERN_MENU_COLOURS, "Colours",
+                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
+
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FERN_MENU_RANDOMISE, "Randomise",
-                          wuss_MENU_ITEM_NONE, "^R");
+                          wuss_MENU_ITEM_DASHED, "^R");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FERN_MENU_RESET, "Reset",
                           wuss_MENU_ITEM_NONE, "R");
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FERN_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_NONE, "F3");
-  task->menu_items[FERN_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Fern", task->menu_items,
                   NELEMS(task->menu_items));
@@ -287,7 +288,7 @@ static result_t fern_mouse(fern_task_t        *task,
 
   if (button & wuss_BUTTON_MENU)
   {
-    wuss_menu_tick_item(&task->menu, FERN_MENU_ANIMATE, task->animate);
+    wuss_menu_tick_item(&task->menu, FERN_MENU_PAUSE, !task->animate);
 
     return wuss_menu_open_at_pointer(task->delegate, &task->menu,
                                      &task->menu_handle);
@@ -324,8 +325,9 @@ static result_t fern_key(fern_task_t *task, wuss_window_t *window, int code)
   return result_OK;
 }
 
-/* Menu > Animate: a fresh fern every null event. The Configuration window
- * shares this delegate, so the task can outlive the fern window. */
+/* Unless Menu > Pause is ticked: a fresh fern every null event. The
+ * Configuration window shares this delegate, so the task can outlive the fern
+ * window. */
 static result_t fern_idle(fern_task_t *task)
 {
   if (!task->animate || task->window == NULL)
@@ -650,11 +652,11 @@ static result_t fern_conf_dialogue_icon(fern_task_t        *task,
 static result_t fern_menu_select(fern_task_t        *task,
                                  const wuss_event_t *event)
 {
-  if (wuss_menu_select_is(event, &task->menu, FERN_MENU_ANIMATE))
+  if (wuss_menu_select_is(event, &task->menu, FERN_MENU_PAUSE))
   {
     task->animate = !task->animate;
     wuss_menu_tick_item_live(task->menu_handle, &task->menu,
-                             FERN_MENU_ANIMATE, task->animate);
+                             FERN_MENU_PAUSE, !task->animate);
     return result_OK;
   }
 
@@ -678,7 +680,7 @@ static result_t fern_menu_select(fern_task_t        *task,
     old_size = task->config.size;
     fern_defaults(task);
     wuss_menu_tick_item_live(task->menu_handle, &task->menu,
-                             FERN_MENU_ANIMATE, task->animate);
+                             FERN_MENU_PAUSE, !task->animate);
     return fern_resize(task, old_size);
   }
 

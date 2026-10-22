@@ -31,7 +31,7 @@ ball_t;
  * view; Menu > Clear removes all but the first; Menu > Gravity pulls them
  * downward; Menu > Damping makes wall bounces lose speed. Once a click has
  * given the window the input focus, Space pauses/resumes, A adds a ball, G
- * toggles gravity, D toggles damping and C clears. Menu > Save PNG opens a
+ * toggles gravity, D toggles damping and C clears. Menu > Save opens a
  * Save As dialogue (drag its icon onto a Filer window, or Save with a full
  * path already typed) that writes the window's content out. */
 typedef struct ball_task
@@ -47,6 +47,7 @@ typedef struct ball_task
   int                 gravity; /* Menu > Gravity; dy grows each tick */
   int                 damping; /* Menu > Damping; wall bounces lose speed */
   colour_t            bg;
+  wuss_colourlist_t   colours; /* Menu > Colours, its one row Background */
   ball_t              balls[BALL_MAX];
   int                 nballs;
   int                 grabbed; /* index of the ball held by Select, or -1 */

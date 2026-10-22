@@ -24,7 +24,7 @@
  * stepping npoints, the count of points[] actually in play; Menu > Type
  * picks it directly; Menu > Width sets the line thickness; Menu > Hull
  * shows or hides the control points' convex hull; Menu > Reset points puts
- * the control points back where they started; Menu > Save PNG opens a Save As dialogue (drag its icon onto a
+ * the control points back where they started; Menu > Save opens a Save As dialogue (drag its icon onto a
  * Filer window, or Save with a full path already typed) that writes the
  * window's content out. Once a click has given the window the input focus,
  * Left/Right step the curve type, Up/Down step nsegments, H toggles the
@@ -45,6 +45,7 @@ typedef struct curving_task
   wuss_menu_item_t    width_items[CURVING_NWIDTHS]; /* one row per line width */
   wuss_menu_t         width_menu;
   colour_t             bg, line, blob;
+  wuss_colourlist_t    colours; /* Menu > Colours, its one row Background */
   point_t              points[CURVING_MAXCONTROLPTS];
   int                  npoints;     /* CURVING_MINCONTROLPTS..CURVING_MAXCONTROLPTS */
   int                  nsegments;

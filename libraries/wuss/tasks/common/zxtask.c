@@ -144,7 +144,7 @@ void zxtask_init(zxtask_t *task, const zxtask_ops_t *ops)
   WUSS_MENU_ITEM_MENU(task->menu_items, ZXTASK_MENU_SPEED, "Speed",
                       wuss_MENU_ITEM_NONE, &task->speed_menu);
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, ZXTASK_MENU_MONO, "Monochromatic",
-                          wuss_MENU_ITEM_NONE, "^M");
+                          wuss_MENU_ITEM_DASHED, "^M");
   WUSS_MENU_ITEM(task->menu_items, ZXTASK_MENU_ZOOM, "Double size",
                  wuss_MENU_ITEM_NONE);
   WUSS_MENU_TITLE(task->menu, ops->title, task->menu_items,

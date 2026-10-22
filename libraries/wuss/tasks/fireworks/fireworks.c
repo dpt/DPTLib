@@ -36,15 +36,17 @@
  * per-instance in fireworks_task_t, not as a file-scope static */
 enum
 {
-  FIREWORKS_MENU_ADD,
-  FIREWORKS_MENU_BACKGROUND,
   FIREWORKS_MENU_PAUSE,
+  FIREWORKS_MENU_SAVE,
+  FIREWORKS_MENU_ADD,
   FIREWORKS_MENU_GRAVITY,
   FIREWORKS_MENU_WALLS,
-  FIREWORKS_MENU_MARKERS,
   FIREWORKS_MENU_CLEAR,
-  FIREWORKS_MENU_SAVE
+  FIREWORKS_MENU_COLOURS,
+  FIREWORKS_MENU_MARKERS
 };
+
+static const char *const fireworks_colour_names[] = { "Background" };
 
 /* "Add" submenu rows */
 enum
@@ -304,6 +306,7 @@ result_t fireworks_create(wuss_t *wuss, fireworks_task_t **out)
   wuss_task_t      *delegate;
   wuss_task_desc_t  delegate_desc;
   int               i;
+  colour_t         *fields[1];
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -354,6 +357,31 @@ result_t fireworks_create(wuss_t *wuss, fireworks_task_t **out)
     return rc;
   }
 
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_PAUSE, "Pause",
+                          wuss_MENU_ITEM_NONE, "SPACE");
+
+  rc = snapshot_saveas_create(&task->saveas, wuss, FIREWORKS_SAVE_NAME,
+                              fireworks_saveas_save, task);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_DASHED, "F3");
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
+  task->menu_items[FIREWORKS_MENU_SAVE].window =
+    wuss_saveas_window(task->saveas);
+
+  fields[0] = &task->bg;
+  rc = wuss_colourlist_init(&task->colours, wuss, NELEMS(fields), fields,
+                            fireworks_colour_names);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
 
   for (i = 0; i < NELEMS(task->emitter_items); i++)
     WUSS_MENU_ITEM(task->emitter_items, i, fireworks_intensities[i].name,
@@ -373,13 +401,7 @@ result_t fireworks_create(wuss_t *wuss, fireworks_task_t **out)
                  NELEMS(task->add_items));
 
   WUSS_MENU_ITEM_MENU(task->menu_items, FIREWORKS_MENU_ADD, "Add",
-                      wuss_MENU_ITEM_NONE, &task->add_menu);
-
-  WUSS_MENU_ITEM_MENU(task->menu_items, FIREWORKS_MENU_BACKGROUND, "Background",
-                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_PAUSE, "Pause",
-                          wuss_MENU_ITEM_NONE, "SPACE");
+                      wuss_MENU_ITEM_DASHED, &task->add_menu);
 
   task->gravity = FIREWORKS_GRAVITY_NORMAL;
   for (i = 0; i < NELEMS(task->gravity_items); i++)
@@ -395,26 +417,15 @@ result_t fireworks_create(wuss_t *wuss, fireworks_task_t **out)
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_WALLS, "Walls",
                           wuss_MENU_ITEM_NONE, "W");
 
-  task->markers = 1;
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_MARKERS, "Markers",
-                          wuss_MENU_ITEM_NONE, "M");
-
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_CLEAR, "Clear",
                           wuss_MENU_ITEM_NONE, "C");
 
-  rc = snapshot_saveas_create(&task->saveas, wuss, FIREWORKS_SAVE_NAME,
-                              fireworks_saveas_save, task);
-  if (rc != result_OK)
-  {
-    wuss_task_destroy(delegate);
-    return rc;
-  }
+  WUSS_MENU_ITEM_MENU(task->menu_items, FIREWORKS_MENU_COLOURS, "Colours",
+                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
 
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_NONE, "F3");
-  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
-  task->menu_items[FIREWORKS_MENU_SAVE].window =
-    wuss_saveas_window(task->saveas);
+  task->markers = 1;
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, FIREWORKS_MENU_MARKERS, "Markers",
+                          wuss_MENU_ITEM_NONE, "M");
 
   WUSS_MENU_TITLE(task->menu, "Fireworks", task->menu_items,
                  NELEMS(task->menu_items));
@@ -904,7 +915,7 @@ static result_t fireworks_menu_select(fireworks_task_t   *pt,
 {
   int index;
 
-  if (wuss_colourmenu_selected_rgb(event, &pt->bg))
+  if (wuss_colourlist_selected(&pt->colours, event))
     return result_OK; /* the next idle tick repaints */
 
   if (event->data.menu_select.menu == &pt->gravity_menu)
@@ -1047,8 +1058,15 @@ result_t fireworks_handle(wuss_window_t      *window,
     return wuss_menu_dispatch_shortcut(pt->delegate, &pt->menu, event);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
-    /* the "Background" row: the shared colourmenu, set up per open */
-    return wuss_colourmenu_open_rgb(pt->wuss, event, "Background", pt->bg);
+  {
+    result_t rc;
+
+    /* Colours > Background: the shared colourmenu, set up per open */
+    if (wuss_colourlist_pre_open(&pt->colours, pt->wuss, event, &rc))
+      return rc;
+
+    return result_OK;
+  }
 
   case wuss_EVENT_ICON:
     if (window == wuss_dialogue_window(pt->strength_dialogue))

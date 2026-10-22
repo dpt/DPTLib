@@ -17,7 +17,7 @@
  * ramped up and back down across each rule's turn, so every operator is seen
  * across its full range. Select steps to the next rule and Adjust to the
  * previous one; Menu > Rule jumps straight to any one; Menu > Swap images
- * exchanges source and destination; Menu > Save PNG opens a Save As dialogue
+ * exchanges source and destination; Menu > Save opens a Save As dialogue
  * (drag its icon onto a Filer window, or Save with a full path already
  * typed) that writes the window's contents out. Once a click has given the
  * window the input focus, Space pauses/resumes and Left/Right step the

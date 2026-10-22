@@ -31,12 +31,14 @@
  * just before wuss_menu_open */
 enum
 {
-  CLOCK_MENU_BACKGROUND = 0,
+  CLOCK_MENU_SAVE = 0,
   CLOCK_MENU_DIGITAL,
   CLOCK_MENU_SECONDS,
   CLOCK_MENU_12_HOUR,
-  CLOCK_MENU_SAVE
+  CLOCK_MENU_COLOURS
 };
+
+static const char *const clock_colour_names[] = { "Background" };
 
 #define CLOCK_SAVE_NAME "clock.png" /* Save As's initial leafname */
 
@@ -128,6 +130,7 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
   clock_task_t    *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  colour_t        *fields[1];
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -169,11 +172,22 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, CLOCK_MENU_BACKGROUND, "Background",
-                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+  fields[0] = &task->bg;
+  rc = wuss_colourlist_init(&task->colours, wuss, NELEMS(fields), fields,
+                            clock_colour_names);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CLOCK_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_NONE, "F3");
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
+  task->menu_items[CLOCK_MENU_SAVE].window = wuss_saveas_window(task->saveas);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CLOCK_MENU_DIGITAL, "Digital",
-                          wuss_MENU_ITEM_NONE, "D");
+                          wuss_MENU_ITEM_DASHED, "D");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CLOCK_MENU_SECONDS, "Seconds",
                           wuss_MENU_ITEM_NONE, "S");
@@ -181,10 +195,8 @@ result_t clock_create(wuss_t *wuss, clock_task_t **out)
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CLOCK_MENU_12_HOUR, "12-hour",
                           wuss_MENU_ITEM_NONE, "H");
 
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, CLOCK_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_NONE, "F3");
-  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
-  task->menu_items[CLOCK_MENU_SAVE].window = wuss_saveas_window(task->saveas);
+  WUSS_MENU_ITEM_MENU(task->menu_items, CLOCK_MENU_COLOURS, "Colours",
+                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
 
   WUSS_MENU_TITLE(task->menu, "Clock", task->menu_items,
                  NELEMS(task->menu_items));
@@ -343,7 +355,7 @@ static result_t clock_mouse(clock_task_t *cc, wuss_button_t button)
 static result_t clock_menu_select(clock_task_t       *cc,
                                   const wuss_event_t *event)
 {
-  if (wuss_colourmenu_selected_rgb(event, &cc->bg))
+  if (wuss_colourlist_selected(&cc->colours, event))
     wuss_window_invalidate_visible(cc->window);
 
   return result_OK;
@@ -425,8 +437,15 @@ result_t clock_handle(wuss_window_t      *window,
   }
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
-    /* the "Background" row: the shared colourmenu, set up per open */
-    return wuss_colourmenu_open_rgb(cc->wuss, event, "Background", cc->bg);
+  {
+    result_t rc;
+
+    /* Colours > Background: the shared colourmenu, set up per open */
+    if (wuss_colourlist_pre_open(&cc->colours, cc->wuss, event, &rc))
+      return rc;
+
+    return result_OK;
+  }
 
   case wuss_EVENT_MENU_SELECT:
     if (event->data.menu_select.menu == &cc->menu &&

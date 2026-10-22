@@ -33,11 +33,11 @@
  * global. */
 enum
 {
-  GREEBLING_MENU_RANDPAL = 0,
-  GREEBLING_MENU_PALETTE,
+  GREEBLING_MENU_SAVE = 0,
   GREEBLING_MENU_SIZE,
-  GREEBLING_MENU_RANDOMISE,
-  GREEBLING_MENU_SAVE
+  GREEBLING_MENU_PALETTE,
+  GREEBLING_MENU_RANDPAL,
+  GREEBLING_MENU_RANDOMISE
 };
 
 #define GREEBLING_SAVE_NAME "greebling.png" /* Save As's initial leafname */
@@ -571,8 +571,19 @@ result_t greebling_create(wuss_t *wuss, greebling_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GREEBLING_MENU_RANDPAL,
-                          "Random palettes", wuss_MENU_ITEM_NONE, "R");
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GREEBLING_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_NONE, "F3");
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
+  task->menu_items[GREEBLING_MENU_SAVE].window = wuss_saveas_window(task->saveas);
+
+  for (i = 0; i < GREEBLING_NSIZES; i++)
+    WUSS_MENU_ITEM(task->size_items, i, greebling_sizes[i].name,
+                   wuss_MENU_ITEM_NONE);
+
+  WUSS_MENU_TITLE(task->size_menu, "Size", task->size_items, GREEBLING_NSIZES);
+
+  WUSS_MENU_ITEM_MENU(task->menu_items, GREEBLING_MENU_SIZE, "Size",
+                      wuss_MENU_ITEM_DASHED, &task->size_menu);
 
   /* ponytail: the palettes are unnamed, so the rows are numbered */
   for (i = 0; i < GREEBLING_NPALETTE; i++)
@@ -587,24 +598,13 @@ result_t greebling_create(wuss_t *wuss, greebling_task_t **out)
                  GREEBLING_NPALETTE);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, GREEBLING_MENU_PALETTE, "Palette",
-                      wuss_MENU_ITEM_NONE, &task->palette_menu);
+                      wuss_MENU_ITEM_DASHED, &task->palette_menu);
 
-  for (i = 0; i < GREEBLING_NSIZES; i++)
-    WUSS_MENU_ITEM(task->size_items, i, greebling_sizes[i].name,
-                   wuss_MENU_ITEM_NONE);
-
-  WUSS_MENU_TITLE(task->size_menu, "Size", task->size_items, GREEBLING_NSIZES);
-
-  WUSS_MENU_ITEM_MENU(task->menu_items, GREEBLING_MENU_SIZE, "Size",
-                      wuss_MENU_ITEM_NONE, &task->size_menu);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GREEBLING_MENU_RANDPAL,
+                          "Random palettes", wuss_MENU_ITEM_NONE, "R");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GREEBLING_MENU_RANDOMISE,
-                          "Randomise", wuss_MENU_ITEM_NONE, "^R");
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, GREEBLING_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_NONE, "F3");
-  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
-  task->menu_items[GREEBLING_MENU_SAVE].window = wuss_saveas_window(task->saveas);
+                          "Randomise", wuss_MENU_ITEM_DASHED, "^R");
 
   WUSS_MENU_TITLE(task->menu, "Greebling", task->menu_items,
                  NELEMS(task->menu_items));

@@ -26,9 +26,9 @@
 enum
 {
   COMPOSITING_MENU_PAUSE,
+  COMPOSITING_MENU_SAVE,
   COMPOSITING_MENU_RULE,
-  COMPOSITING_MENU_SWAP,
-  COMPOSITING_MENU_SAVE
+  COMPOSITING_MENU_SWAP
 };
 
 #define COMPOSITING_SAVE_NAME "compositing.png" /* Save As's initial leafname */
@@ -253,6 +253,12 @@ result_t compositing_create(wuss_t *wuss, compositing_task_t **out)
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, COMPOSITING_MENU_PAUSE, "Pause",
                           wuss_MENU_ITEM_NONE, "SPACE");
 
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, COMPOSITING_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_DASHED, "F3");
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
+  task->menu_items[COMPOSITING_MENU_SAVE].window =
+    wuss_saveas_window(task->saveas);
+
   for (i = 0; i < composite_RULE__LIMIT; i++)
     WUSS_MENU_ITEM(task->rule_items, i, rule_names[i], wuss_MENU_ITEM_NONE);
 
@@ -260,16 +266,10 @@ result_t compositing_create(wuss_t *wuss, compositing_task_t **out)
                  NELEMS(task->rule_items));
 
   WUSS_MENU_ITEM_MENU(task->menu_items, COMPOSITING_MENU_RULE, "Rule",
-                      wuss_MENU_ITEM_NONE, &task->rule_menu);
+                      wuss_MENU_ITEM_DASHED, &task->rule_menu);
 
   WUSS_MENU_ITEM(task->menu_items, COMPOSITING_MENU_SWAP, "Swap images",
                  wuss_MENU_ITEM_NONE);
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, COMPOSITING_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_NONE, "F3");
-  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
-  task->menu_items[COMPOSITING_MENU_SAVE].window =
-    wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Compositing", task->menu_items,
                  NELEMS(task->menu_items));

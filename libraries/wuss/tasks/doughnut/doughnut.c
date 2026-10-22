@@ -36,14 +36,14 @@
 
 enum
 {
-  DOUGHNUT_MENU_COLOURS = 0,
+  DOUGHNUT_MENU_PAUSE = 0,
+  DOUGHNUT_MENU_SAVE,
   DOUGHNUT_MENU_TUBE,
   DOUGHNUT_MENU_MAJOR,
   DOUGHNUT_MENU_MINOR,
-  DOUGHNUT_MENU_PAUSE,
+  DOUGHNUT_MENU_COLOURS,
   DOUGHNUT_MENU_RANDOMISE,
-  DOUGHNUT_MENU_RESET,
-  DOUGHNUT_MENU_SAVE
+  DOUGHNUT_MENU_RESET
 };
 
 #define DOUGHNUT_SAVE_NAME "doughnut.png" /* Save As's initial leafname */
@@ -252,8 +252,14 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
 
   wuss_colourlist_init_pair(&task->colours, wuss, &task->fg, &task->bg);
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_COLOURS, "Colours",
-                      wuss_MENU_ITEM_NONE, &task->colours.menu);
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, DOUGHNUT_MENU_PAUSE, "Pause",
+                          wuss_MENU_ITEM_NONE, "SPACE");
+
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, DOUGHNUT_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_DASHED, "F3");
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
+  task->menu_items[DOUGHNUT_MENU_SAVE].window =
+    wuss_saveas_window(task->saveas);
 
   for (i = 0; i < NELEMS(task->tube_items); i++)
     WUSS_MENU_ITEM(task->tube_items, i, doughnut_tubes[i].name,
@@ -263,7 +269,7 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
                  NELEMS(task->tube_items));
 
   WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_TUBE, "Tube",
-                      wuss_MENU_ITEM_NONE, &task->tube_menu);
+                      wuss_MENU_ITEM_DASHED, &task->tube_menu);
 
   for (i = 0; i < NELEMS(task->major_items); i++)
   {
@@ -286,20 +292,14 @@ result_t doughnut_create(wuss_t *wuss, doughnut_task_t **out)
   task->menu_items[DOUGHNUT_MENU_MAJOR].shortcut = "[ ]";
   task->menu_items[DOUGHNUT_MENU_MINOR].shortcut = ", .";
 
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, DOUGHNUT_MENU_PAUSE, "Pause",
-                          wuss_MENU_ITEM_NONE, "SPACE");
+  WUSS_MENU_ITEM_MENU(task->menu_items, DOUGHNUT_MENU_COLOURS, "Colours",
+                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, DOUGHNUT_MENU_RANDOMISE,
-                          "Randomise", wuss_MENU_ITEM_NONE, "^R");
+                          "Randomise", wuss_MENU_ITEM_DASHED, "^R");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, DOUGHNUT_MENU_RESET, "Reset",
                           wuss_MENU_ITEM_NONE, "R");
-
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, DOUGHNUT_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_NONE, "F3");
-  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
-  task->menu_items[DOUGHNUT_MENU_SAVE].window =
-    wuss_saveas_window(task->saveas);
 
   WUSS_MENU_TITLE(task->menu, "Doughnut", task->menu_items,
                  NELEMS(task->menu_items));

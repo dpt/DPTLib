@@ -43,13 +43,13 @@ makes an instance of its own.
 - Select and lasso make a selection, shown with marching ants. The new
   selection replaces the old one. A click without a drag drops it. Every
   drawing tool only changes selected pixels.
-- Menu > Selection has Select All, Deselect and Invert. `Esc` also
-  deselects. Deselect and Undo are shaded when they do not apply, and update
+- Menu > Selection has Select all, Clear selection and Invert. `Esc` also
+  clears the selection. Clear selection and Undo are shaded when they do not apply, and update
   while the menu stays open.
 - Line and rect show a rubber band while the button is down. They draw into
   the canvas when it is released.
-- `Ctrl-Z` or Menu > Undo steps back. There are 20 levels and no redo.
-- Menu > Save PNG (`F3`) opens the Save As dialogue.
+- `F8` or Menu > Undo steps back. There are 20 levels and no redo.
+- Menu > Save (`F3`) opens the Save As dialogue.
 - Drop a PNG on the canvas window or on the Painting icon to load it.
 
 ## The canvas

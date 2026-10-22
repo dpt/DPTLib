@@ -32,14 +32,16 @@
  * in ball_task_t, not as a file-scope static */
 enum
 {
-  BALL_MENU_BACKGROUND = 0,
-  BALL_MENU_PAUSE,
+  BALL_MENU_PAUSE = 0,
+  BALL_MENU_SAVE,
   BALL_MENU_ADD,
   BALL_MENU_CLEAR,
   BALL_MENU_GRAVITY,
   BALL_MENU_DAMPING,
-  BALL_MENU_SAVE
+  BALL_MENU_COLOURS
 };
+
+static const char *const ball_colour_names[] = { "Background" };
 
 /* a fresh radius in [BALL_BASE_RADIUS/2, BALL_BASE_RADIUS*3/2] */
 static int ball_random_radius(void)
@@ -91,6 +93,7 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
   ball_task_t     *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
+  colour_t        *fields[1];
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -140,14 +143,25 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
     return rc;
   }
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, BALL_MENU_BACKGROUND, "Background",
-                      wuss_MENU_ITEM_PRE_OPEN, wuss_colourmenu_menu(wuss));
+  fields[0] = &task->bg;
+  rc = wuss_colourlist_init(&task->colours, wuss, NELEMS(fields), fields,
+                            ball_colour_names);
+  if (rc != result_OK)
+  {
+    wuss_task_destroy(delegate);
+    return rc;
+  }
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_PAUSE, "Pause",
                           wuss_MENU_ITEM_NONE, "SPACE");
 
+  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_SAVE, "Save",
+                          wuss_MENU_ITEM_DASHED, "F3");
+  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
+  task->menu_items[BALL_MENU_SAVE].window = wuss_saveas_window(task->saveas);
+
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_ADD, "Add ball",
-                          wuss_MENU_ITEM_NONE, "A");
+                          wuss_MENU_ITEM_DASHED, "A");
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_CLEAR, "Clear",
                           wuss_MENU_ITEM_DISABLED, "C"); /* one ball */
@@ -158,10 +172,8 @@ result_t ball_create(wuss_t *wuss, ball_task_t **out)
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_DAMPING, "Damping",
                           wuss_MENU_ITEM_NONE, "D");
 
-  WUSS_MENU_ITEM_SHORTCUT(task->menu_items, BALL_MENU_SAVE, "Save PNG",
-                          wuss_MENU_ITEM_NONE, "F3");
-  /* hover opens the Save As dialogue as a submenu; F3 shows it standalone */
-  task->menu_items[BALL_MENU_SAVE].window = wuss_saveas_window(task->saveas);
+  WUSS_MENU_ITEM_MENU(task->menu_items, BALL_MENU_COLOURS, "Colours",
+                      wuss_MENU_ITEM_DASHED, &task->colours.menu);
 
   WUSS_MENU_TITLE(task->menu, "Bouncing Ball", task->menu_items,
                  NELEMS(task->menu_items));
@@ -484,7 +496,7 @@ static result_t ball_idle(void *task_data)
 
 static result_t ball_menu_select(ball_task_t *bc, const wuss_event_t *event)
 {
-  if (wuss_colourmenu_selected_rgb(event, &bc->bg))
+  if (wuss_colourlist_selected(&bc->colours, event))
     wuss_window_invalidate_visible(bc->window);
 
   return result_OK;
@@ -580,8 +592,15 @@ result_t ball_handle(wuss_window_t      *window,
     return wuss_menu_dispatch_shortcut(bc->delegate, &bc->menu, event);
 
   case wuss_EVENT_PRE_SUBMENU_OPEN:
-    /* the "Background" row: the shared colourmenu, set up per open */
-    return wuss_colourmenu_open_rgb(bc->wuss, event, "Background", bc->bg);
+  {
+    result_t rc;
+
+    /* Colours > Background: the shared colourmenu, set up per open */
+    if (wuss_colourlist_pre_open(&bc->colours, bc->wuss, event, &rc))
+      return rc;
+
+    return result_OK;
+  }
 
   case wuss_EVENT_MENU_SELECT:
     if (event->data.menu_select.menu == &bc->menu &&

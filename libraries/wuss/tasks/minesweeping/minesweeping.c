@@ -64,7 +64,7 @@
             MS_BORDER + (c1) * MINESWEEPING_CELL, \
             MS_HUD_H(ms) + MS_BORDER + (r1) * MINESWEEPING_CELL })
 
-/* rows, cols, mines offered by the "Grid Size" submenu, indexed by
+/* rows, cols, mines offered by the "Grid size" submenu, indexed by
  * minesweeping_size_t; mine counts follow the classic ~14% density */
 static const struct { int rows, cols, mines; }
 g_minesweeping_sizes[minesweeping_NSIZES] =
@@ -96,7 +96,7 @@ g_minesweeping_difficulties[minesweeping_NDIFFICULTIES] =
 /* MENU click over the board pops this menu; the item tables and wuss_menu_t
  * values live per-instance in minesweeping_task_t, not as file-scope
  * statics, so that two instances don't fight over one shared tick mark on the
- * Grid Size or Difficulty submenus */
+ * Grid size or Difficulty submenus */
 enum
 {
   MINESWEEPING_MENU_NEW_GAME,
@@ -406,7 +406,7 @@ result_t minesweeping_create(wuss_t *wuss, minesweeping_task_t **out)
       WUSS_MENU_ITEM(task->size_items, i, g_minesweeping_size_names[i],
                     wuss_MENU_ITEM_NONE);
     }
-    WUSS_MENU_TITLE(task->size_menu, "Grid Size", task->size_items,
+    WUSS_MENU_TITLE(task->size_menu, "Grid size", task->size_items,
                    NELEMS(task->size_items));
 
     for (i = 0; i < minesweeping_NDIFFICULTIES; i++)
@@ -419,17 +419,17 @@ result_t minesweeping_create(wuss_t *wuss, minesweeping_task_t **out)
   }
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, MINESWEEPING_MENU_NEW_GAME,
-                          "New Game", wuss_MENU_ITEM_NONE, "N");
+                          "New game", wuss_MENU_ITEM_NONE, "N");
 
-  WUSS_MENU_ITEM_MENU(task->menu_items, MINESWEEPING_MENU_SIZE, "Grid Size",
-                      wuss_MENU_ITEM_NONE, &task->size_menu);
+  WUSS_MENU_ITEM_MENU(task->menu_items, MINESWEEPING_MENU_SIZE, "Grid size",
+                      wuss_MENU_ITEM_DASHED, &task->size_menu);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, MINESWEEPING_MENU_DIFFICULTY,
                       "Difficulty", wuss_MENU_ITEM_NONE,
                       &task->difficulty_menu);
 
   WUSS_MENU_ITEM(task->menu_items, MINESWEEPING_MENU_GIVE_UP,
-                "Give Up", wuss_MENU_ITEM_NONE);
+                "Give up", wuss_MENU_ITEM_NONE);
 
   WUSS_MENU_TITLE(task->menu, "Minesweeping", task->menu_items,
                  NELEMS(task->menu_items));
@@ -798,7 +798,7 @@ static result_t minesweeping_key(minesweeping_task_t *ms, int code)
   return result_OK;
 }
 
-/* Give Up only makes sense while a game is in progress. Also shades the
+/* Give up only makes sense while a game is in progress. Also shades the
  * open menu, if any, so an Adjust pick shows it at once. */
 static void minesweeping_menu_update(minesweeping_task_t *ms)
 {
