@@ -15,6 +15,7 @@
 
 #include "shortcuts.h"
 #include "../common/taskapp.h"
+#include "../common/common.h"
 
 #define SHORTCUTS_LABEL_CHARS 20 /* label column width */
 #define SHORTCUTS_COLUMNS      2 /* keys, then action */
@@ -168,7 +169,8 @@ result_t shortcuts_create(wuss_t *wuss, shortcuts_task_t **out)
   wuss_task_set_autoclose(delegate, 1);
   task->delegate = delegate;
 
-  rc = wuss_gridview_window_create(&task->gv, delegate, NULL, "Shortcuts",
+  rc = wuss_gridview_window_create(&task->gv, delegate, &task_place,
+                                   "Shortcuts",
                                    (int) NELEMS(shortcuts) * 2,
                                    shortcuts_item, SHORTCUTS_LABEL_CHARS,
                                    NULL, task, 0, &task->window);
@@ -184,6 +186,7 @@ result_t shortcuts_create(wuss_t *wuss, shortcuts_task_t **out)
   wuss_gridview_set_background(task->gv,
                                shortcuts_colour(task, 0xFF, 0xFF, 0xFF));
   wuss_gridview_fit_window(task->gv, SHORTCUTS_COLUMNS, SHORTCUTS_ROWS);
+  (void) wuss_window_place(task->window, &task_place);
 
   if (out)
     *out = task;

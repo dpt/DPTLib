@@ -131,12 +131,12 @@ result_t palette_load_hex(const char *resources,
 
 /* ----------------------------------------------------------------------- */
 
-/* where the palette windows open: the free region nearest the bottom right,
- * clear of the icon bar, else anchored there */
+/* where the palette windows open: the free region of the safe area nearest
+ * its bottom right, else anchored there */
 static const wuss_place_t palette_place =
 {
-  wuss_PLACE_SPARE | wuss_PLACE_AVOID_ICONBAR,
-  wuss_ALIGN_RIGHT | wuss_ALIGN_BOTTOM, NULL, { 0, 0 }
+  wuss_PLACE_SPARE,
+  wuss_ALIGN_RIGHT | wuss_ALIGN_BOTTOM, NULL, { 0, 0 }, { 0, 0, 0, 0 }
 };
 
 /* the open desktop and Screen palette tasks, if any: each window is a

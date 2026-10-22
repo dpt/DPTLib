@@ -153,10 +153,12 @@ static const char *const g_display_zoom_labels[] =
   "4x"
 };
 
-/* where the window opens: bottom right, above the icon bar */
+/* where the window opens: bottom right of the safe area, above the icon
+ * bar */
 static const wuss_place_t g_display_place =
 {
-  wuss_PLACE_AVOID_ICONBAR, wuss_ALIGN_RIGHT | wuss_ALIGN_BOTTOM, NULL, { 0, 0 }
+  0, wuss_ALIGN_RIGHT | wuss_ALIGN_BOTTOM, NULL, { 0, 0 },
+  { 0, 0, 0, 0 }
 };
 
 /* ----------------------------------------------------------------------- */

@@ -35,92 +35,117 @@ static void footprint_pad(const wuss_t       *wuss,
   *bottom = outline_px + carve.y;
 }
 
-/* The screen area a window may be placed in: the whole screen, less the
- * icon bar's strip when asked to avoid it. */
+/* The screen area a window may be placed in: the safe area, clear of the
+ * screen edges and the icon bar, unless asked to ignore it. */
 static void place_area(const wuss_t      *wuss,
                        wuss_place_flags_t flags,
                        box_t             *area)
 {
-#ifdef WUSS_ICONBAR
-  box_t bar;
-#endif
-
   area->x0 = 0;
   area->y0 = 0;
   area->x1 = wuss->scr->size.w;
   area->y1 = wuss->scr->size.h;
 
-#ifdef WUSS_ICONBAR
-  if (flags & wuss_PLACE_AVOID_ICONBAR)
+  if ((flags & wuss_PLACE_IGNORE_SAFE_AREA) == 0)
   {
-    wuss__iconbar_box(wuss, &bar);
-    if (!box_is_empty(&bar))
-      area->y1 = MIN(area->y1, bar.y0);
+    area->x0 += WUSS_SAFE_INSET;
+    area->y0 += WUSS_SAFE_INSET;
+    area->x1 -= WUSS_SAFE_INSET;
+    area->y1 -= WUSS_SAFE_INSET_BOTTOM;
   }
-#else
-  NOT_USED(flags);
-#endif
 }
 
 /* Position one axis of a footprint of length "len" within [lo,hi): against
- * the low or high edge, inset by the gutter, or centred. */
+ * the low or high edge, or centred. */
 static int align_axis(int lo, int hi, int len, int at_lo, int at_hi)
 {
   if (at_lo)
-    return lo + WUSS_PLACE_GUTTER;
+    return lo;
   else if (at_hi)
-    return hi - WUSS_PLACE_GUTTER - len;
+    return hi - len;
   else
     return lo + (hi - lo - len) / 2;
+}
+
+/* State for nearest_slot: the footprint and the top-left it would ideally
+ * have. */
+typedef struct nearest
+{
+  int     fw, fh;
+  point_t want;
+  point_t best;
+  long    best_d2; /* squared distance of best from want; -1 if none */
+}
+nearest_t;
+
+/* packer_map callback: the position in free region b closest to the wanted
+ * one, kept if it is the closest seen so far */
+static result_t nearest_slot(const box_t *b, void *opaque)
+{
+  nearest_t *n;
+  point_t    p;
+  long       dx, dy, d2;
+
+  n = opaque;
+
+  if (!box_could_hold(b, n->fw, n->fh))
+    return result_OK;
+
+  p.x = CLAMP(n->want.x, b->x0, b->x1 - n->fw);
+  p.y = CLAMP(n->want.y, b->y0, b->y1 - n->fh);
+  dx  = p.x - n->want.x;
+  dy  = p.y - n->want.y;
+  d2  = dx * dx + dy * dy;
+  if (n->best_d2 < 0 || d2 < n->best_d2)
+  {
+    n->best    = p;
+    n->best_d2 = d2;
+  }
+
+  return result_OK;
 }
 
 /* Find a free spot for a footprint of fw x fh within area. The packer is
  * rebuilt from scratch around every shown window's current footprint on each
  * call, so windows created at explicit positions, moved or resized by the
  * user, or a changed screen size are all accounted for with no slot
- * bookkeeping. Returns result_PACKER_DIDNT_FIT when no region is large
- * enough. The search starts from the corner of area that align names
- * (top-left if it names none), so a window lands nearest that corner.
+ * bookkeeping. Each window's footprint is grown by the gutter all round, so
+ * the spot keeps clear of other windows by that but may sit flush with the
+ * edges of area. Returns result_PACKER_DIDNT_FIT when no region is large
+ * enough. The spot is the one closest to want, if non-NULL, else to the
+ * corner of area that align names (top-left if it names none). self, if
+ * non-NULL, is the window being placed, so is not in the way.
  * ponytail: O(windows^2) per placement; keep a live packer if that shows. */
-static result_t find_slot(wuss_t      *wuss,
-                          const box_t *area,
-                          int          fw,
-                          int          fh,
-                          wuss_align_t align,
-                          point_t     *pos)
+static result_t find_slot(wuss_t              *wuss,
+                          const wuss_window_t *self,
+                          const box_t         *area,
+                          int                  fw,
+                          int                  fh,
+                          wuss_align_t         align,
+                          const point_t       *want,
+                          point_t             *pos)
 {
-  static const box_t margins = {
-    WUSS_PLACE_GUTTER, WUSS_PLACE_GUTTER, WUSS_PLACE_GUTTER, WUSS_PLACE_GUTTER
-  };
-
   result_t       rc;
   packer_t      *layout;
   list_t        *e;
   wuss_window_t *w;
   box_t          taken;
-  const box_t   *slot;
-  packer_loc_t   loc;
+  nearest_t      n;
 
   layout = packer_create(area);
   if (layout == NULL)
     return result_OOM;
-
-  packer_set_margins(layout, &margins);
-  packer_set_gutter(layout, WUSS_PLACE_GUTTER);
 
   /* only regular windows constrain placement: the icon bar (back) and
    * error dialogues/menus (top) sit outside the middle stack */
   for (e = wuss->z_order[wuss_STACK_MIDDLE].next; e != NULL; e = e->next)
   {
     w = wuss__window_from_link(e);
-    if (w->flags & wuss_WINDOW_HIDDEN)
+    if (w == self || (w->flags & wuss_WINDOW_HIDDEN))
       continue;
 
-    /* gutter on the right/bottom only: packer_place_by already reserves one
-     * on the new window's right/bottom, so padding all round would double it
-     * and a freed slot would no longer fit its own window */
-    taken.x0 = w->visible.x0;
-    taken.y0 = w->visible.y0;
+    taken.x0 = w->visible.x0 - WUSS_PLACE_GUTTER;
+    taken.y0 = w->visible.y0 - WUSS_PLACE_GUTTER;
     taken.x1 = w->visible.x1 + WUSS_PLACE_GUTTER;
     taken.y1 = w->visible.y1 + WUSS_PLACE_GUTTER;
 
@@ -129,19 +154,26 @@ static result_t find_slot(wuss_t      *wuss,
       goto exit;
   }
 
-  /* packer's Y axis is reversed: its bottom is the screen's top, so bottom
-   * left gives top left packing, the default */
-  if (align & wuss_ALIGN_BOTTOM)
-    loc = (align & wuss_ALIGN_RIGHT) ? packer_LOC_TOP_RIGHT
-                                     : packer_LOC_TOP_LEFT;
+  n.fw = fw;
+  n.fh = fh;
+  if (want != NULL)
+  {
+    n.want = *want;
+  }
   else
-    loc = (align & wuss_ALIGN_RIGHT) ? packer_LOC_BOTTOM_RIGHT
-                                     : packer_LOC_BOTTOM_LEFT;
-  rc = packer_place_by(layout, loc, fw, fh, &slot);
+  {
+    n.want.x = (align & wuss_ALIGN_RIGHT) ? area->x1 - fw : area->x0;
+    n.want.y = (align & wuss_ALIGN_BOTTOM) ? area->y1 - fh : area->y0;
+  }
+  n.best_d2 = -1;
+
+  rc = packer_map(layout, nearest_slot, &n);
   if (rc == result_OK)
   {
-    pos->x = slot->x0;
-    pos->y = slot->y0;
+    if (n.best_d2 < 0)
+      rc = result_PACKER_DIDNT_FIT;
+    else
+      *pos = n.best;
   }
 
 exit:
@@ -150,21 +182,29 @@ exit:
   return rc;
 }
 
-/* Choose the top-left of a footprint of fw x fh as described by place. */
-static result_t place_footprint(wuss_t             *wuss,
-                                const wuss_place_t *place,
-                                int                 fw,
-                                int                 fh,
-                                point_t            *pos)
+/* Choose the top-left of a footprint of fw x fh within area as described by
+ * place. self is the window being placed, if it is already open. */
+static result_t place_footprint(wuss_t              *wuss,
+                                const wuss_window_t *self,
+                                const wuss_place_t  *place,
+                                const box_t         *area,
+                                int                  fw,
+                                int                  fh,
+                                point_t             *pos)
 {
   result_t rc;
-  box_t    area;
+  point_t  ptr;
+  point_t  want;
 
-  place_area(wuss, place->flags, &area);
+  /* the footprint centred on the pointer */
+  ptr    = wuss_get_pointer(wuss);
+  want.x = ptr.x - fw / 2;
+  want.y = ptr.y - fh / 2;
 
   if (place->flags & wuss_PLACE_SPARE)
   {
-    rc = find_slot(wuss, &area, fw, fh, place->align, pos);
+    rc = find_slot(wuss, self, area, fw, fh, place->align,
+                   (place->flags & wuss_PLACE_POINTER) ? &want : NULL, pos);
     if (rc != result_PACKER_DIDNT_FIT)
       return rc; /* placed, or failed */
   }
@@ -174,12 +214,16 @@ static result_t place_footprint(wuss_t             *wuss,
     pos->x = place->relative_to->visible.x0;
     pos->y = place->relative_to->visible.y0;
   }
+  else if (place->flags & wuss_PLACE_POINTER)
+  {
+    *pos = want;
+  }
   else
   {
-    pos->x = align_axis(area.x0, area.x1, fw,
+    pos->x = align_axis(area->x0, area->x1, fw,
                         place->align & wuss_ALIGN_LEFT,
                         place->align & wuss_ALIGN_RIGHT);
-    pos->y = align_axis(area.y0, area.y1, fh,
+    pos->y = align_axis(area->y0, area->y1, fh,
                         place->align & wuss_ALIGN_TOP,
                         place->align & wuss_ALIGN_BOTTOM);
   }
@@ -189,8 +233,8 @@ static result_t place_footprint(wuss_t             *wuss,
 
   /* fit the area, keeping the top-left (titlebar, close icon) reachable when
    * the footprint is larger than it */
-  pos->x = MAX(area.x0, MIN(pos->x, area.x1 - fw));
-  pos->y = MAX(area.y0, MIN(pos->y, area.y1 - fh));
+  pos->x = MAX(area->x0, MIN(pos->x, area->x1 - fw));
+  pos->y = MAX(area->y0, MIN(pos->y, area->y1 - fh));
 
   return result_OK;
 }
@@ -208,6 +252,7 @@ result_t wuss_window_create_at(wuss_task_t        *task,
   result_t rc;
   wuss_t  *wuss;
   int      left, top, right, bottom;
+  box_t    area;
   point_t  origin;
   box_t    content;
 
@@ -221,9 +266,21 @@ result_t wuss_window_create_at(wuss_task_t        *task,
     return result_WUSS_TOO_SMALL;
 
   footprint_pad(wuss, flags, &left, &top, &right, &bottom);
+  left   += place->extra.x0;
+  top    += place->extra.y0;
+  right  += place->extra.x1;
+  bottom += place->extra.y1;
+  place_area(wuss, place->flags, &area);
+
+  /* shrink a window too large for the area to fit it; the document keeps its
+   * full extent, so the rest is reached by scrolling */
+  size.w = MAX(1, MIN(size.w, area.x1 - area.x0 - left - right));
+  size.h = MAX(1, MIN(size.h, area.y1 - area.y0 - top - bottom));
 
   rc = place_footprint(wuss,
+                       NULL,
                        place,
+                       &area,
                        left + size.w + right,
                        top  + size.h + bottom,
                        &origin);
@@ -240,6 +297,47 @@ result_t wuss_window_create_at(wuss_task_t        *task,
                             doc, min_doc, window);
 }
 
+result_t wuss_window_place(wuss_window_t      *window,
+                           const wuss_place_t *place)
+{
+  result_t rc;
+  wuss_t  *wuss;
+  box_t    content;
+  box_t    area;
+  point_t  origin;
+
+  assert(window != NULL);
+  assert(place  != NULL);
+
+  wuss = window->wuss;
+  wuss__content_box(window, &content);
+
+  place_area(wuss, place->flags, &area);
+
+  rc = place_footprint(wuss,
+                       window,
+                       place,
+                       &area,
+                       place->extra.x0 +
+                         (window->visible.x1 - window->visible.x0) +
+                         place->extra.x1,
+                       place->extra.y0 +
+                         (window->visible.y1 - window->visible.y0) +
+                         place->extra.y1,
+                       &origin);
+  if (rc != result_OK)
+    return rc;
+
+  /* content top-left keeps its offset from the footprint's */
+  wuss_window_move(window,
+                   POINT(origin.x + place->extra.x0 +
+                           (content.x0 - window->visible.x0),
+                         origin.y + place->extra.y0 +
+                           (content.y0 - window->visible.y0)));
+
+  return result_OK;
+}
+
 result_t wuss_window_create_placed(wuss_task_t        *task,
                                    size2d_t            size,
                                    const char         *title,
@@ -250,7 +348,7 @@ result_t wuss_window_create_placed(wuss_task_t        *task,
                                    wuss_window_t     **window)
 {
   static const wuss_place_t spare = { wuss_PLACE_SPARE, wuss_ALIGN_CENTRE,
-                                       NULL, { 0, 0 } };
+                                       NULL, { 0, 0 }, { 0, 0, 0, 0 } };
 
   return wuss_window_create_at(task, &spare, size, title, flags, bg,
                                doc, min_doc, window);

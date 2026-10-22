@@ -16,6 +16,7 @@
 #include "wuss/component/dialogue.h"
 #include "wuss/icon.h"
 #include "wuss/icon-spec.h"
+#include "wuss/iconbar.h"
 #include "wuss/menu.h"
 #include "wuss/task.h"
 #include "wuss/window.h"
@@ -28,8 +29,6 @@
 #define PN_FIELD_W  60
 #define PN_DIGITS   4    /* PAINTINGNEW_SIZE_MAX is four digits */
 #define PN_G_LABEL  1    /* size group, see stack_item_t::group */
-
-#define PN_BAR_GAP   47 /* the gap an icon bar menu leaves */
 
 #define PN_DEFAULT_W 640
 #define PN_DEFAULT_H 480
@@ -388,19 +387,11 @@ result_t paintingnew_open(paintingnew_t *pn)
 {
   result_t       rc;
   wuss_window_t *win;
-  box_t          content;
-  point_t        at;
 
   win = wuss_dialogue_window(pn->dialogue);
-  wuss_window_get_content_bounds(win, &content);
 
-  /* centred on the pointer, standing the same distance off the screen's
-   * bottom edge as an icon bar menu, as it is opened from the icon bar */
-  at.x = wuss_get_pointer(pn->wuss).x - (content.x1 - content.x0) / 2;
-  at.y = wuss_get_screen_size(pn->wuss).h - PN_BAR_GAP -
-         (content.y1 - content.y0);
-
-  rc = wuss_menu_open_window(pn->task, win, at, &pn->menu_handle);
+  /* where an icon bar menu would open, as it is opened from the icon bar */
+  rc = wuss_iconbar_window_open(pn->task, win, &pn->menu_handle);
   if (rc != result_OK)
     return rc;
 

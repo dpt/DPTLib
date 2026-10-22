@@ -12,6 +12,7 @@
 
 #include "pooling.h"
 #include "../common/taskapp.h"
+#include "../common/common.h"
 
 #define POOLING_LABEL_CHARS 16 /* label column width */
 #define POOLING_COLUMNS      6 /* window opens this many cells wide */
@@ -53,7 +54,8 @@ result_t pooling_create(wuss_t *wuss, pooling_task_t **out)
   wuss_task_set_autoclose(delegate, 1);
   task->delegate = delegate;
 
-  rc = wuss_gridview_window_create(&task->gv, delegate, NULL, "Sprite pool",
+  rc = wuss_gridview_window_create(&task->gv, delegate, &task_place,
+                                   "Sprite pool",
                                    wuss_iconpool_count(wuss), pooling_item,
                                    POOLING_LABEL_CHARS, NULL, task, 0,
                                    &task->window);
@@ -64,6 +66,7 @@ result_t pooling_create(wuss_t *wuss, pooling_task_t **out)
   }
 
   wuss_gridview_fit_window(task->gv, POOLING_COLUMNS, POOLING_ROWS);
+  (void) wuss_window_place(task->window, &task_place);
 
   if (out)
     *out = task;

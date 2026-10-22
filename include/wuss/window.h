@@ -99,7 +99,7 @@ result_t wuss_window_create(wuss_task_t        *task,
  *
  * \param[in]  task    Owning task, as wuss_window_create.
  * \param[in]  size    Requested content-area size. Width and height must
- *                     both be positive.
+ *                     both be positive. Reduced to fit the placement area.
  * \param[in]  title   Titlebar label, as wuss_window_create.
  * \param[in]  flags   Appearance flags, as wuss_window_create.
  * \param[in]  bg      Content background, as wuss_window_create.
@@ -141,30 +141,41 @@ typedef enum wuss_place_flags
   /**
    * Try the first free screen region first, as wuss_window_create_placed;
    * the anchor or relative position is then only the fallback for when no
-   * region is large enough. The search starts from the screen corner that
-   * align names (wuss_ALIGN_RIGHT and/or wuss_ALIGN_BOTTOM), else the
-   * top-left, so the window opens nearest that corner.
+   * region is large enough. The region chosen is the one closest to the
+   * corner of the placement area that align names (wuss_ALIGN_RIGHT and/or
+   * wuss_ALIGN_BOTTOM), else the top-left, so the window opens nearest that
+   * corner.
    */
-  wuss_PLACE_SPARE         = 1 << 0,
+  wuss_PLACE_SPARE            = 1 << 0,
 
   /**
-   * Keep the window clear of the icon bar: the bar's strip is removed from
-   * the screen area used for placement. No effect without an icon bar.
+   * Place within the whole screen rather than the safe area. The safe area
+   * is the screen inset by 8 pixels at the left, top and right and by 47 at
+   * the bottom, so keeping windows off the screen edges and level with where
+   * icon bar menus open.
    */
-  wuss_PLACE_AVOID_ICONBAR = 1 << 1
+  wuss_PLACE_IGNORE_SAFE_AREA = 1 << 1,
+
+  /**
+   * Open near the pointer: the base position centres the window on the
+   * pointer in place of align's anchor, and with wuss_PLACE_SPARE the free
+   * region chosen is the one closest to that position rather than the first
+   * from a corner. A non-NULL relative_to still sets the base position.
+   */
+  wuss_PLACE_POINTER          = 1 << 2
 }
 wuss_place_flags_t;
 
 /**
- * Where to open a window. The footprint (furniture included) is positioned
- * at its base position plus offset, then clamped to fit the placement area
- * (the screen, less the icon bar with wuss_PLACE_AVOID_ICONBAR), favouring
- * the top-left when it is larger than the area.
+ * Where to open a window. A window too large for the placement area (the
+ * safe area, or the screen with wuss_PLACE_IGNORE_SAFE_AREA) is first shrunk
+ * to fit it. The footprint (furniture included) is then positioned at its
+ * base position plus offset and clamped to lie within the area.
  *
  * The base position is the top-left of relative_to's footprint when
- * relative_to is non-NULL; otherwise it is the area aligned to by align,
- * inset from any edge it is against by the auto-placement gutter. A
- * zero-initialised wuss_place_t centres the window on the screen.
+ * relative_to is non-NULL; otherwise, with wuss_PLACE_POINTER, the footprint
+ * centred on the pointer; otherwise it is the area aligned to by align. A
+ * zero-initialised wuss_place_t centres the window in the safe area.
  */
 typedef struct wuss_place
 {
@@ -172,6 +183,10 @@ typedef struct wuss_place
   wuss_align_t         align;       /**< Anchor if relative_to is NULL. */
   const wuss_window_t *relative_to; /**< Place relative to, or NULL. */
   point_t              offset;      /**< Added to the base position. */
+  box_t                extra;       /**< Space reserved beyond the left
+                                     * (x0), top (y0), right (x1) and bottom
+                                     * (y1) edges of the footprint, as for
+                                     * toolbars attached once it is open. */
 }
 wuss_place_t;
 
@@ -186,7 +201,7 @@ wuss_place_t;
  * \param[in]  task    Owning task, as wuss_window_create.
  * \param[in]  place   Where to put the window; copied.
  * \param[in]  size    Requested content-area size. Width and height must
- *                     both be positive.
+ *                     both be positive. Reduced to fit the placement area.
  * \param[in]  title   Titlebar label, as wuss_window_create.
  * \param[in]  flags   Appearance flags, as wuss_window_create.
  * \param[in]  bg      Content background, as wuss_window_create.
@@ -207,6 +222,20 @@ result_t wuss_window_create_at(wuss_task_t        *task,
                                size2d_t            doc,
                                size2d_t            min_doc,
                                wuss_window_t     **window);
+
+/**
+ * Move an open window to where \p place would open one of its current size,
+ * as wuss_window_create_at. For a window resized to fit its content after
+ * creation, so it is placed for the size it ends up.
+ *
+ * \param[in] window Window to move. It does not count as in the way of
+ *                   itself when wuss_PLACE_SPARE looks for a free region.
+ * \param[in] place  Where to put the window.
+ * \return \ref result_OK on success, or \ref result_OOM if the layout
+ *         tracker could not be created.
+ */
+result_t wuss_window_place(wuss_window_t      *window,
+                           const wuss_place_t *place);
 
 /**
  * Destroy a window. The forced, unvetoable teardown: fires no

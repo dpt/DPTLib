@@ -884,7 +884,7 @@ result_t wuss_gridview_window_create(wuss_gridview_t            **out,
                                      wuss_window_t              **window)
 {
   static const wuss_place_t spare = { wuss_PLACE_SPARE, wuss_ALIGN_CENTRE,
-                                       NULL, { 0, 0 } };
+                                       NULL, { 0, 0 }, { 0, 0, 0, 0 } };
 
   result_t       rc;
   wuss_window_t *win;

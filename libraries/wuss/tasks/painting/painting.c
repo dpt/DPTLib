@@ -254,8 +254,13 @@ result_t painting_create_with(wuss_t                     *wuss,
   }
   task->delegate = delegate;
 
+  /* room for the toolbox on the left and the option bar below, which share
+   * the canvas's outline */
+  place          = task_place;
+  place.extra.x0 = TB_W + 1;
+  place.extra.y1 = OB_H + 1;
   rc = wuss_window_create_at(delegate,
-                             &task_place,
+                             &place,
                              SIZE2D(MIN(params->size.w, PAINTING_VIEW_W),
                                     MIN(params->size.h, PAINTING_VIEW_H)),
                              "Painting",

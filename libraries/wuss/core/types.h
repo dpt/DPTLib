@@ -64,6 +64,12 @@
 
 #define WUSS_PLACE_GUTTER 6 /* px left between windows auto-placed by wuss_window_create_at */
 
+/* The safe area wuss_window_create_at places windows in: the screen inset by
+ * these. Icon bar menus open with their bottom edge on the bottom inset, so
+ * every icon's menu sits at the same height */
+#define WUSS_SAFE_INSET        8
+#define WUSS_SAFE_INSET_BOTTOM 47
+
 #define WUSS_BUTTON_INSET 3  /* shared by close/back/toggle/resize furniture buttons and scrollbar breadth */
 
 #define WUSS_BUTTON_CLICK (wuss_BUTTON_SELECT | wuss_BUTTON_ADJUST) /* either click button; excludes MENU */

@@ -55,15 +55,16 @@ static inline result_t load_png_deep(bitmap_t   *bm,
   return result_OK;
 }
 
-/* where a demo task's window opens: the first free region clear of the icon
- * bar, else centred */
+/* where a demo task's window opens: in the free region of the safe area
+ * nearest the pointer, else centred on the pointer */
 static const wuss_place_t task_place =
 {
-  wuss_PLACE_SPARE | wuss_PLACE_AVOID_ICONBAR, wuss_ALIGN_CENTRE, NULL, { 0, 0 }
+  wuss_PLACE_SPARE | wuss_PLACE_POINTER,
+  wuss_ALIGN_CENTRE, NULL, { 0, 0 }, { 0, 0, 0, 0 }
 };
 
 /* where a task's second window opens: as task_place, but cascaded from
- * parent rather than centred when there is no free region */
+ * parent rather than centred on the pointer when there is no free region */
 static inline wuss_place_t task_place_after(const wuss_window_t *parent)
 {
   wuss_place_t place;

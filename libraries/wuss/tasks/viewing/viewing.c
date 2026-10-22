@@ -50,13 +50,25 @@ static size2d_t viewing_size(const viewing_task_t *ic)
   return sz;
 }
 
-/* Resize the window and its document to fit the image */
+/* Fit the window and its document to the image, opening the window, placed
+ * for that size, on the first image */
 static result_t viewing_fit(viewing_task_t *ic)
 {
   result_t rc;
   size2d_t sz;
 
   sz = viewing_size(ic);
+
+  if (ic->window == NULL)
+    return wuss_window_create_at(ic->delegate,
+                                 &task_place,
+                                 sz,
+                                 "Viewing",
+                                 wuss_WINDOW_DEFAULT,
+                                 wuss_NO_BACKDROP,
+                                 sz,
+                                 SIZE2D(32, 32),
+                                 &ic->window);
 
   rc = wuss_window_resize(ic->window, sz);
   if (rc != result_OK)
@@ -67,11 +79,6 @@ static result_t viewing_fit(viewing_task_t *ic)
 
 result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
 {
-  /* centred, clear of the icon bar, rather than in the first free region */
-  static const wuss_place_t place =
-  {
-    wuss_PLACE_AVOID_ICONBAR, wuss_ALIGN_CENTRE, NULL, { 0, 0 }
-  };
   static const char *const colour_names[4] =
   {
     "Pasteboard", "Paper", "Shadow", "Border"
@@ -81,7 +88,6 @@ result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
   viewing_task_t  *task;
   wuss_task_t     *delegate;
   wuss_task_desc_t delegate_desc;
-  size2d_t         sz;
   colour_t        *colour_fields[4];
 
   task = calloc(1, sizeof(*task));
@@ -122,24 +128,8 @@ result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
   }
   task->delegate = delegate;
   /* No autoclose: QUIT is delivered at wuss_destroy instead. Closing the
-   * main window early leaks this block until then -- fine for a demo. */
-
-  sz = viewing_size(task);
-
-  rc = wuss_window_create_at(delegate,
-                             &place,
-                             SIZE2D(sz.w, sz.h),
-                             "Viewing",
-                             wuss_WINDOW_DEFAULT,
-                             wuss_NO_BACKDROP,
-                             sz,
-                             SIZE2D(32, 32),
-                             &task->window);
-  if (rc != result_OK)
-  {
-    wuss_task_destroy(delegate); /* QUIT frees the bitmap and the block */
-    return rc;
-  }
+   * main window early leaks this block until then -- fine for a demo. The
+   * window opens with the first image, sized and placed for it */
 
   if (out)
     *out = task;
