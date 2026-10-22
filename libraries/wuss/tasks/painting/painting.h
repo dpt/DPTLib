@@ -15,6 +15,8 @@
 #include "wuss/task.h"
 #include "wuss/window.h"
 
+#include "../common/dithermenu.h"
+
 #include "painting-doc.h"
 #include "painting-new.h"
 
@@ -45,6 +47,7 @@ enum
   PAINTING_MENU_UNDO,
   PAINTING_MENU_SELECTION, /* submenu: PAINTING_SEL_* */
   PAINTING_MENU_NOZZLE,    /* submenu: one row per paintingdoc_nozzle_t */
+  PAINTING_MENU_DITHERING, /* submenu: one row per screen_dither_t */
   PAINTING_MENU_SAVE,
   PAINTING_MENU__COUNT
 };
@@ -94,6 +97,8 @@ typedef struct painting_task
   wuss_menu_t        sel_menu;
   wuss_menu_item_t   nozzle_items[paintingdoc_NOZZLE__COUNT];
   wuss_menu_t        nozzle_menu;
+  dithermenu_t       dither;
+  screen_dither_t    dithering; /* how the canvas is blitted */
   char               size_text[WUSS_SLIDER_ROW_BUF];
   wuss_swatches_t    swatches;  /* the desktop palette, as a colour grid */
 }

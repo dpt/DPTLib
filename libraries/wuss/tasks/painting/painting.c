@@ -225,6 +225,7 @@ result_t painting_create_with(wuss_t                     *wuss,
   task->tool = painting_TOOL_BRUSH;
   rng_seed(&task->rng, 1);
   task->size = 3;
+  task->dithering = screen_DITHER_NEAREST; /* painted colours stay exact */
 
   task->swatches.bbox    = (box_t) BOX_POS_SIZE(OB_SWATCH_X, OB_SWATCH_Y,
                                                 OB_SWATCH_ROW, OB_SWATCH);
@@ -332,6 +333,10 @@ result_t painting_create_with(wuss_t                     *wuss,
                   NELEMS(task->nozzle_items));
   WUSS_MENU_ITEM_MENU(task->menu_items, PAINTING_MENU_NOZZLE, "Nozzle",
                       wuss_MENU_ITEM_NONE, &task->nozzle_menu);
+
+  dithermenu_init(&task->dither, task->dithering);
+  WUSS_MENU_ITEM_MENU(task->menu_items, PAINTING_MENU_DITHERING, "Dithering",
+                      wuss_MENU_ITEM_NONE, &task->dither.menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PAINTING_MENU_SAVE, "Save PNG",
                           wuss_MENU_ITEM_DASHED, "F3");
@@ -606,7 +611,8 @@ static result_t painting_redraw(painting_task_t    *pt,
   ox     = bounds->x0 - event->data.redraw.scroll.x;
   oy     = bounds->y0 - event->data.redraw.scroll.y;
 
-  rc = screen_copy_bitmap(scr, ox, oy, paintingdoc_bitmap(pt->doc));
+  rc = screen_copy_bitmap_dithered(scr, ox, oy, paintingdoc_bitmap(pt->doc),
+                                   pt->dithering);
 
   if (pt->held && painting_is_rubber_band(pt))
   {
@@ -1043,6 +1049,13 @@ result_t painting_handle(wuss_window_t      *window,
       pt->nozzle = (paintingdoc_nozzle_t) event->data.menu_select.index;
       wuss_menu_tick_exclusive_live(pt->menu_handle, &pt->nozzle_menu,
                                     pt->nozzle);
+      return result_OK;
+    }
+    if (event->data.menu_select.menu == &pt->dither.menu)
+    {
+      pt->dithering = dithermenu_select(&pt->dither, pt->menu_handle,
+                                        event->data.menu_select.index);
+      wuss_window_invalidate_visible(pt->window);
       return result_OK;
     }
     if (event->data.menu_select.index == PAINTING_MENU_UNDO)
