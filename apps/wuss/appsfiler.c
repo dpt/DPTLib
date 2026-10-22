@@ -180,7 +180,7 @@ static result_t apps_open(apps_task_t         *task,
 
   aw->window = window;
 
-  wuss_gridview_fit_window(aw->gridview, APPS_COLUMNS, APPS_MAX_ROWS);
+  wuss_gridview_fit_window(aw->gridview, APPS_COLUMNS, APPS_MAX_ROWS, &place);
 
   /* the root's folder for this category now shows open */
   wuss_window_invalidate_visible(task->windows[0].window);

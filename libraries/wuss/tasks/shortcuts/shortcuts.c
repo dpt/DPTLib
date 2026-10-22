@@ -185,8 +185,8 @@ result_t shortcuts_create(wuss_t *wuss, shortcuts_task_t **out)
   wuss_gridview_set_draw(task->gv, shortcuts_draw_cell, 0);
   wuss_gridview_set_background(task->gv,
                                shortcuts_colour(task, 0xFF, 0xFF, 0xFF));
-  wuss_gridview_fit_window(task->gv, SHORTCUTS_COLUMNS, SHORTCUTS_ROWS);
-  (void) wuss_window_place(task->window, &task_place);
+  wuss_gridview_fit_window(task->gv, SHORTCUTS_COLUMNS, SHORTCUTS_ROWS,
+                           &task_place);
 
   if (out)
     *out = task;

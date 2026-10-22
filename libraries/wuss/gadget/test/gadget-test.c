@@ -709,7 +709,7 @@ StringSetOK: ;
                                        gridview_test_glyph_item, 8, NULL,
                                        &glyph, 0, &glyph_win);
       if (rc != result_OK) goto GridViewFail;
-      wuss_gridview_fit_window(glyph_gv, 3, 1);
+      wuss_gridview_fit_window(glyph_gv, 3, 1, NULL);
       wuss_window_get_content_bounds(glyph_win, &glyph_content);
       if (glyph_content.x1 - glyph_content.x0 <
           wuss_gridview_get_cell_size(glyph_gv).w ||

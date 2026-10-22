@@ -916,7 +916,10 @@ result_t wuss_gridview_window_create(wuss_gridview_t            **out,
   return result_OK;
 }
 
-void wuss_gridview_fit_window(wuss_gridview_t *gv, int columns, int max_rows)
+void wuss_gridview_fit_window(wuss_gridview_t    *gv,
+                              int                 columns,
+                              int                 max_rows,
+                              const wuss_place_t *place)
 {
   box_t    content;
   int      cols;
@@ -934,4 +937,7 @@ void wuss_gridview_fit_window(wuss_gridview_t *gv, int columns, int max_rows)
     size = wuss_gridview_natural_size(gv, MAX(cols, 1), max_rows);
     (void) wuss_window_resize(gv->window, size);
   }
+
+  if (place != NULL)
+    (void) wuss_window_place(gv->window, place);
 }

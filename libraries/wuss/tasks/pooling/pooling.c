@@ -65,8 +65,8 @@ result_t pooling_create(wuss_t *wuss, pooling_task_t **out)
     return rc;
   }
 
-  wuss_gridview_fit_window(task->gv, POOLING_COLUMNS, POOLING_ROWS);
-  (void) wuss_window_place(task->window, &task_place);
+  wuss_gridview_fit_window(task->gv, POOLING_COLUMNS, POOLING_ROWS,
+                           &task_place);
 
   if (out)
     *out = task;

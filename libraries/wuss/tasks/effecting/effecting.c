@@ -225,7 +225,7 @@ static void effecting_fit_list(effecting_task_t *ec)
   box_t    bounds;
   size2d_t sz;
 
-  wuss_gridview_fit_window(ec->list, 1, EFFECTING_LIST_ROWS);
+  wuss_gridview_fit_window(ec->list, 1, EFFECTING_LIST_ROWS, NULL);
 
   wuss_window_get_content_bounds(ec->list_window, &bounds);
   if (bounds.x1 - bounds.x0 < EFFECTING_LIST_MIN_W)

@@ -459,8 +459,8 @@ static result_t filing_open_path(filing_task_t       *task,
    * wuss_EVENT_OPEN synchronously, and filing_handle's OPEN case looks the
    * window up to forward the event to wuss_gridview_handle_event, which is
    * what actually reflows the grid to the new width. */
-  wuss_gridview_fit_window(fw->gridview, FILING_COLUMNS, FILING_MAX_ROWS);
-  (void) wuss_window_place(window, &place); /* for the size it now is */
+  wuss_gridview_fit_window(fw->gridview, FILING_COLUMNS, FILING_MAX_ROWS,
+                           &place);
 
   filing_invalidate_parent(task, fw->path);
 
