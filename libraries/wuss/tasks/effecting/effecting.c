@@ -483,16 +483,7 @@ static void effecting_build_menus(effecting_task_t *task)
   WUSS_MENU_TITLE(task->add_menu, "Add", task->add_items,
                   NELEMS(task->add_items));
 
-  /* indexed by screen_dither_t */
-  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_NONE, "None",
-                 wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_BAYER, "Bayer",
-                 wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_BLUE_NOISE, "Blue noise",
-                 wuss_MENU_ITEM_NONE);
-  WUSS_MENU_TITLE(task->dither_menu, "Dithering", task->dither_items,
-                  NELEMS(task->dither_items));
-  wuss_menu_tick_exclusive(&task->dither_menu, (int) task->dithering);
+  dithermenu_init(&task->dither, task->dithering);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, EFFECTING_MENU_ADD, "Add",
                       wuss_MENU_ITEM_BORROWED_SUBMENU, &task->add_menu);
@@ -508,7 +499,7 @@ static void effecting_build_menus(effecting_task_t *task)
                         effecting_edit_window(task->edit,
                                               EFFECTING_EDIT_LEVEL));
   WUSS_MENU_ITEM_MENU(task->menu_items, EFFECTING_MENU_DITHERING, "Dithering",
-                      wuss_MENU_ITEM_BORROWED_SUBMENU, &task->dither_menu);
+                      wuss_MENU_ITEM_BORROWED_SUBMENU, &task->dither.menu);
   WUSS_MENU_ITEM(task->menu_items, EFFECTING_MENU_APPLY, "Apply",
                  wuss_MENU_ITEM_DASHED);
   WUSS_MENU_ITEM(task->menu_items, EFFECTING_MENU_CANCEL, "Cancel",
@@ -756,12 +747,10 @@ static result_t effecting_menu_select(effecting_task_t   *ec,
   if (menu == &ec->add_menu)
     return effecting_add(ec, (effecting_type_t) index);
 
-  if (menu == &ec->dither_menu)
+  if (menu == &ec->dither.menu)
   {
-    ec->dithering = (screen_dither_t) index;
+    ec->dithering = dithermenu_select(&ec->dither, ec->menu_handle, index);
     wuss_window_invalidate_visible(ec->window);
-    wuss_menu_tick_exclusive(&ec->dither_menu, index);
-    wuss_menu_tick_exclusive_live(ec->menu_handle, &ec->dither_menu, index);
     return result_OK;
   }
 

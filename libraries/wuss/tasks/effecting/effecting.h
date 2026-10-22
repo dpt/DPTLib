@@ -15,6 +15,8 @@
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
+#include "../common/dithermenu.h"
+
 #define EFFECTING_MAX_NAME_LEN 64
 #define EFFECTING_EMPTYSZ      64 /* window size before the first DataLoad */
 #define EFFECTING_LABEL_LEN    32 /* longest list label, with NUL */
@@ -102,8 +104,7 @@ typedef struct effecting_task
 
   wuss_menu_item_t     add_items[EFFECTING__LIMIT];
   wuss_menu_t          add_menu;
-  wuss_menu_item_t     dither_items[3]; /* one row per screen_dither_t */
-  wuss_menu_t          dither_menu;
+  dithermenu_t         dither;
   screen_dither_t      dithering; /* method for paletted screens */
   wuss_menu_item_t     menu_items[EFFECTING_MENU__LIMIT];
   wuss_menu_t          menu;

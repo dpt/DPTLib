@@ -786,18 +786,10 @@ result_t orbing_create(wuss_t *wuss, orbing_task_t **out)
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, ORBING_MENU_LIGHT_COLOUR,
                           "Light colour...", wuss_MENU_ITEM_NONE, "C");
 
-  /* indexed by screen_dither_t */
-  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_NONE, "None",
-                 wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_BAYER, "Bayer",
-                 wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_BLUE_NOISE, "Blue noise",
-                 wuss_MENU_ITEM_NONE);
-  WUSS_MENU_TITLE(task->dither_menu, "Dithering", task->dither_items,
-                  NELEMS(task->dither_items));
+  dithermenu_init(&task->dither, task->dithering);
 
   WUSS_MENU_ITEM_MENU(task->menu_items, ORBING_MENU_DITHERING, "Dithering",
-                      wuss_MENU_ITEM_NONE, &task->dither_menu);
+                      wuss_MENU_ITEM_NONE, &task->dither.menu);
 
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, ORBING_MENU_MUTATE, "Mutate",
                           wuss_MENU_ITEM_DASHED, "M");
@@ -1234,7 +1226,7 @@ static result_t orbing_mouse(orbing_task_t      *task,
   if (action == wuss_MOUSE_DOWN && (button & wuss_BUTTON_MENU))
   {
     wuss_menu_tick_exclusive(&task->light_menu, task->current);
-    wuss_menu_tick_exclusive(&task->dither_menu, (int) task->dithering);
+    wuss_menu_tick_exclusive(&task->dither.menu, (int) task->dithering);
 
     return wuss_menu_open_at_pointer(task->delegate, &task->menu,
                                      &task->menu_handle);
@@ -1391,12 +1383,10 @@ static result_t orbing_menu_select(orbing_task_t      *task,
 
   index = event->data.menu_select.index;
 
-  if (event->data.menu_select.menu == &task->dither_menu)
+  if (event->data.menu_select.menu == &task->dither.menu)
   {
-    task->dithering = (screen_dither_t) index;
-    wuss_menu_tick_exclusive(&task->dither_menu, index);
-    wuss_menu_tick_exclusive_live(task->menu_handle, &task->dither_menu,
-                                  index);
+    task->dithering = dithermenu_select(&task->dither, task->menu_handle,
+                                        index);
     orbing_invalidate_preview(task);
     return result_OK;
   }

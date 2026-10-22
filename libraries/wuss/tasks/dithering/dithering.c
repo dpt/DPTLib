@@ -32,7 +32,7 @@
 /* indexed by dither_method_t */
 static const char *const dithering_method_names[dither__LIMIT] =
 {
-  "None",
+  "Nearest",
   "Floyd-Steinberg",
   "Jarvis-Judice-Ninke",
   "Stucki",

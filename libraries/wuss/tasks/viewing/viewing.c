@@ -107,15 +107,7 @@ result_t viewing_create(wuss_t *wuss, viewing_task_t **out)
   colour_fields[3] = &task->colour_border;
   wuss_colourlist_init(&task->colours, wuss, 4, colour_fields, colour_names);
 
-  /* indexed by screen_dither_t */
-  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_NONE, "None",
-                 wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_BAYER, "Bayer",
-                 wuss_MENU_ITEM_NONE);
-  WUSS_MENU_ITEM(task->dither_items, screen_DITHER_BLUE_NOISE, "Blue noise",
-                 wuss_MENU_ITEM_NONE);
-  WUSS_MENU_TITLE(task->dither_menu, "Dithering", task->dither_items,
-                  NELEMS(task->dither_items));
+  dithermenu_init(&task->dither, task->dithering);
 
   /* shows through the image's transparent pixels */
   delegate_desc.handle    = viewing_handle;
@@ -329,7 +321,7 @@ static result_t viewing_open_menu(viewing_task_t *ic)
    * "Dithering" at per-instance submenus built at create time, by hand.
    * Marked BORROWED_SUBMENU so wuss_menu_destroy leaves them alone -- they
    * belong to the task, not to this per-open tree. */
-  wuss_menu_tick_exclusive(&ic->dither_menu, (int) ic->dithering);
+  wuss_menu_tick_exclusive(&ic->dither.menu, (int) ic->dithering);
   for (i = 0; i < m->nitems; i++)
   {
     wuss_menu_item_t *it = (wuss_menu_item_t *) &m->items[i];
@@ -337,7 +329,7 @@ static result_t viewing_open_menu(viewing_task_t *ic)
     if (it->text == NULL)
       continue;
     if (strcmp(it->text, "Dithering") == 0)
-      it->submenu = &ic->dither_menu;
+      it->submenu = &ic->dither.menu;
     else if (strcmp(it->text, "Colours") == 0)
       it->submenu = &ic->colours.menu;
     else
@@ -391,12 +383,10 @@ result_t viewing_handle(wuss_window_t      *window,
       wuss_menu_tick_item_live(ic->menu_handle, menu, index, ic->stage);
       return viewing_fit(ic);
     }
-    if (menu == &ic->dither_menu)
+    if (menu == &ic->dither.menu)
     {
-      ic->dithering = (screen_dither_t) index;
+      ic->dithering = dithermenu_select(&ic->dither, ic->menu_handle, index);
       wuss_window_invalidate_visible(ic->window);
-      wuss_menu_tick_exclusive(&ic->dither_menu, index);
-      wuss_menu_tick_exclusive_live(ic->menu_handle, &ic->dither_menu, index);
     }
     return result_OK;
 

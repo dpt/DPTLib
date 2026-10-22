@@ -12,6 +12,8 @@
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
+#include "../common/dithermenu.h"
+
 /* window's task: a loaded PNG, alpha-tested against the window
  * background (this test screen is paletted, so fully-transparent source
  * pixels are skipped and everything else is drawn at full strength) */
@@ -25,8 +27,7 @@ typedef struct viewing_task
                               * descriptor string; rebuilt on each open,
                               * freed at QUIT */
   wuss_menu_handle_t menu_handle; /* the open chain, if any */
-  wuss_menu_item_t dither_items[3]; /* one row per screen_dither_t */
-  wuss_menu_t    dither_menu; /* "Dithering" submenu, borrowed by menu */
+  dithermenu_t   dither;      /* "Dithering" submenu, borrowed by menu */
   screen_dither_t dithering; /* method for paletted screens */
   colour_t       colour_pasteboard; /* stage: outside the page */
   colour_t       colour_paper;      /* page; the band behind the image when

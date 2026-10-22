@@ -1243,7 +1243,7 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
 
 result_t screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
 {
-  return screen_copy_bitmap_i(scr, x, y, src, screen_DITHER_NONE);
+  return screen_copy_bitmap_i(scr, x, y, src, screen_DITHER_NEAREST);
 }
 
 result_t screen_copy_bitmap_dithered(screen_t       *scr,

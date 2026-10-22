@@ -15,6 +15,8 @@
 #include "wuss/menu.h"
 #include "wuss/window.h"
 
+#include "../common/dithermenu.h"
+
 #define ORBING_NLIGHTS 4
 #define ORBING_NROWS   5 /* control strip slider rows */
 #define ORBING_NCOLOURS 3 /* control strip colour sets */
@@ -64,9 +66,7 @@ typedef struct orbing_task
   /* "Light" submenu: one row per light */
   wuss_menu_item_t   light_items[ORBING_NLIGHTS];
   wuss_menu_t        light_menu;
-  /* "Dithering" submenu: one row per screen_dither_t */
-  wuss_menu_item_t   dither_items[3];
-  wuss_menu_t        dither_menu;
+  dithermenu_t       dither;     /* "Dithering" submenu */
   screen_dither_t    dithering;  /* how the preview is blitted */
   int                current;    /* index of the light a drag moves */
   int                dragging;   /* non-zero while a Select drag is live */
