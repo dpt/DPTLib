@@ -11,7 +11,6 @@
 #include "wuss/window.h"
 
 #define RESIZING_MAX_NAME_LEN 64
-#define RESIZING_EMPTYSZ      64 /* window size before the first DataLoad */
 #define RESIZING_NSCALES      8  /* rows in the Scale submenu */
 
 /* Main menu rows */

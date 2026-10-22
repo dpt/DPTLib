@@ -104,15 +104,12 @@ static result_t resizing_apply(resizing_task_t *rt)
   else
     logf_warning("resizing: resize failed (rc=0x%X)", rc);
 
-  if (rt->window == NULL)
-    return result_OK;
-
+  /* the window opens with the first image, sized and placed for it */
   size = rt->resized ? rt->resized->size : rt->source.size;
-  rc   = wuss_window_resize(rt->window, size);
-  if (rc != result_OK)
-    return rc;
-
-  rc = wuss_window_set_doc(rt->window, size);
+  rc   = task_window_fit(rt->delegate, &rt->window, "Resizing",
+                         wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                         wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW), size,
+                         SIZE2D(0, 0));
   if (rc != result_OK)
     return rc;
 
@@ -175,19 +172,16 @@ result_t resizing_create(wuss_t *wuss, resizing_task_t **out)
   result_t         rc;
   resizing_task_t *task;
   wuss_task_desc_t delegate_desc;
-  size2d_t         empty;
   int              i;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
     return result_OOM;
 
-  empty              = SIZE2D(RESIZING_EMPTYSZ, RESIZING_EMPTYSZ);
   task->wuss         = wuss;
   task->method       = bitmap_resample_BILINEAR;
   task->scale        = 3; /* 100% */
   task->linear       = 1;
-  task->source.size  = empty; /* no pixels */
 
   for (i = 0; i < bitmap_resample__LIMIT; i++)
     WUSS_MENU_ITEM(task->method_items, i, resizing_method_names[i],
@@ -222,22 +216,8 @@ result_t resizing_create(wuss_t *wuss, resizing_task_t **out)
     return rc;
   }
 
-  rc = wuss_window_create_at(task->delegate,
-                             &task_place,
-                             empty,
-                             "Resizing",
-                             wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                             wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
-                             empty,
-                             SIZE2D(0, 0),
-                             &task->window);
-  if (rc != result_OK)
-  {
-    wuss_task_destroy(task->delegate); /* QUIT frees the block */
-    return rc;
-  }
-
-  /* closing the window reaps the task; its QUIT frees the block */
+  /* closing the window reaps the task; its QUIT frees the block. The window
+   * opens with the first image */
   wuss_task_set_autoclose(task->delegate, 1);
 
   rc = snapshot_saveas_create(&task->saveas, wuss, NULL, resizing_saveas_save,

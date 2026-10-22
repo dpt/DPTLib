@@ -54,27 +54,9 @@ static size2d_t viewing_size(const viewing_task_t *ic)
  * for that size, on the first image */
 static result_t viewing_fit(viewing_task_t *ic)
 {
-  result_t rc;
-  size2d_t sz;
-
-  sz = viewing_size(ic);
-
-  if (ic->window == NULL)
-    return wuss_window_create_at(ic->delegate,
-                                 &task_place,
-                                 sz,
-                                 "Viewing",
-                                 wuss_WINDOW_DEFAULT,
-                                 wuss_NO_BACKDROP,
-                                 sz,
-                                 SIZE2D(32, 32),
-                                 &ic->window);
-
-  rc = wuss_window_resize(ic->window, sz);
-  if (rc != result_OK)
-    return rc;
-
-  return wuss_window_set_doc(ic->window, sz);
+  return task_window_fit(ic->delegate, &ic->window, "Viewing",
+                         wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                         viewing_size(ic), SIZE2D(32, 32));
 }
 
 result_t viewing_create(wuss_t *wuss, viewing_task_t **out)

@@ -187,11 +187,11 @@ static result_t dithering_show(dithering_task_t *dt, const char *path)
   strcpy(dt->name, name);
   dithering_saveas_name(dt);
 
-  rc = wuss_window_resize(dt->window, dt->source.size);
-  if (rc != result_OK)
-    return rc;
-
-  rc = wuss_window_set_doc(dt->window, dt->source.size);
+  /* the window opens with the first image, sized and placed for it */
+  rc = task_window_fit(dt->delegate, &dt->window, "Dithering",
+                       wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
+                       wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
+                       dt->source.size, SIZE2D(0, 0));
   if (rc != result_OK)
     return rc;
 
@@ -321,7 +321,6 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
   task->colours_pos = 4 * DITHERING_COLOURS_STEPS; /* 16 */
   task->strength   = 100;
   task->serpentine = 1;
-  task->source.size = SIZE2D(DITHERING_EMPTYSZ, DITHERING_EMPTYSZ); /* no pixels */
 
   namelist_scan(pathf("%s/resources/wuss-tasks/palettes",
                       wuss_get_resources(wuss)),
@@ -371,22 +370,8 @@ result_t dithering_create(wuss_t *wuss, dithering_task_t **out)
     return rc;
   }
 
-  rc = wuss_window_create_at(task->delegate,
-                             &task_place,
-                             task->source.size,
-                             "Dithering",
-                             wuss_WINDOW_DEFAULT | wuss_WINDOW_FOCUSABLE,
-                             wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
-                             task->source.size,
-                             SIZE2D(0, 0),
-                             &task->window);
-  if (rc != result_OK)
-  {
-    wuss_task_destroy(task->delegate); /* QUIT frees the block */
-    return rc;
-  }
-
-  /* closing the window reaps the task; its QUIT frees the block */
+  /* closing the window reaps the task; its QUIT frees the block. The window
+   * opens with the first image */
   wuss_task_set_autoclose(task->delegate, 1);
 
   rc = snapshot_saveas_create(&task->saveas, wuss, NULL, dithering_saveas_save,

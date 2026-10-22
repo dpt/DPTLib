@@ -436,13 +436,37 @@ static void effecting_saveas_name(effecting_task_t *ec)
   wuss_saveas_set_leafname(ec->saveas, leafname);
 }
 
-/* Load the PNG at path and re-apply, resizing the window to fit. A load
- * failure keeps the current image and is returned. */
+/* Open the effect stack list window, placed beside the image window. Its
+ * own handler routing is in effecting_handle. */
+static result_t effecting_open_list(effecting_task_t *ec)
+{
+  result_t     rc;
+  wuss_place_t place;
+
+  place = task_place_after(ec->window);
+  rc = wuss_gridview_window_create(&ec->list, ec->delegate, &place,
+                                   "Effect stack", 0, effecting_item,
+                                   EFFECTING_LABEL_CHARS, NULL, ec,
+                                   wuss_WINDOW_CLOSE, &ec->list_window);
+  if (rc != result_OK)
+    return rc;
+
+  wuss_gridview_set_layout(ec->list, 1, 0, 4);
+  wuss_gridview_set_drag(ec->list, effecting_drag);
+  effecting_fit_list(ec);
+
+  return wuss_window_place(ec->list_window, &place); /* for its fitted size */
+}
+
+/* Load the PNG at path and re-apply, resizing the window to fit. The image
+ * and list windows open with the first image, sized and placed for it. A
+ * load failure keeps the current image and is returned. */
 static result_t effecting_show(effecting_task_t *ec, const char *path)
 {
   result_t rc;
   bitmap_t next;
   char     name[EFFECTING_MAX_NAME_LEN];
+  int      opening;
 
   if (!path_leaf_strip_ext(path_leaf(path), ".png", name, sizeof(name)))
     return result_BAD_ARG;
@@ -463,12 +487,19 @@ static result_t effecting_show(effecting_task_t *ec, const char *path)
   if (rc != result_OK)
     return rc;
 
-  rc = wuss_window_resize(ec->window, ec->source.size);
+  opening = ec->window == NULL;
+  rc = task_window_fit(ec->delegate, &ec->window, "Effecting",
+                       wuss_WINDOW_DEFAULT,
+                       wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
+                       ec->source.size, SIZE2D(32, 32));
   if (rc != result_OK)
     return rc;
 
   wuss_window_invalidate_visible(ec->window);
-  return wuss_window_set_doc(ec->window, ec->source.size);
+  if (opening)
+    return effecting_open_list(ec);
+
+  return result_OK;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -517,8 +548,6 @@ result_t effecting_create(wuss_t *wuss, effecting_task_t **out)
   effecting_task_t *task;
   wuss_task_t      *delegate;
   wuss_task_desc_t  delegate_desc;
-  wuss_place_t      place;
-  size2d_t          sz;
 
   task = calloc(1, sizeof(*task));
   if (task == NULL)
@@ -539,24 +568,8 @@ result_t effecting_create(wuss_t *wuss, effecting_task_t **out)
     return rc;
   }
   task->delegate = delegate;
-  /* No autoclose: QUIT is delivered at wuss_destroy instead. */
-
-  sz = SIZE2D(EFFECTING_EMPTYSZ, EFFECTING_EMPTYSZ);
-
-  rc = wuss_window_create_at(delegate,
-                             &task_place,
-                             sz,
-                             "Effecting",
-                             wuss_WINDOW_DEFAULT,
-                             wuss_BACKDROP_COLOUR(wuss_COLOUR_WINDOW),
-                             sz,
-                             SIZE2D(32, 32),
-                             &task->window);
-  if (rc != result_OK)
-  {
-    wuss_task_destroy(delegate); /* QUIT frees the bitmaps and the block */
-    return rc;
-  }
+  /* No autoclose: QUIT is delivered at wuss_destroy instead. The windows
+   * open with the first image */
 
   rc = snapshot_saveas_create(&task->saveas, wuss, NULL, effecting_saveas_save,
                               task);
@@ -574,23 +587,6 @@ result_t effecting_create(wuss_t *wuss, effecting_task_t **out)
   }
 
   effecting_build_menus(task);
-
-  /* the list's own handler routing is in effecting_handle; the window is
-   * placed beside the image window */
-  place = task_place_after(task->window);
-  rc = wuss_gridview_window_create(&task->list, delegate, &place,
-                                   "Effect stack", 0, effecting_item,
-                                   EFFECTING_LABEL_CHARS, NULL, task,
-                                   wuss_WINDOW_CLOSE, &task->list_window);
-  if (rc != result_OK)
-  {
-    wuss_task_destroy(delegate);
-    return rc;
-  }
-
-  wuss_gridview_set_layout(task->list, 1, 0, 4);
-  wuss_gridview_set_drag(task->list, effecting_drag);
-  effecting_fit_list(task);
 
   if (out)
     *out = task;

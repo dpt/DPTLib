@@ -108,6 +108,30 @@ static inline result_t task_window_create(wuss_task_t    *task,
                                window);
 }
 
+/* fit *window and its document to size, first opening it, placed for that
+ * size, if it is not open yet: a window showing a loaded file opens once the
+ * file's size is known rather than at a placeholder size */
+static inline result_t task_window_fit(wuss_task_t        *task,
+                                       wuss_window_t     **window,
+                                       const char         *title,
+                                       wuss_window_flags_t flags,
+                                       wuss_backdrop_t     bg,
+                                       size2d_t            size,
+                                       size2d_t            min_doc)
+{
+  result_t rc;
+
+  if (*window == NULL)
+    return wuss_window_create_at(task, &task_place, size, title, flags, bg,
+                                 size, min_doc, window);
+
+  rc = wuss_window_resize(*window, size);
+  if (rc != result_OK)
+    return rc;
+
+  return wuss_window_set_doc(*window, size);
+}
+
 /* offer a key event to menu's shortcuts. returns non-zero if the task should
  * handle the key itself: no shortcut claimed it and neither Ctrl nor Alt is
  * held. otherwise returns zero with *rc set to what the handler returns */

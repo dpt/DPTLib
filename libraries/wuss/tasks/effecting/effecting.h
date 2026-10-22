@@ -18,7 +18,6 @@
 #include "../common/dithermenu.h"
 
 #define EFFECTING_MAX_NAME_LEN 64
-#define EFFECTING_EMPTYSZ      64 /* window size before the first DataLoad */
 #define EFFECTING_LABEL_LEN    32 /* longest list label, with NUL */
 #define EFFECTING_LEVEL_MIN    (-100)
 #define EFFECTING_LEVEL_MAX    200

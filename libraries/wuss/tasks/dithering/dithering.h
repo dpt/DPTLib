@@ -16,7 +16,6 @@
 #include "../palette/palette.h"
 
 #define DITHERING_MAX_NAME_LEN 64
-#define DITHERING_EMPTYSZ      64 /* window size before the first DataLoad */
 #define DITHERING_SLIDER_W     128 /* slider dialogues' slider */
 #define DITHERING_COLOURS_STEPS 8 /* Colours slider positions per doubling */
 
