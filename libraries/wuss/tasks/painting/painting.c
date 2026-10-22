@@ -39,18 +39,20 @@
  * current colours, a single row of colour swatches and the size slider. The
  * swatches are a wuss_swatches_t gadget and the colour chips are drawn by
  * painting_optionbar_redraw, not icons */
-#define OB_MARGIN      2
-#define OB_CHIPS_X     OB_MARGIN
+#define OB_MARGIN      4
+#define OB_CHIP        16  /* the square fg and bg colour chips */
+#define OB_CHIP_STEP   8   /* the bg chip's offset down and right of the fg */
 #define OB_SWATCHES    16  /* the desktop palette's size */
 #define OB_SWATCH      14  /* swatch size */
 #define OB_SWATCH_GAP  2
-#define OB_SWATCH_X    59
+#define OB_SWATCH_X    (OB_MARGIN + OB_CHIP_STEP + OB_CHIP + 6)
 #define OB_SWATCH_Y    9
 #define OB_SWATCH_ROW  (OB_SWATCHES * (OB_SWATCH + OB_SWATCH_GAP) - \
                         OB_SWATCH_GAP) /* swatch row's width */
 #define OB_SLIDER_X    (OB_SWATCH_X + OB_SWATCH_ROW + 6)
 #define OB_SLIDER_Y    7
-#define OB_W           (OB_SLIDER_X + 86 + OB_MARGIN)
+#define OB_READOUT_W   16  /* the size slider's value, wide enough for "32" */
+#define OB_W           (OB_SLIDER_X + 60 + OB_READOUT_W + OB_MARGIN)
 #define OB_H           32
 
 #define PAINTING_ANTS_IDLES 6 /* idles between steps of the marching ants */
@@ -143,7 +145,7 @@ static result_t painting_toolbar_icons(painting_task_t *pt)
                             (box_t) BOX_POS_SIZE(OB_SLIDER_X, OB_SLIDER_Y,
                                                  58, 18),
                             (box_t) BOX_POS_SIZE(OB_SLIDER_X + 60, OB_SLIDER_Y,
-                                                 26, 18),
+                                                 OB_READOUT_W, 18),
                             wuss_SLIDER_HORIZONTAL,
                             PAINTING_SIZE_MIN, PAINTING_SIZE_MAX, pt->size,
                             NULL, 0,
@@ -320,12 +322,12 @@ result_t painting_create_with(wuss_t                     *wuss,
   WUSS_MENU_ITEM_SHORTCUT(task->menu_items, PAINTING_MENU_UNDO, "Undo",
                           wuss_MENU_ITEM_NONE, "F8");
 
-  WUSS_MENU_ITEM(task->sel_items, PAINTING_SEL_ALL, "Select All",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->sel_items, PAINTING_SEL_ALL, "Select All",
+                          wuss_MENU_ITEM_NONE, "^A");
   WUSS_MENU_ITEM_SHORTCUT(task->sel_items, PAINTING_SEL_NONE, "Deselect",
                           wuss_MENU_ITEM_NONE, "^Z");
-  WUSS_MENU_ITEM(task->sel_items, PAINTING_SEL_INVERT, "Invert",
-                 wuss_MENU_ITEM_NONE);
+  WUSS_MENU_ITEM_SHORTCUT(task->sel_items, PAINTING_SEL_INVERT, "Invert",
+                          wuss_MENU_ITEM_NONE, "^I");
   WUSS_MENU_TITLE(task->sel_menu, "Selection", task->sel_items,
                   NELEMS(task->sel_items));
   WUSS_MENU_ITEM_MENU(task->menu_items, PAINTING_MENU_SELECTION, "Selection",
@@ -338,6 +340,8 @@ result_t painting_create_with(wuss_t                     *wuss,
                   NELEMS(task->nozzle_items));
   WUSS_MENU_ITEM_MENU(task->menu_items, PAINTING_MENU_NOZZLE, "Nozzle",
                       wuss_MENU_ITEM_NONE, &task->nozzle_menu);
+  /* the shortcut, or a click on the row, steps to the next nozzle */
+  task->menu_items[PAINTING_MENU_NOZZLE].shortcut = "N";
 
   dithermenu_init(&task->dither, task->dithering);
   WUSS_MENU_ITEM_MENU(task->menu_items, PAINTING_MENU_DITHERING, "Dithering",
@@ -664,14 +668,16 @@ static result_t painting_optionbar_redraw(painting_task_t    *pt,
 
   wuss_swatches_draw(&pt->swatches, event);
 
-  screen_fill_rect(scr, ox + OB_CHIPS_X + 18, oy + OB_MARGIN + 6,
-                   SIZE2D(30, 16), pt->bg);
-  screen_draw_rect(scr, ox + OB_CHIPS_X + 18, oy + OB_MARGIN + 6,
-                   SIZE2D(30, 16), black);
-  screen_fill_rect(scr, ox + OB_CHIPS_X, oy + OB_MARGIN,
-                   SIZE2D(30, 16), pt->fg);
-  screen_draw_rect(scr, ox + OB_CHIPS_X, oy + OB_MARGIN,
-                   SIZE2D(30, 16), black);
+  screen_fill_rect(scr, ox + OB_MARGIN + OB_CHIP_STEP,
+                   oy + OB_MARGIN + OB_CHIP_STEP,
+                   SIZE2D(OB_CHIP, OB_CHIP), pt->bg);
+  screen_draw_rect(scr, ox + OB_MARGIN + OB_CHIP_STEP,
+                   oy + OB_MARGIN + OB_CHIP_STEP,
+                   SIZE2D(OB_CHIP, OB_CHIP), black);
+  screen_fill_rect(scr, ox + OB_MARGIN, oy + OB_MARGIN,
+                   SIZE2D(OB_CHIP, OB_CHIP), pt->fg);
+  screen_draw_rect(scr, ox + OB_MARGIN, oy + OB_MARGIN,
+                   SIZE2D(OB_CHIP, OB_CHIP), black);
 
   return result_OK;
 }
@@ -934,9 +940,9 @@ static void painting_step_size(painting_task_t *pt, int delta)
   (void) wuss_slider_row_set(pt->optionbar, &pt->size_row, pt->size);
 }
 
-/* N steps the nozzle. B, H, E, L, R, X, F, P, S, O and I pick the matching
- * tool, [ and ] step the size down and up, Escape drops the selection.
- * Anything else is passed back unclaimed */
+/* B, H, E, L, R, X, F, P, S, O and I pick the matching tool, [ and ] step the
+ * size down and up, Escape drops the selection. Anything else is passed back
+ * unclaimed */
 static result_t painting_key(painting_task_t *pt, int code)
 {
   box_t box;
@@ -945,10 +951,6 @@ static result_t painting_key(painting_task_t *pt, int code)
   {
   case 'b': case 'B': painting_set_tool(pt, painting_TOOL_BRUSH);  break;
   case 'h': case 'H': painting_set_tool(pt, painting_TOOL_PAINTBRUSH); break;
-  case 'n': case 'N':
-    pt->nozzle = (paintingdoc_nozzle_t) ((pt->nozzle + 1) %
-                                         paintingdoc_NOZZLE__COUNT);
-    break;
   case 'e': case 'E': painting_set_tool(pt, painting_TOOL_ERASER); break;
   case 'l': case 'L': painting_set_tool(pt, painting_TOOL_LINE);   break;
   case 'r': case 'R': painting_set_tool(pt, painting_TOOL_RECT);   break;
@@ -996,7 +998,7 @@ static result_t painting_selection_op(painting_task_t *pt, int op)
   return rc;
 }
 
-/* a MENU click on either window opens the menu, with Undo greyed out when
+/* a MENU click on the canvas opens the menu, with Undo greyed out when
  * there is nothing to undo and Deselect when there is nothing selected */
 static result_t painting_menu_open(painting_task_t *pt)
 {
@@ -1025,7 +1027,7 @@ result_t painting_handle(wuss_window_t      *window,
   case wuss_EVENT_MOUSE:
     if (event->data.mouse.action == wuss_MOUSE_DOWN &&
         (event->data.mouse.button & wuss_BUTTON_MENU))
-      return painting_menu_open(pt);
+      return window == pt->window ? painting_menu_open(pt) : result_OK;
 
     if (window == pt->optionbar)
       return painting_optionbar_mouse(pt, event);
@@ -1065,6 +1067,14 @@ result_t painting_handle(wuss_window_t      *window,
     }
     if (event->data.menu_select.index == PAINTING_MENU_UNDO)
       return painting_undo(pt);
+    if (event->data.menu_select.index == PAINTING_MENU_NOZZLE)
+    {
+      pt->nozzle = (paintingdoc_nozzle_t) ((pt->nozzle + 1) %
+                                           paintingdoc_NOZZLE__COUNT);
+      wuss_menu_tick_exclusive_live(pt->menu_handle, &pt->nozzle_menu,
+                                    pt->nozzle);
+      return result_OK;
+    }
     /* clicking the row, rather than hovering, shows Save As standalone */
     if (event->data.menu_select.index == PAINTING_MENU_SAVE)
       return wuss_saveas_open(pt->saveas);
