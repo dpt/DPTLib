@@ -65,7 +65,7 @@ typedef int result_t;
 
 /* Packer result codes are in geom/packer.h */
 /* Layout result codes are in geom/layout.h */
-/* Wuss result codes are in wuss/wuss.h */
+/* Wuss result codes are in the Wuss repository's wuss/wuss.h */
 /* Bmfont result codes are in framebuf/bmfont.h */
 
 /* ----------------------------------------------------------------------- */

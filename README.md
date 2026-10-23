@@ -123,26 +123,9 @@ DPTLib is my platform independent C library. It contains a wide variety of funct
 
 ### Windowing
 
-- [`wuss/wuss.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/wuss.h) — minimal window manager {[docs](https://github.com/dpt/DPTLib/blob/master/docs/windowing/wuss.md)}
-  - [`wuss/window.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/window.h) — window creation, positioning, sizing and client delegation
-  - [`wuss/task.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/task.h) — tasks: the clients of windows
-  - [`wuss/message.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/message.h) — inter-task messaging
-  - [`wuss/icon.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/icon.h) — work-area icons
-  - [`wuss/icon-spec.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/icon-spec.h) — fill helpers for common icon shapes
-  - [`wuss/iconbar.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/iconbar.h) — RISC OS-style icon bar
-  - [`wuss/menu.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/menu.h) — pop-up menus
-  - [`wuss/menu-desc.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/menu-desc.h) — build a menu tree from a descriptor string
-  - [`wuss/gadget/colourset.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/gadget/colourset.h) — titled colour well with a colour menu
-  - [`wuss/gadget/gridview.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/gadget/gridview.h) — glyph and label grid
-  - [`wuss/gadget/stringset.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/gadget/stringset.h) — field with a pop-up menu of fixed strings
-  - [`wuss/component/dialogue.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/component/dialogue.h) — interactive dialogue base class
-  - [`wuss/component/saveas.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/component/saveas.h) — RISC OS-style drag-and-drop Save As dialogue
-  - [`wuss/component/info.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/component/info.h) — label and value grid dialogue
-  - [`wuss/component/proginfo.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/component/proginfo.h) — shared program information dialogue
-  - [`wuss/component/colourmenu.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/component/colourmenu.h) — menu of the system palette colours
-  - [`wuss/component/fontmenu.h`](https://github.com/dpt/DPTLib/blob/master/include/wuss/component/fontmenu.h) — menu of the available bitmap fonts
-
-The interactive `wuss` demo (`apps/wuss/`) hosts several example tasks, including [Painting](https://github.com/dpt/DPTLib/blob/master/docs/windowing/painting.md). More notes are in [`docs/windowing/`](https://github.com/dpt/DPTLib/blob/master/docs/windowing).
+The `wuss` window manager and its interactive demo, formerly part of DPTLib,
+now live in their own [Wuss](https://github.com/dpt/Wuss) repository, which
+builds on DPTLib.
 
 ## Building
 
@@ -157,11 +140,9 @@ Requires libpng. Useful options:
 
 - `BUILD_TESTS` — the core test binary
 - `BUILD_SDL_TESTS` — interactive SDL tests
-- `BUILD_APPS` — the interactive `wuss` app
 - `USE_ASAN` — AddressSanitizer and UBSan
-- `WUSS_FURNITURE`, `WUSS_ICONS`, `WUSS_MENUS`, `WUSS_GADGETS`, `WUSS_COMPONENTS` — wuss subsystems (all default ON)
 
-RISC OS is built with a GCCSDK toolchain file. WebAssembly builds of the `wuss` demo use `emcmake`; see [AGENTS.md](AGENTS.md).
+RISC OS is built with a GCCSDK toolchain file; see [AGENTS.md](AGENTS.md).
 
 ## Testing
 
