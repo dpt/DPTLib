@@ -28,11 +28,17 @@
 
 
 
+static struct
+{
+  /* the window close_on_idle_handle closes */
+  wuss_window_t *close_on_idle_win;
+}
+g;
+
 /* An IDLE handler that closes a window the first time it is broadcast to. On
  * an autoclose task with that as its only window, the close reaps the task
  * and frees its list node from inside the wuss_idle / wuss_set_palette walk;
  * the test checks the walk survives it and still reaches the tasks behind. */
-static wuss_window_t *g_close_on_idle_win;
 
 static result_t close_on_idle_handle(wuss_window_t      *window,
                                      const wuss_event_t *event,
@@ -47,12 +53,12 @@ static result_t close_on_idle_handle(wuss_window_t      *window,
   if (event->kind == wuss_EVENT_IDLE)
   {
     tc->idle_count++;
-    if (g_close_on_idle_win != NULL)
+    if (g.close_on_idle_win != NULL)
     {
       wuss_window_t *doomed;
 
-      doomed              = g_close_on_idle_win;
-      g_close_on_idle_win = NULL;
+      doomed              = g.close_on_idle_win;
+      g.close_on_idle_win = NULL;
       wuss_window_close(doomed); /* reaps this task mid-walk */
     }
     return result_OK;
@@ -271,7 +277,7 @@ result_t wuss_task_test(const char *resources)
     rc = wuss_window_create(delegate_w2, &box_w, "W2", wuss_WINDOW_DEFAULT,
                             wuss_NO_BACKDROP,
                             box_size(&box_w), SIZE2D(0, 0),
-                            &g_close_on_idle_win);
+                            &g.close_on_idle_win);
     if (rc != result_OK)
       goto Failure;
 

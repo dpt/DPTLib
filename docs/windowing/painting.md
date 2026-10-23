@@ -4,9 +4,12 @@ Painting is a basic painting task in the `wuss` demo. It is also a worked exampl
 of a task that draws into its own bitmap, captures the mouse during a stroke
 and saves and loads PNG files.
 
-- `libraries/wuss/tasks/painting-doc.c`: the canvas, the drawing operations
-  and undo. It has no wuss dependency, so `paintingdoc_test` runs headless.
-- `libraries/wuss/tasks/painting.c`: the windows, the toolbox and input.
+The sources are in `apps/wuss/tasks/painting/`:
+
+- `painting-doc.c`: the canvas, the drawing operations and undo. It has no
+  wuss dependency, so `paintingdoc_test` runs headless.
+- `painting.c`: the windows, the toolbox and input.
+- `painting-new.c`: the New dialogue.
 
 ## Using it
 
@@ -29,22 +32,24 @@ makes an instance of its own.
   background colour. Clicking a swatch in the toolbox sets the foreground
   (Select) or the background (Adjust).
 - Tools: brush, eraser (paints the background colour), line, rect, filled
-  rect, flood fill, spray, select (rectangle) and lasso. Press `B` `E` `L` `R`
-  `X` `F` `P` `S` or `O` to pick one. Other keys pass on to the demo's
+  rect, flood fill, spray, select (rectangle), lasso and colour picker. Press
+  `B` `E` `L` `R` `X` `F` `P` `S` `O` or `I` to pick one. Other keys pass on to the demo's
   hotkeys. The slider sets the width, 1 to 32 pixels. For spray it sets the
   radius (3 pixels per unit).
+- The colour picker takes the foreground (Select) or the background
+  (Adjust) colour from the canvas pixel clicked.
 - Spray scatters dots in a disc round the pointer. Dots build up while the
   button is held still.
 - Select and lasso make a selection, shown with marching ants. The new
   selection replaces the old one. A click without a drag drops it. Every
   drawing tool only changes selected pixels.
-- Menu > Selection has Select All, Deselect and Invert. `Esc` also
-  deselects. Deselect and Undo are shaded when they do not apply, and update
+- Menu > Selection has Select all, Clear selection and Invert. `Esc` also
+  clears the selection. Clear selection and Undo are shaded when they do not apply, and update
   while the menu stays open.
 - Line and rect show a rubber band while the button is down. They draw into
   the canvas when it is released.
-- `Ctrl-Z` or Menu > Undo steps back. There are 20 levels and no redo.
-- Menu > Save PNG (`F3`) opens the Save As dialogue.
+- `F8` or Menu > Undo steps back. There are 20 levels and no redo.
+- Menu > Save (`F3`) opens the Save As dialogue.
 - Drop a PNG on the canvas window or on the Painting icon to load it.
 
 ## The canvas

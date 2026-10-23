@@ -432,6 +432,9 @@ static result_t error_task_handle(wuss_window_t      *window,
     (void) wuss_dialogue_handle_key(g.dialogue, event, &rc);
     return rc;
 
+  case wuss_EVENT_PRE_CLOSE:
+    return wuss_dialogue_handle_pre_close(g.dialogue);
+
   case wuss_EVENT_QUIT:
     /* the wuss instance is going: reports still waiting are not answered */
     for (i = 0; i < g.used; i++)

@@ -64,11 +64,11 @@ result_t wuss_placement_test(const char *resources)
     for (k = 0; k < 4; k++)
     {
       rc = wuss_window_create_placed(delegate_p,
-                                     SIZE2D(40, 30),
+                                     SIZE2D(30, 20),
                                      "P",
                                      wuss_WINDOW_DEFAULT,
                                      wuss_NO_BACKDROP,
-                                     SIZE2D(40, 30),
+                                     SIZE2D(30, 20),
                                      SIZE2D(0, 0),
                                      &win_p[k]);
       if (rc != result_OK)
@@ -87,11 +87,11 @@ result_t wuss_placement_test(const char *resources)
     wuss_window_close(win_p[1]);
 
     rc = wuss_window_create_placed(delegate_p,
-                                   SIZE2D(40, 30),
+                                   SIZE2D(30, 20),
                                    "P",
                                    wuss_WINDOW_DEFAULT,
                                    wuss_NO_BACKDROP,
-                                   SIZE2D(40, 30),
+                                   SIZE2D(30, 20),
                                    SIZE2D(0, 0),
                                    &win_p[1]);
     if (rc != result_OK)
@@ -109,11 +109,11 @@ result_t wuss_placement_test(const char *resources)
     wuss_window_get_visible_bounds(win_p[0], &vis[0]);
 
     rc = wuss_window_create_placed(delegate_p,
-                                   SIZE2D(40, 30),
+                                   SIZE2D(30, 20),
                                    "P",
                                    wuss_WINDOW_DEFAULT,
                                    wuss_NO_BACKDROP,
-                                   SIZE2D(40, 30),
+                                   SIZE2D(30, 20),
                                    SIZE2D(0, 0),
                                    &win_p[1]);
     if (rc != result_OK)
@@ -126,8 +126,8 @@ result_t wuss_placement_test(const char *resources)
       wuss_window_close(win_p[k]);
   }
 
-  printf("test: wuss_window_create_at anchors, places relative and avoids "
-         "the icon bar\n");
+  printf("test: wuss_window_create_at anchors and places relative within "
+         "the safe area\n");
 
   {
     static test_task_t tc_a;
@@ -135,19 +135,18 @@ result_t wuss_placement_test(const char *resources)
     wuss_place_t       place;
     wuss_window_t     *win_a, *win_b;
     box_t              vis_a, vis_b;
-    int                bottom;
-#ifdef WUSS_ICONBAR
-    wuss_iconbar_icon_spec_t spec;
-    wuss_iconbar_icon_t     *icon;
-#endif
+    int                right, bottom;
 
     reap_test_tasks();
+
+    right  = 200 - WUSS_SAFE_INSET;
+    bottom = 200 - WUSS_SAFE_INSET_BOTTOM;
 
     memset(&tc_a, 0, sizeof(tc_a));
     delegate_a = mk_task(wuss, test_handle, &tc_a);
     if (delegate_a == NULL) goto Failure;
 
-    /* top right: flush with the gutter on both edges it is against */
+    /* top right: flush with both safe area edges it is against */
     memset(&place, 0, sizeof(place));
     place.align = wuss_ALIGN_TOP | wuss_ALIGN_RIGHT;
     rc = wuss_window_create_at(delegate_a, &place, SIZE2D(40, 30), "A",
@@ -156,7 +155,7 @@ result_t wuss_placement_test(const char *resources)
     if (rc != result_OK)
       goto Failure;
     wuss_window_get_visible_bounds(win_a, &vis_a);
-    if (vis_a.y0 != WUSS_PLACE_GUTTER || vis_a.x1 != 200 - WUSS_PLACE_GUTTER)
+    if (vis_a.y0 != WUSS_SAFE_INSET || vis_a.x1 != right)
       goto Failure;
 
     /* relative: the footprint's top-left is offset from the other window's */
@@ -173,7 +172,8 @@ result_t wuss_placement_test(const char *resources)
       goto Failure;
     wuss_window_close(win_b);
 
-    /* relative past the bottom-right corner: clamped back onto the screen */
+    /* relative past the bottom-right corner: clamped back into the safe
+     * area */
     place.offset = POINT(500, 500);
     rc = wuss_window_create_at(delegate_a, &place, SIZE2D(40, 30), "B",
                                wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
@@ -181,7 +181,7 @@ result_t wuss_placement_test(const char *resources)
     if (rc != result_OK)
       goto Failure;
     wuss_window_get_visible_bounds(win_b, &vis_b);
-    if (vis_b.x1 != 200 || vis_b.y1 != 200)
+    if (vis_b.x1 != right || vis_b.y1 != bottom)
       goto Failure;
     wuss_window_close(win_b);
 
@@ -193,23 +193,38 @@ result_t wuss_placement_test(const char *resources)
     if (rc != result_OK)
       goto Failure;
     wuss_window_get_visible_bounds(win_b, &vis_b);
-    if (vis_b.x0 != (200 - (vis_b.x1 - vis_b.x0)) / 2 ||
-        vis_b.y0 != (200 - (vis_b.y1 - vis_b.y0)) / 2)
+    if (vis_b.x0 != (WUSS_SAFE_INSET + right - (vis_b.x1 - vis_b.x0)) / 2 ||
+        vis_b.y0 != (WUSS_SAFE_INSET + bottom - (vis_b.y1 - vis_b.y0)) / 2)
       goto Failure;
     wuss_window_close(win_b);
 
-    /* bottom left, avoiding the icon bar: sits a gutter above the bar */
-    bottom = 200;
-#ifdef WUSS_ICONBAR
-    memset(&spec, 0, sizeof(spec));
-    spec.text = "T";
-    rc = wuss_iconbar_icon_create(wuss, delegate_a, &spec, &icon);
+    /* larger than the safe area: shrunk to fit it, document kept whole */
+    memset(&place, 0, sizeof(place));
+    rc = wuss_window_create_at(delegate_a, &place, SIZE2D(400, 300), "B",
+                               wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                               SIZE2D(400, 300), SIZE2D(0, 0), &win_b);
     if (rc != result_OK)
       goto Failure;
-    bottom = 200 - WUSS_ICONBAR_HEIGHT;
-#endif
+    wuss_window_get_visible_bounds(win_b, &vis_b);
+    if (vis_b.x0 != WUSS_SAFE_INSET || vis_b.y0 != WUSS_SAFE_INSET ||
+        vis_b.x1 != right || vis_b.y1 != bottom)
+      goto Failure;
+    wuss_window_close(win_b);
+
+    /* ignoring the safe area: shrunk to fit the whole screen */
+    place.flags = wuss_PLACE_IGNORE_SAFE_AREA;
+    rc = wuss_window_create_at(delegate_a, &place, SIZE2D(400, 300), "B",
+                               wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                               SIZE2D(400, 300), SIZE2D(0, 0), &win_b);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_visible_bounds(win_b, &vis_b);
+    if (vis_b.x0 != 0 || vis_b.y0 != 0 || vis_b.x1 != 200 || vis_b.y1 != 200)
+      goto Failure;
+    wuss_window_close(win_b);
+
+    /* bottom left: flush with the safe area's corner, above the icon bar */
     memset(&place, 0, sizeof(place));
-    place.flags = wuss_PLACE_AVOID_ICONBAR;
     place.align = wuss_ALIGN_BOTTOM | wuss_ALIGN_LEFT;
     rc = wuss_window_create_at(delegate_a, &place, SIZE2D(40, 30), "B",
                                wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
@@ -217,8 +232,7 @@ result_t wuss_placement_test(const char *resources)
     if (rc != result_OK)
       goto Failure;
     wuss_window_get_visible_bounds(win_b, &vis_b);
-    if (vis_b.x0 != WUSS_PLACE_GUTTER ||
-        vis_b.y1 != bottom - WUSS_PLACE_GUTTER)
+    if (vis_b.x0 != WUSS_SAFE_INSET || vis_b.y1 != bottom)
       goto Failure;
     wuss_window_close(win_b);
 
@@ -231,8 +245,7 @@ result_t wuss_placement_test(const char *resources)
     if (rc != result_OK)
       goto Failure;
     wuss_window_get_visible_bounds(win_b, &vis_b);
-    if (vis_b.x0 != WUSS_PLACE_GUTTER ||
-        vis_b.y1 != bottom - WUSS_PLACE_GUTTER ||
+    if (vis_b.x0 != WUSS_SAFE_INSET || vis_b.y1 != bottom ||
         box_intersects(&vis_a, &vis_b))
       goto Failure;
     wuss_window_close(win_b);
@@ -245,13 +258,13 @@ result_t wuss_placement_test(const char *resources)
     if (rc != result_OK)
       goto Failure;
     wuss_window_get_visible_bounds(win_b, &vis_b);
-    if (vis_b.x0 != WUSS_PLACE_GUTTER || vis_b.y0 != WUSS_PLACE_GUTTER ||
+    if (vis_b.x0 != WUSS_SAFE_INSET || vis_b.y0 != WUSS_SAFE_INSET ||
         box_intersects(&vis_a, &vis_b))
       goto Failure;
     wuss_window_close(win_b);
 
     /* bottom right: A leaves no room against the right edge, so nearest
-     * that corner is the bottom row, clear of A, not the top-left */
+     * that corner is the bottom row, clear of A, not the bottom-left */
     place.align = wuss_ALIGN_BOTTOM | wuss_ALIGN_RIGHT;
     rc = wuss_window_create_at(delegate_a, &place, SIZE2D(40, 30), "B",
                                wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
@@ -259,15 +272,88 @@ result_t wuss_placement_test(const char *resources)
     if (rc != result_OK)
       goto Failure;
     wuss_window_get_visible_bounds(win_b, &vis_b);
-    if (vis_b.x0 <= WUSS_PLACE_GUTTER ||
-        vis_b.y1 != bottom - WUSS_PLACE_GUTTER ||
+    if (vis_b.x0 <= WUSS_SAFE_INSET || vis_b.y1 != bottom ||
         box_intersects(&vis_a, &vis_b))
       goto Failure;
     wuss_window_close(win_b);
 
-#ifdef WUSS_ICONBAR
-    wuss_iconbar_icon_destroy(wuss, icon);
-#endif
+    reap_test_tasks();
+  }
+
+  printf("test: wuss_PLACE_POINTER opens in the free region nearest the "
+         "pointer, else centred on it\n");
+
+  {
+    static test_task_t tc_pt;
+    wuss_task_t       *delegate_pt;
+    wuss_place_t       place;
+    wuss_window_t     *win_a, *win_b;
+    box_t              vis_a, vis_b;
+    point_t            ptr;
+
+    reap_test_tasks();
+
+    memset(&tc_pt, 0, sizeof(tc_pt));
+    delegate_pt = mk_task(wuss, test_handle, &tc_pt);
+    if (delegate_pt == NULL) goto Failure;
+
+    /* free screen: centred on the pointer */
+    ptr = POINT(150, 60);
+    wuss_mouse_move(wuss, ptr, NULL);
+    memset(&place, 0, sizeof(place));
+    place.flags = wuss_PLACE_SPARE | wuss_PLACE_POINTER;
+    rc = wuss_window_create_at(delegate_pt, &place, SIZE2D(40, 30), "A",
+                               wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                               SIZE2D(40, 30), SIZE2D(0, 0), &win_a);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_visible_bounds(win_a, &vis_a);
+    if (!box_contains_point(&vis_a, ptr.x, ptr.y) ||
+        abs((vis_a.x0 + vis_a.x1) / 2 - ptr.x) > 1 ||
+        abs((vis_a.y0 + vis_a.y1) / 2 - ptr.y) > 1)
+      goto Failure;
+
+    /* pointer over A: lands next to it, not in the far top-left */
+    rc = wuss_window_create_at(delegate_pt, &place, SIZE2D(40, 30), "B",
+                               wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                               SIZE2D(40, 30), SIZE2D(0, 0), &win_b);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_visible_bounds(win_b, &vis_b);
+    if (box_intersects(&vis_a, &vis_b) || vis_b.x1 < 100)
+      goto Failure;
+    wuss_window_close(win_b);
+
+    /* no free region large enough: centred on the pointer, clamped */
+    ptr = POINT(190, 190);
+    wuss_mouse_move(wuss, ptr, NULL);
+    rc = wuss_window_create_at(delegate_pt, &place, SIZE2D(180, 120), "B",
+                               wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                               SIZE2D(180, 120), SIZE2D(0, 0), &win_b);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_visible_bounds(win_b, &vis_b);
+    if (vis_b.x1 != 200 - WUSS_SAFE_INSET ||
+        vis_b.y1 != 200 - WUSS_SAFE_INSET_BOTTOM)
+      goto Failure;
+    wuss_window_close(win_b);
+
+    /* an open window over A, re-placed: moves clear of A, keeping its size */
+    rc = wuss_window_create_at(delegate_pt, &place, SIZE2D(40, 30), "B",
+                               wuss_WINDOW_DEFAULT, wuss_NO_BACKDROP,
+                               SIZE2D(40, 30), SIZE2D(0, 0), &win_b);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_move(win_b, POINT(vis_a.x0 + 1, vis_a.y0 + 1));
+    rc = wuss_window_place(win_b, &place);
+    if (rc != result_OK)
+      goto Failure;
+    wuss_window_get_visible_bounds(win_b, &vis_b);
+    if (box_intersects(&vis_a, &vis_b) ||
+        vis_b.x1 - vis_b.x0 != vis_a.x1 - vis_a.x0 ||
+        vis_b.y1 - vis_b.y0 != vis_a.y1 - vis_a.y0)
+      goto Failure;
+
     reap_test_tasks();
   }
 

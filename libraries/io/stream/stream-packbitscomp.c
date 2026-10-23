@@ -74,13 +74,14 @@ static stream_size_t stream_packbitscomp_fill(stream_t *s)
   int                    n;
   int                    first;
 
-  orig_p = p = (unsigned char *) sm->base.buf; // cur buf ptr
+  /* are we only called when buffer empty? */
+  assert(sm->base.buf == sm->base.end);
+
+  /* everything was consumed, so refill from the start */
+  sm->base.buf = sm->base.end = sm->buffer;
+
+  orig_p = p = sm->buffer;
   end = sm->buffer + sm->bufsz; // abs buf end
-
-  if (p == end)
-    return stream_remaining(s); // already full
-
-  // assert(stream_remaining(s) < need);
 
   if (sm->resume)
   {

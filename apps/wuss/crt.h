@@ -22,13 +22,14 @@ typedef struct wuss_crt wuss_crt_t;
 result_t wuss_crt_create(SDL_Window *window, wuss_crt_t **crt);
 
 /* Upload `pixels` (width x height, tightly packed bgrx8888) and present one
- * frame through the shader. The source texture is (re)created whenever the
- * size changes. */
+ * frame through the shader, inset by `border` window units on every side. The
+ * source texture is (re)created whenever the size changes. */
 void wuss_crt_render(wuss_crt_t *crt,
                      SDL_Window *window,
                      const void *pixels,
                      int         width,
-                     int         height);
+                     int         height,
+                     int         border);
 
 /* Release everything wuss_crt_create made and hand the window back. */
 void wuss_crt_destroy(wuss_crt_t *crt, SDL_Window *window);

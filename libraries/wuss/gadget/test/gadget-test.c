@@ -21,6 +21,7 @@
 #include "wuss/icon-spec.h"
 #include "wuss/gadget/stringset.h"
 #include "wuss/gadget/gridview.h"
+#include "wuss/gadget/swatches.h"
 
 #include "test/all-tests.h"
 
@@ -84,11 +85,56 @@ static int gridview_test_drag(wuss_gridview_t *gridview,
   *(int *) opaque = index;
   return 0;
 }
+
+/* gridview drag callback that accepts, so a core drag starts */
+static int gridview_test_accept_drag(wuss_gridview_t *gridview,
+                                     int              index,
+                                     void            *opaque)
+{
+  NOT_USED(gridview);
+  NOT_USED(index);
+  NOT_USED(opaque);
+
+  return 1;
+}
+
+static struct
+{
+  int              gridview_test_drawn;     /* cells gridview_test_draw drew */
+  wuss_gridview_t *gridview_forward_target; /* gridview_forward's recipient */
+}
+g;
+
+/* gridview draw callback: counts the cells drawn and records the last index
+ * at opaque */
+
+static void gridview_test_draw(wuss_gridview_t    *gridview,
+                               const wuss_event_t *event,
+                               int                 index,
+                               const box_t        *screen_box,
+                               void               *opaque)
+{
+  NOT_USED(gridview);
+  NOT_USED(event);
+  NOT_USED(screen_box);
+
+  g.gridview_test_drawn++;
+  *(int *) opaque = index;
+}
+
+/* gridview item source like gridview_test_item, but with the bitmap at
+ * opaque as every item's glyph */
+static void gridview_test_glyph_item(int                   index,
+                                     void                 *opaque,
+                                     wuss_gridview_item_t *out)
+{
+  out->glyph = (const bitmap_t *) opaque;
+  out->label = gridview_test_labels[index];
+}
 #endif
 
 #ifdef WUSS_GADGETS
-/* task handler that hands every event to gridview_forward_target */
-static wuss_gridview_t *gridview_forward_target;
+/* task handler that hands every event to g.g.gridview_forward_target */
 
 static result_t gridview_forward(wuss_window_t      *window,
                                  const wuss_event_t *event,
@@ -97,8 +143,8 @@ static result_t gridview_forward(wuss_window_t      *window,
   NOT_USED(window);
   NOT_USED(task_data);
 
-  if (gridview_forward_target != NULL)
-    (void) wuss_gridview_handle_event(gridview_forward_target, event);
+  if (g.gridview_forward_target != NULL)
+    (void) wuss_gridview_handle_event(g.gridview_forward_target, event);
 
   return result_OK;
 }
@@ -542,6 +588,152 @@ StringSetOK: ;
     rc = wuss_gridview_set_count(gv, NELEMS(gridview_test_labels));
     if (rc != result_OK) goto GridViewFail;
     if (wuss_gridview_get_cell_size(gv).w != cell_w) goto GridViewFail;
+    if (wuss_gridview_set_count(gv, -1) != result_BAD_ARG) goto GridViewFail;
+
+    /* a fixed cell size holds across a change of count; with three short
+     * rows the rest of the window shows the background */
+    {
+      unsigned int    *px;
+      unsigned int     plain;
+      int              claimed;
+      bitmap_t         glyph;
+      unsigned int     glyph_px[4 * 4];
+      wuss_gridview_t *glyph_gv;
+      wuss_window_t   *glyph_win;
+      box_t            glyph_content;
+
+      px = (unsigned int *) gvpixels;
+
+      wuss_gridview_set_cell_size(gv, SIZE2D(30, 10));
+      rc = wuss_gridview_set_count(gv, NELEMS(gridview_test_labels));
+      if (rc != result_OK) goto GridViewFail;
+      if (wuss_gridview_get_cell_size(gv).w != 30 ||
+          wuss_gridview_get_columns(gv) != 1) goto GridViewFail;
+
+      /* a full redraw paints the selected cell 0 unlike the plain cell 1,
+       * truncating the long label to fit */
+      wuss_gridview_select(gv, 0);
+      gvscr.clip             = gvcontent;
+      ev.kind                = wuss_EVENT_REDRAW;
+      ev.data.redraw.scr     = &gvscr;
+      ev.data.redraw.content = &gvcontent;
+      ev.data.redraw.bounds  = &gvcontent;
+      ev.data.redraw.scroll  = POINT(0, 0);
+      if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+      if (px[11 * 200 + 11] == px[21 * 200 + 11]) goto GridViewFail;
+      plain = px[100 * 200 + 12];
+
+      wuss_gridview_set_background(gv, colour_rgba(0xFF, 0x00, 0x00, 0xFF));
+      if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+      if (px[100 * 200 + 12] == plain) goto GridViewFail;
+      wuss_gridview_clear_selection(gv);
+
+      /* a draw callback replaces the cell drawing, and a clip over the
+       * second row draws only item 1 */
+      g.gridview_test_drawn = 0;
+      activated           = -1;
+      wuss_gridview_set_draw(gv, gridview_test_draw, 1);
+      gvscr.clip = (box_t) BOX_POS_SIZE(10, 20, 40, 10);
+      if (!wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+      if (g.gridview_test_drawn != 1 || activated != 1) goto GridViewFail;
+      gvscr.clip = gvcontent;
+      wuss_gridview_set_draw(gv, NULL, 1);
+
+      /* a MENU click on an item, with nothing selected, selects it until
+       * the menu closes unpicked; it is not consumed */
+      ev.kind              = wuss_EVENT_MOUSE;
+      ev.data.mouse.action = wuss_MOUSE_DOWN;
+      ev.data.mouse.point  = POINT(2, 12);
+      ev.data.mouse.button = wuss_BUTTON_MENU;
+      if (wuss_gridview_handle_event(gv, &ev)) goto GridViewFail;
+      if (wuss_gridview_selected_count(gv) != 1 ||
+          !wuss_gridview_is_selected(gv, 1)) goto GridViewFail;
+      ev.kind                    = wuss_EVENT_MENU_CLOSED;
+      ev.data.menu_closed.picked = 0;
+      (void) wuss_gridview_handle_event(gv, &ev);
+      if (wuss_gridview_selected_count(gv) != 0) goto GridViewFail;
+
+      /* after a pick the selection lasts until the next event, so the
+       * menu's action still sees it */
+      ev.kind              = wuss_EVENT_MOUSE;
+      ev.data.mouse.action = wuss_MOUSE_DOWN;
+      ev.data.mouse.point  = POINT(2, 12);
+      ev.data.mouse.button = wuss_BUTTON_MENU;
+      (void) wuss_gridview_handle_event(gv, &ev);
+      ev.kind                    = wuss_EVENT_MENU_CLOSED;
+      ev.data.menu_closed.picked = 1;
+      (void) wuss_gridview_handle_event(gv, &ev);
+      if (wuss_gridview_selected_count(gv) != 1) goto GridViewFail;
+      ev.kind = wuss_EVENT_IDLE;
+      (void) wuss_gridview_handle_event(gv, &ev);
+      if (wuss_gridview_selected_count(gv) != 0) goto GridViewFail;
+
+      /* with an existing selection a MENU click leaves it alone */
+      wuss_gridview_select(gv, 0);
+      ev.kind              = wuss_EVENT_MOUSE;
+      ev.data.mouse.action = wuss_MOUSE_DOWN;
+      ev.data.mouse.point  = POINT(2, 12);
+      ev.data.mouse.button = wuss_BUTTON_MENU;
+      (void) wuss_gridview_handle_event(gv, &ev);
+      if (wuss_gridview_selected_count(gv) != 1 ||
+          !wuss_gridview_is_selected(gv, 0)) goto GridViewFail;
+      wuss_gridview_clear_selection(gv);
+
+      /* an accepting drag callback starts a core drag; Escape cancels it */
+      wuss_gridview_set_drag(gv, gridview_test_accept_drag);
+      ev.data.mouse.button = wuss_BUTTON_SELECT;
+      (void) wuss_gridview_handle_event(gv, &ev);
+      ev.data.mouse.action = wuss_MOUSE_MOVE;
+      ev.data.mouse.point  = POINT(30, 12);
+      (void) wuss_gridview_handle_event(gv, &ev);
+      if (!wuss_is_dragging(gvwuss)) goto GridViewFail;
+      rc = wuss_key(gvwuss, wuss_KEY_ESCAPE, wuss_KEY_MOD_NONE, &claimed);
+      if (rc != result_OK || wuss_is_dragging(gvwuss)) goto GridViewFail;
+      wuss_gridview_set_drag(gv, NULL);
+      wuss_gridview_clear_selection(gv);
+
+      /* a gridview window needs somewhere to return both handles */
+      if (wuss_gridview_window_create(NULL, gvowner, NULL, "Grid", 1,
+                                      gridview_test_item, 8, NULL, NULL, 0,
+                                      &glyph_win) != result_NULL_ARG)
+        goto GridViewFail;
+
+      /* fitting three of the wide cells across the screen drops to the
+       * columns that fit; glyphs draw above the labels */
+      memset(glyph_px, 0xFF, sizeof(glyph_px));
+      rc = bitmap_init(&glyph, SIZE2D(4, 4), pixelfmt_bgrx8888, 4 * 4, NULL,
+                       glyph_px);
+      if (rc != result_OK) goto GridViewFail;
+      rc = wuss_gridview_window_create(&glyph_gv, gvowner, NULL, "Grid",
+                                       NELEMS(gridview_test_labels),
+                                       gridview_test_glyph_item, 8, NULL,
+                                       &glyph, 0, &glyph_win);
+      if (rc != result_OK) goto GridViewFail;
+      wuss_gridview_fit_window(glyph_gv, 3, 1, NULL);
+      wuss_window_get_content_bounds(glyph_win, &glyph_content);
+      if (glyph_content.x1 - glyph_content.x0 <
+          wuss_gridview_get_cell_size(glyph_gv).w ||
+          glyph_content.x1 > 200)
+      {
+        wuss_gridview_destroy(glyph_gv);
+        goto GridViewFail;
+      }
+
+      gvscr.clip             = glyph_content;
+      ev.kind                = wuss_EVENT_REDRAW;
+      ev.data.redraw.scr     = &gvscr;
+      ev.data.redraw.content = &glyph_content;
+      ev.data.redraw.bounds  = &glyph_content;
+      ev.data.redraw.scroll  = POINT(0, 0);
+      if (!wuss_gridview_handle_event(glyph_gv, &ev))
+      {
+        wuss_gridview_destroy(glyph_gv);
+        goto GridViewFail;
+      }
+
+      wuss_gridview_destroy(glyph_gv);
+      wuss_window_close(glyph_win);
+    }
 
     wuss_gridview_destroy(gv);
 
@@ -608,7 +800,7 @@ GridViewOK: ;
     rc = wuss_gridview_create(&rlgv, rlwin, NELEMS(gridview_test_labels),
                               gridview_test_item, 8, NULL, NULL);
     if (rc != result_OK) goto RelayoutFail;
-    gridview_forward_target = rlgv; /* events now reach the gridview */
+    g.gridview_forward_target = rlgv; /* events now reach the gridview */
 
     big_doc_w = rlwin->doc.w;
     min_w     = wuss_gridview_width_for_columns(rlgv, 1);
@@ -630,7 +822,7 @@ GridViewOK: ;
     if (rlwin->doc.w != big_doc_w) goto RelayoutFail;
 
     wuss_gridview_destroy(rlgv);
-    gridview_forward_target = NULL;
+    g.gridview_forward_target = NULL;
 
     reap_test_tasks();
     wuss_destroy(rlwuss);
@@ -643,6 +835,35 @@ RelayoutFail:
     printf("wuss_test: gridview relayout check failed\n");
     return result_TEST_FAILED;
 RelayoutOK: ;
+  }
+
+  printf("test: wuss_swatches hit-tests cells and misses gaps\n");
+  {
+    colour_t        swcolours[5];
+    wuss_swatches_t sw;
+
+    memset(swcolours, 0, sizeof(swcolours));
+
+    /* 5 colours, roughly square: 3 columns of 10px cells, 2px gaps */
+    sw.bbox     = (box_t) BOX_POS_SIZE(10, 20, 34, 22);
+    sw.columns  = 0;
+    sw.gap      = 2;
+    sw.outline  = 0;
+    sw.colours  = swcolours;
+    sw.ncolours = 5;
+
+    if (wuss_swatches_hit_test(&sw, POINT(10, 20)) != 0 ||
+        wuss_swatches_hit_test(&sw, POINT(19, 29)) != 0 ||
+        wuss_swatches_hit_test(&sw, POINT(20, 20)) != -1 || /* gap */
+        wuss_swatches_hit_test(&sw, POINT(22, 20)) != 1 ||
+        wuss_swatches_hit_test(&sw, POINT(22, 32)) != 4 || /* row 1 */
+        wuss_swatches_hit_test(&sw, POINT(34, 32)) != -1 || /* no 6th */
+        wuss_swatches_hit_test(&sw, POINT(9, 20)) != -1 ||
+        wuss_swatches_hit_test(&sw, POINT(10, 42)) != -1)
+    {
+      printf("wuss_test: swatches hit-test failed\n");
+      return result_TEST_FAILED;
+    }
   }
 
   wuss_fixture_close(&fixture);

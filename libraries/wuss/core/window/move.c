@@ -7,7 +7,7 @@
  * follows it. The cached furniture layout is translated in place below
  * rather than invalidated -- a pure move changes no piece's size, so there
  * is nothing to rebuild. */
-void wuss_window_move(wuss_window_t *window, point_t p)
+void wuss__window_move(wuss_window_t *window, point_t p)
 {
   box_t clean[WUSS_MAX_INVALIDATE_PIECES];
   box_t full_dest[WUSS_MAX_INVALIDATE_PIECES];
@@ -156,4 +156,14 @@ void wuss_window_move(wuss_window_t *window, point_t p)
   }
 
   (void) ncopied; /* move.c repairs via the sliver logic above, not "copied" */
+}
+
+/* A toolbar only moves with its parent; a parent takes its toolbars along. */
+void wuss_window_move(wuss_window_t *window, point_t p)
+{
+  if (window->toolbar.parent != NULL)
+    return;
+
+  wuss__window_move(window, p);
+  wuss__toolbars_layout(window, NULL);
 }

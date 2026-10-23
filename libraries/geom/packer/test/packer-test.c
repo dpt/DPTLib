@@ -627,6 +627,93 @@ failure:
   return 1;
 }
 
+/* Places a 10x10 box by 'loc' and checks where it landed. */
+static int corner(packer_t *packer, packer_loc_t loc, int x0, int y0)
+{
+  result_t     err;
+  const box_t *b;
+
+  err = packer_place_by(packer, loc, 10, 10, &b);
+  if (err == result_OK &&
+      b->x0 == x0 && b->y0 == y0 && b->x1 == x0 + 10 && b->y1 == y0 + 10)
+    return 0;
+
+  printf("test5: loc %d placed badly (%d)\n", loc, err);
+  return 1;
+}
+
+/* Corners, the consumed area, CLEAR_BOTH, empty placements and empty
+ * margins. */
+static int test5(void)
+{
+  static const box_t pagedims = {   0,   0, 100, 100 };
+  static const box_t outside  = { 200, 200, 300, 300 };
+  static const box_t squash   = {  60,  60,  60,  60 };
+
+  packer_t    *packer;
+  const box_t *c;
+
+  printf("test5: corners and edge cases\n");
+
+  packer_destroy(NULL);
+
+  packer = packer_create(&pagedims);
+  if (packer == NULL)
+    return 1;
+
+  if (!box_is_empty(packer_get_consumed_area(packer)))
+    goto failure;
+
+  if (corner(packer, packer_LOC_TOP_LEFT,      0, 90) ||
+      corner(packer, packer_LOC_TOP_RIGHT,    90, 90) ||
+      corner(packer, packer_LOC_BOTTOM_LEFT,   0,  0) ||
+      corner(packer, packer_LOC_BOTTOM_RIGHT, 90,  0))
+    goto failure;
+
+  c = packer_get_consumed_area(packer);
+  if (c->x0 != 0 || c->y0 != 0 || c->x1 != 100 || c->y1 != 100)
+    goto failure;
+
+  if (packer_place_by(packer, packer_LOC_TOP_LEFT, 0, 10, NULL) !=
+      result_PACKER_EMPTY ||
+      packer_place_at(packer, &outside) != result_PACKER_EMPTY)
+    goto failure;
+
+  /* the top strip has a box at each end, so clearing both edges drops to
+   * the full width band below it */
+  if (packer_clear(packer, packer_CLEAR_BOTH) ||
+      packer_next_width(packer, packer_LOC_TOP_LEFT) != 100 ||
+      packer_place_by(packer, packer_LOC_TOP_LEFT, 100, 80, &c) ||
+      c->y1 != 90)
+    goto failure;
+
+  /* only the gap between the bottom corners is left */
+  if (packer_next_width(packer, packer_LOC_TOP_LEFT) != 80 ||
+      packer_place_at(packer, &pagedims) ||
+      packer_next_width(packer, packer_LOC_TOP_LEFT) != 0)
+    goto failure;
+
+  packer_destroy(packer);
+
+  /* margins which meet or cross leave a 1x1 area */
+  packer = packer_create(&pagedims);
+  if (packer == NULL)
+    return 1;
+
+  packer_set_margins(packer, &squash);
+  if (packer_next_width(packer, packer_LOC_TOP_LEFT) != 1)
+    goto failure;
+
+  packer_destroy(packer);
+  return 0;
+
+
+failure:
+
+  packer_destroy(packer);
+  return 1;
+}
+
 result_t packer_test(const char *resources)
 {
   result_t err;
@@ -646,6 +733,10 @@ result_t packer_test(const char *resources)
     goto failure;
 
   err = test4();
+  if (err)
+    goto failure;
+
+  err = test5();
   if (err)
     goto failure;
 

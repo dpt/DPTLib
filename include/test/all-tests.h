@@ -29,10 +29,12 @@ extern testfn_t pickle_test,
 /* framebuf */
 extern testfn_t bitmap_load_test,
                 bitmap_resize_test,
-                bitmap_rle_test,
+                bitmap_rle_test, bitmap_convert_test, span_test,
                 bmfont_test,
                 bmfontcache_test,
                 bmfontfamily_test,
+                colour_test,
+                colourspace_test,
                 composite_test,
                 curve_test,
                 dither_test,
@@ -48,7 +50,8 @@ extern testfn_t box_test,
                 layout_test,
                 packer_test,
                 region_test,
-                stack_test;
+                stack_test,
+                stage_test;
 
 /* io */
 extern testfn_t dirlist_test,
@@ -57,11 +60,13 @@ extern testfn_t dirlist_test,
                 stream_test;
 
 /* text */
-extern testfn_t txtfmt_test,
+extern testfn_t bmtext_test,
+                txtfmt_test,
                 utf8_test;
 
 /* utils */
 extern testfn_t array_test,
+                barith_test,
                 bsearch_test,
                 bytesex_test,
                 easing_test,
@@ -77,6 +82,7 @@ extern testfn_t gridview_bench_test,
                 wuss_task_test,
                 wuss_content_test,
                 wuss_stack_test,
+                wuss_toolbar_test,
                 wuss_lifecycle_test,
                 wuss_invalidate_test,
                 wuss_placement_test,
@@ -89,12 +95,19 @@ extern testfn_t gridview_bench_test,
                 wuss_furniture_test,
                 wuss_iconpool_test,
                 wuss_icon_test,
+                wuss_icon_draw_test,
+                wuss_writable_test,
+                wuss_slider_test,
+                wuss_hover_test,
+                wuss_click_test,
+                wuss_set_text_test,
                 wuss_iconbar_test,
                 wuss_menu_desc_test,
                 wuss_gadget_test,
                 wuss_component_test,
                 dcs_test,
                 error_test,
+                colourpicker_test,
                 wuss_test;
 
 #endif /* TESTS_ALL_TESTS_H */

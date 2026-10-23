@@ -118,6 +118,26 @@ All furniture actions (back, toggle-size, resize-drag, scrollbar arrow/thumb) ar
 
 Other window operations: `wuss_window_close`, `wuss_window_move`, `wuss_window_resize` (preserves content top-left), `wuss_window_restack`, `wuss_window_get_visible_bounds` (full on-screen footprint), `wuss_window_get_content_bounds`, `wuss_window_set_background`.
 
+### Toolbars
+
+A toolbar is an ordinary window of the same task, attached to one edge of a parent window so that it goes wherever the parent goes:
+
+```C
+result_t wuss_window_attach(wuss_window_t *toolbar, wuss_window_t *parent,
+                            wuss_edge_t edge, wuss_align_t align, int offset);
+void     wuss_window_detach(wuss_window_t *toolbar);
+```
+
+- **Placement.** The toolbar sits outside `edge` (`wuss_EDGE_LEFT`, `RIGHT`, `TOP` or `BOTTOM`), its outline overlapping the parent's so that the two draw as a single line. Along the edge it is aligned against the parent's content area: `wuss_ALIGN_TOP`/`BOTTOM` for a left or right edge, `wuss_ALIGN_LEFT`/`RIGHT` for a top or bottom edge, `0` to centre. `offset` then shifts it that many pixels further along. It may overhang the parent. Several toolbars on one edge stack outwards in the order they were attached, overlapping outlines in the same way. A hidden toolbar gives up its place.
+- **Size.** A toolbar keeps its own size whatever the parent's size. Resizing a toolbar is allowed and its neighbours move to suit. The parent's maximum size and toggle-size take no account of its toolbars.
+- **Screen edges.** A toolbar stays on screen, overlapping the parent if needs be, until the edge it is attached to goes off the screen; then it goes too. Only the axis at right angles to the edge is clamped, and the toolbars on one edge are clamped together.
+- **Furniture.** A toolbar has no titlebar and so no close, back, toggle-size or resize buttons. It may have an outline and scrollbars. Other flags give `result_BAD_ARG`, as does attaching a window to a toolbar, a toolbar to a second parent, or windows of different tasks.
+- **Moving and stacking.** `wuss_window_move` on a toolbar does nothing: move its parent instead. Toolbars stay in the parent's stack directly in front of it, and `wuss_window_restack` and `wuss_window_set_stack` on any member of the group act on the whole group.
+- **Hiding and closing.** Hiding or showing the parent hides or shows its toolbars, but a toolbar hidden on its own stays hidden. Closing the parent closes its toolbars with it, delivering no `wuss_EVENT_CLOSE` for them. `wuss_window_detach` leaves the toolbar where it is as an ordinary window.
+- **Focus.** A click on a toolbar gives the input focus to its parent, unless the toolbar itself was created with `wuss_WINDOW_FOCUSABLE`. The parent's titlebar shows as focused while any member of the group has the focus.
+
+A click in a toolbar's content area does not bring the group to the front, just as for any window's content area.
+
 ## Task callbacks
 
 ```C
@@ -213,7 +233,7 @@ document -> screen: screen.x = bounds.x0 - scroll.x + doc.x
 scroll clamp:       max = doc - (bounds.x1 - bounds.x0);  clamp(scroll, 0, max)
 ```
 
-In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scroll.y`, then paint the whole content normally — the framebuffer clip (`scr->clip` = `redraw.content`) discards anything outside the piece. See `libraries/wuss/tasks/reading.c`.
+In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scroll.y`, then paint the whole content normally — the framebuffer clip (`scr->clip` = `redraw.content`) discards anything outside the piece. See `apps/wuss/tasks/reading/reading.c`.
 
 ## Redrawing
 
@@ -292,6 +312,23 @@ The window is created `wuss_WINDOW_NO_CLOSE` and `wuss_WINDOW_NO_REDRAW` — it 
 
 Point a menu item's `window` field at `wuss_proginfo_window()` to have Wuss show the dialogue where a submenu would open.
 
+## Opening files
+
+Double-clicking a file in a Filing window opens it the RISC OS way, through a `wuss_MESSAGE_DATA_OPEN` message (`wuss/message.h`):
+
+1. Filing sends a recorded broadcast whose payload is a `wuss_data_open_t`: the file's `filetype_t` and its full path.
+2. Each running task gets it in turn, as a task-view `wuss_EVENT_MESSAGE` (`window` is NULL). A task that opens files of that type calls `wuss_acknowledge` and loads the file. The first acknowledgement stops delivery.
+3. If no task acknowledges it, the message bounces back to Filing as `wuss_EVENT_MESSAGE_BOUNCED`. Filing calls its run function (`filing_set_run_fn`), the equivalent of `Alias$@RunType_XXX`, to start the app for the type. It then broadcasts the message once more.
+4. If there is no app for the type, or the second broadcast bounces too, Filing reports "No application to open files of type &XXX".
+
+A double ADJUST click opens the file and then closes the Filing window, as it does for a directory.
+
+The demo app's tasks claim types through `taskapp_desc_t::opens`, a 0-terminated list of RISC OS filetype numbers. taskapp acknowledges a matching message as soon as the type matches, then opens a new instance and passes it the path through `data_load`. A load that fails is reported by the app itself, so Filing never reports a second error. The run function in `apps/wuss/tasks/tasks.c` maps PNG (&B60) to Viewing, and text (&FFF) and Markdown to Reading.
+
+Markdown has no allocated RISC OS filetype. `filetype_RISCOS_MARKDOWN` (&1D0) is a placeholder from the user range until one is allocated.
+
+On RISC OS, `io/dirlist` still takes a file's type from its extension rather than from the filing system, so a file without one is `&FFD` and finds no app.
+
 ## Glossary
 
 Terms as this document and the API use them. Several are RISC OS conventions, which Wuss follows.
@@ -317,6 +354,7 @@ Terms as this document and the API use them. Several are RISC OS conventions, wh
 - **Select** — the primary mouse button, `wuss_BUTTON_SELECT`. Performs the plain action, and raises a window when used on its titlebar.
 - **Task** — the client of a window: an event callback plus an opaque `task_data` pointer, held in a `wuss_task_t`. Wuss owns the window; the task owns what's drawn inside it.
 - **Titlebar** — the strip above the content area carrying the window's label and its buttons, and the drag handle for moving the window. Suppressed by `wuss_WINDOW_NO_TITLEBAR`.
+- **Toolbar** — a window attached to an edge of a parent window with `wuss_window_attach`. It moves, stacks, hides and closes with its parent. See "Toolbars".
 - **Toggle size** — the titlebar button that switches a window between its normal size and a maximised size, and back.
 - **Virtual content space** — the task's own full coordinate space, of size `doc`. Mouse and scroll events arrive in it, i.e. with the scroll offset already added.
 - **Visible bounds** — a window's whole on-screen footprint, content plus furniture; `wuss_window_get_visible_bounds`.

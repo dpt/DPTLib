@@ -38,6 +38,20 @@ static result_t validate_bevel_backdrop(const wuss_t *w,
 }
 #endif
 
+#ifdef WUSS_FURNITURE
+int wuss__titlebar_height_auto(const wuss_t *w)
+{
+  int font_height;
+
+  /* titles draw in the bold weight when one was supplied; size the titlebar
+   * to whichever weight is taller */
+  font_height = MAX(wuss__fontset_height(&w->fonts, 0),
+                    wuss__fontset_height(&w->fonts, 1));
+
+  return (font_height > 0) ? font_height + 4 : WUSS_DEFAULT_TITLEBAR_HEIGHT;
+}
+#endif
+
 result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config)
 {
 #ifdef WUSS_FURNITURE
@@ -47,9 +61,6 @@ result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config)
 #if defined(WUSS_FURNITURE) || defined(WUSS_ICONS)
   wuss_colour_t blight, bdark, bdivider;
   wuss_colour_t btnbg, btnfg, btnpressed, accent;
-#endif
-#ifdef WUSS_FURNITURE
-  int            font_height;
 #endif
 
   /* First pass: white/black and the named symbolic colours (BLACK..GREY).
@@ -170,13 +181,7 @@ result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config)
   }
   else
   {
-    /* titles draw in the bold weight when one was supplied; size the
-     * titlebar to whichever weight is taller. Both slots empty -> fall back
-     * to the default. */
-    font_height = MAX(wuss__fontset_height(&w->fonts, 0),
-                      wuss__fontset_height(&w->fonts, 1));
-    w->titlebar_height = (font_height > 0) ? font_height + 4
-                                           : WUSS_DEFAULT_TITLEBAR_HEIGHT;
+    w->titlebar_height = wuss__titlebar_height_auto(w);
   }
 #else /* !WUSS_FURNITURE */
 #ifdef WUSS_ICONS

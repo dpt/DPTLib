@@ -23,7 +23,7 @@
 #include "wuss/wuss.h"
 
 #include "frontend.h"
-#include "tasks.h" /* g_tasks.swap_mouse_buttons */
+#include "tasks/tasks.h" /* g_tasks.swap_mouse_buttons */
 
 /* This backend takes over the whole screen: it selects a 16-colour linear
  * mode, points wuss's framebuffer straight at screen memory (so a redraw

@@ -117,9 +117,7 @@ void bitmap_clear(bitmap_t *bm, colour_t colour)
   case 5: /* 32bpp - pixels are ints */
   {
     /* if all bytes of 'px' are the same, use memset() */
-    pixelfmt_any32_t tmp1 = px ^ (px >> 16);
-    pixelfmt_any32_t tmp2 = tmp1 ^ (tmp1 >> 8);
-    if (tmp2 == 0)
+    if (px == (px & 0xFF) * 0x01010101u)
     {
       memset(bm->base, px, bm->rowbytes * bm->size.h);
     }

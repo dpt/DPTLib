@@ -116,6 +116,21 @@ void wuss_iconbar_icon_destroy(wuss_t *wuss, wuss_iconbar_icon_t *icon);
 result_t wuss_iconbar_menu_open(wuss_task_t        *task,
                                 const wuss_menu_t  *menu,
                                 wuss_menu_handle_t *out);
+
+/**
+ * Open the caller's own \p window where wuss_iconbar_menu_open would open a
+ * menu: centred on the pointer's x with its bottom edge the bar's standard
+ * gap above the bottom of the screen. It is shown and dismissed as a menu,
+ * as wuss_menu_open_window. Suits a dialogue opened from an icon bar icon.
+ *
+ * \param[in]  task   Task that receives wuss_EVENT_MENU_CLOSED.
+ * \param[in]  window Window to show; borrowed, must outlive the open chain.
+ * \param[out] out    Filled with the chain handle, or NULL if not wanted.
+ * \return \ref result_OK, \ref result_OOM, or a wuss_window_set_hidden code.
+ */
+result_t wuss_iconbar_window_open(wuss_task_t        *task,
+                                  wuss_window_t      *window,
+                                  wuss_menu_handle_t *out);
 #endif /* WUSS_MENUS */
 
 #endif /* WUSS_ICONBAR */

@@ -57,7 +57,9 @@ enum
   wuss_MESSAGE_DATA_SAVE,     /**< Saver -> target: offering a save. */
   wuss_MESSAGE_DATA_SAVE_ACK, /**< Target -> saver: full path to write to. */
   wuss_MESSAGE_DATA_LOAD,     /**< Saver -> target: file has been written. */
-  wuss_MESSAGE_DATA_LOAD_ACK  /**< Target -> saver: transfer complete. */
+  wuss_MESSAGE_DATA_LOAD_ACK, /**< Target -> saver: transfer complete. */
+  wuss_MESSAGE_DATA_OPEN      /**< Filer -> broadcast: a file was
+                               *   double-clicked; see wuss_data_open_t. */
 };
 
 /**
@@ -77,6 +79,20 @@ typedef struct
   wuss_window_t *reply_window;
 }
 wuss_data_save_t;
+
+/**
+ * Wire payload for \ref wuss_MESSAGE_DATA_OPEN (wuss_message_t::data, cast
+ * from the raw bytes). Sent as a recorded broadcast when a file is
+ * double-clicked in a Filer window. A task that opens files of \c filetype
+ * acknowledges it and loads \c path; if none does, it bounces to the Filer,
+ * which may launch an app for the type and broadcast it again.
+ */
+typedef struct
+{
+  filetype_t filetype;
+  char       path[DPTLIB_MAXPATH];
+}
+wuss_data_open_t;
 
 /**
  * A message in flight: fixed size, copied by value into the queue -- no

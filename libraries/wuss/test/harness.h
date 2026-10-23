@@ -84,6 +84,18 @@ extern result_t flood_full_bounds_handle(wuss_window_t      *window,
                                          const wuss_event_t *event,
                                          void               *task_data);
 
+#ifdef WUSS_MENUS
+struct wuss__menu;
+
+/* Move the pointer over row `row` of menu level `level`: to the text column
+ * (`over_arrow` == 0) or into the submenu-arrow gutter at the row's right
+ * edge (`over_arrow` == 1). Used to drive submenu open/close from the tests. */
+extern void menu_move_over_row(wuss_t            *wuss,
+                               struct wuss__menu *level,
+                               int                row,
+                               int                over_arrow);
+#endif
+
 /* A bitmap-backed screen with a default wuss on it, for tests that each
  * want a fresh instance. */
 typedef struct wuss_fixture

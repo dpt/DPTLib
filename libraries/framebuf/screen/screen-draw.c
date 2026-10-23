@@ -418,32 +418,31 @@ dither_t;
 
 /* The bias table, indexed by the method's threshold for (sx, sy).
  *
- * The mean gap between adjacent levels of a linear ramp of "nlevels" entries
- * is 255 / (nlevels - 1); the Bayer cell (-32..31 about zero) nudges a channel
- * value by up to half that gap either way, so a value sitting between two
- * entries lands on one or the other in a fixed 8x8 pattern instead of always
- * snapping to the nearer. Building the table hoists the one divide out of the
- * inner loop -- the per-pixel cost drops to a lookup and an add.
+ * "gap" is the per-channel distance between adjacent output colours; the
+ * threshold cell (-32..31 about zero) nudges a channel value by up to half
+ * that gap either way, so a value sitting between two entries lands on one or
+ * the other in a fixed pattern instead of always snapping to the nearer.
+ * Building the table hoists the one divide out of the inner loop -- the
+ * per-pixel cost drops to a lookup and an add.
  *
- * "nlevels" must be the per-channel quantisation level count (e.g. 1 <<
- * pm->rbits), not the palette's total entry count: pixelmap quantises R/G/B
- * independently (4:4:4 for p1/p2/p4, 5:6:5 for p8) regardless of how many
- * palette entries that yields, so a p8 screen has only 32-64 levels per
- * channel despite 256 total entries. Keying the gap off the entry count
- * instead makes the bias round to zero on p8 -- the dither vanishes.
+ * For a paletted screen "gap" is the pixelmap's step, measured from the real
+ * palette: the quantiser's bucket width alone (8 on p8) is far finer than a
+ * 256-entry colour palette's spacing (51 for the web-safe cube), and keying
+ * off it leaves the dither too faint to hide the banding. The paletted paths
+ * pass three quarters of the step: at the full step a flat colour sitting on
+ * one entry is nudged far enough to hit off-grid neighbours (black speckles
+ * with a UI colour such as PICO-8 dark blue).
  *
  * dither_bias_build fills "tab" and returns 1 when dithering is on and useful
- * (>= 2 levels), 0 when the caller should skip the bias entirely.
+ * (gap >= 2), 0 when the caller should skip the bias entirely.
  *
- * ponytail: this assumes a roughly even, roughly greyscale palette -- the one
- * case (shallow paletted screen showing a gradient) the dithered blit is for.
- * A wildly non-uniform palette dithers weakly, not wrongly; swap in a
- * per-entry nearest-two search keyed on the real palette if that matters. */
+ * ponytail: one gap for all three channels and the whole palette -- right
+ * for an even palette, weak or strong in parts of a lopsided one; key the
+ * bias on the nearest two entries per pixel if that matters. */
 static int dither_bias_build(dither_t       *d,
-                             int             nlevels,
+                             int             gap,
                              screen_dither_t method)
 {
-  int gap;
   int i;
 
   switch (method)
@@ -453,22 +452,13 @@ static int dither_bias_build(dither_t       *d,
   default:                       return 0;
   }
 
-  if (nlevels < 2)
+  if (gap < 2)
     return 0;
 
-  gap = 255 / (nlevels - 1);
   for (i = 0; i < 64; i++)
     d->tab[i] = ((i - 32) * gap) / 64;
 
   return 1;
-}
-
-/* Per-channel level count driving the dither bias for a deep->paletted
- * pixelmap: the worst (fewest-level) of R/G/B, since one shared bias table
- * nudges all three channels. */
-static int dither_levels_for(const pixelmap_t *pm)
-{
-  return 1 << MIN(pm->rbits, MIN(pm->gbits, pm->bbits));
 }
 
 /* Apply the pre-built bias for sprite-local pixel (sx, sy) to channel value
@@ -734,7 +724,7 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
   if (pm == NULL)
     return result_NOT_SUPPORTED;
 
-  do_dither = dither_bias_build(&bias,dither_levels_for(pm), dither);
+  do_dither = dither_bias_build(&bias, pm->step * 3 / 4, dither);
 
   if (src->format == pixelfmt_p4 && !do_dither)
     return screen_copy_bitmap_p4_from_p4(scr, x, y, src, draw_box, has_alpha,
@@ -821,7 +811,7 @@ static result_t screen_copy_bitmap_p8(screen_t       *scr,
   if (pm == NULL)
     return result_NOT_SUPPORTED;
 
-  do_dither = dither_bias_build(&bias,dither_levels_for(pm), dither);
+  do_dither = dither_bias_build(&bias, pm->step * 3 / 4, dither);
 
   for (yy = 0; yy < clipped_height; yy++)
   {
@@ -900,7 +890,7 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
   if (pm == NULL)
     return result_NOT_SUPPORTED;
 
-  do_dither = dither_bias_build(&bias,dither_levels_for(pm), dither);
+  do_dither = dither_bias_build(&bias, pm->step * 3 / 4, dither);
 
   for (yy = 0; yy < clipped_height; yy++)
   {
@@ -983,7 +973,7 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
   if (pm == NULL)
     return result_NOT_SUPPORTED;
 
-  do_dither = dither_bias_build(&bias,dither_levels_for(pm), dither);
+  do_dither = dither_bias_build(&bias, pm->step * 3 / 4, dither);
 
   for (yy = 0; yy < clipped_height; yy++)
   {
@@ -1132,7 +1122,7 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
 
   /* 5 bits is the coarsest channel of either format. colour_to_pixel
    * truncates, so the bias is lifted by half a step to keep it unbiased. */
-  do_dither = dither_bias_build(&bias, 32, dither);
+  do_dither = dither_bias_build(&bias, 255 / 31, dither);
 
   dstrow = scr->base;
   dstrow += draw_box->y0 * scr->rowbytes / (int) sizeof(*dstrow) + draw_box->x0;
@@ -1253,7 +1243,7 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
 
 result_t screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
 {
-  return screen_copy_bitmap_i(scr, x, y, src, screen_DITHER_NONE);
+  return screen_copy_bitmap_i(scr, x, y, src, screen_DITHER_NEAREST);
 }
 
 result_t screen_copy_bitmap_dithered(screen_t       *scr,

@@ -44,33 +44,37 @@ static int64_t resize_lerp(int64_t v00,
 #define LINEAR_MAX   65535
 #define ENCODE_SIZE  4096 /* entries in the linear-to-sRGB table */
 
-static uint16_t resize_decode[256];
-static uint8_t  resize_encode[ENCODE_SIZE];
-static int      resize_tables_ready;
+static struct
+{
+  uint16_t decode[256];
+  uint8_t  encode[ENCODE_SIZE];
+  int      tables_ready;
+}
+g;
 
 static void resize_make_tables(void)
 {
   int    i;
   double c;
 
-  if (resize_tables_ready)
+  if (g.tables_ready)
     return;
 
   for (i = 0; i < 256; i++)
   {
     c = i / 255.0;
     c = c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4);
-    resize_decode[i] = (uint16_t) (c * LINEAR_MAX + 0.5);
+    g.decode[i] = (uint16_t) (c * LINEAR_MAX + 0.5);
   }
 
   for (i = 0; i < ENCODE_SIZE; i++)
   {
     c = i / (double) (ENCODE_SIZE - 1);
     c = c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1 / 2.4) - 0.055;
-    resize_encode[i] = (uint8_t) (c * 255 + 0.5);
+    g.encode[i] = (uint8_t) (c * 255 + 0.5);
   }
 
-  resize_tables_ready = 1;
+  g.tables_ready = 1;
 }
 
 /* Lane of a 32bpp pixel that is not a colour (alpha or padding): always
@@ -136,7 +140,7 @@ static void resize_box(const bitmap_t *src,
           w  = wx * wy;
           total += w;
           for (c = 0; c < 4; c++)
-            acc[c] += w * (linear && c != other ? resize_decode[sp[c]]
+            acc[c] += w * (linear && c != other ? g.decode[sp[c]]
                                                 : sp[c]);
         }
       }
@@ -147,7 +151,7 @@ static void resize_box(const bitmap_t *src,
         if (linear && c != other)
         {
           v = (int) (acc[c] * (ENCODE_SIZE - 1) / LINEAR_MAX + 0.5);
-          px[c] = resize_encode[MIN(v, ENCODE_SIZE - 1)];
+          px[c] = g.encode[MIN(v, ENCODE_SIZE - 1)];
         }
         else
         {
@@ -212,7 +216,7 @@ static void resize_cubic(const bitmap_t *src,
           sp = (const uint8_t *) src->base + (size_t) sy * src->rowbytes +
                (size_t) sx * 4;
           for (c = 0; c < 4; c++)
-            row[c] += wx[i] * (linear && c != other ? resize_decode[sp[c]]
+            row[c] += wx[i] * (linear && c != other ? g.decode[sp[c]]
                                                     : sp[c]);
         }
         for (c = 0; c < 4; c++)
@@ -224,7 +228,7 @@ static void resize_cubic(const bitmap_t *src,
         if (linear && c != other)
         {
           v = (int) (acc[c] * (ENCODE_SIZE - 1) / LINEAR_MAX + 0.5);
-          px[c] = resize_encode[CLAMP(v, 0, ENCODE_SIZE - 1)];
+          px[c] = g.encode[CLAMP(v, 0, ENCODE_SIZE - 1)];
         }
         else
         {
@@ -341,13 +345,13 @@ result_t bitmap_resize(const bitmap_t   *src,
       {
         if (linear && c != other)
         {
-          v = resize_lerp(resize_decode[row0[x0 * 4 + c]],
-                          resize_decode[row0[x1 * 4 + c]],
-                          resize_decode[row1[x0 * 4 + c]],
-                          resize_decode[row1[x1 * 4 + c]], wx, wy);
-          px[c] = resize_encode[MIN((v * (ENCODE_SIZE - 1) +
-                                     LINEAR_MAX / 2) / LINEAR_MAX,
-                                    ENCODE_SIZE - 1)];
+          v = resize_lerp(g.decode[row0[x0 * 4 + c]],
+                          g.decode[row0[x1 * 4 + c]],
+                          g.decode[row1[x0 * 4 + c]],
+                          g.decode[row1[x1 * 4 + c]], wx, wy);
+          px[c] = g.encode[MIN((v * (ENCODE_SIZE - 1) +
+                                LINEAR_MAX / 2) / LINEAR_MAX,
+                               ENCODE_SIZE - 1)];
         }
         else
         {

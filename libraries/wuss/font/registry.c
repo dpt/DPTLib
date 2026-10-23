@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <limits.h>
 
+#include "base/utils.h"
 #include "framebuf/bmfont.h"
 
 #include "wuss/wuss.h"
@@ -19,24 +20,36 @@ void wuss__fontset_init(struct wuss_fontset    *set,
   assert(set != NULL);
   assert(nfonts >= 0 && nfonts <= wuss_MAX_FONTS);
 
-  for (i = 0; i < nfonts; i++)
-  {
-    set->fonts[i]        = fonts[i].font;
-    set->font_classes[i] = fonts[i].font_class;
-    set->font_names[i]   = fonts[i].name;
-    set->space_widths[i] = 0;
-    if (fonts[i].font != NULL)
-      wuss__text_measure(fonts[i].font, " ", 1, INT_MAX, NULL,
-                         &set->space_widths[i]);
-  }
-  for (; i < wuss_MAX_FONTS; i++)
+  for (i = 0; i < wuss_MAX_FONTS; i++)
   {
     set->fonts[i]        = NULL;
     set->font_classes[i] = wuss_FONT_CLASS_NONE;
     set->font_names[i]   = NULL;
     set->space_widths[i] = 0;
   }
-  set->nfonts = nfonts;
+  set->nfonts = 0;
+
+  for (i = 0; i < nfonts; i++)
+    wuss__fontset_set(set, i, &fonts[i]);
+}
+
+void wuss__fontset_set(struct wuss_fontset    *set,
+                       int                     slot,
+                       const wuss_font_desc_t *desc)
+{
+  assert(set != NULL);
+  assert(slot >= 0 && slot < wuss_MAX_FONTS);
+  assert(desc != NULL);
+
+  set->fonts[slot]        = desc->font;
+  set->font_classes[slot] = desc->font_class;
+  set->font_names[slot]   = desc->name;
+  set->space_widths[slot] = 0;
+  if (desc->font != NULL)
+    wuss__text_measure(desc->font, " ", 1, INT_MAX, NULL,
+                       &set->space_widths[slot]);
+
+  set->nfonts = MAX(set->nfonts, slot + 1);
 }
 
 int wuss__fontset_height(const struct wuss_fontset *set, int slot)

@@ -48,7 +48,7 @@ result_t wuss_iconpool_test(const char *resources)
 
   {
     const bitmap_t *icon_bm;
-    int             idx, opton, count;
+    int             idx, opton, deep, count;
 
     rc = wuss_iconpool_load_resource(wuss, resources);
     if (rc != result_OK)
@@ -66,7 +66,12 @@ result_t wuss_iconpool_test(const char *resources)
     if (wuss_iconpool_lookup(wuss, "nonesuch") != -1)
       goto Failure;
 
-    icon_bm = wuss_iconpool_bitmap(wuss, opton);
+    /* only 32bpp icons get RLE-compressed: opton is plain grey (stays as
+     * loaded), radoff is grey+alpha (expanded to 32bpp) */
+    if (wuss_iconpool_bitmap(wuss, opton) == NULL)
+      goto Failure;
+    deep    = wuss_iconpool_lookup(wuss, "radoff");
+    icon_bm = wuss_iconpool_bitmap(wuss, deep);
     if (icon_bm == NULL || !bitmap_is_compressed(icon_bm))
       goto Failure;
     if (wuss_iconpool_bitmap(wuss, count) != NULL)
@@ -170,6 +175,24 @@ result_t wuss_iconpool_test(const char *resources)
       wuss_window_close(win_ic);
     }
 
+    /* entries know their names; out-of-range indices have none */
+    if (wuss_iconpool_name(wuss, opton) == NULL ||
+        strcmp(wuss_iconpool_name(wuss, opton), "opton") != 0 ||
+        wuss_iconpool_name(wuss, -1) != NULL ||
+        wuss_iconpool_name(wuss, count) != NULL)
+      goto Failure;
+
+    /* NULL and overlong directories are refused */
+    {
+      static char longdir[300];
+
+      memset(longdir, 'x', sizeof(longdir) - 1);
+      if (wuss_iconpool_load(wuss, NULL) != result_NULL_ARG ||
+          wuss_iconpool_load_resource(wuss, NULL) != result_NULL_ARG ||
+          wuss_iconpool_load(wuss, longdir) != result_BAD_ARG)
+        goto Failure;
+    }
+
     /* a reload replaces the set cleanly (no leak, ASan would catch it) */
     rc = wuss_iconpool_load_resource(wuss, resources);
     if (rc != result_OK || wuss_iconpool_count(wuss) != count)
@@ -188,7 +211,7 @@ result_t wuss_iconpool_test(const char *resources)
       screen_t      p4scr;
       pixelfmt_t    fmt32;
 
-      icon_bm = wuss_iconpool_bitmap(wuss, opton);
+      icon_bm = wuss_iconpool_bitmap(wuss, deep);
       fmt32   = pixelfmt_base(icon_bm->format);
       if (fmt32 != pixelfmt_bgra8888 && fmt32 != pixelfmt_bgrx8888)
         goto Failure;
@@ -202,7 +225,7 @@ result_t wuss_iconpool_test(const char *resources)
       rc = wuss_resize(wuss, &p4scr);
       if (rc != result_OK)
         goto Failure;
-      if (wuss_iconpool_bitmap(wuss, opton) != icon_bm ||
+      if (wuss_iconpool_bitmap(wuss, deep) != icon_bm ||
           !bitmap_is_compressed(icon_bm) ||
           (pixelfmt_base(icon_bm->format) != pixelfmt_rgba8888 &&
            pixelfmt_base(icon_bm->format) != pixelfmt_rgbx8888))
@@ -211,7 +234,7 @@ result_t wuss_iconpool_test(const char *resources)
       rc = wuss_resize(wuss, &fixture.scr);
       if (rc != result_OK)
         goto Failure;
-      if (wuss_iconpool_bitmap(wuss, opton) != icon_bm ||
+      if (wuss_iconpool_bitmap(wuss, deep) != icon_bm ||
           pixelfmt_base(icon_bm->format) != fmt32)
         goto Failure;
     }
@@ -222,7 +245,7 @@ result_t wuss_iconpool_test(const char *resources)
   {
     int idx;
 
-    rc = wuss_iconpool_load(wuss, pathf("%s/resources/wuss-test/icons",
+    rc = wuss_iconpool_load(wuss, pathf("%s/resources/test/wuss/icons",
                                      resources));
     if (rc != result_OK)
       goto Failure;
@@ -247,7 +270,7 @@ result_t wuss_iconpool_test(const char *resources)
       goto Failure;
 
     /* a file that isn't a PNG fails the whole load */
-    if (wuss_iconpool_load(wuss, pathf("%s/resources/wuss-test/badicons",
+    if (wuss_iconpool_load(wuss, pathf("%s/resources/test/wuss/badicons",
                                     resources)) == result_OK)
       goto Failure;
 
@@ -269,7 +292,7 @@ result_t wuss_iconpool_test(const char *resources)
     const char        *dir_pp;
     const bitmap_t    *priv;
 
-    dir_pp = pathf("%s/resources/wuss-test/icons", resources);
+    dir_pp = pathf("%s/resources/test/wuss/icons", resources);
 
     memset(&tc_pp, 0, sizeof(tc_pp));
     delegate_pp = mk_task(wuss, test_handle, &tc_pp);
@@ -351,11 +374,49 @@ result_t wuss_iconpool_test(const char *resources)
     /* a bad directory fails the load and leaves the pool empty, as for the
      * shared pool; the task falls back to the shared one */
     if (wuss_task_iconpool_load(delegate_pp,
-                                pathf("%s/resources/wuss-test/badicons",
+                                pathf("%s/resources/test/wuss/badicons",
                                       resources)) == result_OK ||
         wuss_task_iconpool_find(delegate_pp, "rgba") !=
           wuss_iconpool_bitmap(wuss, wuss_iconpool_lookup(wuss, "rgba")))
       goto Failure;
+
+    /* a task's resource pool lives under wuss-tasks/<task name>/iconpool;
+     * a task with no name or one too long for the path is refused */
+    {
+      static test_task_t tc_rs;
+      static char        longname[300];
+      wuss_task_desc_t   desc;
+      wuss_task_t       *task_rs;
+
+      if (wuss_task_iconpool_load(delegate_pp, NULL) != result_NULL_ARG ||
+          wuss_task_iconpool_load_resource(delegate_pp, NULL) !=
+            result_NULL_ARG)
+        goto Failure;
+
+      memset(&tc_rs, 0, sizeof(tc_rs));
+      desc.handle    = test_handle;
+      desc.task_data = &tc_rs;
+      desc.name      = "minesweeping";
+      rc = wuss_task_create(wuss, &desc, &task_rs);
+      if (rc != result_OK)
+        goto Failure;
+      rc = wuss_task_iconpool_load_resource(task_rs, resources);
+      if (rc != result_OK || task_rs->iconpool.nbitmaps == 0)
+        goto Failure;
+
+      task_rs->name = NULL;
+      if (wuss_task_iconpool_load_resource(task_rs, resources) !=
+          result_BAD_ARG)
+        goto Failure;
+
+      memset(longname, 'x', sizeof(longname) - 1);
+      task_rs->name = longname;
+      if (wuss_task_iconpool_load_resource(task_rs, resources) !=
+          result_BAD_ARG)
+        goto Failure;
+
+      wuss_task_destroy(task_rs);
+    }
 
     /* the standard shared set goes back for the tests that follow; the
      * private pool is freed with its task (ASan would catch a leak) */

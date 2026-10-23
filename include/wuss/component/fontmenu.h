@@ -33,17 +33,32 @@ extern "C"
 
 /* ----------------------------------------------------------------------- */
 
+/** Options for wuss_fontmenu_menu. */
+typedef enum wuss_fontmenu_flags
+{
+  wuss_FONTMENU_NONE     = 0,
+
+  /**
+   * List families, not faces: one item per family, labelled with the family
+   * name alone, e.g. "GrongyUI". wuss_fontmenu_selected then returns that
+   * family name; pick a face from it with bmfontfamily_scan and friends.
+   */
+  wuss_FONTMENU_FAMILIES = 1 << 0
+}
+wuss_fontmenu_flags_t;
+
 /**
- * The singleton menu to hand to wuss_menu_open, built (or rebuilt, if \p dir
- * or \p wuss differ from the call that built it) from the fonts under \p dir
- * (see bmfont_enumerate): one leaf item per face, alphabetically sorted, its
- * label "Family Style", e.g. "GrongyUI Bold".
+ * The singleton menu to hand to wuss_menu_open, built (or rebuilt, if \p
+ * dir, \p wuss or \p flags differ from the call that built it) from the
+ * fonts under \p dir (see bmfont_enumerate): one leaf item per face,
+ * alphabetically sorted, its label "Family Style", e.g. "GrongyUI Bold" --
+ * or one per family with \ref wuss_FONTMENU_FAMILIES.
  *
  * Because the menu is shared, two callers wanting different directories (or
  * different \p wuss skip-lists) open at once cannot each have it wired into
  * their tree at the same time -- rebuild it from a wuss_EVENT_PRE_SUBMENU_
  * OPEN handler instead, the way the colourmenu singleton's fg/bg split does
- * (see wuss/tasks/reading.c).
+ * (see apps/wuss/tasks/reading/reading.c).
  *
  * \param[in] dir   Directory to scan for fonts.
  * \param[in] title Menu caption, borrowed and copied; NULL for "Font".
@@ -54,13 +69,15 @@ extern "C"
  *                  label or its family name is skipped -- e.g. the symbol
  *                  font wuss itself draws menu ticks and submenu arrows
  *                  from, which is not meant to be picked as a text font.
+ * \param[in] flags A set of wuss_FONTMENU_* values.
  * \return The menu, borrowed and valid until the next call that rebuilds it,
  *         or NULL if \p dir is NULL or the build failed (OOM or \p dir could
  *         not be opened).
  */
-const wuss_menu_t *wuss_fontmenu_menu(const char   *dir,
-                                      const char   *title,
-                                      const wuss_t *wuss);
+const wuss_menu_t *wuss_fontmenu_menu(const char           *dir,
+                                      const char           *title,
+                                      const wuss_t         *wuss,
+                                      wuss_fontmenu_flags_t flags);
 
 /**
  * Resolve a wuss_EVENT_MENU_SELECT event to the picked font's name.
@@ -70,8 +87,10 @@ const wuss_menu_t *wuss_fontmenu_menu(const char   *dir,
  * singleton's own.
  *
  * \param[in] ev The event passed to the task's handle callback.
- * \return The selected font's name (borrowed, valid until the next call that
- *         rebuilds the singleton), or NULL if \p ev is not the fontmenu's.
+ * \return The selected font's name -- its family name if the menu was built
+ *         with \ref wuss_FONTMENU_FAMILIES -- (borrowed, valid until the
+ *         next call that rebuilds the singleton), or NULL if \p ev is not
+ *         the fontmenu's.
  */
 const char *wuss_fontmenu_selected(const wuss_event_t *ev);
 

@@ -4,12 +4,10 @@
 
 #include "../impl.h"
 
-void wuss_window_set_stack(wuss_window_t *window, wuss_stack_t stack)
+static void set_stack_one(wuss_window_t *window, wuss_stack_t stack)
 {
   wuss_t *wuss;
   int     hidden, forward;
-
-  assert((int) stack >= 0 && (int) stack < WUSS_STACK_COUNT);
 
   if (window->stack == stack)
     return;
@@ -30,4 +28,18 @@ void wuss_window_set_stack(wuss_window_t *window, wuss_stack_t stack)
 
   if (!forward && !hidden)
     wuss__invalidate_uncovered(window);
+}
+
+/* A toolbar group moves stack as one, toolbars landing above the parent. */
+void wuss_window_set_stack(wuss_window_t *window, wuss_stack_t stack)
+{
+  wuss_window_t *tb;
+
+  assert((int) stack >= 0 && (int) stack < WUSS_STACK_COUNT);
+
+  window = wuss__toolbar_root(window);
+
+  set_stack_one(window, stack);
+  for (tb = window->toolbar.first; tb != NULL; tb = tb->toolbar.next)
+    set_stack_one(tb, stack);
 }

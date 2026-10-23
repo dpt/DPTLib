@@ -43,15 +43,15 @@ static struct
   bool          emitted;   /* input sent since the last frame boundary */
   bool          failed;
 }
-g_script;
+g;
 
 /* ----------------------------------------------------------------------- */
 
 static void script_error(const char *msg, const char *arg)
 {
-  fprintf(stderr, "%s:%d: %s%s%s\n", g_script.name, g_script.lineno, msg,
+  fprintf(stderr, "%s:%d: %s%s%s\n", g.name, g.lineno, msg,
           arg ? ": " : "", arg ? arg : "");
-  g_script.failed = true;
+  g.failed = true;
 }
 
 /* Splits off the next space-separated word of *p, or a "quoted" run.
@@ -272,7 +272,7 @@ static void dump(wuss_t *wuss)
 
   focus = wuss_get_focus(wuss);
 
-  printf("dump %s:%d\n", g_script.name, g_script.lineno);
+  printf("dump %s:%d\n", g.name, g.lineno);
   for (stack = 0; stack < WUSS_STACK_COUNT; stack++)
   {
     for (link = wuss->z_order[stack].next; link != NULL; link = link->next)
@@ -322,26 +322,26 @@ result_t script_save_png(const bitmap_t *bm, const char *filename)
 
 result_t script_open(const char *filename)
 {
-  memset(&g_script, 0, sizeof(g_script));
+  memset(&g, 0, sizeof(g));
 
-  g_script.f = fopen(filename, "r");
-  if (g_script.f == NULL)
+  g.f = fopen(filename, "r");
+  if (g.f == NULL)
   {
     fprintf(stderr, "wuss: cannot open script \"%s\"\n", filename);
     return result_NOT_FOUND;
   }
 
-  g_script.name = filename;
+  g.name = filename;
   return result_OK;
 }
 
 result_t script_close(void)
 {
-  if (g_script.f != NULL)
-    fclose(g_script.f);
-  g_script.f = NULL;
+  if (g.f != NULL)
+    fclose(g.f);
+  g.f = NULL;
 
-  return g_script.failed ? result_BAD_ARG : result_OK;
+  return g.failed ? result_BAD_ARG : result_OK;
 }
 
 static double script_now(void)
@@ -356,7 +356,7 @@ static double script_now(void)
 /* Ends the script's part of the current frame. */
 static bool end_frame(void)
 {
-  g_script.emitted = false;
+  g.emitted = false;
   return false;
 }
 
@@ -367,7 +367,7 @@ static void queue_input(wuss_input_kind_t    kind,
 {
   wuss_input_t *ev;
 
-  ev = &g_script.queue[g_script.qtail++];
+  ev = &g.queue[g.qtail++];
   memset(ev, 0, sizeof(*ev));
   ev->kind   = kind;
   ev->pos    = pos;
@@ -387,55 +387,55 @@ bool script_poll(wuss_t *wuss, const bitmap_t *bm, wuss_input_t *ev)
 
   for (;;)
   {
-    if (g_script.qhead < g_script.qtail)
+    if (g.qhead < g.qtail)
     {
-      *ev = g_script.queue[g_script.qhead++];
-      g_script.emitted = true;
+      *ev = g.queue[g.qhead++];
+      g.emitted = true;
       return true;
     }
-    g_script.qhead = g_script.qtail = 0;
+    g.qhead = g.qtail = 0;
 
-    if (g_script.text_pos != NULL && *g_script.text_pos != '\0')
+    if (g.text_pos != NULL && *g.text_pos != '\0')
     {
       memset(ev, 0, sizeof(*ev));
       ev->kind = wuss_INPUT_KEY;
-      ev->key  = (unsigned char) *g_script.text_pos++;
-      g_script.emitted = true;
+      ev->key  = (unsigned char) *g.text_pos++;
+      g.emitted = true;
       return true;
     }
 
-    if (g_script.wait > 0)
+    if (g.wait > 0)
     {
-      g_script.wait--;
+      g.wait--;
       return end_frame();
     }
 
-    if (g_script.until > 0.0)
+    if (g.until > 0.0)
     {
-      if (script_now() < g_script.until)
+      if (script_now() < g.until)
         return end_frame();
 
-      g_script.until = 0.0;
+      g.until = 0.0;
     }
 
-    if (g_script.f == NULL)
+    if (g.f == NULL)
       return end_frame();
 
-    if (!g_script.held)
+    if (!g.held)
     {
-      if (g_script.failed ||
-          fgets(g_script.line, sizeof(g_script.line), g_script.f) == NULL)
+      if (g.failed ||
+          fgets(g.line, sizeof(g.line), g.f) == NULL)
       {
-        fclose(g_script.f);
-        g_script.f = NULL;
+        fclose(g.f);
+        g.f = NULL;
         memset(ev, 0, sizeof(*ev));
         ev->kind = wuss_INPUT_QUIT;
         return true;
       }
-      g_script.lineno++;
+      g.lineno++;
     }
 
-    p   = g_script.line;
+    p   = g.line;
     cmd = next_token(&p);
     if (cmd == NULL)
       continue;
@@ -443,15 +443,15 @@ bool script_poll(wuss_t *wuss, const bitmap_t *bm, wuss_input_t *ev)
     if (strcmp(cmd, "dump") == 0 || strcmp(cmd, "png") == 0)
     {
       /* let the input already sent this frame be redrawn first */
-      if (g_script.emitted)
+      if (g.emitted)
       {
         /* next_token cut the line at cmd; put the separator back */
         if (p > cmd + strlen(cmd))
           cmd[strlen(cmd)] = ' ';
-        g_script.held = true;
+        g.held = true;
         return end_frame();
       }
-      g_script.held = false;
+      g.held = false;
 
       if (cmd[0] == 'd')
       {
@@ -504,7 +504,7 @@ bool script_poll(wuss_t *wuss, const bitmap_t *bm, wuss_input_t *ev)
                                              : wuss_INPUT_KEY_UP;
         ev->key  = key;
         ev->mods = mods;
-        g_script.emitted = true;
+        g.emitted = true;
         return true;
       }
     }
@@ -517,24 +517,24 @@ bool script_poll(wuss_t *wuss, const bitmap_t *bm, wuss_input_t *ev)
       }
       else
       {
-        snprintf(g_script.text, sizeof(g_script.text), "%s", arg);
-        g_script.text_pos = g_script.text;
+        snprintf(g.text, sizeof(g.text), "%s", arg);
+        g.text_pos = g.text;
       }
     }
     else if (strcmp(cmd, "wait") == 0)
     {
       arg = next_token(&p);
-      g_script.wait = arg ? atoi(arg) : 1;
+      g.wait = arg ? atoi(arg) : 1;
     }
     else if (strcmp(cmd, "sleep") == 0)
     {
       arg = next_token(&p);
-      g_script.until = script_now() + (arg ? atof(arg) : 1.0);
+      g.until = script_now() + (arg ? atof(arg) : 1.0);
     }
     else if (strcmp(cmd, "quit") == 0)
     {
-      fclose(g_script.f);
-      g_script.f = NULL;
+      fclose(g.f);
+      g.f = NULL;
       memset(ev, 0, sizeof(*ev));
       ev->kind = wuss_INPUT_QUIT;
       return true;

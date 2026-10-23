@@ -22,6 +22,13 @@ result_t wuss__broadcast_palette(wuss_t *wuss);
  * part-updated on a bad colour -- the caller discards or restores w. */
 result_t wuss__apply_config(wuss_t *w, const wuss_config_t *config);
 
+#ifdef WUSS_FURNITURE
+/* Titlebar height derived from w's current fonts: the taller of the regular
+ * and bold faces plus a margin, or WUSS_DEFAULT_TITLEBAR_HEIGHT if both
+ * slots are empty. Used when the config gives no explicit height. */
+int wuss__titlebar_height_auto(const wuss_t *w);
+#endif
+
 /* Concrete 0..npalette-1 palette index for any wuss_colour_t: a symbolic
  * value (>= wuss_COLOUR_SYMBOLIC, bar wuss_NO_BACKGROUND) via the cache,
  * everything else -- raw indices, wuss_NO_BACKGROUND -- unchanged. */
@@ -69,14 +76,17 @@ void wuss__fill_index(const wuss_t *wuss,
                       int           origin_y);
 
 /* As wuss__fill_index for the desktop colour whose RGB equals "colour"
- * (screen-phased); a plain screen_fill_rect if no palette entry matches.
- * For chrome code that holds colour_t values rather than indices.
+ * (phased against "origin"); a plain screen_fill_rect if no palette entry
+ * matches. For chrome code that holds colour_t values rather than indices.
+ * Pass the same origin the window's own background uses (content origin
+ * less scroll) so dithered fills line up with it and survive blits.
  * ponytail: linear reverse lookup, fine for <=128 entries; pass indices
  * through if it shows in a profile. */
 void wuss__fill_colour(const wuss_t *wuss,
                        screen_t     *scr,
                        const box_t  *area,
-                       colour_t      colour);
+                       colour_t      colour,
+                       point_t       origin);
 
 /* wuss__fill_area for backdrop->fill, then backdrop->image centred on the
  * screen. */

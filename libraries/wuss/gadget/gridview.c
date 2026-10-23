@@ -311,6 +311,14 @@ static box_t gridview_cell_box(const wuss_gridview_t *gv, int index)
                               gv->cell.w, gv->cell.h);
 }
 
+/* Document origin in screen space for a redraw event: the phase the
+ * window's own background fill uses, so dithered fills line up with it. */
+static point_t gridview_origin(const wuss_event_t *event)
+{
+  return POINT(event->data.redraw.bounds->x0 - event->data.redraw.scroll.x,
+               event->data.redraw.bounds->y0 - event->data.redraw.scroll.y);
+}
+
 /* Item index under document point "p", or -1 if none (including gaps and
  * past the last item). */
 static int gridview_hit_test(const wuss_gridview_t *gv, point_t p)
@@ -437,7 +445,8 @@ static void gridview_draw_cell(wuss_gridview_t    *gv,
   bg = wuss_gridview_is_selected(gv, index)
      ? wuss->palette[wuss->accent]
      : wuss->palette[wuss->body.window];
-  wuss__fill_colour(wuss, &clipped, &screen_box, bg);
+  wuss__fill_colour(wuss, &clipped, &screen_box, bg,
+                    gridview_origin(event));
   if (wuss_gridview_is_selected(gv, index))
   {
     colour_t tmp = fg;
@@ -532,7 +541,8 @@ int wuss_gridview_handle_event(wuss_gridview_t    *gv,
     content = *event->data.redraw.content;
     wuss__fill_colour(wuss, event->data.redraw.scr, &content,
                       gv->has_bg ? gv->bg
-                                 : wuss->palette[wuss->body.window]);
+                                 : wuss->palette[wuss->body.window],
+                      gridview_origin(event));
 
     /* only the rows the clip reaches */
     clip_y0 = MAX(event->data.redraw.scr->clip.y0, content.y0);
@@ -874,7 +884,7 @@ result_t wuss_gridview_window_create(wuss_gridview_t            **out,
                                      wuss_window_t              **window)
 {
   static const wuss_place_t spare = { wuss_PLACE_SPARE, wuss_ALIGN_CENTRE,
-                                       NULL, { 0, 0 } };
+                                       NULL, { 0, 0 }, { 0, 0, 0, 0 } };
 
   result_t       rc;
   wuss_window_t *win;
@@ -906,7 +916,10 @@ result_t wuss_gridview_window_create(wuss_gridview_t            **out,
   return result_OK;
 }
 
-void wuss_gridview_fit_window(wuss_gridview_t *gv, int columns, int max_rows)
+void wuss_gridview_fit_window(wuss_gridview_t    *gv,
+                              int                 columns,
+                              int                 max_rows,
+                              const wuss_place_t *place)
 {
   box_t    content;
   int      cols;
@@ -924,4 +937,7 @@ void wuss_gridview_fit_window(wuss_gridview_t *gv, int columns, int max_rows)
     size = wuss_gridview_natural_size(gv, MAX(cols, 1), max_rows);
     (void) wuss_window_resize(gv->window, size);
   }
+
+  if (place != NULL)
+    (void) wuss_window_place(gv->window, place);
 }

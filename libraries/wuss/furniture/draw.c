@@ -28,11 +28,13 @@ static const point_t WUSS_TITLE_SHADOW_OFFSET = { 1, 1 };
 /* Paint one furniture rectangle "b" in "colour", clipped to the part of it
  * that falls inside "full" (the redraw region). A no-op when "b" is wholly
  * outside "full". Pins scr->clip to the clipped rect -- the caller's next
- * draw is expected to set its own clip. */
-static void fill_furniture_rect(wuss_t      *wuss,
-                                const box_t *b,
-                                const box_t *full,
-                                colour_t     colour)
+ * draw is expected to set its own clip. Phased against the window's corner
+ * so dithered fills travel with it when a move blits the pixels. */
+static void fill_furniture_rect(wuss_t              *wuss,
+                                const wuss_window_t *window,
+                                const box_t         *b,
+                                const box_t         *full,
+                                colour_t             colour)
 {
   box_t clipped;
 
@@ -40,18 +42,22 @@ static void fill_furniture_rect(wuss_t      *wuss,
     return; /* wholly outside the redraw region */
 
   wuss->scr->clip = clipped;
-  wuss__fill_colour(wuss, wuss->scr, b, colour);
+  wuss__fill_colour(wuss, wuss->scr, b, colour,
+                    POINT(window->visible.x0, window->visible.y0));
 }
 
-/* The titlebar fill: the focus tint while "window" holds the input focus. */
+/* The titlebar fill: the focus tint while "window", or one of its toolbars,
+ * holds the input focus. */
 static colour_t title_bg(const wuss_t *wuss, const wuss_window_t *window)
 {
   const wuss_furniture_palette_t *fc;
+  int                             focused;
 
-  fc = &wuss->furniture_colours;
+  fc      = &wuss->furniture_colours;
+  focused = wuss->focus != NULL &&
+            (wuss->focus == window || wuss->focus->toolbar.parent == window);
 
-  return wuss->palette[(wuss->focus == window) ? fc->title.focus_bg
-                                               : fc->title.bg];
+  return wuss->palette[focused ? fc->title.focus_bg : fc->title.bg];
 }
 
 /* Resolve a cached piece's paint class to a concrete palette colour. */
@@ -176,7 +182,8 @@ static void draw_title(wuss_t        *wuss,
     fill.x0 = text_x0;
     fill.x1 = text_x1;
     fill.y1 -= WUSS_DIVIDER_PX;
-    wuss__fill_colour(wuss, wuss->scr, &fill, title_bg(wuss, window));
+    wuss__fill_colour(wuss, wuss->scr, &fill, title_bg(wuss, window),
+                      POINT(window->visible.x0, window->visible.y0));
   }
 
   bmfont_draw_relief(titlefont, wuss->scr, window->title, titlelen,
@@ -222,7 +229,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     const wuss__furniture_piece_t *piece;
 
     piece = &window->furniture_layout.pieces[i];
-    fill_furniture_rect(wuss, &piece->rect, full,
+    fill_furniture_rect(wuss, window, &piece->rect, full,
                         paint_colour(wuss, window, piece->paint));
   }
 
@@ -231,14 +238,14 @@ void wuss__furniture_draw(wuss_t        *wuss,
   if (window->flags & wuss_WINDOW_VSCROLL)
   {
     wuss__vscroll_sausage_box(window, &sausage);
-    fill_furniture_rect(wuss, &sausage, full,
+    fill_furniture_rect(wuss, window, &sausage, full,
                         wuss->palette[wuss->furniture_colours.scroll.sausages]);
   }
 
   if (window->flags & wuss_WINDOW_HSCROLL)
   {
     wuss__hscroll_sausage_box(window, &sausage);
-    fill_furniture_rect(wuss, &sausage, full,
+    fill_furniture_rect(wuss, window, &sausage, full,
                         wuss->palette[wuss->furniture_colours.scroll.sausages]);
   }
 
@@ -251,7 +258,7 @@ void wuss__furniture_draw(wuss_t        *wuss,
     box_t pressed;
 
     wuss__furniture_pressed_box(window, window->wuss->furniture.pressed_region, &pressed);
-    fill_furniture_rect(wuss, &pressed, full,
+    fill_furniture_rect(wuss, window, &pressed, full,
                         wuss->palette[wuss->furniture_colours.pressed]);
   }
 

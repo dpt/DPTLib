@@ -10,6 +10,80 @@ _Unreleased_ until one is cut.
 
 ### Added
 
+- `geom/stage.h`: lays out a document background (a page in a margin, with a
+  stroked border and optional drop shadow, centred on a pasteboard) as a list
+  of tagged boxes to fill. Ported from PrivateEye's `stage`, with `box_t` in
+  place of `os_box` and `stageconfig_t::log2_pixel_x`/`log2_pixel_y` in place
+  of the RISC OS pixel size query. Viewing uses it: a Stage option (on by
+  default) draws the image on a page over a pasteboard, and its Background
+  menu becomes Colours (Pasteboard, Paper, Shadow and Border).
+- `framebuf/colourspace.h`: converts sRGB to and from CMYK, HSL, HSV and
+  OKLab as unclamped doubles, so out-of-gamut values survive round trips;
+  `colourspace_to_colour()` clamps and quantises. Also parses `#RRGGBB` and
+  `#RGB` hex colours.
+- `wuss_colourpicker`: a true-colour picker dialogue (RGB, CMYK, HSL, HSV or
+  OKLab, old and new swatches, hex field) reporting every change live.
+  Orbing's Light colour... (C) uses it.
+- `wuss_window_attach()` / `wuss_window_detach()`: toolbar windows attached
+  to a parent's left, right, top or bottom edge. The group moves, restacks,
+  hides, shows and closes together; a click on a toolbar gives the focus to
+  its parent. Painting's toolbox splits into a left-edge tool bar and a
+  bottom-edge option bar holding the colours, the desktop palette and the
+  size slider.
+- `wuss_swatches_t` gadget: a grid of flat colour cells with hit testing,
+  used by Palette and Painting.
+- Window placement near the pointer (`wuss_PLACE_POINTER`) within a safe
+  area (the screen inset by 8px at the left, top and right and 47px at the
+  bottom). Windows too large for the area shrink, `wuss_place_t::extra`
+  reserves room for attached toolbars and `wuss_window_place()` re-places an
+  open window. `wuss_iconbar_window_open()` opens a dialogue where an icon
+  bar menu would open. Dithering, Effecting and Resizing now open their
+  window with the first image, sized to it, rather than growing a
+  placeholder.
+- `wuss_set_font()` replaces a font slot mid-session, re-deriving the
+  titlebar height and relaying out windows. Configuring gains a Font frame
+  to set the system font.
+- `wuss_colourset_set_rgb()`: colour set fields show an exact 24-bit
+  colour, not just the nearest palette entry.
+- `wuss_dialogue_handle_pre_close()`: runs a dialogue's Cancel action (or
+  hides it) and vetoes the close.
+- `wuss_FONTMENU_FAMILIES`: `wuss_fontmenu` lists one item per font family.
+  Reading picks families and draws Markdown bold in the family's Bold face.
+- `bmtext_layout_measured()` wraps text with a caller-supplied measure
+  callback, so a line can mix faces; `bmtext_layout()` wraps it.
+- `io/filetype.h` holds every allocated RISC OS file type (1026, from
+  RISC OS Open's list) with its name and extensions, so aliases such as
+  `.jpeg` resolve; `filetype_t` gains `name`. `tools/gen_filetypes.py`
+  regenerates the tables. Markdown uses `&1D0` as a placeholder type.
+- `colour_to_pixel()` handles bgr565 and bgrx5551.
+- `wuss` DataOpen: Filing broadcasts `wuss_MESSAGE_DATA_OPEN` for a
+  double-clicked file. A taskapp listing the type in its desc's `opens`
+  claims it; otherwise Filing starts the app through its run function
+  (`filing_set_run_fn()`) and broadcasts again. Open directories show the
+  new `file_diro` glyph.
+- `wuss` Sudoku task: a compact 9x9 game with unique-solution puzzles.
+- `wuss` Shortcuts app: lists system keyboard shortcuts under bold group
+  headings.
+- Painting: a colour picker tool (I), a Dithering submenu, Ctrl-A select
+  all, Ctrl-I invert selection and the N nozzle shortcut on its menu row.
+- Dithering: Strength and Colours become slider dialogues (Colours
+  logarithmic, 2 to 256). New BW, BRYW and CMYKW palettes; CMYK loses white.
+  Effecting gains a Dithering submenu, shared with Viewing, Orbing and
+  Painting as `dithermenu_t` (`tasks/common/dithermenu.h`).
+- The SDL frontend draws a 16px border (`WUSS_SDL_BORDER`) around the
+  screen.
+- `USE_COVERAGE` CMake option and `tools/coverage.sh` for a Clang
+  source-based coverage report in `build-coverage/`.
+- Tests for `barith`, `bsearch`, `bitmap` (palette, clear, convert,
+  `fill_pattern`, PNG save), `bmfont` at 8bpp, `bmtext`, `colour`, `curve`,
+  `effects`, `layout`, `ntree`, `pack`, `packer`, `pickle`, `span`, `stream`,
+  `tag-db` and many `wuss` areas (icons, writables, sliders, menus, menu
+  descriptors, dialogues, Save As, colour menus, gridview, icon bar,
+  furniture, backdrops, icon pools and toolbars).
+- `docs/windowing/menu-standard.md`: order, separators, labels and reserved
+  keys for task window menus. Every task's menu now follows it: Save PNG
+  becomes Save on F3, lone Background rows move into a Colours submenu and
+  dividers mark a change in the kind of row.
 - `wuss_EVENT_CLOSE_ADJUST`: ADJUST on a close icon now tells the window's
   task, with the modifier keys held (`data.close_adjust.modifiers`), and
   leaves the window open (it used to start a move drag). The filer uses it
@@ -754,6 +828,40 @@ _Unreleased_ until one is cut.
 
 ### Changed
 
+- The demo tasks move from `libraries/wuss/tasks/` to `apps/wuss/tasks/`,
+  beside the `wuss` app that runs them. The app's icon bar tasks, Apps
+  (`appsfiler`) and Tasks (`taskmanager`), join them in their own directories.
+- **Breaking:** `wuss_PLACE_IGNORE_SAFE_AREA` replaces
+  `wuss_PLACE_AVOID_ICONBAR`, with the inverse sense.
+- **Breaking:** `wuss_gridview_fit_window()` takes a `wuss_place_t` and
+  re-places the window after fitting it.
+- **Breaking:** `wuss_fontmenu_menu()` takes a flags argument; pass
+  `wuss_FONTMENU_NONE` for the per-face menu.
+- **Breaking:** `screen_DITHER_NONE` is renamed `screen_DITHER_NEAREST`, and
+  None menu rows become Nearest.
+- **Breaking:** `filetype_t.ext` is undotted (`"png"`, not `".png"`);
+  `filetype_from_ext()` accepts either form. The generated tables shrink
+  from about 35.6 KB to 10.5 KB and `filetype_from_riscos()` binary
+  searches.
+- **Breaking:** `wuss_menu_close()` and the `_live` calls no longer accept a
+  stale handle; drop it on `wuss_EVENT_MENU_CLOSED` and pass NULL.
+- **Breaking:** task resources move from `resources/wuss/` to
+  `resources/wuss-tasks/` (task icon pools load from
+  `resources/wuss-tasks/<task name>/iconpool/`), artwork sources to
+  `resources/sources/` and test fixtures to `resources/test/`. Neither
+  sources nor test fixtures are preloaded into the Emscripten build.
+- `layout_place()` returns `result_PACKER_DIDNT_FIT` when an element does
+  not fit.
+- Each demo task lives in its own directory under `libraries/wuss/tasks/`;
+  shared task sources move to `tasks/common/`.
+- File-scope mutable static globals are grouped into one `static struct g`
+  per source file.
+- Painting's toolbox shows the desktop palette and follows palette changes;
+  Palette's Load menu lists only sixteen-colour palettes.
+- Viewing no longer draws a ninepatch frame.
+- Ordered dithering on paletted screens sizes its bias from the real
+  palette spacing (`pixelmap_t` gains `step`), so it hides banding.
+- New and updated icons, including the task manager and Sudoku.
 - **Breaking:** `wuss_gridview_activate_fn_t` takes the double-click's
   `wuss_button_t` after the index, and may close the gadget's window. The
   filer uses it as RISC OS does: a double ADJUST on a directory opens it in
@@ -1128,6 +1236,32 @@ _Unreleased_ until one is cut.
 
 ### Fixed
 
+- `ntree_append()` was declared but never defined.
+- `stream`: PackBits fills never rewound their buffers, so output stopped
+  after the first buffer's worth.
+- `pickle_unpickle()` dropped a final line without a newline, and called
+  the writer's stop method after a failed start.
+- `layout_place()` ignored spacing in the remaining width, overflowed its
+  stack past 32 elements and looped forever on a box too wide for any line.
+- `tagdb_untagid()` decremented a count for a tag the id did not carry, and
+  `tagdb_forget()` left counts unchanged.
+- `pack`: array-mode signed halfwords were zero-extended.
+- `bitmap_clear()` at 32bpp took the per-pixel path for any non-zero
+  pixel.
+- `bmtext` pushed a word ending exactly at the wrap width to the next line,
+  and kept trailing whitespace at a break.
+- Dither bias on 1bpp and 2bpp screens was about 15x too weak.
+- Closing a colour picker, Save As, DCS or error dialogue with Ctrl-Q or
+  Ctrl-F9 left its component holding a freed window (a crash in Orbing at
+  shutdown).
+- Colour-keyed icon pixels were drawn on 32bpp screens.
+- Colour fills in 1bpp and 2bpp modes were phased against the screen, not
+  their window, so they misaligned with the background.
+- The colour picker's title bar could be pushed off screen, and its value
+  column left pixels behind.
+- Viewing's Stage tick did not update on Adjust-click.
+- Toolbar outlines sat 1px out from their parent's.
+- AppsFiler windows sat well above the icon bar after shrinking to fit.
 - `wuss_gridview_set_count()` re-measures the cell from the items, so a filer
   window widens its cells when a rescan brings in a longer name (e.g. after
   saving a new file) and narrows them when one goes.

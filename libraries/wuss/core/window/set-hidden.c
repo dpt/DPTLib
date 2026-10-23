@@ -32,9 +32,10 @@ result_t wuss__window_set_hidden_ex(wuss_window_t     *window,
 result_t wuss__window_set_hidden_ex(wuss_window_t *window, int hidden)
 #endif
 {
-  result_t     rc;
-  wuss_event_t event;
-  int          was_hidden;
+  result_t       rc;
+  int            was_hidden;
+  wuss_window_t *tb;
+  wuss_event_t   event;
 
   was_hidden = (window->flags & wuss_WINDOW_HIDDEN) != 0;
   if (!was_hidden == !hidden)
@@ -77,6 +78,20 @@ result_t wuss__window_set_hidden_ex(wuss_window_t *window, int hidden)
     /* still on screen: repaint its footprint now, then mark it gone */
     wuss_invalidate(wuss, &window->visible);
     window->flags |= wuss_WINDOW_HIDDEN;
+
+    /* a parent's toolbars go with it, remembered so that showing the
+     * parent brings back only those; a toolbar's siblings close up */
+    for (tb = window->toolbar.first; tb != NULL; tb = tb->toolbar.next)
+    {
+      if (tb->flags & wuss_WINDOW_HIDDEN)
+        continue;
+
+      tb->state |= wuss_WINDOW_STATE_PARENT_HIDDEN;
+      (void) wuss_window_set_hidden(tb, 1);
+    }
+    if (window->toolbar.parent != NULL)
+      wuss__toolbars_layout(window->toolbar.parent, NULL);
+
     return result_OK;
   }
 
@@ -101,11 +116,25 @@ result_t wuss__window_set_hidden_ex(wuss_window_t *window, int hidden)
   if (!window->wuss->pre_show_proceed)
     return result_OK; /* handler did not opt in: stays hidden */
 
+  /* a toolbar makes room for itself while still hidden, so it appears
+   * straight into its slot */
+  if (window->toolbar.parent != NULL)
+    wuss__toolbars_layout(window->toolbar.parent, window);
+
   /* mark it back, repaint its footprint so it appears, then SHOW */
   window->flags &= (wuss_window_flags_t) ~wuss_WINDOW_HIDDEN;
   wuss_invalidate(window->wuss, &window->visible);
 
   (void) wuss__deliver_kind(window->task, window, wuss_EVENT_SHOW);
+
+  for (tb = window->toolbar.first; tb != NULL; tb = tb->toolbar.next)
+  {
+    if (!(tb->state & wuss_WINDOW_STATE_PARENT_HIDDEN))
+      continue;
+
+    tb->state &= (wuss_window_state_t) ~wuss_WINDOW_STATE_PARENT_HIDDEN;
+    (void) wuss_window_set_hidden(tb, 0);
+  }
 
   return result_OK;
 }

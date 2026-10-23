@@ -148,7 +148,7 @@ result_t pickle_unpickle(const char                      *filename,
   {
     err = writer->start(assocarr, &wstate, opaque);
     if (err)
-      goto Failure;
+      goto EarlyFailure; /* nothing started, so nothing to stop */
   }
 
   state->writer   = writer;
@@ -162,11 +162,22 @@ result_t pickle_unpickle(const char                      *filename,
   {
     size_t read;
 
-    /* try to fill buffer */
+    /* move any partial line to the start, then try to fill the buffer */
+
+    memmove(state->buffer, state->buffer + used, occupied - used);
+    occupied -= used;
+    used      = 0;
 
     read = fread(state->buffer + occupied, 1, bufsz - occupied, f);
-    if (read == 0 && feof(f))
-      break; /* nothing left */
+    if (read == 0)
+    {
+      if (occupied == 0)
+        break; /* nothing left */
+
+      /* the last line lacks a newline, so supply one (a partial line never
+       * fills the buffer: that's a syntax error below) */
+      state->buffer[occupied++] = '\n';
+    }
 
     occupied += read;
 
@@ -177,23 +188,14 @@ result_t pickle_unpickle(const char                      *filename,
       nl = memchr(state->buffer + used, '\n', occupied - used);
       if (!nl)
       {
-        if (used == 0)
+        if (used == 0 && occupied == bufsz)
         {
-          /* couldn't find a \n in the whole buffer - and used is 0, so we
-           * have the whole buffer in which to look */
+          /* couldn't find a \n in the whole buffer */
           err = result_PICKLE_SYNTAX_ERROR;
           goto Failure;
         }
-        else
-        {
-          /* make space in the buffer, then get it refilled */
 
-          memmove(state->buffer, state->buffer + used, occupied - used);
-          occupied -= used;
-          used      = 0;
-
-          break; /* need more bytes */
-        }
+        break; /* need more bytes */
       }
 
       *nl = '\0'; /* terminate */
@@ -206,8 +208,6 @@ result_t pickle_unpickle(const char                      *filename,
       }
 
       used = (nl + 1) - state->buffer; // ptrdiff_t -> int
-      if (occupied - used <= 0)
-        break;
     }
   }
 

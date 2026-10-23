@@ -23,7 +23,7 @@
 
 #include "crt.h"
 #include "frontend.h"
-#include "tasks.h" /* g_tasks.swap_mouse_buttons */
+#include "tasks/tasks.h" /* g_tasks.swap_mouse_buttons */
 
 /* Screen pixel format for the demo, chosen at run time via --depth: 32 =
  * pixelfmt_bgrx8888 (feeds SDL directly, no per-frame conversion); 8 =
@@ -41,6 +41,10 @@
 #define WUSS_SDL_DEFAULT_SCALE 2
 #define WUSS_SDL_MIN_SCALE     1
 #define WUSS_SDL_MAX_SCALE     4
+
+/* Black margin around the Wuss screen, in window units, independent of the
+ * zoom. */
+#define WUSS_SDL_BORDER        16
 
 /* ----------------------------------------------------------------------- */
 
@@ -134,7 +138,8 @@ static int sdl_special_key(SDL_Keycode key)
 }
 
 /* SDL delivers mouse coordinates in window space, which F2 can scale away
- * from the fixed-size Wuss screen; map back down to screen space. */
+ * from the fixed-size Wuss screen and WUSS_SDL_BORDER offsets; map back down
+ * to screen space. */
 static void sdl_pos_to_scr(SDL_Window *window,
                            int         scr_width,
                            int         scr_height,
@@ -147,8 +152,12 @@ static void sdl_pos_to_scr(SDL_Window *window,
 
   SDL_GetWindowSize(window, &win_w, &win_h);
 
-  *out_x = (int) (in_x * scr_width  / win_w);
-  *out_y = (int) (in_y * scr_height / win_h);
+  win_w -= 2 * WUSS_SDL_BORDER;
+  win_h -= 2 * WUSS_SDL_BORDER;
+
+  /* floor so the border's left/top edge maps to -1, not 0 */
+  *out_x = (int) SDL_floorf((in_x - WUSS_SDL_BORDER) * scr_width  / win_w);
+  *out_y = (int) SDL_floorf((in_y - WUSS_SDL_BORDER) * scr_height / win_h);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -287,7 +296,8 @@ result_t wuss_frontend_open(int               width,
   SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 
   fe->window = SDL_CreateWindow(WUSS_WINDOW_TITLE,
-                                width * fe->scale, height * fe->scale, 0);
+                                width  * fe->scale + 2 * WUSS_SDL_BORDER,
+                                height * fe->scale + 2 * WUSS_SDL_BORDER, 0);
   if (fe->window == NULL)
   {
     fprintf(stderr, "Error: SDL_CreateWindow: %s\n", SDL_GetError());
@@ -390,7 +400,9 @@ result_t wuss_frontend_resize(wuss_frontend_t *fe,
     bitmap_init(&fe->conv, SIZE2D(width, height), pixelfmt_bgrx8888,
                width * sizeof(pixelfmt_bgrx8888_t), NULL, new_conv);
 
-  SDL_SetWindowSize(fe->window, width * fe->scale, height * fe->scale);
+  SDL_SetWindowSize(fe->window,
+                    width  * fe->scale + 2 * WUSS_SDL_BORDER,
+                    height * fe->scale + 2 * WUSS_SDL_BORDER);
 
   *pixels   = fe->pixels;
   *rowbytes = stride;
@@ -557,7 +569,9 @@ void wuss_frontend_present(wuss_frontend_t *fe,
                            const bitmap_t  *bm,
                            const box_t     *dirty)
 {
-  Uint64 now;
+  int       win_w, win_h;
+  SDL_FRect screen;
+  Uint64    now;
 
   if (fe->depth == 32)
   {
@@ -625,11 +639,19 @@ present:
   {
     wuss_crt_render(fe->crt, fe->window,
                     (fe->depth == 32) ? bm->base : fe->conv.base,
-                    fe->scr_width, fe->scr_height);
+                    fe->scr_width, fe->scr_height, WUSS_SDL_BORDER);
   }
   else
   {
-    SDL_RenderTexture(fe->renderer, fe->texture, NULL, NULL);
+    SDL_GetWindowSize(fe->window, &win_w, &win_h);
+    screen.x = WUSS_SDL_BORDER;
+    screen.y = WUSS_SDL_BORDER;
+    screen.w = (float) (win_w - 2 * WUSS_SDL_BORDER);
+    screen.h = (float) (win_h - 2 * WUSS_SDL_BORDER);
+
+    SDL_SetRenderDrawColor(fe->renderer, 0, 0, 0, 255);
+    SDL_RenderClear(fe->renderer);
+    SDL_RenderTexture(fe->renderer, fe->texture, NULL, &screen);
     SDL_RenderPresent(fe->renderer);
   }
 
@@ -653,7 +675,9 @@ void wuss_frontend_zoom(wuss_frontend_t *fe, int delta)
     return;
 
   fe->scale = scale;
-  SDL_SetWindowSize(fe->window, fe->scr_width * scale, fe->scr_height * scale);
+  SDL_SetWindowSize(fe->window,
+                    fe->scr_width  * scale + 2 * WUSS_SDL_BORDER,
+                    fe->scr_height * scale + 2 * WUSS_SDL_BORDER);
 }
 
 int wuss_frontend_get_zoom(const wuss_frontend_t *fe)

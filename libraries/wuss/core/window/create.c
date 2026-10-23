@@ -88,6 +88,9 @@ result_t wuss_window_create(wuss_task_t        *task,
   win->doc        = doc;
   win->min_doc    = min_doc;
   win->state      = wuss_WINDOW_STATE_NONE;
+  win->toolbar.parent = NULL;
+  win->toolbar.first  = NULL;
+  win->toolbar.next   = NULL;
 #ifdef WUSS_FURNITURE
   win->furniture_layout.flags = 0; /* built lazily on first paint */
 #endif

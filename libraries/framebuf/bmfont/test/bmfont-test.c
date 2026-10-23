@@ -262,7 +262,7 @@ typedef struct bmfontteststate
   int         scr_width, scr_height;
   bitmap_t    bm;
   screen_t    scr;
-  colour_t    palette[16];
+  colour_t    palette[256]; /* p8 screens need every entry */
   colour_t    transparent;
   int         background_colour_index;
 #ifdef USE_SDL
@@ -935,6 +935,7 @@ result_t bmfont_test_one_format(const char *resources,
 
   const int scr_rowbytes = (state.scr_width << pixelfmt_log2bpp(scr_fmt)) / 8;
 
+  memset(state.palette, 0, sizeof(state.palette));
   define_pico8_palette(&state.palette[0]);
 
   state.transparent = colour_rgba(0x00, 0x00, 0x00, 0x00);
@@ -1036,6 +1037,108 @@ Failure:
   fprintf(stderr, "error: %x\n", rc);
   rc = result_TEST_FAILED;
   goto Cleanup;
+}
+
+/* ----------------------------------------------------------------------- */
+
+/* Text drawn on an 8bpp screen must pick the same colours, pixel for pixel,
+ * as on a 32bpp screen. Every font in bmfonts[] is tried, which covers each
+ * glyph width variant, filled and transparent, and drawn hanging off the
+ * left edge to exercise clipping. */
+static result_t bmfont_p8_test(const char *resources)
+{
+  static const char sample[] = "Quick 0123 fox";
+  static const int  bm_width  = 160;
+  static const int  bm_height = 40;
+
+  result_t      rc;
+  colour_t      palette[256];
+  unsigned char p8[160 * 40];
+  unsigned int  ref[160 * 40];
+  bitmap_t      bm8, bm32;
+  screen_t      scr8, scr32;
+  int           font;
+  int           transparent;
+  const char   *dir;
+  char          filename[512];
+  bmfont_t     *bmfont;
+  int           ascent;
+  colour_t      fg, bg;
+  point_t       pos;
+  int           i;
+  unsigned int  want;
+
+  memset(palette, 0, sizeof(palette));
+  define_pico8_palette(&palette[0]);
+
+  bitmap_init(&bm8, SIZE2D(bm_width, bm_height), pixelfmt_p8, bm_width,
+              palette, p8);
+  bitmap_init(&bm32, SIZE2D(bm_width, bm_height), pixelfmt_bgrx8888,
+              bm_width * 4, NULL, ref);
+  screen_for_bitmap(&scr8, &bm8);
+  screen_for_bitmap(&scr32, &bm32);
+
+  for (font = 0; font < NELEMS(bmfonts); font++)
+  {
+    dir = pathf("%s/resources/bmfonts", resources);
+    rc  = bmfontfamily_label_path(dir, bmfonts[font].filename, filename,
+                                  sizeof(filename));
+    if (rc)
+      return result_TEST_FAILED;
+
+    rc = bmfont_create(filename, &bmfont);
+    if (rc)
+      return result_TEST_FAILED;
+
+    bmfont_get_info(bmfont, NULL, NULL, &ascent, NULL);
+
+    for (transparent = 0; transparent < 2; transparent++)
+    {
+      fg  = palette[palette_PICO8_WHITE];
+      bg  = transparent ? colour_rgba(0, 0, 0, 0)
+                        : palette[palette_PICO8_RED];
+      pos = POINT(-3, 4 + ascent);
+
+      bitmap_clear(&bm8, palette[palette_PICO8_DARK_BLUE]);
+      bitmap_clear(&bm32, palette[palette_PICO8_DARK_BLUE]);
+
+      rc = bmfont_draw(bmfont, &scr8, sample, (int) strlen(sample), fg, bg,
+                       NULL, &pos, NULL);
+      if (rc == result_OK)
+        rc = bmfont_draw(bmfont, &scr32, sample, (int) strlen(sample), fg,
+                         bg, NULL, &pos, NULL);
+      if (rc)
+      {
+        bmfont_destroy(bmfont);
+        return result_TEST_FAILED;
+      }
+
+      if (memchr(p8, palette_PICO8_WHITE, sizeof(p8)) == NULL)
+      {
+        printf("Failure: %s drew no ink\n", bmfonts[font].filename);
+        bmfont_destroy(bmfont);
+        return result_TEST_FAILED;
+      }
+
+      for (i = 0; i < bm_width * bm_height; i++)
+      {
+        want = colour_to_pixel(NULL, 0, palette[p8[i]], pixelfmt_bgrx8888);
+        if ((ref[i] & 0x00FFFFFFu) != (want & 0x00FFFFFFu))
+        {
+          printf("Failure: %s%s: pixel %d,%d is %08x at 8bpp, %08x at 32bpp\n",
+                 bmfonts[font].filename,
+                 transparent ? " transparent" : "",
+                 i % bm_width, i / bm_width, want, ref[i]);
+          bmfont_destroy(bmfont);
+          return result_TEST_FAILED;
+        }
+      }
+    }
+
+    bmfont_destroy(bmfont);
+  }
+
+  return result_TEST_PASSED;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -1756,7 +1859,7 @@ static result_t bmfont_metrics_test(const char *resources)
   static const char *fonts[] =
   {
     "bmfonts/DPT-Henry/Regular.png",
-    "bmfonts-test/Henry-SpaceSwapped.png"
+    "test/bmfonts/Henry-SpaceSwapped.png"
   };
 
   const char *filename;
@@ -1935,6 +2038,7 @@ result_t bmfont_test(const char *resources)
     { 800, 600, pixelfmt_p1       },
     { 800, 600, pixelfmt_p2       },
     { 800, 600, pixelfmt_p4       },
+    { 800, 600, pixelfmt_p8       },
     { 800, 600, pixelfmt_rgbx5551 },
     { 800, 600, pixelfmt_rgb565   },
     { 800, 600, pixelfmt_bgrx8888 }
@@ -1972,6 +2076,10 @@ result_t bmfont_test(const char *resources)
     return rc;
 
   rc = bmfont_utf8_test(resources);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  rc = bmfont_p8_test(resources);
   if (rc != result_TEST_PASSED)
     return rc;
 

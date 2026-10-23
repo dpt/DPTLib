@@ -127,6 +127,7 @@ static int pixelmap__layout_paletted_to_deep(pixelfmt_t  destfmt,
   out->rshift = out->gshift = out->bshift = 0;
   out->rmask = out->gmask = out->bmask = 0;
   out->rsrcbits = out->gsrcbits = out->bsrcbits = 0;
+  out->step     = 0;
   out->nentries = (unsigned int) nentries;
 
   return 0;

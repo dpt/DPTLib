@@ -170,11 +170,23 @@ pixelfmt_any_t colour_to_pixel(const colour_t *palette,
     b = PIXELFMT_xxBx8888(required.primary) >> 3;
     return PIXELFMT_MAKE_RGB565(r, g, b);
 
+  case pixelfmt_bgr565: /* rgb565 with red and blue swapped */
+    r = PIXELFMT_Rxxx8888(required.primary) >> 3;
+    g = PIXELFMT_xGxx8888(required.primary) >> 2;
+    b = PIXELFMT_xxBx8888(required.primary) >> 3;
+    return PIXELFMT_MAKE_RGB565(b, g, r);
+
   case pixelfmt_rgbx5551:
     r = PIXELFMT_Rxxx8888(required.primary) >> 3;
     g = PIXELFMT_xGxx8888(required.primary) >> 3;
     b = PIXELFMT_xxBx8888(required.primary) >> 3;
     return PIXELFMT_MAKE_RGBX5551(r, g, b);
+
+  case pixelfmt_bgrx5551: /* rgbx5551 with red and blue swapped */
+    r = PIXELFMT_Rxxx8888(required.primary) >> 3;
+    g = PIXELFMT_xGxx8888(required.primary) >> 3;
+    b = PIXELFMT_xxBx8888(required.primary) >> 3;
+    return PIXELFMT_MAKE_RGBX5551(b, g, r);
 
   default:
     assert(!"Unimplemented pixel format");

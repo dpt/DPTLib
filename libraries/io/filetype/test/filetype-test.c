@@ -12,7 +12,7 @@ static result_t test_from_ext_known(void)
   filetype_t t;
 
   t = filetype_from_ext(".png");
-  if (t.riscos != 0xB60 || strcmp(t.ext, ".png") != 0)
+  if (t.riscos != 0xB60 || strcmp(t.ext, "png") != 0)
     return result_TEST_FAILED;
 
   return result_TEST_PASSED;
@@ -22,7 +22,7 @@ static result_t test_from_ext_case_insensitive(void)
 {
   filetype_t t;
 
-  t = filetype_from_ext(".PNG");
+  t = filetype_from_ext("PNG");
   if (t.riscos != 0xB60)
     return result_TEST_FAILED;
 
@@ -57,7 +57,52 @@ static result_t test_from_riscos_known(void)
   filetype_t t;
 
   t = filetype_from_riscos(0xFFF);
-  if (strcmp(t.ext, ".txt") != 0)
+  if (strcmp(t.ext, "txt") != 0)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/* the table's first and last numbers, so the binary search reaches both
+ * ends */
+static result_t test_from_riscos_ends(void)
+{
+  filetype_t t;
+
+  t = filetype_from_riscos(0xFFF);
+  if (t.riscos != 0xFFF || strcmp(t.name, "Text") != 0)
+    return result_TEST_FAILED;
+
+  t = filetype_from_riscos(0x000);
+  if (t.riscos != 0x000 || t.name[0] == '\0')
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+/* a secondary extension finds its type, which keeps its canonical one */
+static result_t test_from_ext_alias(void)
+{
+  filetype_t t;
+
+  t = filetype_from_ext(".JPEG");
+  if (t.riscos != 0xC85 || strcmp(t.ext, "jpg") != 0 ||
+      strcmp(t.name, "JPEG") != 0)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
+static result_t test_markdown_round_trip(void)
+{
+  filetype_t t;
+
+  t = filetype_from_ext(".md");
+  if (t.riscos != filetype_RISCOS_MARKDOWN)
+    return result_TEST_FAILED;
+
+  t = filetype_from_riscos(filetype_RISCOS_MARKDOWN);
+  if (strcmp(t.ext, "md") != 0)
     return result_TEST_FAILED;
 
   return result_TEST_PASSED;
@@ -114,6 +159,9 @@ result_t filetype_test(const char *resources)
     test_from_ext_unknown,
     test_from_ext_null,
     test_from_riscos_known,
+    test_from_riscos_ends,
+    test_from_ext_alias,
+    test_markdown_round_trip,
     test_from_riscos_unknown,
     test_set_off_riscos,
     test_set_null_path

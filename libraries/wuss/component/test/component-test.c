@@ -53,7 +53,70 @@ static result_t colourset_test_changed(wuss_colourset_t *colourset,
   (*(int *) opaque)++;
   return result_OK;
 }
+
+/* dialogue callbacks: record what was called into a dialogue_test_t */
+typedef struct dialogue_test
+{
+  int           fillouts;
+  result_t      fillout_rc;
+  int           which;       /* 1 OK, 2 Cancel */
+  wuss_button_t button;
+}
+dialogue_test_t;
+
+static result_t dialogue_test_fillout(void *opaque)
+{
+  dialogue_test_t *dt = opaque;
+
+  dt->fillouts++;
+  return dt->fillout_rc;
+}
+
+static result_t dialogue_test_ok(void *opaque, wuss_button_t button)
+{
+  dialogue_test_t *dt = opaque;
+
+  dt->which  = 1;
+  dt->button = button;
+  return result_OK;
+}
+
+static result_t dialogue_test_cancel(void *opaque, wuss_button_t button)
+{
+  dialogue_test_t *dt = opaque;
+
+  dt->which  = 2;
+  dt->button = button;
+  return result_BAD_ARG; /* distinctive, to check it is passed back */
+}
 #endif
+
+/* Task owning a colour list's menu: answers PRE_SUBMENU_OPEN through
+ * wuss_colourlist_pre_open, recording whether it claimed the event and the
+ * result it gave. */
+typedef struct colourlist_task
+{
+  wuss_colourlist_t *list;
+  const wuss_t      *wuss;
+  int                claimed;
+  result_t           rc;
+}
+colourlist_task_t;
+
+static result_t colourlist_test_handle(wuss_window_t      *window,
+                                       const wuss_event_t *event,
+                                       void               *task_data)
+{
+  colourlist_task_t *tc;
+
+  NOT_USED(window);
+
+  tc = task_data;
+  if (wuss_colourlist_pre_open(tc->list, tc->wuss, event, &tc->rc))
+    tc->claimed++;
+
+  return result_OK;
+}
 
 /* wuss_saveas end-to-end test: a scratch directory plus a minimal fake
  * receiver task standing in for the real Filer (BUILD_APPS only), driving
@@ -167,6 +230,150 @@ result_t wuss_component_test(const char *resources)
     goto Failure;
   wuss = fixture.wuss;
 
+  printf("test: wuss_dialogue dispatches clicks, keys, close and show\n");
+  {
+    static test_task_t     dtc;
+    wuss_task_t           *dtask;
+    wuss_dialogue_t       *dlg;
+    wuss_dialogue_t       *borrow;
+    wuss_window_t         *dwin;
+    wuss_icon_spec_t       spec;
+    wuss_icon_t           *ok;
+    wuss_icon_t           *cancel;
+    wuss_icon_t           *other;
+    wuss_dialogue_action_t actions[2];
+    dialogue_test_t        dt;
+    wuss_event_t           ev;
+    result_t               out;
+
+    memset(&dt, 0, sizeof(dt));
+
+    memset(&dtc, 0, sizeof(dtc));
+    dtask = mk_task(wuss, test_handle, &dtc);
+    if (dtask == NULL)                                   goto DialogueFail;
+
+    if (wuss_dialogue_create(NULL, dtask, SIZE2D(100, 60), "D",
+                             NULL, NULL) != result_NULL_ARG)
+      goto DialogueFail;
+    rc = wuss_dialogue_create(&dlg, dtask, SIZE2D(100, 60), "D",
+                              dialogue_test_fillout, NULL);
+    if (rc != result_OK)                                 goto DialogueFail;
+    wuss_dialogue_set_opaque(dlg, &dt);
+
+    dwin = wuss_dialogue_window(dlg);
+    if (dwin == NULL || wuss_dialogue_window(NULL) != NULL)
+      goto DialogueFail;
+
+    wuss_icon_spec_action(&spec, (box_t) BOX_POS_SIZE(0, 0, 40, 40), "OK",
+                          1);
+    rc = wuss_icon_create(dwin, &spec, &ok);
+    if (rc != result_OK)                                 goto DialogueFail;
+    wuss_icon_spec_action(&spec, (box_t) BOX_POS_SIZE(40, 0, 40, 40),
+                          "Cancel", 0);
+    rc = wuss_icon_create(dwin, &spec, &cancel);
+    if (rc != result_OK)                                 goto DialogueFail;
+    rc = wuss_icon_create(dwin, &spec, &other);
+    if (rc != result_OK)                                 goto DialogueFail;
+
+    actions[0].icon = ok;
+    actions[0].fn   = dialogue_test_ok;
+    actions[1].icon = cancel;
+    actions[1].fn   = dialogue_test_cancel;
+    if (wuss_dialogue_set_actions(dlg, actions, -1) != result_BAD_ARG ||
+        wuss_dialogue_set_actions(dlg, actions,
+                                  WUSS_DIALOGUE_MAX_ACTIONS + 1) !=
+        result_BAD_ARG)
+      goto DialogueFail;
+    rc = wuss_dialogue_set_actions(dlg, actions, 2);
+    if (rc != result_OK)                                 goto DialogueFail;
+
+    /* only a release over a registered icon is consumed */
+    memset(&ev, 0, sizeof(ev));
+    ev.kind               = wuss_EVENT_ICON;
+    ev.data.icon.icon     = ok;
+    ev.data.icon.action   = wuss_MOUSE_DOWN;
+    ev.data.icon.button   = wuss_BUTTON_ADJUST;
+    if (wuss_dialogue_handle_icon(dlg, &ev, &out))       goto DialogueFail;
+    ev.data.icon.action   = wuss_MOUSE_UP;
+    ev.data.icon.icon     = other;
+    if (wuss_dialogue_handle_icon(dlg, &ev, &out))       goto DialogueFail;
+    if (wuss_dialogue_handle_icon(NULL, &ev, &out))      goto DialogueFail;
+    ev.data.icon.icon     = cancel;
+    out = result_OK;
+    if (!wuss_dialogue_handle_icon(dlg, &ev, &out))      goto DialogueFail;
+    if (dt.which != 2 || dt.button != wuss_BUTTON_ADJUST ||
+        out != result_BAD_ARG)
+      goto DialogueFail;
+
+    /* RETURN runs the default action; ESCAPE needs a cancel icon */
+    memset(&ev, 0, sizeof(ev));
+    ev.kind = wuss_EVENT_IDLE;
+    if (wuss_dialogue_handle_key(dlg, &ev, &out))        goto DialogueFail;
+    ev.kind          = wuss_EVENT_KEY;
+    ev.data.key.code = 'a';
+    if (wuss_dialogue_handle_key(dlg, &ev, &out))        goto DialogueFail;
+    ev.data.key.code = wuss_KEY_RETURN;
+    if (!wuss_dialogue_handle_key(dlg, &ev, &out))       goto DialogueFail;
+    if (dt.which != 1 || dt.button != wuss_BUTTON_SELECT || out != result_OK)
+      goto DialogueFail;
+    ev.data.key.code = wuss_KEY_ESCAPE;
+    if (wuss_dialogue_handle_key(dlg, &ev, &out))        goto DialogueFail;
+    wuss_dialogue_set_cancel(dlg, cancel);
+    if (!wuss_dialogue_handle_key(dlg, &ev, &out))       goto DialogueFail;
+    if (dt.which != 2)                                   goto DialogueFail;
+
+    /* a close request runs Cancel, or hides the window if there is none */
+    dt.which = 0;
+    if (wuss_dialogue_handle_pre_close(dlg) != result_STOP_WALK ||
+        dt.which != 2)
+      goto DialogueFail;
+    wuss_dialogue_set_cancel(dlg, NULL);
+    rc = wuss_window_set_hidden(dwin, 0);
+    if (rc != result_OK)                                 goto DialogueFail;
+    dt.which = 0;
+    if (wuss_dialogue_handle_pre_close(dlg) != result_STOP_WALK ||
+        dt.which != 0 || (dwin->flags & wuss_WINDOW_HIDDEN) == 0)
+      goto DialogueFail;
+
+    /* fillout runs on every show and can veto it */
+    if (wuss_dialogue_handle_pre_show(dlg) != result_OK || dt.fillouts != 1)
+      goto DialogueFail;
+    dt.fillout_rc = result_BAD_ARG;
+    if (wuss_dialogue_handle_pre_show(dlg) != result_BAD_ARG ||
+        dt.fillouts != 2)
+      goto DialogueFail;
+
+    wuss_dialogue_set_focusable(dlg, 0);
+    if (dwin->flags & wuss_WINDOW_FOCUSABLE)             goto DialogueFail;
+    wuss_dialogue_set_focusable(dlg, 1);
+    if ((dwin->flags & wuss_WINDOW_FOCUSABLE) == 0)      goto DialogueFail;
+
+    /* a dialogue on a borrowed window leaves it alone when destroyed */
+    if (wuss_dialogue_create_on_window(&borrow, wuss, NULL, NULL, NULL) !=
+        result_NULL_ARG)
+      goto DialogueFail;
+    rc = wuss_dialogue_create_on_window(&borrow, wuss, dwin, NULL, NULL);
+    if (rc != result_OK)                                 goto DialogueFail;
+    if (wuss_dialogue_window(borrow) != dwin ||
+        wuss_dialogue_handle_pre_show(borrow) != result_OK)
+      goto DialogueFail;
+    wuss_dialogue_handle_close(borrow, NULL);
+    wuss_dialogue_handle_close(NULL, dwin);
+    wuss_dialogue_handle_close(borrow, dwin);
+    if (wuss_dialogue_window(borrow) != NULL)            goto DialogueFail;
+    wuss_dialogue_destroy(borrow);
+    wuss_dialogue_destroy(NULL);
+
+    wuss_dialogue_destroy(dlg);
+    reap_test_tasks();
+    goto DialogueOK;
+
+DialogueFail:
+    printf("wuss_test: dialogue check failed\n");
+    goto Failure;
+DialogueOK: ;
+  }
+
   printf("test: wuss_fontmenu lists the bmfonts dir and resolves a pick\n");
   {
     const char        *dir;
@@ -177,7 +384,7 @@ result_t wuss_component_test(const char *resources)
 
     dir = pathf("%s/resources/bmfonts", resources);
 
-    fmm = wuss_fontmenu_menu(dir, "Font", NULL);
+    fmm = wuss_fontmenu_menu(dir, "Font", NULL, wuss_FONTMENU_NONE);
     if (fmm == NULL)                                     goto FontMenuFail;
     if (fmm->title == NULL || strcmp(fmm->title, "Font") != 0)
       goto FontMenuFail;
@@ -211,7 +418,8 @@ result_t wuss_component_test(const char *resources)
     ev.data.menu_select.index = fmm->nitems;
     if (wuss_fontmenu_selected(&ev) != NULL)             goto FontMenuFail;
 
-    if (wuss_fontmenu_menu(NULL, "Font", NULL) != NULL)  goto FontMenuFail;
+    if (wuss_fontmenu_menu(NULL, "Font", NULL, wuss_FONTMENU_NONE) != NULL)
+      goto FontMenuFail;
 
     /* a SYSTEM-class wuss font is dropped from the menu; NONE-class and
      * unnamed slots are not -- also exercises the singleton rebuilding when
@@ -246,7 +454,7 @@ result_t wuss_component_test(const char *resources)
        * the now-stale pointer */
       dir = pathf("%s/resources/bmfonts", resources);
 
-      fmm = wuss_fontmenu_menu(dir, "Font", syswuss);
+      fmm = wuss_fontmenu_menu(dir, "Font", syswuss, wuss_FONTMENU_NONE);
       wuss_destroy(syswuss);
       bmfont_destroy(sysfont);
       if (fmm == NULL)                                    goto FontMenuFail;
@@ -259,9 +467,46 @@ result_t wuss_component_test(const char *resources)
       if (i == fmm->nitems)                               goto FontMenuFail;
     }
 
+    /* wuss_FONTMENU_FAMILIES lists each family once, by family name alone --
+     * including one whose name has spaces in it -- and resolves picks to it */
+    {
+      int found;
+
+      dir = pathf("%s/resources/bmfonts", resources);
+      fmm = wuss_fontmenu_menu(dir, "Font", NULL, wuss_FONTMENU_FAMILIES);
+      if (fmm == NULL)                                    goto FontMenuFail;
+
+      found = 0;
+      for (i = 0; i < fmm->nitems; i++)
+      {
+        if (i > 0 && strcmp(fmm->items[i - 1].text, fmm->items[i].text) >= 0)
+          goto FontMenuFail;
+        if (strcmp(fmm->items[i].text, "GrongyUI") == 0 ||
+            strcmp(fmm->items[i].text, "MS Sans Serif") == 0)
+          found++;
+      }
+      if (found != 2)                                     goto FontMenuFail;
+
+      ev.kind                    = wuss_EVENT_MENU_SELECT;
+      ev.data.menu_select.menu   = fmm;
+      ev.data.menu_select.index  = 0;
+      ev.data.menu_select.button = wuss_BUTTON_SELECT;
+      name = wuss_fontmenu_selected(&ev);
+      if (name == NULL || strcmp(name, fmm->items[0].text) != 0)
+        goto FontMenuFail;
+
+      /* changing flags alone rebuilds back to faces (the build's own pathf
+       * calls clobbered dir, so re-derive it) */
+      dir = pathf("%s/resources/bmfonts", resources);
+      fmm = wuss_fontmenu_menu(dir, "Font", NULL, wuss_FONTMENU_NONE);
+      if (fmm == NULL || strchr(fmm->items[0].text, ' ') == NULL)
+        goto FontMenuFail;
+    }
+
     /* missing directory is surfaced by leaving the singleton unbuilt, not
      * swallowed */
-    if (wuss_fontmenu_menu("no/such/dir/here", NULL, NULL) != NULL)
+    if (wuss_fontmenu_menu("no/such/dir/here", NULL, NULL,
+                           wuss_FONTMENU_NONE) != NULL)
       goto FontMenuFail;
 
     rc = result_OK;
@@ -430,6 +675,74 @@ FontMenuOK: ;
       if (rc != result_OK) goto ColourMenuFail;
 
       wuss_menu_close(wuss__menu_chain(cmwuss));
+
+      /* a colour list opens the colour menu as a real submenu of its row,
+       * titled after it, with None hidden and the field's colour ticked;
+       * a pick lands in the field, but None has no RGB to give */
+      {
+        wuss_colourlist_t  cl;
+        colour_t           fg, bg;
+        wuss_menu_handle_t clh;
+        wuss_event_t       ev;
+        result_t           clrc;
+        colourlist_task_t  cltc;
+        wuss_task_desc_t   cldesc;
+        wuss_task_t       *clowner;
+        const colour_t    *pal;
+        int                npal;
+
+        pal = wuss_get_palette(cmwuss, &npal);
+        fg  = pal[1];
+        bg  = pal[0];
+        wuss_colourlist_init_pair(&cl, cmwuss, &fg, &bg);
+
+        memset(&cltc, 0, sizeof(cltc));
+        cltc.list = &cl;
+        cltc.wuss = cmwuss;
+        cldesc.handle    = colourlist_test_handle;
+        cldesc.task_data = &cltc;
+        cldesc.name      = "colourlist";
+        rc = wuss_task_create(cmwuss, &cldesc, &clowner);
+        if (rc != result_OK) goto ColourMenuFail;
+
+        rc = wuss_menu_open(clowner, &cl.menu, POINT(40, 40), &clh);
+        if (rc != result_OK) goto ColourMenuFail;
+
+        ev.kind                         = wuss_EVENT_PRE_SUBMENU_OPEN;
+        ev.data.pre_submenu_open.handle = clh;
+        ev.data.pre_submenu_open.index  = 2;
+        clrc = result_OK;
+        if (wuss_colourlist_pre_open(&cl, cmwuss, &ev, &clrc))
+          goto ColourMenuFail; /* row out of range */
+
+        /* hovering row 0's arrow fires the real PRE_SUBMENU_OPEN */
+        menu_move_over_row(cmwuss, clh, 0, 1);
+        clrc = cltc.rc;
+        if (cltc.claimed != 1)                           goto ColourMenuFail;
+        if (clrc != result_OK || cl.target != &fg)       goto ColourMenuFail;
+        cmrealm = wuss_colourmenu_menu(cmwuss);
+        if (strcmp(cmrealm->title, "Foreground") != 0)   goto ColourMenuFail;
+        if (cmrealm->nitems != npal)                     goto ColourMenuFail;
+        if ((cmrealm->items[1].flags & wuss_MENU_ITEM_TICKED) == 0)
+          goto ColourMenuFail;
+
+        ev.kind                    = wuss_EVENT_MENU_SELECT;
+        ev.data.menu_select.menu   = cmrealm;
+        ev.data.menu_select.index  = 0;
+        ev.data.menu_select.button = wuss_BUTTON_ADJUST;
+        if (!wuss_colourlist_selected(&cl, &ev))         goto ColourMenuFail;
+        if (fg.primary != pal[0].primary)                goto ColourMenuFail;
+
+        /* close first: an open menu's row count must not change */
+        wuss_menu_close(wuss__menu_chain(cmwuss));
+        wuss_colourmenu_set_none(1);
+        ev.data.menu_select.index = npal;
+        if (wuss_colourlist_selected(&cl, &ev))          goto ColourMenuFail;
+        if (fg.primary != pal[0].primary)                goto ColourMenuFail;
+
+        wuss_task_destroy(clowner); /* before cltc goes out of scope */
+      }
+
       wuss_destroy(cmwuss);
       free(cmpixels);
       bmfont_destroy(cmfont);
@@ -529,25 +842,26 @@ ColourPairOK: ;
 
   printf("test: wuss_colourset fills its field and tracks colour picks\n");
   {
-    const char       *csfontfile;
-    bmfont_t         *csfont;
-    screen_t          csscr;
-    bitmap_t          csbm;
-    void             *cspixels;
-    wuss_t           *cswuss;
-    wuss_font_desc_t  csfdesc;
-    test_task_t       cstc;
-    wuss_task_t      *csowner;
-    wuss_window_t    *cswin;
-    wuss_colourset_t *cs;
-    wuss_icon_t      *button, *field;
-    wuss_event_t      ev;
-    box_t             cscontent;
-    result_t          csrc;
-    int               calls;
+    const char         *csfontfile;
+    bmfont_t           *csfont;
+    screen_t            csscr;
+    bitmap_t            csbm;
+    void               *cspixels;
+    wuss_t             *cswuss;
+    wuss_font_desc_t    csfdesc;
+    test_task_t         cstc;
+    wuss_task_t        *csowner;
+    wuss_window_t      *cswin;
+    wuss_colourset_t   *cs;
+    wuss_icon_t        *button, *field;
+    const unsigned int *fpx;
+    wuss_event_t        ev;
+    box_t               cscontent;
+    result_t            csrc;
+    int                 calls;
 
     /* the menu needs a font, and the button the icon set; the default
-     * palette is just white (0) and black (1) */
+     * palette is just black (0) and white (1) */
     csfontfile = pathf("%s/resources/bmfonts/Tiny/Regular.png", resources);
     rc = bmfont_create(csfontfile, &csfont);
     if (rc != result_OK) goto ColourSetFail;
@@ -589,13 +903,14 @@ ColourPairOK: ;
     if (wuss_colourset_get_colour(cs) != 0) goto ColourSetFail;
 
     /* the button sits at the right edge, drawn from the icon set; the field
-     * just left of it is filled with the colour */
+     * just left of it is a bitmap filled with the colour */
     button = wuss__icon_hit_test(cswin, POINT(4 + 120 - 2, 4 + 11));
     if (button == NULL || wuss_icon_get_type(button) != wuss_ICON_TYPE_BITMAP)
       goto ColourSetFail;
     field = cswin->icons[0];
-    if (field->spec.type != wuss_ICON_TYPE_DISPLAY || field->spec.bg != 0)
-      goto ColourSetFail;
+    if (field->spec.type != wuss_ICON_TYPE_BITMAP) goto ColourSetFail;
+    fpx = field->spec.u.bitmap.image->base;
+    if ((*fpx & 0xFFFFFF) != 0) goto ColourSetFail;
     if (field->spec.bbox.x0 != 4 + 40 + wuss_STD_GAP) /* the title width */
       goto ColourSetFail;
     /* the field ends where button_width says */
@@ -628,7 +943,7 @@ ColourPairOK: ;
     ev.data.menu_select.button = wuss_BUTTON_ADJUST;
     if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
       goto ColourSetFail;
-    if (wuss_colourset_get_colour(cs) != 1 || field->spec.bg != 1 ||
+    if (wuss_colourset_get_colour(cs) != 1 || (*fpx & 0xFFFFFF) != 0xFFFFFF ||
         calls != 1)
       goto ColourSetFail;
 
@@ -643,6 +958,17 @@ ColourPairOK: ;
     if (wuss_colourset_set_colour(cs, 0) != result_OK) goto ColourSetFail;
     if (wuss_colourset_get_colour(cs) != 0 || calls != 1) goto ColourSetFail;
 
+    /* an RGB shows exactly, not snapped to the palette, and its nearest
+     * entry stands as the colour; picking that entry is still a change */
+    wuss_colourset_set_rgb(cs, colour_rgb(0x12, 0x34, 0x56));
+    if ((*fpx & 0xFFFFFF) != 0x123456 || wuss_colourset_get_colour(cs) != 0 ||
+        calls != 1)
+      goto ColourSetFail;
+    ev.data.menu_select.index = 0;
+    if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK ||
+        (*fpx & 0xFFFFFF) != 0 || calls != 2)
+      goto ColourSetFail;
+
     /* a Select pick: wuss closes the chain and delivers MENU_CLOSED (picked)
      * before MENU_SELECT, which is still the gadget's */
     wuss_menu_close(wuss__menu_chain(cswuss));
@@ -655,7 +981,7 @@ ColourPairOK: ;
     ev.data.menu_select.button = wuss_BUTTON_SELECT;
     if (!wuss_colourset_handle_event(cs, &ev, &csrc) || csrc != result_OK)
       goto ColourSetFail;
-    if (wuss_colourset_get_colour(cs) != 1 || calls != 2) goto ColourSetFail;
+    if (wuss_colourset_get_colour(cs) != 1 || calls != 3) goto ColourSetFail;
 
     /* ... but once that pick is spent, a later one is not */
     if (wuss_colourset_handle_event(cs, &ev, &csrc)) goto ColourSetFail;
@@ -886,6 +1212,121 @@ ColourSetOK: ;
       rc = wuss_idle(sawuss);
       if (rc != result_OK) goto SaveAsFail;
       if (sa_save_calls != 3) goto SaveAsFail;
+    }
+
+    /* NULL handles, other windows and stray messages are not consumed */
+    {
+      wuss_message_t msg;
+
+      if (wuss_saveas_window(NULL) != NULL) goto SaveAsFail;
+      if (wuss_saveas_handle_event(NULL, sawin, &ev)) goto SaveAsFail;
+      if (wuss_saveas_create(NULL, sawuss, NULL, "x", saveas_test_save,
+                             NULL) != result_NULL_ARG) goto SaveAsFail;
+      wuss_saveas_destroy(NULL);
+
+      /* a cancelled drag is consumed but starts no transfer */
+      ev.kind                    = wuss_EVENT_DRAG_END;
+      ev.data.drag_end.drop      = sarecvwin;
+      ev.data.drag_end.point     = POINT(50, 50);
+      ev.data.drag_end.cancelled = 1;
+      ev.data.drag_end.button    = wuss_BUTTON_SELECT;
+      if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+      rc = wuss_idle(sawuss);
+      if (rc != result_OK) goto SaveAsFail;
+      if (sa_save_calls != 3) goto SaveAsFail;
+
+      ev.kind             = wuss_EVENT_ICON;
+      ev.data.icon.icon   = sa_save;
+      ev.data.icon.action = wuss_MOUSE_UP;
+      ev.data.icon.button = wuss_BUTTON_SELECT;
+      ev.data.icon.value  = 0;
+      if (wuss_saveas_handle_event(sa, sarecvwin, &ev)) goto SaveAsFail;
+
+      memset(&msg, 0, sizeof(msg));
+      msg.action        = wuss_MESSAGE_DATA_SAVE_ACK;
+      ev.kind           = wuss_EVENT_MESSAGE;
+      ev.data.message   = &msg;
+      if (wuss_saveas_handle_event(sa, NULL, &ev)) goto SaveAsFail;
+      ev.kind           = wuss_EVENT_MESSAGE_BOUNCED;
+      if (wuss_saveas_handle_event(sa, NULL, &ev)) goto SaveAsFail;
+
+      /* the leafname can be set, but not while a transfer is running; a
+       * bounce of someone else's message leaves the transfer running */
+      wuss_saveas_set_leafname(sa, "renamed");
+      if (strcmp(wuss_saveas_get_path(sa), "renamed") != 0) goto SaveAsFail;
+
+      sarecv_tc.suppress_ack     = 1;
+      ev.kind                    = wuss_EVENT_DRAG_END;
+      ev.data.drag_end.drop      = sarecvwin;
+      ev.data.drag_end.point     = POINT(50, 50);
+      ev.data.drag_end.cancelled = 0;
+      ev.data.drag_end.button    = wuss_BUTTON_SELECT;
+      if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+      wuss_saveas_set_leafname(sa, "ignored");
+      if (strcmp(wuss_saveas_get_path(sa), "renamed") != 0) goto SaveAsFail;
+      ev.kind         = wuss_EVENT_MESSAGE_BOUNCED;
+      ev.data.message = &msg;
+      if (wuss_saveas_handle_event(sa, NULL, &ev)) goto SaveAsFail;
+      rc = wuss_idle(sawuss); /* the unanswered DataSave bounces */
+      if (rc != result_OK) goto SaveAsFail;
+      sarecv_tc.suppress_ack = 0;
+
+      /* a save_fn failure on the DataSaveAck abandons the transfer and
+       * keeps the leafname */
+      sarecv_tc.dir              = "/nonexistent-dptlib-saveas";
+      ev.kind                    = wuss_EVENT_DRAG_END;
+      ev.data.drag_end.drop      = sarecvwin;
+      ev.data.drag_end.point     = POINT(50, 50);
+      ev.data.drag_end.cancelled = 0;
+      ev.data.drag_end.button    = wuss_BUTTON_SELECT;
+      if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+      rc = wuss_idle(sawuss);
+      if (rc != result_OK) goto SaveAsFail;
+      sarecv_tc.dir = sa_scratch;
+      if (sa_save_calls != 4) goto SaveAsFail;
+      if (strcmp(wuss_saveas_get_path(sa), "renamed") != 0) goto SaveAsFail;
+      if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+      rc = wuss_idle(sawuss);
+      if (rc != result_OK) goto SaveAsFail;
+      if (sa_save_calls != 5) goto SaveAsFail;
+    }
+
+    /* the file icon follows the filetype: b60 has its own, data falls back
+     * to the generic one fff had */
+    {
+      filetype_t ft;
+      int        generic;
+
+      generic   = sawin->icons[0]->spec.u.bitmap.set;
+      ft.riscos = 0xb60;
+      ft.ext    = "png";
+      wuss_saveas_set_filetype(sa, &ft);
+      if (sawin->icons[0]->spec.u.bitmap.set == generic) goto SaveAsFail;
+      wuss_saveas_set_filetype(sa, &ft);
+      wuss_saveas_set_filetype(sa, NULL);
+      if (sawin->icons[0]->spec.u.bitmap.set != generic) goto SaveAsFail;
+    }
+
+    /* opened standalone, the dialogue is centred on the pointer; Escape
+     * cancels and closes it */
+    {
+      box_t content;
+      int   cx, cy;
+
+      rc = wuss_mouse_move(sawuss, POINT(100, 100), NULL);
+      if (rc == result_OK)
+        rc = wuss_saveas_open(sa);
+      if (rc != result_OK) goto SaveAsFail;
+      if ((sawin->flags & wuss_WINDOW_HIDDEN) != 0) goto SaveAsFail;
+      wuss_window_get_content_bounds(sawin, &content);
+      cx = (content.x0 + content.x1) / 2;
+      cy = (content.y0 + content.y1) / 2;
+      if (cx < 99 || cx > 101 || cy < 99 || cy > 101) goto SaveAsFail;
+
+      ev.kind          = wuss_EVENT_KEY;
+      ev.data.key.code = wuss_KEY_ESCAPE;
+      if (!wuss_saveas_handle_event(sa, sawin, &ev)) goto SaveAsFail;
+      if ((sawin->flags & wuss_WINDOW_HIDDEN) == 0) goto SaveAsFail;
     }
 
     wuss_saveas_destroy(sa);

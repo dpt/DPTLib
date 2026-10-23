@@ -197,16 +197,23 @@ result_t wuss_gridview_window_create(wuss_gridview_t            **out,
 /**
  * Resize the grid view's window to \ref wuss_gridview_natural_size, then, if
  * the screen cap stopped it part way across a column, to the columns that
- * fit. Resizing sends the window a wuss_EVENT_OPEN, which the task must
- * already be able to route to \ref wuss_gridview_handle_event.
+ * fit, then, if \p place is non-NULL, move it to where \p place puts a
+ * window of its new size, as wuss_window_place. Pass the place the window
+ * was created with so it sits as that place intends for the size it ends up,
+ * rather than shrunk from the top-left of the 320x240 it opened at. Resizing
+ * sends the window a wuss_EVENT_OPEN, which the task must already be able to
+ * route to \ref wuss_gridview_handle_event.
  *
  * \param[in] gridview Handle.
  * \param[in] columns  Column count wanted; at least 1.
  * \param[in] max_rows Row limit; at least 1.
+ * \param[in] place    Where to put the fitted window, or NULL to leave it
+ *                     where it is.
  */
-void wuss_gridview_fit_window(wuss_gridview_t *gridview,
-                              int              columns,
-                              int              max_rows);
+void wuss_gridview_fit_window(wuss_gridview_t    *gridview,
+                              int                 columns,
+                              int                 max_rows,
+                              const wuss_place_t *place);
 
 /**
  * Make items draggable: set the callback offered an item once it is pressed

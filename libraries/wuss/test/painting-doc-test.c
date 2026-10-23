@@ -14,7 +14,7 @@
 #include "geom/point.h"
 #include "geom/size.h"
 
-#include "../tasks/painting-doc.h"
+#include "../../../apps/wuss/tasks/painting/painting-doc.h"
 
 #include "test/all-tests.h"
 #include "test/tmpdir.h"
@@ -186,6 +186,18 @@ result_t paintingdoc_test(const char *resources)
   CHECK(px(doc, 8, 9) == WHITE);
   CHECK(px(doc, 4, 4) == BLACK);
 
+  printf("test: pick reads a canvas pixel back as a colour, and refuses "
+         "off the canvas\n");
+
+  {
+    colour_t c;
+
+    CHECK(paintingdoc_pick(doc, POINT(5, 0), &c));
+    CHECK(c.primary == red().primary);
+    CHECK(!paintingdoc_pick(doc, POINT(-1, 0), &c));
+    CHECK(!paintingdoc_pick(doc, POINT(0, 99), &c));
+  }
+
   printf("test: filling with the colour already there, or off the canvas, "
          "changes nothing and takes no undo step\n");
 
@@ -298,7 +310,7 @@ result_t paintingdoc_test(const char *resources)
   printf("test: loading a paletted or an RGB PNG resizes the canvas, drops "
          "the undo history and keeps the picture\n");
 
-  snprintf(path, sizeof(path), "%s/resources/wuss/images/bob-lady.png",
+  snprintf(path, sizeof(path), "%s/resources/wuss-tasks/images/bob-lady.png",
            resources);
   CHECK(paintingdoc_checkpoint(doc) == result_OK);
   CHECK(paintingdoc_load_png(doc, path) == result_OK);
@@ -313,7 +325,7 @@ result_t paintingdoc_test(const char *resources)
       n += px(doc, x, y) != WHITE;
   CHECK(n > 100);
 
-  snprintf(path, sizeof(path), "%s/resources/wuss/images/smred.png",
+  snprintf(path, sizeof(path), "%s/resources/wuss-tasks/images/smred.png",
            resources);
   CHECK(paintingdoc_load_png(doc, path) == result_OK);
   CHECK(paintingdoc_bitmap(doc)->size.w == 512);
@@ -322,8 +334,8 @@ result_t paintingdoc_test(const char *resources)
   printf("test: a PNG that will not load leaves the canvas alone\n");
 
   paintingdoc_stroke(doc, POINT(5, 5), POINT(5, 5), 1, red());
-  snprintf(path, sizeof(path), "%s/resources/wuss/images/no-such-file.png",
-           resources);
+  snprintf(path, sizeof(path),
+           "%s/resources/wuss-tasks/images/no-such-file.png", resources);
   CHECK(paintingdoc_load_png(doc, path) != result_OK);
   CHECK(paintingdoc_bitmap(doc)->size.w == 512);
   CHECK(px(doc, 5, 5) == RED);

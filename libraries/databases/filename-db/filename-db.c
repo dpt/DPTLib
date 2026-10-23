@@ -55,13 +55,17 @@
 
 /* ----------------------------------------------------------------------- */
 
-static unsigned int filenamedb_refcount = 0;
+static struct
+{
+  unsigned int refcount;
+}
+g;
 
 result_t filenamedb_init(void)
 {
   result_t err;
 
-  if (filenamedb_refcount == 0)
+  if (g.refcount == 0)
   {
     /* dependencies */
 
@@ -70,17 +74,17 @@ result_t filenamedb_init(void)
       return err;
   }
 
-  filenamedb_refcount++;
+  g.refcount++;
 
   return result_OK;
 }
 
 void filenamedb_fin(void)
 {
-  if (filenamedb_refcount == 0)
+  if (g.refcount == 0)
     return;
 
-  if (--filenamedb_refcount == 0)
+  if (--g.refcount == 0)
   {
     /* dependencies */
 

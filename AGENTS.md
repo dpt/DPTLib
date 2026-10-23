@@ -16,10 +16,14 @@ Build directories are per-config and already created; there is **no** plain
 - `build-sdl/`   — Release, ASan on, SDL tests on (`BUILD_SDL_TESTS=ON`) and
   apps on (`BUILD_APPS=ON`). Needed for the interactive `wuss` app
   (`apps/wuss/`, target `wuss`) and anything under
-  `libraries/wuss/tasks/`.
+  `apps/wuss/tasks/`.
 - `build-nosdl/` — Release, core tests only.
 - `build-wuss-min/` — Release, core tests with `WUSS_FURNITURE=OFF`. Checks the
   wuss subsystem options still build when trimmed.
+- `build-coverage/` — Debug, core tests, Clang source-based coverage
+  (`USE_COVERAGE=YES`). Run `tools/coverage.sh [tests...]` from the repo root:
+  it configures if needed, builds, runs the tests, prints a per-file summary
+  and writes `build-coverage/coverage/index.html`.
 - `build.xc/`    — Xcode generator, MinSizeRel, apps on.
 - RISC OS: GCCSDK cross build via an external toolchain file; no build dir is
   kept. Leave alone unless working on RISC OS.
@@ -96,7 +100,7 @@ New source/header files must be added by hand to the relevant `set(..._SOURCES .
 
 **Test structure.** There is a single test binary (`DPTLibTest`, from `apps/test/main.c`) that dispatches to per-module `<module>_test(resources)` functions declared centrally in `include/test/all-tests.h`. Tests return `result_TEST_PASSED`/`result_TEST_FAILED` (`result_BASE_TEST`).
 
-**Notable sub-libraries with their own docs** (`docs/<area>/*.md`): `io/stream` (chainable byte-stream sources/transforms, PackBits and move-to-front compression), `framebuf/bmfont` (proportional bitmap fonts loaded from specially-formatted PNGs), `framebuf/composite` (Porter-Duff compositing on RGBA/BGRA bitmaps), `framebuf/pixelmap` (cached deep-to-paletted colour conversion tables for blit inner loops), `framebuf/dither` (error-diffusion dithering to a palette), `framebuf/octree` (octree colour quantiser for optimised palettes), `framebuf/drawing`, `framebuf/rle-bitmap`, `datastruct/cache`, `databases/pickle`, `databases/tag-db`, `geom/packer`, `windowing/wuss` (minimal window manager: creation, z-ordering, mouse routing, dirty-region redraw, client-delegated content; layered as core, furniture, icons, menus, gadgets and components under `libraries/wuss/`).
+**Notable sub-libraries with their own docs** (`docs/<area>/*.md`): `io/stream` (chainable byte-stream sources/transforms, PackBits and move-to-front compression), `framebuf/bmfont` (proportional bitmap fonts loaded from specially-formatted PNGs), `framebuf/colourspace` (sRGB to and from CMYK, HSL, HSV and OKLab), `framebuf/composite` (Porter-Duff compositing on RGBA/BGRA bitmaps), `framebuf/pixelmap` (cached deep-to-paletted colour conversion tables for blit inner loops), `framebuf/dither` (error-diffusion dithering to a palette), `framebuf/octree` (octree colour quantiser for optimised palettes), `framebuf/drawing`, `framebuf/rle-bitmap`, `datastruct/cache`, `databases/pickle`, `databases/tag-db`, `geom/packer`, `windowing/wuss` (minimal window manager: creation, z-ordering, mouse routing, dirty-region redraw, client-delegated content; layered as core, furniture, icons, menus, gadgets and components under `libraries/wuss/`).
 
 **RISC OS.** `TARGET_RISCOS` (set by an external toolchain file) switches CMake to fetch/build zlib+libpng from source, link OSLib from `$GCCSDK_INSTALL_ENV`, and applies `riscos_set_flags()`. `pngusr-ro.dfa`/`pngusr-rw.dfa` select libpng's build config depending on `DPTLIB_IMAGES_READ_ONLY`.
 

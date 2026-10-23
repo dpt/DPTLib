@@ -1,6 +1,7 @@
 /* utils/pack/test/pack-test.c -- tests for pack/unpack */
 
 #include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -29,12 +30,12 @@ result_t pack_test(const char *resources)
 
     static const char fmt[] = "2c2s2i";
 
-    const size_t   sz = 14;
-    unsigned char  buf[100];
-    size_t         n;
-    signed char    c1, c2;
-    short          s1, s2;
-    int            l1, l2;
+    const size_t      sz = 14;
+    unsigned char     buf[100];
+    size_t            n;
+    signed char       c1, c2;
+    short             s1, s2;
+    int               l1, l2;
 
     n = pack(buf, fmt, data[0], data[1], data[2], data[3], data[4], data[5]);
     if (n != sz)
@@ -67,8 +68,8 @@ result_t pack_test(const char *resources)
                                                    0x00, 0x00, 0x55, 0x55
                                                 };
 
-    short                      unpackedshorts[4];
-    size_t                     n;
+    short  unpackedshorts[4];
+    size_t n;
 
     /* unpacking a big-endian array of shorts */
 
@@ -102,11 +103,11 @@ result_t pack_test(const char *resources)
                                                  0xff, 0xff,
                                                  0x00, 0xff
                                                };
-    static const char           fmt[]        = "*c*s*i";
+    static const char fmt[]        = "*c*s*i";
 
-    const size_t   sz = 2 + 4 + 8;
-    unsigned char  buf[100];
-    size_t         n;
+    const size_t      sz = 2 + 4 + 8;
+    unsigned char     buf[100];
+    size_t            n;
 
     n = pack(buf, fmt, 2, cdata, 2, sdata, 2, ldata);
     if (n != sz)
@@ -118,6 +119,131 @@ result_t pack_test(const char *resources)
     if (memcmp(buf, expected, sz) != 0)
     {
       printf("Failure: pack() using '*'\n");
+      goto Failure;
+    }
+  }
+
+  printf("test: pack quads and repeat counts\n");
+
+  {
+    static const uint64_t      qdata[2]     = { 0x1122334455667788ull,
+                                                0x8877665544332211ull
+                                              };
+    static const unsigned char expected[37] = { 0xAB,
+                                                0x08, 0x07, 0x06, 0x05,
+                                                0x04, 0x03, 0x02, 0x01,
+                                                0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+                                                10, 11,
+                                                0x88, 0x77, 0x66, 0x55,
+                                                0x44, 0x33, 0x22, 0x11,
+                                                0x11, 0x22, 0x33, 0x44,
+                                                0x55, 0x66, 0x77, 0x88
+                                              };
+
+    unsigned char buf[100];
+    size_t        n;
+
+    /* a lone character is a count of one; counts may run to two digits */
+    n = pack(buf, "cq12c*q", 0xAB, 0x0102030405060708ull,
+             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 2, qdata);
+    if (n != sizeof(expected) || memcmp(buf, expected, n) != 0)
+    {
+      printf("Failure: pack() quads and counts (%zu)\n", n);
+      goto Failure;
+    }
+  }
+
+  printf("test: unpack widens with zero or sign extension\n");
+
+  {
+    /* every source and destination size unpack accepts: bytes of all ones
+     * read as all ones when unsigned and -1 when signed */
+    static const struct
+    {
+      const char *single;
+      const char *array;
+      int         srcbytes;
+      int         dstbytes;
+      int         is_signed;
+    }
+    combos[] =
+    {
+      { "bC", "*bC", 1, 1, 0 }, { "bc", "*bc", 1, 1, 1 },
+      { "bS", "*bS", 1, 2, 0 }, { "bs", "*bs", 1, 2, 1 },
+      { "bI", "*bI", 1, 4, 0 }, { "bi", "*bi", 1, 4, 1 },
+      { "bQ", "*bQ", 1, 8, 0 }, { "bq", "*bq", 1, 8, 1 },
+      { "hS", "*hS", 2, 2, 0 }, { "hs", "*hs", 2, 2, 1 },
+      { "hI", "*hI", 2, 4, 0 }, { "hi", "*hi", 2, 4, 1 },
+      { "hQ", "*hQ", 2, 8, 0 }, { "hq", "*hq", 2, 8, 1 },
+      { "wI", "*wI", 4, 4, 0 }, { "wi", "*wi", 4, 4, 1 },
+      { "wQ", "*wQ", 4, 8, 0 }, { "wq", "*wq", 4, 8, 1 },
+      { "dQ", "*dQ", 8, 8, 0 }, { "dq", "*dq", 8, 8, 1 },
+    };
+
+    unsigned char ones[16];
+    unsigned char out[24];
+    int           i;
+    int           j;
+    size_t        n;
+    uint64_t      want;
+    uint64_t      got;
+    int           k;
+
+    memset(ones, 0xFF, sizeof(ones));
+
+    for (i = 0; i < (int) NELEMS(combos); i++)
+    {
+      want = (combos[i].is_signed || combos[i].srcbytes == 8)
+           ? UINT64_MAX : (1ull << (8 * combos[i].srcbytes)) - 1;
+      if (combos[i].dstbytes < 8)
+        want &= (1ull << (8 * combos[i].dstbytes)) - 1;
+
+      /* single then array mode: two elements, then guard bytes */
+      for (j = 0; j < 2; j++)
+      {
+        memset(out, 0xAA, sizeof(out));
+        if (j == 0)
+          n = unpack(ones, combos[i].single, out) +
+              unpack(ones, combos[i].single, out + combos[i].dstbytes);
+        else
+          n = unpack(ones, combos[i].array, 2, out);
+
+        if (n != (size_t) (2 * combos[i].srcbytes) ||
+            out[2 * combos[i].dstbytes] != 0xAA)
+        {
+          printf("Failure: unpack() \"%s\" size\n",
+                 j ? combos[i].array : combos[i].single);
+          goto Failure;
+        }
+
+        for (k = 0; k < 2; k++)
+        {
+          got = 0;
+          memcpy(&got, out + k * combos[i].dstbytes, combos[i].dstbytes);
+          if (got != want)
+          {
+            printf("Failure: unpack() \"%s\" gave %llx\n",
+                   j ? combos[i].array : combos[i].single,
+                   (unsigned long long) got);
+            goto Failure;
+          }
+        }
+      }
+    }
+  }
+
+  printf("test: unpack byte order prefixes\n");
+
+  {
+    static const unsigned char be[2] = { 0x12, 0x34 };
+
+    unsigned short le_s, be_s, native_s;
+
+    if (unpack(be, "<S", &le_s) != 2 || unpack(be, ">S", &be_s) != 2 ||
+        unpack(be, "S", &native_s) != 2 ||
+        le_s != 0x3412 || be_s != 0x1234 || native_s != 0x3412)
+    {
+      printf("Failure: unpack() byte order\n");
       goto Failure;
     }
   }

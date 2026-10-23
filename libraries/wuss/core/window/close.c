@@ -10,14 +10,25 @@
 
 void wuss_window_close(wuss_window_t *doomed)
 {
-  wuss_task_t *task;
-  wuss_t      *wuss;
+  wuss_task_t   *task;
+  wuss_t        *wuss;
+  wuss_window_t *tb;
 
   if (doomed == NULL)
     return;
 
   wuss = doomed->wuss;
   task = doomed->task;
+
+  /* Toolbars go with their parent. Unlinked first, so that closing each
+   * doesn't lay out the doomed parent's remaining toolbars again. */
+  while ((tb = doomed->toolbar.first) != NULL)
+  {
+    doomed->toolbar.first = tb->toolbar.next;
+    tb->toolbar.parent    = NULL;
+    wuss_window_close(tb);
+  }
+  wuss_window_detach(doomed);
 
   wuss__menu_window_closing(wuss, doomed);
 

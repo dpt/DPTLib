@@ -108,7 +108,7 @@ static result_t test_open(State_t *state)
 static result_t test_add_tags(State_t *state)
 {
   result_t err;
-  int   i;
+  int      i;
 
   for (i = 0; i < NELEMS(tagnames); i++)
   {
@@ -206,7 +206,7 @@ Failure:
 static result_t test_tag_id(State_t *state)
 {
   result_t err;
-  int   i;
+  int      i;
 
   for (i = 0; i < NELEMS(taggings); i++)
   {
@@ -450,6 +450,205 @@ static result_t test_delete(State_t *state)
 
 /* ----------------------------------------------------------------------- */
 
+/* Is "tag" among the tags of "id"? */
+static int has_tag(tagdb_t *db, const unsigned char *id, tagdb_tag_t tag)
+{
+  int         cont;
+  tagdb_tag_t t;
+
+  cont = 0;
+  do
+  {
+    if (tagdb_get_tags_for_id(db, id, &cont, &t) != result_OK)
+      return 0;
+    if (cont && t == tag)
+      return 1;
+  }
+  while (cont);
+
+  return 0;
+}
+
+/* The count enumerate_tags reports for "tag", or -1 if absent. */
+static int tag_count(tagdb_t *db, tagdb_tag_t tag)
+{
+  int         cont;
+  tagdb_tag_t t;
+  int         count;
+
+  cont = 0;
+  do
+  {
+    if (tagdb_enumerate_tags(db, &cont, &t, &count) != result_OK)
+      return -1;
+    if (cont && t == tag)
+      return count;
+  }
+  while (cont);
+
+  return -1;
+}
+
+/* Close, which commits, and open again: every tagging and count must
+ * survive the trip through the file. Tag numbers may change, so they are
+ * found again by name. */
+static result_t test_reopen(State_t *state)
+{
+  result_t      err;
+  unsigned char names[NELEMS(tagnames)][32];
+  size_t        length;
+  int           i;
+  int           j;
+  int           want;
+
+  for (i = 0; i < NELEMS(tagnames); i++)
+  {
+    err = tagdb_tagtoname(state->db, state->tags[i], names[i], &length,
+                          sizeof(names[i]));
+    if (err)
+      return err;
+  }
+
+  tagdb_close(state->db);
+
+  err = tagdb_open(FILENAME, &state->db);
+  if (err)
+    return err;
+
+  /* adding an existing name gives back its tag */
+  for (i = 0; i < NELEMS(tagnames); i++)
+  {
+    err = tagdb_add(state->db, names[i], &state->tags[i]);
+    if (err)
+      return err;
+  }
+
+  for (i = 0; i < NELEMS(taggings); i++)
+  {
+    if (!has_tag(state->db, ids[taggings[i].id],
+                 state->tags[taggings[i].tag]))
+    {
+      printf("tagging %d lost\n", i);
+      return result_TEST_FAILED;
+    }
+  }
+
+  for (i = 0; i < NELEMS(tagnames); i++)
+  {
+    want = 0;
+    for (j = 0; j < NELEMS(taggings); j++)
+      if (taggings[j].tag == i)
+        want++;
+
+    if (tag_count(state->db, state->tags[i]) != want)
+    {
+      printf("tag '%s' count %d, want %d\n", names[i],
+             tag_count(state->db, state->tags[i]), want);
+      return result_TEST_FAILED;
+    }
+  }
+
+  return result_OK;
+}
+
+/* Bad tags, unknown ids and short buffers are refused, and counts only
+ * move when a tagging really changes. */
+static result_t test_errors(State_t *state)
+{
+  static const unsigned char stranger[16] = { 9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9 };
+
+  tagdb_tag_t   bad;
+  unsigned char buf[16];
+  size_t        length;
+  int           cont;
+  int           before;
+
+  bad = 1000;
+
+  if (tagdb_tagtoname(state->db, bad, buf, &length, sizeof(buf)) !=
+        result_TAGDB_UNKNOWN_TAG ||
+      tagdb_tagid(state->db, ids[0], bad) != result_TAGDB_UNKNOWN_TAG ||
+      tagdb_untagid(state->db, ids[0], bad) != result_TAGDB_UNKNOWN_TAG)
+  {
+    printf("bad tag accepted\n");
+    return result_TEST_FAILED;
+  }
+
+  /* too short for the name, but the length needed still comes back */
+  length = 0;
+  if (tagdb_tagtoname(state->db, state->tags[0], buf, &length, 2) !=
+        result_TAGDB_BUFF_OVERFLOW || length <= 2)
+  {
+    printf("short name buffer accepted\n");
+    return result_TEST_FAILED;
+  }
+
+  if (tagdb_untagid(state->db, stranger, state->tags[0]) !=
+        result_TAGDB_UNKNOWN_ID)
+  {
+    printf("untag of unknown id accepted\n");
+    return result_TEST_FAILED;
+  }
+
+  cont = 0;
+  if (tagdb_enumerate_ids(state->db, &cont, buf, 4) !=
+        result_TAGDB_BUFF_OVERFLOW ||
+      tagdb_enumerate_ids_by_tag(state->db, state->tags[0], &cont, buf, 4) !=
+        result_TAGDB_BUFF_OVERFLOW ||
+      tagdb_enumerate_ids_by_tags(state->db, &state->tags[0], 1, &cont,
+                                  buf, 4) != result_TAGDB_BUFF_OVERFLOW)
+  {
+    printf("short id buffer accepted\n");
+    return result_TEST_FAILED;
+  }
+
+  /* untagging an id which lacks the tag leaves the count alone */
+  before = tag_count(state->db, state->tags[2]);
+  if (has_tag(state->db, ids[0], state->tags[2]) ||
+      tagdb_untagid(state->db, ids[0], state->tags[2]) != result_OK ||
+      tag_count(state->db, state->tags[2]) != before)
+  {
+    printf("untag of absent tag moved count from %d to %d\n", before,
+           tag_count(state->db, state->tags[2]));
+    return result_TEST_FAILED;
+  }
+
+  /* forgetting an id takes its taggings out of the counts */
+  before = tag_count(state->db, state->tags[2]);
+  tagdb_forget(state->db, ids[1]); /* tagged only with tag 2 */
+  if (tag_count(state->db, state->tags[2]) != before - 1)
+  {
+    printf("forget left count at %d, want %d\n",
+           tag_count(state->db, state->tags[2]), before - 1);
+    return result_TEST_FAILED;
+  }
+
+  /* put it back for the steps which follow */
+  if (tagdb_tagid(state->db, ids[1], state->tags[2]) != result_OK)
+    return result_TEST_FAILED;
+
+  return result_OK;
+}
+
+/* A removed tag is unknown from then on. */
+static result_t test_removed_tag(State_t *state)
+{
+  unsigned char buf[32];
+
+  if (tagdb_tagtoname(state->db, state->tags[0], buf, NULL, sizeof(buf)) !=
+        result_TAGDB_UNKNOWN_TAG ||
+      tagdb_tagid(state->db, ids[0], state->tags[0]) !=
+        result_TAGDB_UNKNOWN_TAG)
+  {
+    printf("removed tag still known\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_OK;
+}
+
+/* ----------------------------------------------------------------------- */
+
 static int rnd(int mod)
 {
   return (rand() % mod) + 1;
@@ -459,8 +658,8 @@ static const char *randomtagname(void)
 {
   static char buf[5 + 1];
 
-  int length;
-  int i;
+  int         length;
+  int         i;
 
   length = rnd(NELEMS(buf) - 1);
 
@@ -476,7 +675,7 @@ static const unsigned char *randomid(void)
 {
   static unsigned char buf[digestdb_DIGESTSZ];
 
-  int i;
+  int                  i;
 
   for (i = 0; i < digestdb_DIGESTSZ; i++)
     buf[i] = (char) rnd(256);
@@ -869,8 +1068,14 @@ result_t tagdb_test(const char *resources)
       "enumerate ids by tags" },
     { test_commit,
       "commit" },
+    { test_reopen,
+      "reopen" },
+    { test_errors,
+      "errors and counts" },
     { test_tag_remove,
       "remove all tags" },
+    { test_removed_tag,
+      "removed tag" },
     { test_get_tags_for_id,
       "get tags for id" },
     { test_forget,

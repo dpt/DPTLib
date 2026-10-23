@@ -130,9 +130,16 @@ void wuss_dialogue_destroy(wuss_dialogue_t *doomed)
     return;
 
   alloc = doomed->alloc;
-  if (doomed->owns_window)
+  if (doomed->owns_window && doomed->window != NULL)
     wuss_window_close(doomed->window); /* frees the window and its icons */
   alloc.free(doomed);
+}
+
+void wuss_dialogue_handle_close(wuss_dialogue_t *dialogue,
+                                wuss_window_t   *closed)
+{
+  if (dialogue != NULL && dialogue->window == closed)
+    dialogue->window = NULL;
 }
 
 /* ----------------------------------------------------------------------- */
@@ -212,6 +219,23 @@ int wuss_dialogue_handle_key(wuss_dialogue_t    *dialogue,
   }
 
   return 0;
+}
+
+result_t wuss_dialogue_handle_pre_close(wuss_dialogue_t *dialogue)
+{
+  int i;
+
+  for (i = 0; i < dialogue->nactions; i++)
+    if (dialogue->actions[i].icon == dialogue->cancel)
+      break;
+
+  if (i < dialogue->nactions)
+    (void) dialogue->actions[i].fn(dialogue->opaque, wuss_BUTTON_SELECT);
+  else
+    (void) wuss_dialogue_hide(dialogue);
+
+  /* the window is the component's: only wuss_dialogue_destroy frees it */
+  return result_STOP_WALK;
 }
 
 result_t wuss_dialogue_handle_pre_show(wuss_dialogue_t *dialogue)

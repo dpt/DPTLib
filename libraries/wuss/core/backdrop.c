@@ -121,7 +121,8 @@ void wuss__fill_index(const wuss_t *wuss,
 void wuss__fill_colour(const wuss_t *wuss,
                        screen_t     *scr,
                        const box_t  *area,
-                       colour_t      colour)
+                       colour_t      colour,
+                       point_t       origin)
 {
   unsigned r, g, b;
   int      i;
@@ -135,7 +136,7 @@ void wuss__fill_colour(const wuss_t *wuss,
     colour_get_rgb(&wuss->palette[i], &pr, &pg, &pb);
     if (pr == r && pg == g && pb == b)
     {
-      wuss__fill_index(wuss, scr, i, area, 0, 0);
+      wuss__fill_index(wuss, scr, i, area, origin.x, origin.y);
       return;
     }
   }

@@ -159,6 +159,18 @@ result_t wuss_dialogue_create_on_window(wuss_dialogue_t           **out,
 void wuss_dialogue_destroy(wuss_dialogue_t *doomed);
 
 /**
+ * Tell a dialogue its window has been closed by someone else (e.g. its
+ * task's windows all closed at once), so wuss_dialogue_destroy does not
+ * close it again. Call it from the owning task's wuss_EVENT_CLOSE handler.
+ * Does nothing if closed is not the dialogue's window or dialogue is NULL.
+ *
+ * \param[in] dialogue Dialogue, or NULL.
+ * \param[in] closed   Window being closed.
+ */
+void wuss_dialogue_handle_close(wuss_dialogue_t *dialogue,
+                                wuss_window_t   *closed);
+
+/**
  * Change the opaque pointer passed to the fillout and action callbacks,
  * replacing the one given at creation. For a dialogue shared by several
  * callers (e.g. the wuss_proginfo singleton reused across tasks), call this
@@ -227,6 +239,19 @@ int wuss_dialogue_handle_icon(wuss_dialogue_t    *dialogue,
 int wuss_dialogue_handle_key(wuss_dialogue_t    *dialogue,
                              const wuss_event_t *event,
                              result_t           *out_result);
+
+/**
+ * Handle a wuss_EVENT_PRE_CLOSE from the task's own handler, e.g. a "close
+ * this task's windows" key: activates the cancel action (see
+ * wuss_dialogue_set_cancel) as ESCAPE would, or hides the dialogue if it has
+ * none, and vetoes the close. The window stays alive until
+ * wuss_dialogue_destroy, so the component never holds a freed window.
+ *
+ * \param[in] dialogue Handle.
+ * \return \ref result_STOP_WALK, for the task's handler to return as the
+ *         veto.
+ */
+result_t wuss_dialogue_handle_pre_close(wuss_dialogue_t *dialogue);
 
 /**
  * Handle a wuss_EVENT_PRE_SHOW from the task's own handler: calls the

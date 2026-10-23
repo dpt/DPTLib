@@ -2,7 +2,7 @@
 # gen_greebling_tiles.py -- bake the Xenon-2 greeble stamps into a C header
 #
 # Reads an 8xN paletted PNG of stacked 8x8 tiles (PICO-8 black / dark-purple /
-# red / orange) and writes libraries/wuss/tasks/greebling-tiles.h:
+# red / orange) and writes apps/wuss/tasks/greebling/greebling-tiles.h:
 #
 #   greebling_tiles[NTILES][8]      one uint16 per row, 2 bits/pixel, x0 low
 #
@@ -31,7 +31,7 @@
 import sys
 from PIL import Image
 
-OUT = "libraries/wuss/tasks/greebling-tiles.h"
+OUT = "apps/wuss/tasks/greebling/greebling-tiles.h"
 PAL = {(0, 0, 0, 255): 0, (126, 37, 83, 255): 1,
        (255, 0, 77, 255): 2, (255, 163, 0, 255): 3}
 HOLE = 0xFF

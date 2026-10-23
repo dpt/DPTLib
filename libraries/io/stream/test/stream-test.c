@@ -1,6 +1,7 @@
 /* io/stream/test/stream-test.c */
 
 #include <assert.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -179,10 +180,15 @@ static result_t test_compressors(void)
       break;
 
     if (c != *p)
+    {
       printf("difference at %td\n", p - input);
+      rc = result_TEST_FAILED;
+    }
   }
 
   printf("%td bytes processed.\n", p - input);
+  if (p - input != (ptrdiff_t) NELEMS(input))
+    rc = result_TEST_FAILED;
 #endif
 
   for (i = 0; i < MaxStreams; i++)
@@ -283,6 +289,178 @@ Failure:
   return result_TEST_FAILED;
 }
 
+/* ----------------------------------------------------------------------- */
+
+/* Compresses 'in' with a 'bufsz' byte buffer and checks the output is 'want'
+ * and that it decompresses back to 'in'. */
+static result_t packbits_case(const char          *name,
+                              const unsigned char *in,
+                              size_t               inlen,
+                              int                  bufsz,
+                              const unsigned char *want,
+                              size_t               wantlen)
+{
+  result_t      rc;
+  stream_t     *src;
+  stream_t     *comp;
+  stream_t     *decomp;
+  unsigned char out[512];
+  size_t        n;
+  int           c;
+
+  src    = NULL;
+  comp   = NULL;
+  decomp = NULL;
+
+  rc = stream_mem_create(in, inlen, &src);
+  if (rc)
+    goto Failure;
+
+  rc = stream_packbitscomp_create(src, bufsz, &comp);
+  if (rc)
+    goto Failure;
+
+  for (n = 0; (c = stream_getc(comp)) != EOF && n < sizeof(out); n++)
+    out[n] = (unsigned char) c;
+
+  if (n != wantlen || memcmp(out, want, wantlen) != 0)
+  {
+    printf("Failure: %s: compressed to %zu bytes, want %zu\n",
+           name, n, wantlen);
+    rc = result_TEST_FAILED;
+    goto Failure;
+  }
+
+  stream_destroy(comp);
+  comp = NULL;
+  stream_destroy(src);
+  src = NULL;
+
+  rc = stream_mem_create(want, wantlen, &src);
+  if (rc)
+    goto Failure;
+
+  rc = stream_packbitsdecomp_create(src, 0, &decomp);
+  if (rc)
+    goto Failure;
+
+  for (n = 0; (c = stream_getc(decomp)) != EOF && n < sizeof(out); n++)
+    out[n] = (unsigned char) c;
+
+  if (n != inlen || memcmp(out, in, inlen) != 0)
+  {
+    printf("Failure: %s: round trip gave %zu bytes, want %zu\n",
+           name, n, inlen);
+    rc = result_TEST_FAILED;
+    goto Failure;
+  }
+
+  stream_destroy(decomp);
+  stream_destroy(src);
+
+  return result_OK;
+
+
+Failure:
+  stream_destroy(decomp);
+  stream_destroy(comp);
+  stream_destroy(src);
+  return rc ? rc : result_TEST_FAILED;
+}
+
+static result_t test_packbits(void)
+{
+  static const unsigned char single[] = { 'a', 'b', 'b', 'b', 'b', 'c' };
+  static const unsigned char single_out[] =
+  {
+    0x00, 'a', 0xFD, 'b', 0x00, 'c'
+  };
+  /* a run of two between literals is cheaper merged into one literal */
+  static const unsigned char merge[] = { 'a', 'b', 'b', 'c' };
+  static const unsigned char merge_out[] = { 0x03, 'a', 'b', 'b', 'c' };
+  /* with a two byte buffer each fill holds one object, so none merge */
+  static const unsigned char split_out[] =
+  {
+    0x00, 'a', 0xFF, 'b', 0x00, 'c'
+  };
+  static const unsigned char long_out[] = { 0x81, 'x', 0xFF, 'x' };
+
+  result_t      rc;
+  unsigned char longrun[130];
+  unsigned char literal[129];
+  unsigned char literal_out[131];
+  int           i;
+  stream_t     *src;
+  stream_t     *comp;
+
+  printf("Test - PackBits\n");
+
+  rc = packbits_case("literal run literal", single, sizeof(single), 0,
+                     single_out, sizeof(single_out));
+  if (rc)
+    return rc;
+
+  rc = packbits_case("merge", merge, sizeof(merge), 0,
+                     merge_out, sizeof(merge_out));
+  if (rc)
+    return rc;
+
+  rc = packbits_case("tiny buffer", merge, sizeof(merge), 2,
+                     split_out, sizeof(split_out));
+  if (rc)
+    return rc;
+
+  /* runs longer than 128 are split */
+  memset(longrun, 'x', sizeof(longrun));
+  rc = packbits_case("long run", longrun, sizeof(longrun), 0,
+                     long_out, sizeof(long_out));
+  if (rc)
+    return rc;
+
+  /* literals stop at 128 bytes and the next starts afresh */
+  literal_out[0] = 127;
+  for (i = 0; i < (int) sizeof(literal); i++)
+  {
+    literal[i] = (unsigned char) ((i & 1) ? 'b' : 'a');
+    if (i < 128)
+      literal_out[1 + i] = literal[i];
+  }
+  literal_out[129] = 0x00;
+  literal_out[130] = literal[128];
+  rc = packbits_case("long literal", literal, sizeof(literal), 256,
+                     literal_out, sizeof(literal_out));
+  if (rc)
+    return rc;
+
+  /* too small a buffer is refused */
+  rc = stream_mem_create(merge, sizeof(merge), &src);
+  if (rc)
+    return rc;
+
+  rc = stream_packbitscomp_create(src, 1, &comp);
+  if (rc != result_BAD_ARG)
+  {
+    stream_destroy(src);
+    return result_TEST_FAILED;
+  }
+
+  rc = stream_packbitscomp_create(src, 0, &comp);
+  if (rc)
+  {
+    stream_destroy(src);
+    return rc;
+  }
+
+  rc = stream_op(comp, stream_IN_MEMORY, NULL);
+
+  stream_destroy(comp);
+  stream_destroy(src);
+
+  return rc == result_STREAM_UNKNOWN_OP ? result_OK : result_TEST_FAILED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t stream_test(const char *resources)
 {
   result_t rc;
@@ -302,6 +480,10 @@ result_t stream_test(const char *resources)
     goto Failure;
 
   rc = test_block();
+  if (rc)
+    goto Failure;
+
+  rc = test_packbits();
   if (rc)
     goto Failure;
 

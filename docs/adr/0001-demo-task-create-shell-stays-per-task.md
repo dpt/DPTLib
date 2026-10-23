@@ -4,7 +4,7 @@ Status: accepted
 
 ## Context
 
-The 33 demo tasks under `libraries/wuss/tasks/` each open with a similar
+The 33 demo tasks under `apps/wuss/tasks/` each open with a similar
 looking sequence in `X_create`: allocate a block, fill a `wuss_task_desc_t`,
 call `wuss_task_create`, set autoclose, create a window and unwind on failure.
 An architecture review proposed deepening this into one shared module (for

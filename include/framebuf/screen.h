@@ -218,7 +218,7 @@ result_t screen_copy_bitmap(screen_t       *scr,
  *  position, so redrawing any sub-rectangle reproduces the same pixels. */
 typedef enum
 {
-  screen_DITHER_NONE,      /**< Nearest palette entry; same as
+  screen_DITHER_NEAREST,   /**< Nearest palette entry; same as
                             *   `screen_copy_bitmap`. */
   screen_DITHER_BAYER,     /**< 8x8 Bayer matrix: cheap, regular
                             *   cross-hatch texture. */

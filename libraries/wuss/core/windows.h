@@ -53,6 +53,25 @@ result_t wuss__window_set_hidden_ex(wuss_window_t     *window,
 result_t wuss__window_set_hidden_ex(wuss_window_t *window, int hidden);
 #endif
 
+/* wuss_window_move's real body, without the toolbar handling: moves any
+ * window, toolbars included, and leaves its toolbars where they are.
+ * Defined in window/move.c. */
+void wuss__window_move(wuss_window_t *window, point_t p);
+
+/* The window whose toolbar group "window" belongs to: its parent if it is a
+ * toolbar, else itself. */
+static inline wuss_window_t *wuss__toolbar_root(wuss_window_t *window)
+{
+  return window->toolbar.parent != NULL ? window->toolbar.parent : window;
+}
+
+/* Move every toolbar of "parent" to where it belongs against the parent's
+ * current footprint and the screen edges. A hidden toolbar takes no room,
+ * except "reveal" (NULL for none), a hidden toolbar about to be shown, which
+ * is laid out as if visible. A no-op for a window with no toolbars. Defined
+ * in window/attach.c. */
+void wuss__toolbars_layout(wuss_window_t *parent, wuss_window_t *reveal);
+
 /* Copy "text" into a "size"-byte buffer "buf", truncating without splitting a
  * UTF-8 codepoint. Used for window titles and writable icons. Defined in
  * copy-text.c. */

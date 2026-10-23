@@ -84,6 +84,7 @@ DPTLib is my platform independent C library. It contains a wide variety of funct
 - [`geom/region.h`](https://github.com/dpt/DPTLib/blob/master/include/geom/region.h) — sparse sets of pixels held as per-row runs: box and polygon fill, invert, outline
 - [`geom/size.h`](https://github.com/dpt/DPTLib/blob/master/include/geom/size.h) — size type
 - [`geom/stack.h`](https://github.com/dpt/DPTLib/blob/master/include/geom/stack.h) — box-stack layout solver
+- [`geom/stage.h`](https://github.com/dpt/DPTLib/blob/master/include/geom/stage.h) — document background layout: pasteboard, border, margin and shadow {[docs](https://github.com/dpt/DPTLib/blob/master/docs/geom/stage.md)}
 
 ### I/O
 

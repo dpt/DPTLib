@@ -49,13 +49,17 @@
 
 /* ----------------------------------------------------------------------- */
 
-static unsigned int tagdb_refcount = 0;
+static struct
+{
+  unsigned int refcount;
+}
+g;
 
 result_t tagdb_init(void)
 {
   result_t err;
 
-  if (tagdb_refcount == 0)
+  if (g.refcount == 0)
   {
     /* dependencies */
 
@@ -64,17 +68,17 @@ result_t tagdb_init(void)
       return err;
   }
 
-  tagdb_refcount++;
+  g.refcount++;
 
   return result_OK;
 }
 
 void tagdb_fin(void)
 {
-  if (tagdb_refcount == 0)
+  if (g.refcount == 0)
     return;
 
-  if (--tagdb_refcount == 0)
+  if (--g.refcount == 0)
   {
     /* dependencies */
 
@@ -710,6 +714,9 @@ result_t tagdb_untagid(tagdb_t *db, const unsigned char *id, tagdb_tag_t tag)
   if (!val)
     return result_TAGDB_UNKNOWN_ID;
 
+  if (!bitvec_get(val, tag)) /* if not set, don't decrement counter */
+    return result_OK;
+
   bitvec_clear(val, tag);
 
   tagdb__tagdec(db, tag);
@@ -1006,8 +1013,26 @@ Failure:
 
 void tagdb_forget(tagdb_t *db, const unsigned char *id)
 {
+  bitvec_t *val;
+  int       index;
+
   assert(db);
   assert(id);
+
+  val = (bitvec_t *) hash_lookup(db->hash, id);
+  if (!val)
+    return;
+
+  /* drop the id's contribution to each of its tags' counts */
+  index = -1;
+  for (;;)
+  {
+    index = bitvec_next(val, index);
+    if (index < 0)
+      break;
+
+    tagdb__tagdec(db, index);
+  }
 
   hash_remove(db->hash, id);
 }
