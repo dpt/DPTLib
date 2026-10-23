@@ -1,4 +1,4 @@
-/* appsfiler.h -- permanent icon bar "Apps" folder of launchable tasks */
+/* wuss/tasks/appsfiler/appsfiler.h -- permanent icon bar "Apps" folder of launchable tasks */
 
 #ifndef WUSS_APP_APPSFILER_H
 #define WUSS_APP_APPSFILER_H

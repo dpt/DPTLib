@@ -828,6 +828,9 @@ _Unreleased_ until one is cut.
 
 ### Changed
 
+- The demo tasks move from `libraries/wuss/tasks/` to `apps/wuss/tasks/`,
+  beside the `wuss` app that runs them. The app's icon bar tasks, Apps
+  (`appsfiler`) and Tasks (`taskmanager`), join them in their own directories.
 - **Breaking:** `wuss_PLACE_IGNORE_SAFE_AREA` replaces
   `wuss_PLACE_AVOID_ICONBAR`, with the inverse sense.
 - **Breaking:** `wuss_gridview_fit_window()` takes a `wuss_place_t` and

@@ -1,4 +1,4 @@
-/* taskmanager.c -- permanent icon bar "Tasks" icon owning the Wuss menu */
+/* wuss/tasks/taskmanager/taskmanager.c -- permanent icon bar "Tasks" icon owning the Wuss menu */
 
 #ifdef WUSS_ICONBAR
 
@@ -9,7 +9,7 @@
 #include "wuss/task.h"
 
 #include "taskmanager.h"
-#include "tasks.h"
+#include "../tasks.h"
 
 static result_t taskmanager_handle(wuss_window_t      *window,
                                    const wuss_event_t *event,

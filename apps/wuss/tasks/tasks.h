@@ -1,4 +1,4 @@
-/* wuss/tasks.h -- Wuss demo task launcher and menu wiring */
+/* wuss/tasks/tasks.h -- Wuss demo task launcher and menu wiring */
 
 #ifndef WUSS_APP_TASKS_H
 #define WUSS_APP_TASKS_H

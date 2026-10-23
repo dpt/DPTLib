@@ -16,18 +16,18 @@ A task's menu shortcuts only fire while one of its windows has the focus (`wuss_
 
 ## System keys
 
-| Key      | Action                              | Where                  |
-| -------- | ----------------------------------- | ---------------------- |
-| Escape   | Cancel a window drag or resize      | `core/key.c`           |
-| Escape   | Dismiss the open menu chain         | `menu/menu.c`          |
-| Return   | Press the dialogue's default button | `component/dialogue.c` |
-| Escape   | Press the dialogue's Cancel button  | `component/dialogue.c` |
-| F1       | Debug > Redraw                      | `apps/wuss/tasks.c`    |
-| Shift-F1 | Debug > Garbage                     | `apps/wuss/tasks.c`    |
-| F2       | Zoom in                             | `tasks_launcher_key`   |
-| Shift-F2 | Zoom out                            | `tasks_launcher_key`   |
-| F3       | Debug > Pixel Stress                | `apps/wuss/tasks.c`    |
-| F4       | Quit Wuss (not on Emscripten)       | `apps/wuss/tasks.c`    |
+| Key      | Action                              | Where                     |
+| -------- | ----------------------------------- | ------------------------- |
+| Escape   | Cancel a window drag or resize      | `core/key.c`              |
+| Escape   | Dismiss the open menu chain         | `menu/menu.c`             |
+| Return   | Press the dialogue's default button | `component/dialogue.c`    |
+| Escape   | Press the dialogue's Cancel button  | `component/dialogue.c`    |
+| F1       | Debug > Redraw                      | `apps/wuss/tasks/tasks.c` |
+| Shift-F1 | Debug > Garbage                     | `apps/wuss/tasks/tasks.c` |
+| F2       | Zoom in                             | `tasks_launcher_key`      |
+| Shift-F2 | Zoom out                            | `tasks_launcher_key`      |
+| F3       | Debug > Pixel Stress                | `apps/wuss/tasks/tasks.c` |
+| F4       | Quit Wuss (not on Emscripten)       | `apps/wuss/tasks/tasks.c` |
 
 Notes:
 

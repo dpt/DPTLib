@@ -58,7 +58,7 @@ wuss_fontmenu_flags_t;
  * different \p wuss skip-lists) open at once cannot each have it wired into
  * their tree at the same time -- rebuild it from a wuss_EVENT_PRE_SUBMENU_
  * OPEN handler instead, the way the colourmenu singleton's fg/bg split does
- * (see wuss/tasks/reading/reading.c).
+ * (see apps/wuss/tasks/reading/reading.c).
  *
  * \param[in] dir   Directory to scan for fonts.
  * \param[in] title Menu caption, borrowed and copied; NULL for "Font".

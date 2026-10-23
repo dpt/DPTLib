@@ -1,4 +1,4 @@
-/* appsfiler.c -- permanent icon bar "Apps" folder listing the launchable tasks */
+/* wuss/tasks/appsfiler/appsfiler.c -- permanent icon bar "Apps" folder listing the launchable tasks */
 
 #ifdef WUSS_ICONBAR
 
@@ -20,9 +20,9 @@
 #include "wuss/window.h"
 
 #include "appsfiler.h"
-#include "tasks.h"
-#include "tasks/common/common.h"
-#include "tasks/common/taskapp.h"
+#include "../tasks.h"
+#include "../common/common.h"
+#include "../common/taskapp.h"
 
 #define APPS_LABEL_CHARS 12
 #define APPS_COLUMNS     4

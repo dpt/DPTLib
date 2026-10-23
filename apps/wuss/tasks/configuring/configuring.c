@@ -23,7 +23,7 @@
 #include "wuss/component/fontmenu.h"
 #include "wuss/icon-spec.h"
 
-#include "tasks.h" /* g_tasks.swap_mouse_buttons */
+#include "../tasks.h" /* g_tasks.swap_mouse_buttons */
 
 #include "configuring.h"
 #include "../common/taskapp.h"

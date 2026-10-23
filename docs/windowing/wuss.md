@@ -233,7 +233,7 @@ document -> screen: screen.x = bounds.x0 - scroll.x + doc.x
 scroll clamp:       max = doc - (bounds.x1 - bounds.x0);  clamp(scroll, 0, max)
 ```
 
-In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scroll.y`, then paint the whole content normally — the framebuffer clip (`scr->clip` = `redraw.content`) discards anything outside the piece. See `libraries/wuss/tasks/reading/reading.c`.
+In a redraw callback: start drawing at `bounds.x0 - scroll.x`, `bounds.y0 - scroll.y`, then paint the whole content normally — the framebuffer clip (`scr->clip` = `redraw.content`) discards anything outside the piece. See `apps/wuss/tasks/reading/reading.c`.
 
 ## Redrawing
 
@@ -323,7 +323,7 @@ Double-clicking a file in a Filing window opens it the RISC OS way, through a `w
 
 A double ADJUST click opens the file and then closes the Filing window, as it does for a directory.
 
-The demo app's tasks claim types through `taskapp_desc_t::opens`, a 0-terminated list of RISC OS filetype numbers. taskapp acknowledges a matching message as soon as the type matches, then opens a new instance and passes it the path through `data_load`. A load that fails is reported by the app itself, so Filing never reports a second error. The run function in `apps/wuss/tasks.c` maps PNG (&B60) to Viewing, and text (&FFF) and Markdown to Reading.
+The demo app's tasks claim types through `taskapp_desc_t::opens`, a 0-terminated list of RISC OS filetype numbers. taskapp acknowledges a matching message as soon as the type matches, then opens a new instance and passes it the path through `data_load`. A load that fails is reported by the app itself, so Filing never reports a second error. The run function in `apps/wuss/tasks/tasks.c` maps PNG (&B60) to Viewing, and text (&FFF) and Markdown to Reading.
 
 Markdown has no allocated RISC OS filetype. `filetype_RISCOS_MARKDOWN` (&1D0) is a placeholder from the user range until one is allocated.
 

@@ -21,7 +21,7 @@
  * wired into their tree with a different title/None setting at the same time
  * -- retitle/reconfigure it and hand back wuss_colourmenu_menu() from a
  * wuss_EVENT_PRE_SUBMENU_OPEN handler instead, the way a single shared fg/bg
- * colourmenu already had to (see wuss/tasks/saturn/saturn.c).
+ * colourmenu already had to (see apps/wuss/tasks/saturn/saturn.c).
  *
  * A task opens the menu with wuss_menu_open and, in its
  * wuss_EVENT_MENU_SELECT case, calls wuss_colourmenu_selected to turn the

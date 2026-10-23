@@ -23,7 +23,7 @@
 
 #include "crt.h"
 #include "frontend.h"
-#include "tasks.h" /* g_tasks.swap_mouse_buttons */
+#include "tasks/tasks.h" /* g_tasks.swap_mouse_buttons */
 
 /* Screen pixel format for the demo, chosen at run time via --depth: 32 =
  * pixelfmt_bgrx8888 (feeds SDL directly, no per-frame conversion); 8 =

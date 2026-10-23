@@ -1,4 +1,4 @@
-/* wuss/tasks.c -- Wuss demo task launcher and menu wiring */
+/* wuss/tasks/tasks.c -- Wuss demo task launcher and menu wiring */
 
 #include <stdlib.h>
 #include <string.h>

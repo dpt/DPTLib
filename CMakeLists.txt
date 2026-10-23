@@ -928,8 +928,8 @@ if(BUILD_TESTS)
         libraries/wuss/core/test/toggle-test.c
         libraries/wuss/core/test/toolbar-test.c
         libraries/wuss/furniture/test/furniture-test.c
-        libraries/wuss/tasks/painting/painting-doc.c
-        libraries/wuss/tasks/painting/painting-doc.h
+        apps/wuss/tasks/painting/painting-doc.c
+        apps/wuss/tasks/painting/painting-doc.h
         libraries/wuss/test/wuss-test.c)
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})
@@ -984,62 +984,62 @@ if(BUILD_APPS)
     endif()
 
     set(WUSS_APP_SOURCES
-        apps/wuss/appsfiler.c
-        apps/wuss/appsfiler.h
+        apps/wuss/tasks/appsfiler/appsfiler.c
+        apps/wuss/tasks/appsfiler/appsfiler.h
         apps/wuss/main.c
         apps/wuss/script.c
         apps/wuss/script.h
-        apps/wuss/taskmanager.c
-        apps/wuss/taskmanager.h
-        apps/wuss/tasks.c
-        libraries/wuss/tasks/ball/ball.c
-        libraries/wuss/tasks/chasehq/chasehq.c
-        libraries/wuss/tasks/greatescape/greatescape.c
-        libraries/wuss/tasks/chars/chars.c
-        libraries/wuss/tasks/checker/checker.c
-        libraries/wuss/tasks/clock/clock.c
-        libraries/wuss/tasks/configuring/configuring.c
-        libraries/wuss/tasks/curving/curving.c
-        libraries/wuss/tasks/dithering/dithering.c
-        libraries/wuss/tasks/display/display.c
-        libraries/wuss/tasks/doughnut/doughnut.c
-        libraries/wuss/tasks/effecting/effecting.c
-        libraries/wuss/tasks/effecting/effecting-edit.c
-        libraries/wuss/tasks/filing/filing.c
-        libraries/wuss/tasks/common/fireball.c
-        libraries/wuss/tasks/gradient/gradient.c
-        libraries/wuss/tasks/greebling/greebling.c
-        libraries/wuss/tasks/icons/icons.c
-        libraries/wuss/tasks/viewing/viewing.c
-        libraries/wuss/tasks/keys/keys.c
-        libraries/wuss/tasks/oscillating/oscillating.c
-        libraries/wuss/tasks/minesweeping/minesweeping.c
-        libraries/wuss/tasks/painting/painting-doc.c
-        libraries/wuss/tasks/painting/painting-doc.h
-        libraries/wuss/tasks/painting/painting-new.c
-        libraries/wuss/tasks/painting/painting-new.h
-        libraries/wuss/tasks/fern/fern.c
-        libraries/wuss/tasks/fern/fern.h
-        libraries/wuss/tasks/painting/painting.c
-        libraries/wuss/tasks/painting/painting.h
-        libraries/wuss/tasks/palette/palette.c
-        libraries/wuss/tasks/fireworks/fireworks.c
-        libraries/wuss/tasks/patterns/patterns.c
-        libraries/wuss/tasks/pooling/pooling.c
-        libraries/wuss/tasks/shortcuts/shortcuts.c
-        libraries/wuss/tasks/compositing/compositing.c
-        libraries/wuss/tasks/saturn/saturn.c
-        libraries/wuss/tasks/common/snapshot.c
-        libraries/wuss/tasks/sofa/sofa.c
-        libraries/wuss/tasks/sudoku/sudoku.c
-        libraries/wuss/tasks/orbing/orbing.c
-        libraries/wuss/tasks/reading/reading.c
-        libraries/wuss/tasks/resizing/resizing.c
-        libraries/wuss/tasks/resizing/resizing.h
-        libraries/wuss/tasks/tiling/tiling.c
-        libraries/wuss/tasks/common/taskapp.c
-        libraries/wuss/tasks/common/taskapp.h
-        libraries/wuss/tasks/common/zxtask.c)
+        apps/wuss/tasks/taskmanager/taskmanager.c
+        apps/wuss/tasks/taskmanager/taskmanager.h
+        apps/wuss/tasks/tasks.c
+        apps/wuss/tasks/ball/ball.c
+        apps/wuss/tasks/chasehq/chasehq.c
+        apps/wuss/tasks/greatescape/greatescape.c
+        apps/wuss/tasks/chars/chars.c
+        apps/wuss/tasks/checker/checker.c
+        apps/wuss/tasks/clock/clock.c
+        apps/wuss/tasks/configuring/configuring.c
+        apps/wuss/tasks/curving/curving.c
+        apps/wuss/tasks/dithering/dithering.c
+        apps/wuss/tasks/display/display.c
+        apps/wuss/tasks/doughnut/doughnut.c
+        apps/wuss/tasks/effecting/effecting.c
+        apps/wuss/tasks/effecting/effecting-edit.c
+        apps/wuss/tasks/filing/filing.c
+        apps/wuss/tasks/common/fireball.c
+        apps/wuss/tasks/gradient/gradient.c
+        apps/wuss/tasks/greebling/greebling.c
+        apps/wuss/tasks/icons/icons.c
+        apps/wuss/tasks/viewing/viewing.c
+        apps/wuss/tasks/keys/keys.c
+        apps/wuss/tasks/oscillating/oscillating.c
+        apps/wuss/tasks/minesweeping/minesweeping.c
+        apps/wuss/tasks/painting/painting-doc.c
+        apps/wuss/tasks/painting/painting-doc.h
+        apps/wuss/tasks/painting/painting-new.c
+        apps/wuss/tasks/painting/painting-new.h
+        apps/wuss/tasks/fern/fern.c
+        apps/wuss/tasks/fern/fern.h
+        apps/wuss/tasks/painting/painting.c
+        apps/wuss/tasks/painting/painting.h
+        apps/wuss/tasks/palette/palette.c
+        apps/wuss/tasks/fireworks/fireworks.c
+        apps/wuss/tasks/patterns/patterns.c
+        apps/wuss/tasks/pooling/pooling.c
+        apps/wuss/tasks/shortcuts/shortcuts.c
+        apps/wuss/tasks/compositing/compositing.c
+        apps/wuss/tasks/saturn/saturn.c
+        apps/wuss/tasks/common/snapshot.c
+        apps/wuss/tasks/sofa/sofa.c
+        apps/wuss/tasks/sudoku/sudoku.c
+        apps/wuss/tasks/orbing/orbing.c
+        apps/wuss/tasks/reading/reading.c
+        apps/wuss/tasks/resizing/resizing.c
+        apps/wuss/tasks/resizing/resizing.h
+        apps/wuss/tasks/tiling/tiling.c
+        apps/wuss/tasks/common/taskapp.c
+        apps/wuss/tasks/common/taskapp.h
+        apps/wuss/tasks/common/zxtask.c)
 
     if(TARGET_RISCOS)
         list(APPEND WUSS_APP_SOURCES apps/wuss/frontend-riscos.c)
@@ -1164,7 +1164,7 @@ if(BUILD_APPS)
         # handed only to the file that needs it, not to all of wuss
         target_include_directories(chasehq
             PRIVATE "${CHQ_DIR}/include" "${CHQ}")
-        set_source_files_properties(libraries/wuss/tasks/chasehq/chasehq.c
+        set_source_files_properties(apps/wuss/tasks/chasehq/chasehq.c
             PROPERTIES INCLUDE_DIRECTORIES "${CHQ_DIR}/include")
         # third-party code: its warnings are policed by its own build
         target_compile_options(chasehq PRIVATE -w)
@@ -1225,7 +1225,7 @@ if(BUILD_APPS)
         # replace with a TGE build option if it ever gains one
         set_source_files_properties(${TGE}/ZXSpectrum/Spectrum.c
             PROPERTIES COMPILE_DEFINITIONS "__riscos")
-        set_source_files_properties(libraries/wuss/tasks/greatescape/greatescape.c
+        set_source_files_properties(apps/wuss/tasks/greatescape/greatescape.c
             PROPERTIES
                 INCLUDE_DIRECTORIES "${TGE_DIR}/include"
                 COMPILE_DEFINITIONS "${TGE_ZX_RENAMES}")

@@ -16,7 +16,7 @@
 #include "wuss/icon-spec.h"
 #include "wuss/icon.h"
 
-#include "tasks.h" /* app_set_mode, app_get_depth */
+#include "../tasks.h" /* app_set_mode, app_get_depth */
 
 #include "display.h"
 #include "../common/taskapp.h"

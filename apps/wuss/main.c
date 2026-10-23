@@ -36,10 +36,10 @@
 
 #include "frontend.h"
 #include "script.h"
-#include "appsfiler.h"
-#include "taskmanager.h"
-#include "tasks.h"
+#include "tasks/tasks.h"
 
+#include "tasks/appsfiler/appsfiler.h"
+#include "tasks/taskmanager/taskmanager.h"
 #include "tasks/configuring/configuring.h"
 #include "tasks/display/display.h"
 #include "tasks/reading/reading.h"

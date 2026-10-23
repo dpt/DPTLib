@@ -80,7 +80,7 @@ result_t test_handle(wuss_window_t      *window,
        * (already proceeding by default), and calling
        * wuss_menu_open_window_now with a NULL/non-menu handle is a caller
        * error -- regression coverage for a real crash where saturn.c and
-       * apps/wuss/tasks.c called it unconditionally */
+       * apps/wuss/tasks/tasks.c called it unconditionally */
       if (event->data.pre_show.handle == NULL)
         return result_OK;
       return wuss_menu_open_window_now(event->data.pre_show.handle,

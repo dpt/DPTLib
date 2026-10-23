@@ -1,4 +1,4 @@
-/* taskmanager.h -- permanent icon bar "Tasks" icon owning the Wuss menu */
+/* wuss/tasks/taskmanager/taskmanager.h -- permanent icon bar "Tasks" icon owning the Wuss menu */
 
 #ifndef WUSS_APP_TASKMANAGER_H
 #define WUSS_APP_TASKMANAGER_H

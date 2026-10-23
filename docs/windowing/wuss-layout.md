@@ -1,6 +1,6 @@
 # Wuss window layout style guide
 
-Derived from the dialogues of the tasks in `libraries/wuss/tasks/`
+Derived from the dialogues of the tasks in `apps/wuss/tasks/`
 (`display.c`, `fireworks.c`, `saturn.c`, `orbing.c` and `painting-new.c`).
 
 ## Method
