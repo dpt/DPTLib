@@ -4,7 +4,7 @@ This file provides guidance to coding agents (Claude Code, Codex, etc.) when wor
 
 ## Overview
 
-DPTLib is a platform-independent C99 library (base, databases, datastruct, framebuf, geom, io, text, utils, wuss modules) shared across the author's projects (PrivateEye, MotionMasks, etc). Targets desktop (Linux/macOS/Windows) and RISC OS (via GCCSDK).
+DPTLib is a platform-independent C99 library (base, databases, datastruct, framebuf, geom, io, text, utils modules) shared across the author's projects (PrivateEye, MotionMasks, Wuss, etc). The `wuss` window manager and its demo moved to their own repository (`../Wuss`), which fetches DPTLib with `FetchContent`; keep DPTLib free of wuss code. Targets desktop (Linux/macOS/Windows) and RISC OS (via GCCSDK).
 
 ## Build
 
@@ -13,35 +13,20 @@ Build directories are per-config and already created; there is **no** plain
 
 - `build-asan/`  — **default**. Debug, core tests (`BUILD_TESTS=YES`), ASan +
   UBSan on (`USE_ASAN=YES`). Use this unless told otherwise.
-- `build-sdl/`   — Release, ASan on, SDL tests on (`BUILD_SDL_TESTS=ON`) and
-  apps on (`BUILD_APPS=ON`). Needed for the interactive `wuss` app
-  (`apps/wuss/`, target `wuss`) and anything under
-  `apps/wuss/tasks/`.
+- `build-sdl/`   — Release, ASan on, SDL tests on (`BUILD_SDL_TESTS=ON`).
 - `build-nosdl/` — Release, core tests only.
-- `build-wuss-min/` — Release, core tests with `WUSS_FURNITURE=OFF`. Checks the
-  wuss subsystem options still build when trimmed.
 - `build-coverage/` — Debug, core tests, Clang source-based coverage
   (`USE_COVERAGE=YES`). Run `tools/coverage.sh [tests...]` from the repo root:
   it configures if needed, builds, runs the tests, prints a per-file summary
   and writes `build-coverage/coverage/index.html`.
-- `build.xc/`    — Xcode generator, MinSizeRel, apps on.
+- `build.xc/`    — Xcode generator, MinSizeRel.
 - RISC OS: GCCSDK cross build via an external toolchain file; no build dir is
   kept. Leave alone unless working on RISC OS.
-- `build-emscripten/` — WebAssembly build of the `wuss` demo. If missing,
-  configure with `emcmake cmake -B build-emscripten -G Ninja -DBUILD_APPS=ON
-  -DBUILD_TESTS=OFF`, build with `cmake --build build-emscripten --target wuss`,
-  then serve the dir and open `wuss.html` (e.g.
-  `python3 -m http.server -d build-emscripten`). Uses Emscripten's bundled SDL3
-  and libpng ports (`-sUSE_SDL=3`, `-sUSE_LIBPNG=1`); the browser owns the main
-  loop via `emscripten_set_main_loop_arg`; `resources/` is baked into
-  `wuss.data` and mounted at MEMFS `/resources`.
 
-CMake options: `BUILD_TESTS`, `BUILD_SDL_TESTS`, `BUILD_APPS` (the `wuss`
-interactive app; needs `WUSS_FURNITURE` and `WUSS_ICONS`), `USE_ASAN` (ASan +
-UBSan), `USE_FORTIFY` (bundled Fortify), `DPTLIB_IMAGES_READ_ONLY` (libpng no
-write). Wuss subsystems, all default ON: `WUSS_FURNITURE`, `WUSS_ICONS`,
-`WUSS_MENUS` (implies icons), `WUSS_GADGETS` (implies menus),
-`WUSS_COMPONENTS` (implies gadgets).
+CMake options: `BUILD_TESTS`, `BUILD_SDL_TESTS`, `USE_ASAN` (ASan + UBSan),
+`USE_COVERAGE`, `USE_FORTIFY` (bundled Fortify), `DPTLIB_IMAGES_READ_ONLY`
+(libpng no write). `BUILD_TESTS` only builds `DPTLibTest` when DPTLib is the
+top-level project, not when a parent project (Wuss) fetches it.
 
 (Re)configure a dir only if its `CMakeCache.txt` is missing or you are changing
 options:
@@ -52,7 +37,6 @@ cmake -B build-asan -G Ninja -DBUILD_TESTS=YES
 Build:
 ```
 cmake --build build-asan --target DPTLibTest
-cmake --build build-sdl --target wuss    # interactive app
 ```
 
 Requires libpng (`find_package(PNG)` on non-RISC OS). On RISC OS the build fetches and patches zlib/libpng itself via `FetchContent` (see `cmake/*.patch`).
@@ -64,7 +48,7 @@ Run from the **repo root** so `-resources .` resolves the fixture files:
 ./build-asan/DPTLibTest-debug -resources .
 ```
 
-Run a subset by naming tests (names come from the `tests[]` table in `apps/test/main.c`, e.g. `atom`, `bitvec`, `curve`, `pickle`, `stream`, `packer`, `wuss`):
+Run a subset by naming tests (names come from the `tests[]` table in `apps/test/main.c`, e.g. `atom`, `bitvec`, `curve`, `pickle`, `stream`, `packer`):
 ```
 ./build-asan/DPTLibTest-debug -resources . atom bitvec
 ```
@@ -92,7 +76,7 @@ Success prints `++ Tests completed in Ns: N of N tests passed.`
 
 New source/header files must be added by hand to the relevant `set(..._SOURCES ...)` list and, for public headers, to `PUBLIC_HEADERS`, in `CMakeLists.txt` — there is no globbing.
 
-**Internal naming (see `wuss`).** Functions declared in a private `impl.h` and not part of the public header use a double-underscore prefix, e.g. `wuss__titlebar_height_for`; internal-only enum constants still use the module's normal single-underscore style (e.g. `wuss_WINDOW_STATE_TOGGLED`), matching public enums. Per-instance internal state that isn't part of the public appearance API (e.g. `struct wuss_window`'s toggled/maximised state) is kept as a bitflags enum with `wuss__window_*` accessor helpers rather than loose `int`/`bool` fields, leaving room to add flags without growing the struct.
+**Internal naming.** (Examples are from Wuss, which follows the same rules.) Functions declared in a private `impl.h` and not part of the public header use a double-underscore prefix, e.g. `wuss__titlebar_height_for`; internal-only enum constants still use the module's normal single-underscore style (e.g. `wuss_WINDOW_STATE_TOGGLED`), matching public enums. Per-instance internal state that isn't part of the public appearance API (e.g. `struct wuss_window`'s toggled/maximised state) is kept as a bitflags enum with `wuss__window_*` accessor helpers rather than loose `int`/`bool` fields, leaving room to add flags without growing the struct.
 
 **Error handling.** No exceptions; functions return `result_t` (`include/base/result.h`). Each module reserves a `result_BASE_<MODULE>` offset block and defines its own `result_<MODULE>_*` codes starting from that base. Common generic codes (`result_OK`, `result_OOM`, `result_BAD_ARG`, etc.) live at `result_BASE_GENERIC`. Callers typically check `rc != result_OK` and propagate.
 
@@ -100,7 +84,7 @@ New source/header files must be added by hand to the relevant `set(..._SOURCES .
 
 **Test structure.** There is a single test binary (`DPTLibTest`, from `apps/test/main.c`) that dispatches to per-module `<module>_test(resources)` functions declared centrally in `include/test/all-tests.h`. Tests return `result_TEST_PASSED`/`result_TEST_FAILED` (`result_BASE_TEST`).
 
-**Notable sub-libraries with their own docs** (`docs/<area>/*.md`): `io/stream` (chainable byte-stream sources/transforms, PackBits and move-to-front compression), `framebuf/bmfont` (proportional bitmap fonts loaded from specially-formatted PNGs), `framebuf/colourspace` (sRGB to and from CMYK, HSL, HSV and OKLab), `framebuf/composite` (Porter-Duff compositing on RGBA/BGRA bitmaps), `framebuf/pixelmap` (cached deep-to-paletted colour conversion tables for blit inner loops), `framebuf/dither` (error-diffusion dithering to a palette), `framebuf/octree` (octree colour quantiser for optimised palettes), `framebuf/drawing`, `framebuf/rle-bitmap`, `datastruct/cache`, `databases/pickle`, `databases/tag-db`, `geom/packer`, `windowing/wuss` (minimal window manager: creation, z-ordering, mouse routing, dirty-region redraw, client-delegated content; layered as core, furniture, icons, menus, gadgets and components under `libraries/wuss/`).
+**Notable sub-libraries with their own docs** (`docs/<area>/*.md`): `io/stream` (chainable byte-stream sources/transforms, PackBits and move-to-front compression), `framebuf/bmfont` (proportional bitmap fonts loaded from specially-formatted PNGs), `framebuf/colourspace` (sRGB to and from CMYK, HSL, HSV and OKLab), `framebuf/composite` (Porter-Duff compositing on RGBA/BGRA bitmaps), `framebuf/pixelmap` (cached deep-to-paletted colour conversion tables for blit inner loops), `framebuf/dither` (error-diffusion dithering to a palette), `framebuf/octree` (octree colour quantiser for optimised palettes), `framebuf/drawing`, `framebuf/rle-bitmap`, `datastruct/cache`, `databases/pickle`, `databases/tag-db`, `geom/packer`.
 
 **RISC OS.** `TARGET_RISCOS` (set by an external toolchain file) switches CMake to fetch/build zlib+libpng from source, link OSLib from `$GCCSDK_INSTALL_ENV`, and applies `riscos_set_flags()`. `pngusr-ro.dfa`/`pngusr-rw.dfa` select libpng's build config depending on `DPTLIB_IMAGES_READ_ONLY`.
 
@@ -125,7 +109,7 @@ Before hand-rolling, grep `include/` for an existing helper. Do not re-implement
 - Rectangles: `box_t` helpers in `geom/box.h` (`box_intersection`, `box_is_empty`, `box_list_add`, `BOX_INIT`...), `geom/line.h` for line clipping.
 - Pixel sets and polygons: `geom/region.h` (sparse per-row runs; box and even-odd polygon fill, contains, outline). Do not use dense per-pixel masks or write scanline fills.
 - Bitmap compression: `bitmap_compress` / `bitmap_decompress` (`framebuf/bitmap.h`); drawing primitives in `framebuf/screen.h`.
-- File paths: build them with `pathf` (`io/path.h`) from `/`-separated pieces, never a raw `snprintf("%s/%s")`; RISC OS needs `.` separators and no extension. `pathf` returns one shared static buffer, so copy the result before the next call. Use `path_leaf`, `path_leaf_valid`, `path_leaf_strip_ext` and `path_is_full` rather than `strrchr(path, '/')`. When joining a directory and a leaf that may contain `.` (a listing's entries), `pathf` would mangle it: join with the host separator instead (see `filing_join` in `filing.c`).
+- File paths: build them with `pathf` (`io/path.h`) from `/`-separated pieces, never a raw `snprintf("%s/%s")`; RISC OS needs `.` separators and no extension. `pathf` returns one shared static buffer, so copy the result before the next call. Use `path_leaf`, `path_leaf_valid`, `path_leaf_strip_ext` and `path_is_full` rather than `strrchr(path, '/')`. When joining a directory and a leaf that may contain `.` (a listing's entries), `pathf` would mangle it: join with the host separator instead (see `filing_join` in Wuss's `apps/wuss/tasks/filing/filing.c`).
 - Errors: `result_t` codes and `check` / `sentinel` (`base/result.h`, `base/debug.h`).
 
 If a new helper is generic (no dependence on the calling module), put it in the matching library area with a test, not in a demo or task.

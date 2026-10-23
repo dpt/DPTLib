@@ -12,7 +12,6 @@
 #include "geom/layout.h"
 #include "geom/packer.h"
 #include "io/stream.h"
-#include "wuss/wuss.h"
 
 const char *result_string(result_t err)
 {
@@ -75,11 +74,6 @@ const char *result_string(result_t err)
   case result_BITFIFO_EMPTY:             return "BitFIFO: empty";
   case result_BITFIFO_FULL:              return "BitFIFO: full";
   case result_BITFIFO_INSUFFICIENT:      return "BitFIFO: insufficient bits";
-
-  case result_WUSS_TOO_SMALL:            return "Wuss: dimensions too small";
-  case result_WUSS_BAD_COLOUR:           return "Wuss: palette index out of range";
-  case result_WUSS_BAD_ICON:             return "Wuss: malformed icon spec";
-  case result_WUSS_BAD_PALETTE:          return "Wuss: malformed palette file";
 
   case result_BMFONT_BAD_MAP:            return "Bmfont: bad cmap sidecar";
 
