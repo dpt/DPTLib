@@ -98,7 +98,21 @@ result_t tonemap_test(const char *resources)
     goto failure;
   }
 
-  /* 5. plotting the neutral map draws a diagonal on white */
+  /* 5. state: alpha now present; setting red alone splits R/G/B */
+  if (!tonemap_rgb_in_sync(map) || !tonemap_has_alpha(map))
+  {
+    printf("tonemap: expected RGB in sync with alpha\n");
+    goto failure;
+  }
+
+  tonemap_set(map, tonemap_CHANNEL_RED, &spec);
+  if (tonemap_rgb_in_sync(map))
+  {
+    printf("tonemap: red-only set left RGB in sync\n");
+    goto failure;
+  }
+
+  /* 6. plotting the neutral map draws a diagonal on white */
   tonemap_reset(map);
   if (bitmap_init(&bm, SIZE2D(PLOT_SIZE, PLOT_SIZE), pixelfmt_rgbx8888,
                   PLOT_SIZE * 4, NULL, pixels) != result_OK)

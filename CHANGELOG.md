@@ -19,6 +19,10 @@ _Unreleased_ until one is cut.
 
 ### Added
 
+- `framebuf/tonemap.h`: `tonemap_rgb_in_sync` and `tonemap_has_alpha` report
+  whether red, green and blue were last set together and whether alpha is
+  present, so a tone map editor can choose between one combined curve and
+  separate ones.
 - `geom/stage.h`: lays out a document background (a page in a margin, with a
   stroked border and optional drop shadow, centred on a pasteboard) as a list
   of tagged boxes to fill. Ported from PrivateEye's `stage`, with `box_t` in

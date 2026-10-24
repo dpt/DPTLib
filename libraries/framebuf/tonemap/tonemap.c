@@ -304,3 +304,15 @@ void tonemap_get_values(const tonemap_t   *map,
 
   *spec = map->comp[i].spec;
 }
+
+/* ----------------------------------------------------------------------- */
+
+int tonemap_rgb_in_sync(const tonemap_t *map)
+{
+  return (map->flags & FLAG_RGB_IN_SYNC) != 0;
+}
+
+int tonemap_has_alpha(const tonemap_t *map)
+{
+  return map->ncomponents >= 4;
+}

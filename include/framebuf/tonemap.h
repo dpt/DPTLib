@@ -131,6 +131,23 @@ void tonemap_get_values(const tonemap_t   *map,
                         tonemap_spec_t    *spec);
 
 /**
+ * Report whether red, green and blue share one setting, i.e. were last set
+ * together rather than individually.
+ *
+ * \param[in] map Tone map to query.
+ * \return Non-zero if red, green and blue are in sync.
+ */
+int tonemap_rgb_in_sync(const tonemap_t *map);
+
+/**
+ * Report whether a tone map has an alpha channel.
+ *
+ * \param[in] map Tone map to query.
+ * \return Non-zero once alpha has been set.
+ */
+int tonemap_has_alpha(const tonemap_t *map);
+
+/**
  * Fetch the correction tables, rebuilding them if stale.
  *
  * The tables remain valid until the tone map is next changed or destroyed. A
