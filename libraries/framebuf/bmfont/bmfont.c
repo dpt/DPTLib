@@ -87,6 +87,9 @@ struct bmfont
   bmfont_cmap_group_t *cmap; /* sorted by codepoint, non-overlapping */
   int                  cmap_used;
   int                  cmap_allocated;
+  int                  ascii[128]; /* the cmap's answer for each ASCII
+                                    * codepoint, saving a bsearch per glyph
+                                    * on the common case */
 
   bmfont_flags_t  flags;
 };
@@ -876,11 +879,10 @@ static int cmap_group_compare(const void *key, const void *elem)
   return 0;
 }
 
-int bmfont_lookup(bmfont_t *bmfont, unsigned long codepoint)
+/** Look up \p codepoint by searching the cmap. */
+static int cmap_lookup(const bmfont_t *bmfont, unsigned long codepoint)
 {
   const bmfont_cmap_group_t *group;
-
-  assert(bmfont);
 
   if (bmfont->cmap_used == 0)
     return -1; /* bsearch() may not be passed a NULL base */
@@ -894,6 +896,16 @@ int bmfont_lookup(bmfont_t *bmfont, unsigned long codepoint)
     return -1;
 
   return group->glyph + (int) (codepoint - group->first);
+}
+
+int bmfont_lookup(bmfont_t *bmfont, unsigned long codepoint)
+{
+  assert(bmfont);
+
+  if (codepoint < NELEMS(bmfont->ascii))
+    return bmfont->ascii[codepoint];
+
+  return cmap_lookup(bmfont, codepoint);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -999,6 +1011,7 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
     int    gridwidth   = pngwidth / CHARS_PER_ROW;
     int    gridheight  = detect_gridheight(pixels, pngrowbytes,
                                            pngwidth, pngheight);
+    int    i;
 
     if (gridheight == 0)
     {
@@ -1062,6 +1075,9 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
     rc = load_cmap(bmfont, png);
     if (rc)
       goto cleanup;
+
+    for (i = 0; i < (int) NELEMS(bmfont->ascii); i++)
+      bmfont->ascii[i] = cmap_lookup(bmfont, (unsigned long) i);
 
     bmfont->notdef = bmfont_lookup(bmfont, utf8_REPLACEMENT);
     if (bmfont->notdef < 0)
