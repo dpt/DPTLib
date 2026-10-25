@@ -46,6 +46,9 @@ typedef enum dither_method
   dither_RIEMERSMA,          /**< Diffuses along a Hilbert curve. */
   dither_OSTROMOUKHOV,       /**< Coefficients vary with level. */
   dither_ZHOU_FANG,          /**< Ostromoukhov plus threshold noise. */
+  dither_FAN,                /**< Floyd-Steinberg reaching further left. */
+  dither_SHIAU_FAN,          /**< Four cells, fewer worms than Fan. */
+  dither_SHIAU_FAN_2,        /**< Five cells, reaching three left. */
   dither__LIMIT
 }
 dither_method_t;

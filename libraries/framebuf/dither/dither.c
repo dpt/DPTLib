@@ -21,7 +21,8 @@
 
 #define DITHER_MAX_W 5
 #define DITHER_MAX_H 3
-#define DITHER_PAD   2 /* columns either side absorbing off-image error */
+#define DITHER_PAD   3 /* columns either side absorbing off-image error: the
+                        * furthest reach of any kernel, Shiau-Fan 2's */
 #define OSTRO_DIV    64 /* Ostromoukhov's coefficients are rescaled to this */
 
 /* coeff[0] is the current row; entries at or left of cx on it are zero. An
@@ -80,6 +81,15 @@ static const dither_kernel_t dither_kernels[dither__LIMIT] =
   { 3, 2, 1, OSTRO_DIV, { { 0 } }, NULL },
   /* Zhou-Fang: Ostromoukhov's shape */
   { 3, 2, 1, OSTRO_DIV, { { 0 } }, NULL },
+  /* Fan */
+  { 4, 2, 2, 16, { { 0, 0, 0, 7 },
+                   { 1, 3, 5, 0 } }, NULL },
+  /* Shiau-Fan, four cells */
+  { 4, 2, 2, 8,  { { 0, 0, 0, 4 },
+                   { 1, 1, 2, 0 } }, NULL },
+  /* Shiau-Fan, five cells */
+  { 5, 2, 3, 16, { { 0, 0, 0, 0, 8 },
+                   { 1, 1, 2, 4, 0 } }, NULL },
 };
 
 /* ----- sRGB <-> linear light ----- */
