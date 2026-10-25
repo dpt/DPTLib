@@ -108,9 +108,9 @@ dither_options_t;
  * diffusion: each lookup sees the pixel nudged by white noise whose spread
  * depends on the source level, while the error carried on is measured from
  * the un-nudged pixel. The noise breaks up the worms and regular patterns
- * left in the midtones. It reuses Ostromoukhov's coefficients rather than
- * Zhou and Fang's own and is seeded the same every call, so it is
- * repeatable. `strength` scales the noise as well as the error.
+ * left in the midtones. It uses Zhou and Fang's own coefficients and is
+ * seeded the same every call, so it is repeatable. `strength` scales the
+ * noise as well as the error.
  *
  * \param[in]  src  Source bitmap, \ref pixelfmt_rgbx8888 or \ref
  *                  pixelfmt_rgba8888.

@@ -284,7 +284,7 @@ static unsigned int dither_knoll(const pixelmap_t    *pm,
 /* Ostromoukhov's variable coefficients (SIGGRAPH 2001) for levels 0..127:
  * right, down-left and down neighbours, and their sum. Levels 128..255
  * mirror them. */
-static const unsigned short dither_ostro[128][4] =
+static const unsigned int dither_ostro[128][4] =
 {
   {   13,    0,    5,   18 }, {   13,    0,    5,   18 },
   {   21,    0,   10,   31 }, {    7,    0,    4,   11 },
@@ -297,31 +297,31 @@ static const unsigned short dither_ostro[128][4] =
   {   81,   44,   31,  156 }, {  483,  272,  181,  936 },
   {   60,   35,   22,  117 }, {   53,   32,   19,  104 },
   {  237,  148,   83,  468 }, {  471,  304,  161,  936 },
-  {    3,    2,    1,    6 }, {  481,  314,  185,  980 },
-  {  354,  226,  155,  735 }, { 1389,  866,  685, 2940 },
-  {  227,  138,  125,  490 }, {  267,  158,  163,  588 },
-  {  327,  188,  220,  735 }, {   61,   34,   45,  140 },
-  {  627,  338,  505, 1470 }, { 1227,  638, 1075, 2940 },
-  {   20,   10,   19,   49 }, { 1937, 1000, 1767, 4704 },
-  {  977,  520,  855, 2352 }, {  657,  360,  551, 1568 },
-  {   71,   40,   57,  168 }, { 2005, 1160, 1539, 4704 },
-  {  337,  200,  247,  784 }, { 2039, 1240, 1425, 4704 },
-  {  257,  160,  171,  588 }, {  691,  440,  437, 1568 },
-  { 1045,  680,  627, 2352 }, {  301,  200,  171,  672 },
-  {  177,  120,   95,  392 }, { 2141, 1480, 1083, 4704 },
-  { 1079,  760,  513, 2352 }, {  725,  520,  323, 1568 },
-  {  137,  100,   57,  294 }, { 2209, 1640,  855, 4704 },
-  {   53,   40,   19,  112 }, { 2243, 1720,  741, 4704 },
-  {  565,  440,  171, 1176 }, {  759,  600,  209, 1568 },
-  { 1147,  920,  285, 2352 }, { 2311, 1880,  513, 4704 },
-  {   97,   80,   19,  196 }, {  335,  280,   57,  672 },
-  { 1181, 1000,  171, 2352 }, {  793,  680,   95, 1568 },
-  {  599,  520,   57, 1176 }, { 2413, 2120,  171, 4704 },
-  {  405,  360,   19,  784 }, { 2447, 2200,   57, 4704 },
-  {   11,   10,    0,   21 }, {  158,  151,    3,  312 },
-  {  178,  179,    7,  364 }, { 1030, 1091,   63, 2184 },
-  {  248,  277,   21,  546 }, {  318,  375,   35,  728 },
-  {  458,  571,   63, 1092 }, {  878, 1159,  147, 2184 },
+  {    3,    2,    1,    6 }, {  459,  304,  161,  924 },
+  {   38,   25,   14,   77 }, {  453,  296,  175,  924 },
+  {  225,  146,   91,  462 }, {  149,   96,   63,  308 },
+  {  111,   71,   49,  231 }, {   63,   40,   29,  132 },
+  {   73,   46,   35,  154 }, {  435,  272,  217,  924 },
+  {  108,   67,   56,  231 }, {   13,    8,    7,   28 },
+  {  213,  130,  119,  462 }, {  423,  256,  245,  924 },
+  {    5,    3,    3,   11 }, {  281,  173,  162,  616 },
+  {  141,   89,   78,  308 }, {  283,  183,  150,  616 },
+  {   71,   47,   36,  154 }, {  285,  193,  138,  616 },
+  {   13,    9,    6,   28 }, {   41,   29,   18,   88 },
+  {   36,   26,   15,   77 }, {  289,  213,  114,  616 },
+  {  145,  109,   54,  308 }, {  291,  223,  102,  616 },
+  {   73,   57,   24,  154 }, {  293,  233,   90,  616 },
+  {   21,   17,    6,   44 }, {  295,  243,   78,  616 },
+  {   37,   31,    9,   77 }, {   27,   23,    6,   56 },
+  {  149,  129,   30,  308 }, {  299,  263,   54,  616 },
+  {   75,   67,   12,  154 }, {   43,   39,    6,   88 },
+  {  151,  139,   18,  308 }, {  303,  283,   30,  616 },
+  {   38,   36,    3,   77 }, {  305,  293,   18,  616 },
+  {  153,  149,    6,  308 }, {  307,  303,    6,  616 },
+  {    1,    1,    0,    2 }, {  101,  105,    2,  208 },
+  {   49,   53,    2,  104 }, {   95,  107,    6,  208 },
+  {   23,   27,    2,   52 }, {   89,  109,   10,  208 },
+  {   43,   55,    6,  104 }, {   83,  111,   14,  208 },
   {    5,    7,    1,   13 }, {  172,  181,   37,  390 },
   {   97,   76,   22,  195 }, {   72,   41,   17,  130 },
   {  119,   47,   29,  195 }, {    4,    1,    1,    6 },
@@ -336,26 +336,72 @@ static const unsigned short dither_ostro[128][4] =
   {  155,   86,   59,  300 }, {    5,    3,    2,   10 },
   {    5,    3,    2,   10 }, {    5,    3,    2,   10 },
   {    5,    3,    2,   10 }, {    5,    3,    2,   10 },
-  {    5,    3,    2,   10 }, {  305,  176,  119,  600 },
-  {  155,   86,   59,  300 }, {  105,   56,   39,  200 },
-  {   80,   41,   29,  150 }, {   65,   32,   23,  120 },
-  {   55,   26,   19,  100 }, {  335,  152,  113,  600 },
-  {   85,   37,   28,  150 }, {  115,   48,   37,  200 },
-  {   35,   14,   11,   60 }, {  355,  136,  109,  600 },
-  {   30,   11,    9,   50 }, {  365,  128,  107,  600 },
-  {  185,   62,   53,  300 }, {   25,    8,    7,   40 },
-  {   95,   29,   26,  150 }, {  385,  112,  103,  600 },
-  {   65,   18,   17,  100 }, {  395,  104,  101,  600 },
-  {    4,    1,    1,    6 }, {    4,    1,    1,    6 },
-  {    4,    1,    1,    6 }, {    4,    1,    1,    6 },
-  {    4,    1,    1,    6 }, {    4,    1,    1,    6 },
-  {    4,    1,    1,    6 }, {    4,    1,    1,    6 }
+  {    5,    3,    2,   10 }, {    5,    3,    2,   10 },
+  {    5,    3,    2,   10 }, {    5,    3,    2,   10 },
+  {    5,    3,    2,   10 }, {    5,    3,    2,   10 },
+  {    5,    3,    2,   10 }, {    5,    3,    2,   10 },
+  {  305,  176,  119,  600 }, {  155,   86,   59,  300 },
+  {  105,   56,   39,  200 }, {   80,   41,   29,  150 },
+  {   65,   32,   23,  120 }, {   55,   26,   19,  100 },
+  {  335,  152,  113,  600 }, {   85,   37,   28,  150 },
+  {  115,   48,   37,  200 }, {   35,   14,   11,   60 },
+  {  355,  136,  109,  600 }, {   30,   11,    9,   50 },
+  {  365,  128,  107,  600 }, {  185,   62,   53,  300 },
+  {   25,    8,    7,   40 }, {   95,   29,   26,  150 },
+  {  385,  112,  103,  600 }, {   65,   18,   17,  100 },
+  {  395,  104,  101,  600 }, {    4,    1,    1,    6 }
 };
+
+/* Zhou and Fang's coefficients (SIGGRAPH 2003) at key levels in 0..127:
+ * level, then right, down-left and down neighbours. Levels between are
+ * interpolated and levels 128..255 mirror them. */
+static const unsigned int dither_zf_coeffs[][4] =
+{
+  {   0,      13,      0,      5 },
+  {   1, 1300249,      0, 499250 },
+  {   2,  213113,    287,  99357 },
+  {   3,  351854,      0, 199965 },
+  {   4,  801100,      0, 490999 },
+  {  10,  704075, 297466, 303694 },
+  {  22,   46613,  31917,  21469 },
+  {  32,   47482,  30617,  21900 },
+  {  44,   43024,  42131,  14826 },
+  {  64,   36411,  43219,  20369 },
+  {  72,   38477,  53843,   7678 },
+  {  77,   40503,  51547,   7948 },
+  {  85,   35865,  34108,  30026 },
+  {  95,   34117,  36899,  28983 },
+  { 102,   35464,  35049,  29485 },
+  { 107,   16477,  18810,  14712 },
+  { 112,   33360,  37954,  28685 },
+  { 127,   35269,  36066,  28664 }
+};
+
+/* Zhou and Fang's coefficients for level v, 0..127, into c: right,
+ * down-left, down and their sum. */
+static void dither_zf_coeffs_for(unsigned int v, unsigned int c[4])
+{
+  const unsigned int *a;
+  const unsigned int *b;
+  unsigned int        d;
+  int                 i;
+
+  for (i = 1; dither_zf_coeffs[i][0] < v; i++)
+    ;
+  a = dither_zf_coeffs[i - 1];
+  b = dither_zf_coeffs[i];
+  d = b[0] - a[0];
+
+  for (i = 0; i < 3; i++)
+    c[i] = (b[i + 1] * (v - a[0]) + a[i + 1] * (b[0] - v)) / d;
+  c[3] = c[0] + c[1] + c[2];
+}
 
 /* Spread one pixel's error Ostromoukhov's way: each channel's split
  * between the right, down-left and down neighbours depends on that
- * channel's source level, rescaled to sum to OSTRO_DIV. cur and next are
- * the error rows; dir mirrors the split on right-to-left rows. */
+ * channel's source level, rescaled to sum to OSTRO_DIV. Zhou and Fang's
+ * coefficients replace Ostromoukhov's when zhou_fang is set. cur and next
+ * are the error rows; dir mirrors the split on right-to-left rows. */
 static void dither_ostromoukhov(int                       *err,
                                 int                        stride,
                                 int                        cur,
@@ -365,13 +411,15 @@ static void dither_ostromoukhov(int                       *err,
                                 const pixelfmt_rgbx8888_t *px,
                                 int                        qr,
                                 int                        qg,
-                                int                        qb)
+                                int                        qb,
+                                int                        zhou_fang)
 {
-  unsigned int          v[3];
-  int                   q[3];
-  int                   ch;
-  const unsigned short *c;
-  int                   wr, wdl, wd;
+  unsigned int v[3];
+  int          q[3];
+  int          ch;
+  unsigned int l;
+  unsigned int c[4];
+  int          wr, wdl, wd;
 
   v[0] = PIXELFMT_Rxxx8888(*px);
   v[1] = PIXELFMT_xGxx8888(*px);
@@ -382,9 +430,15 @@ static void dither_ostromoukhov(int                       *err,
 
   for (ch = 0; ch < 3; ch++)
   {
-    c   = dither_ostro[v[ch] < 128 ? v[ch] : 255 - v[ch]];
-    wr  = (c[0] * OSTRO_DIV + c[3] / 2) / c[3];
-    wdl = (c[1] * OSTRO_DIV + c[3] / 2) / c[3];
+    l = v[ch] < 128 ? v[ch] : 255 - v[ch];
+    if (zhou_fang)
+      dither_zf_coeffs_for(l, c);
+    else
+      memcpy(c, dither_ostro[l], sizeof(c));
+
+    /* Zhou and Fang's largest coefficient times OSTRO_DIV fits an int */
+    wr  = (int) ((c[0] * OSTRO_DIV + c[3] / 2) / c[3]);
+    wdl = (int) ((c[1] * OSTRO_DIV + c[3] / 2) / c[3]);
     wd  = OSTRO_DIV - wr - wdl; /* so the mean is kept exactly */
 
     err[(cur  * stride + x + dir + DITHER_PAD) * 3 + ch] += q[ch] * wr;
@@ -789,7 +843,7 @@ result_t dither_bitmap(const bitmap_t         *src,
           opts->method == dither_ZHOU_FANG)
       {
         dither_ostromoukhov(err, stride, cur, (cur + 1) % k->h, x, dir, &px[x],
-                            qr, qg, qb);
+                            qr, qg, qb, opts->method == dither_ZHOU_FANG);
         continue;
       }
 
