@@ -56,6 +56,12 @@ static const dither_kernel_t dither_kernels[dither__LIMIT] =
   { 5, 3, 2, 32, { { 0, 0, 0, 5, 3 },
                    { 2, 4, 5, 4, 2 },
                    { 0, 2, 3, 2, 0 } } },
+  /* Sierra two-row */
+  { 5, 2, 2, 16, { { 0, 0, 0, 4, 3 },
+                   { 1, 2, 3, 2, 1 } } },
+  /* Sierra lite */
+  { 3, 2, 1, 4,  { { 0, 0, 2 },
+                   { 1, 1, 0 } } },
 };
 
 /* ----- sRGB <-> linear light ----- */

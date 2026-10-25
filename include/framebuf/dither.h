@@ -34,6 +34,8 @@ typedef enum dither_method
   dither_ATKINSON,           /**< Diffuses only 6/8 of the error. */
   dither_BURKES,
   dither_SIERRA,
+  dither_SIERRA_TWO_ROW,
+  dither_SIERRA_LITE,        /**< Cheapest kernel: three neighbours. */
   dither__LIMIT
 }
 dither_method_t;
