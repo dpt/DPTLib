@@ -37,6 +37,22 @@ typedef struct dither_kernel
 }
 dither_kernel_t;
 
+/* White-noise threshold, 0..63: a hash of the pixel's position, so the
+ * same image always dithers the same way. */
+static int dither_random_threshold(int x, int y)
+{
+  uint32_t h;
+
+  h  = (uint32_t) x * 0x8da6b343u ^ (uint32_t) y * 0xd8163841u;
+  h ^= h >> 16;
+  h *= 0x7feb352du;
+  h ^= h >> 15;
+  h *= 0x846ca68bu;
+  h ^= h >> 16;
+
+  return (int) (h >> 26);
+}
+
 static const dither_kernel_t dither_kernels[dither__LIMIT] =
 {
   /* none */
@@ -92,6 +108,8 @@ static const dither_kernel_t dither_kernels[dither__LIMIT] =
                    { 1, 1, 2, 4, 0 } }, NULL },
   /* clustered-dot halftone */
   { 1, 1, 0, 1,  { { 0 } }, pattern_clustered_threshold },
+  /* random threshold */
+  { 1, 1, 0, 1,  { { 0 } }, dither_random_threshold },
 };
 
 /* ----- sRGB <-> linear light ----- */

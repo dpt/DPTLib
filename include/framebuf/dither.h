@@ -50,6 +50,7 @@ typedef enum dither_method
   dither_SHIAU_FAN,          /**< Four cells, fewer worms than Fan. */
   dither_SHIAU_FAN_2,        /**< Five cells, reaching three left. */
   dither_CLUSTERED,          /**< Ordered, 8x8 clustered-dot halftone. */
+  dither_RANDOM,             /**< Threshold from white noise. */
   dither__LIMIT
 }
 dither_method_t;
