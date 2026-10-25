@@ -24,6 +24,7 @@
 #define DITHER_PAD   3 /* columns either side absorbing off-image error: the
                         * furthest reach of any kernel, Shiau-Fan 2's */
 #define OSTRO_DIV    64 /* Ostromoukhov's coefficients are rescaled to this */
+#define LIMIT_STEPS  2 /* carried error limit, in palette gaps */
 
 /* coeff[0] is the current row; entries at or left of cx on it are zero. An
  * ordered method has no coefficients and a threshold map instead. */
@@ -163,6 +164,45 @@ static unsigned int dither_apply(unsigned int c, int e, int total, int max)
   v = (e >= 0) ? (e + total / 2) / total : -((-e + total / 2) / total);
 
   return (unsigned int) CLAMP((int) c + v, 0, max);
+}
+
+/* Add accumulated error e[0..2], scaled by `total`, to a pixel's channels,
+ * clamping each to 0..max. Error the palette cannot express, such as a
+ * colour's chroma against a grey palette, would otherwise grow without bound
+ * and drive channels to their limits, losing brightness where they clip. So
+ * an error beyond lim in any channel is scaled down whole, keeping its
+ * direction and so its effect on brightness. */
+static void dither_apply3(unsigned int *r,
+                          unsigned int *g,
+                          unsigned int *b,
+                          const int    *e,
+                          int           total,
+                          int           lim,
+                          int           max)
+{
+  int v[3];
+  int i;
+  int m;
+
+  for (i = 0; i < 3; i++)
+    v[i] = (e[i] >= 0) ? (e[i] + total / 2) / total
+                       : -((-e[i] + total / 2) / total);
+
+  m = MAX(abs(v[0]), MAX(abs(v[1]), abs(v[2])));
+  if (m > lim)
+    for (i = 0; i < 3; i++)
+      v[i] = v[i] * lim / m;
+
+  *r = (unsigned int) CLAMP((int) *r + v[0], 0, max);
+  *g = (unsigned int) CLAMP((int) *g + v[1], 0, max);
+  *b = (unsigned int) CLAMP((int) *b + v[2], 0, max);
+}
+
+/* The most error dither_apply3 lets a channel carry: LIMIT_STEPS of the
+ * palette's typical gap, enough to leave ordinary error alone. */
+static int dither_limit(const pixelmap_t *pm, int max)
+{
+  return LIMIT_STEPS * (int) pm->step * max / 255;
 }
 
 static unsigned int dither_lookup(const pixelmap_t *pm,
@@ -649,9 +689,9 @@ static void dither_riemersma(const bitmap_t         *src,
       for (a = 0; a < RIEMERSMA_Q; a++)
         sum[ch] += queue[(head - 1 - a + RIEMERSMA_Q) % RIEMERSMA_Q][ch] *
                    weight[a];
-
-      c[ch] = dither_apply(c[ch], sum[ch] / wsum * opts->strength, 100, max);
+      sum[ch] = sum[ch] / wsum * opts->strength;
     }
+    dither_apply3(&c[0], &c[1], &c[2], sum, 100, dither_limit(pm, max), max);
 
     index = dither_nearest(pm, dec, c[0], c[1], c[2]);
     dither_put((unsigned char *) out->base + y * out->rowbytes, x, log2bpp,
@@ -701,6 +741,7 @@ result_t dither_bitmap(const bitmap_t         *src,
   int                        qr, qg, qb;
   int                        mx, my;
   int                        weight;
+  int                        lim;
   rng_t                      rng;
 
   *dst = NULL;
@@ -777,6 +818,7 @@ result_t dither_bitmap(const bitmap_t         *src,
     dec = dither_tables.decode;
     max = LINEAR_MAX;
   }
+  lim = dither_limit(pm, max);
 
   /* an ordered method's bias per threshold: -step/2..step/2, symmetric */
   for (i = 0; i < 64; i++)
@@ -834,9 +876,7 @@ result_t dither_bitmap(const bitmap_t         *src,
       }
       else
       {
-        r = dither_apply(r, e[0], total, max);
-        g = dither_apply(g, e[1], total, max);
-        b = dither_apply(b, e[2], total, max);
+        dither_apply3(&r, &g, &b, e, total, lim, max);
         if (opts->method == dither_ZHOU_FANG)
         {
           /* pr, pg, pb hold the nudged pixel until the palette colour

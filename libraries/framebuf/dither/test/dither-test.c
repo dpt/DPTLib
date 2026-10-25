@@ -246,7 +246,46 @@ result_t dither_test(const char *resources)
   }
   opts.linear = 0;
 
-  /* 6. bad arguments */
+  /* 6. a flat skin tone against 256 greys keeps the grey Nearest picks: the
+   * chroma error, which no grey can express, must not build up until the
+   * channels clip */
+  for (i = 0; i < W * H; i++)
+    pixels[i] = PIXELFMT_MAKE_RGBA8888(230, 150, 120, 255);
+  for (i = 0; i < 256; i++)
+    palette[i] = colour_rgb(i, i, i);
+  opts.ncolours = 256;
+
+  opts.method = dither_NONE;
+  rc = dither_bitmap(&src, &opts, &ref);
+  if (rc != result_OK)
+    return result_TEST_FAILED;
+  colour_get_rgb(&ref->palette[get_index(ref, 0, 0)], &r, &g, &b);
+  free_bitmap(ref);
+
+  for (i = 0; i < 2; i++)
+  {
+    opts.method = i ? dither_RIEMERSMA : dither_FLOYD_STEINBERG;
+    rc = dither_bitmap(&src, &opts, &out);
+    if (rc != result_OK)
+      return result_TEST_FAILED;
+
+    sum = 0;
+    for (y = 0; y < H; y++)
+      for (x = 0; x < W; x++)
+        sum += get_index(out, x, y);
+    free_bitmap(out);
+
+    mean = (int) (sum / (W * H));
+    if (mean < (int) r - 3 || mean > (int) r + 3)
+    {
+      printf("dither: method %d took skin tone to grey %d, expected ~%u\n",
+             opts.method, mean, r);
+      return result_TEST_FAILED;
+    }
+  }
+  opts.ncolours = 2;
+
+  /* 7. bad arguments */
   opts.strength = 101;
   if (dither_bitmap(&src, &opts, &out) != result_BAD_ARG)
   {

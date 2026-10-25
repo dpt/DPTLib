@@ -89,6 +89,12 @@ dither_options_t;
  * brightness. Diffusing in sRGB instead makes sparse palettes come out too
  * bright in the midtones.
  *
+ * The error a pixel carries is limited to two of the palette's typical gaps
+ * per channel, scaled down as a whole so its hue is kept. Error the palette
+ * cannot express, such as a colour's chroma against a grey palette, would
+ * otherwise build up until channels clip, darkening or lightening the
+ * result.
+ *
  * Ordered methods add a bias of up to half the palette's typical channel gap
  * (\ref pixelmap_t's `step`) either way, chosen per pixel by the threshold
  * map. They have no error to carry, so they ignore `serpentine` and
