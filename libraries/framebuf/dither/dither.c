@@ -72,6 +72,8 @@ static const dither_kernel_t dither_kernels[dither__LIMIT] =
   { 1, 1, 0, 1,  { { 0 } }, pattern_blue_noise_threshold },
   /* Knoll: candidates chosen by Bayer threshold */
   { 1, 1, 0, 1,  { { 0 } }, pattern_bayer_threshold },
+  /* Riemersma: no kernel; error travels along a Hilbert curve */
+  { 1, 1, 0, 1,  { { 0 } }, NULL },
 };
 
 /* ----- sRGB <-> linear light ----- */
@@ -271,6 +273,145 @@ static unsigned int dither_knoll(const pixelmap_t    *pm,
   return idx[j];
 }
 
+/* ----- Riemersma dithering ----- */
+
+#define RIEMERSMA_Q     16 /* errors remembered along the curve */
+#define RIEMERSMA_RATIO 16 /* newest error's weight over the oldest's */
+
+/* Nearest palette index for channels r, g, b: sRGB, or linear when dec is
+ * set. */
+static unsigned int dither_nearest(const pixelmap_t     *pm,
+                                   const unsigned short *dec,
+                                   unsigned int          r,
+                                   unsigned int          g,
+                                   unsigned int          b)
+{
+  if (dec == NULL)
+    return dither_lookup(pm, r, g, b);
+
+  return dither_lookup(pm,
+                       dither_tables.encode[r >> (16 - ENCODE_BITS)],
+                       dither_tables.encode[g >> (16 - ENCODE_BITS)],
+                       dither_tables.encode[b >> (16 - ENCODE_BITS)]);
+}
+
+/* Position d along a Hilbert curve filling an n by n square, n a power of
+ * two. */
+static void dither_hilbert(int n, int d, int *x, int *y)
+{
+  int s;
+  int rx, ry;
+  int tmp;
+
+  *x = *y = 0;
+  for (s = 1; s < n; s *= 2)
+  {
+    rx = 1 & (d / 2);
+    ry = 1 & (d ^ rx);
+    if (ry == 0)
+    {
+      if (rx == 1)
+      {
+        *x = s - 1 - *x;
+        *y = s - 1 - *y;
+      }
+      tmp = *x;
+      *x  = *y;
+      *y  = tmp;
+    }
+    *x += s * rx;
+    *y += s * ry;
+    d /= 4;
+  }
+}
+
+/* Riemersma's dither: walk a Hilbert curve over the image, adding to each
+ * pixel a weighted sum of the last RIEMERSMA_Q quantisation errors, the
+ * newest weighted most. The weights sum to one, so the mean is kept, and the
+ * curve has no preferred direction, so there are no directional artefacts.
+ *
+ * ponytail: the curve covers the enclosing power-of-two square and skips
+ * the cells outside the image, wasting up to 4x the steps on long thin
+ * images; use a generalised (gilbert) curve if that matters. */
+static void dither_riemersma(const bitmap_t         *src,
+                             const dither_options_t *opts,
+                             const pixelmap_t       *pm,
+                             const colour_t         *palette,
+                             const unsigned short   *dec,
+                             int                     max,
+                             bitmap_t               *out)
+{
+  int                        weight[RIEMERSMA_Q];
+  int                        wsum;
+  int                        queue[RIEMERSMA_Q][3];
+  int                        head;
+  int                        n;
+  int                        d;
+  int                        x, y;
+  int                        a;
+  const pixelfmt_rgbx8888_t *px;
+  unsigned int               c[3];
+  int                        sum[3];
+  int                        ch;
+  unsigned int               index;
+  unsigned int               p[3];
+  int                        log2bpp;
+
+  /* weight[a] for an error a steps old: RATIO^(-a / (Q - 1)), scaled */
+  wsum = 0;
+  for (a = 0; a < RIEMERSMA_Q; a++)
+  {
+    weight[a] = (int) (1024.0 * pow(RIEMERSMA_RATIO,
+                                    -a / (double) (RIEMERSMA_Q - 1)) + 0.5);
+    wsum += weight[a];
+  }
+
+  memset(queue, 0, sizeof(queue));
+  head = 0;
+
+  for (n = 1; n < src->size.w || n < src->size.h; n *= 2)
+    ;
+
+  log2bpp = pixelfmt_log2bpp(out->format);
+
+  for (d = 0; d < n * n; d++)
+  {
+    dither_hilbert(n, d, &x, &y);
+    if (x >= src->size.w || y >= src->size.h)
+      continue;
+
+    px = (const pixelfmt_rgbx8888_t *)
+         ((const unsigned char *) src->base + y * src->rowbytes) + x;
+    c[0] = PIXELFMT_Rxxx8888(*px);
+    c[1] = PIXELFMT_xGxx8888(*px);
+    c[2] = PIXELFMT_xxBx8888(*px);
+
+    /* the newest error is at head - 1; raw errors are at most 65535 and the
+     * weights 1024, so 16 of them fit an int */
+    for (ch = 0; ch < 3; ch++)
+    {
+      if (dec)
+        c[ch] = dec[c[ch]];
+
+      sum[ch] = 0;
+      for (a = 0; a < RIEMERSMA_Q; a++)
+        sum[ch] += queue[(head - 1 - a + RIEMERSMA_Q) % RIEMERSMA_Q][ch] *
+                   weight[a];
+
+      c[ch] = dither_apply(c[ch], sum[ch] / wsum * opts->strength, 100, max);
+    }
+
+    index = dither_nearest(pm, dec, c[0], c[1], c[2]);
+    dither_put((unsigned char *) out->base + y * out->rowbytes, x, log2bpp,
+               index);
+
+    colour_get_rgb(&palette[index], &p[0], &p[1], &p[2]);
+    for (ch = 0; ch < 3; ch++)
+      queue[head][ch] = (int) c[ch] - (int) (dec ? dec[p[ch]] : p[ch]);
+    head = (head + 1) % RIEMERSMA_Q;
+  }
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t dither_bitmap(const bitmap_t         *src,
@@ -391,6 +532,15 @@ result_t dither_bitmap(const bitmap_t         *src,
   if (opts->method == dither_KNOLL)
     dither_luma_ranks(palette, opts->ncolours, rank);
 
+  /* Riemersma walks its own curve rather than rows */
+  if (opts->method == dither_RIEMERSMA)
+  {
+    dither_riemersma(src, opts, pm, palette, dec, max, out);
+    free(err);
+    *dst = out;
+    return result_OK;
+  }
+
   srcrow = src->base;
   dstrow = base;
   for (y = 0; y < src->size.h; y++)
@@ -432,13 +582,7 @@ result_t dither_bitmap(const bitmap_t         *src,
         r = dither_apply(r, e[0], total, max);
         g = dither_apply(g, e[1], total, max);
         b = dither_apply(b, e[2], total, max);
-        if (dec)
-          index = dither_lookup(pm,
-                                dither_tables.encode[r >> (16 - ENCODE_BITS)],
-                                dither_tables.encode[g >> (16 - ENCODE_BITS)],
-                                dither_tables.encode[b >> (16 - ENCODE_BITS)]);
-        else
-          index = dither_lookup(pm, r, g, b);
+        index = dither_nearest(pm, dec, r, g, b);
       }
       dither_put(dstrow, x, log2bpp, index);
 

@@ -43,6 +43,7 @@ typedef enum dither_method
   dither_BAYER,              /**< Ordered, 8x8 Bayer matrix. */
   dither_BLUE_NOISE,         /**< Ordered, 64x64 blue-noise map. */
   dither_KNOLL,              /**< Knoll pattern dither, Bayer-ordered. */
+  dither_RIEMERSMA,          /**< Diffuses along a Hilbert curve. */
   dither__LIMIT
 }
 dither_method_t;
@@ -88,6 +89,12 @@ dither_options_t;
  * and takes the one the Bayer threshold selects. It costs 16 lookups a pixel
  * but suits fixed, uneven palettes better than a plain ordered bias. Like
  * the ordered methods it ignores `serpentine` and `linear`.
+ *
+ * \ref dither_RIEMERSMA walks the image along a Hilbert curve and adds to
+ * each pixel a weighted sum of the last 16 errors, the newest weighted most.
+ * The curve has no preferred direction, so the result shows none of a
+ * kernel's directional artefacts. It honours `linear` and ignores
+ * `serpentine`.
  *
  * \param[in]  src  Source bitmap, \ref pixelfmt_rgbx8888 or \ref
  *                  pixelfmt_rgba8888.
