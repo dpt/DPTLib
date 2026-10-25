@@ -27,11 +27,19 @@ extern "C"
 /* ----------------------------------------------------------------------- */
 
 /**
- * Dithering methods: error-diffusion kernels, then ordered threshold maps.
+ * Dithering methods: nearest colour, then the threshold methods, then the
+ * error-diffusion methods, each group oldest first.
  */
 typedef enum dither_method
 {
   dither_NONE,               /**< Nearest colour only, no diffusion. */
+
+  dither_CLUSTERED,          /**< Ordered, 8x8 clustered-dot halftone. */
+  dither_RANDOM,             /**< Threshold from white noise. */
+  dither_BAYER,              /**< Ordered, 8x8 Bayer matrix. */
+  dither_BLUE_NOISE,         /**< Ordered, 64x64 blue-noise map. */
+  dither_KNOLL,              /**< Knoll pattern dither, Bayer-ordered. */
+
   dither_FLOYD_STEINBERG,
   dither_JARVIS_JUDICE_NINKE,
   dither_STUCKI,
@@ -40,17 +48,12 @@ typedef enum dither_method
   dither_SIERRA,
   dither_SIERRA_TWO_ROW,
   dither_SIERRA_LITE,        /**< Cheapest kernel: three neighbours. */
-  dither_BAYER,              /**< Ordered, 8x8 Bayer matrix. */
-  dither_BLUE_NOISE,         /**< Ordered, 64x64 blue-noise map. */
-  dither_KNOLL,              /**< Knoll pattern dither, Bayer-ordered. */
-  dither_RIEMERSMA,          /**< Diffuses along a Hilbert curve. */
-  dither_OSTROMOUKHOV,       /**< Coefficients vary with level. */
-  dither_ZHOU_FANG,          /**< Ostromoukhov plus threshold noise. */
   dither_FAN,                /**< Floyd-Steinberg reaching further left. */
   dither_SHIAU_FAN,          /**< Four cells, fewer worms than Fan. */
   dither_SHIAU_FAN_2,        /**< Five cells, reaching three left. */
-  dither_CLUSTERED,          /**< Ordered, 8x8 clustered-dot halftone. */
-  dither_RANDOM,             /**< Threshold from white noise. */
+  dither_RIEMERSMA,          /**< Diffuses along a Hilbert curve. */
+  dither_OSTROMOUKHOV,       /**< Coefficients vary with level. */
+  dither_ZHOU_FANG,          /**< Ostromoukhov plus threshold noise. */
   dither__LIMIT
 }
 dither_method_t;

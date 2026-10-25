@@ -135,7 +135,7 @@ result_t dither_test(const char *resources)
     free_bitmap(out);
   }
 
-  /* 2. each diffusing method preserves the ramp's mean against a two-colour
+  /* 2. each method but Nearest preserves the ramp's mean against a two-colour
    * palette, scanning raster and serpentine (Atkinson drops a quarter of the
    * error, so it is excluded) */
   palette[0] = colour_rgb(0, 0, 0);
@@ -145,7 +145,7 @@ result_t dither_test(const char *resources)
   for (i = 0; i < 2 * dither__LIMIT; i++)
   {
     method = i / 2;
-    if (method < dither_FLOYD_STEINBERG || method == dither_ATKINSON)
+    if (method == dither_NONE || method == dither_ATKINSON)
       continue;
 
     opts.method     = (dither_method_t) method;

@@ -57,6 +57,16 @@ static const dither_kernel_t dither_kernels[dither__LIMIT] =
 {
   /* none */
   { 1, 1, 0, 1, { { 0 } }, NULL },
+  /* clustered-dot halftone */
+  { 1, 1, 0, 1,  { { 0 } }, pattern_clustered_threshold },
+  /* random threshold */
+  { 1, 1, 0, 1,  { { 0 } }, dither_random_threshold },
+  /* Bayer */
+  { 1, 1, 0, 1,  { { 0 } }, pattern_bayer_threshold },
+  /* blue noise */
+  { 1, 1, 0, 1,  { { 0 } }, pattern_blue_noise_threshold },
+  /* Knoll: candidates chosen by Bayer threshold */
+  { 1, 1, 0, 1,  { { 0 } }, pattern_bayer_threshold },
   /* Floyd-Steinberg */
   { 3, 2, 1, 16, { { 0, 0, 7 },
                    { 3, 5, 1 } }, NULL },
@@ -85,18 +95,6 @@ static const dither_kernel_t dither_kernels[dither__LIMIT] =
   /* Sierra lite */
   { 3, 2, 1, 4,  { { 0, 0, 2 },
                    { 1, 1, 0 } }, NULL },
-  /* Bayer */
-  { 1, 1, 0, 1,  { { 0 } }, pattern_bayer_threshold },
-  /* blue noise */
-  { 1, 1, 0, 1,  { { 0 } }, pattern_blue_noise_threshold },
-  /* Knoll: candidates chosen by Bayer threshold */
-  { 1, 1, 0, 1,  { { 0 } }, pattern_bayer_threshold },
-  /* Riemersma: no kernel; error travels along a Hilbert curve */
-  { 1, 1, 0, 1,  { { 0 } }, NULL },
-  /* Ostromoukhov: coefficients vary per pixel; only the shape is fixed */
-  { 3, 2, 1, OSTRO_DIV, { { 0 } }, NULL },
-  /* Zhou-Fang: Ostromoukhov's shape */
-  { 3, 2, 1, OSTRO_DIV, { { 0 } }, NULL },
   /* Fan */
   { 4, 2, 2, 16, { { 0, 0, 0, 7 },
                    { 1, 3, 5, 0 } }, NULL },
@@ -106,10 +104,12 @@ static const dither_kernel_t dither_kernels[dither__LIMIT] =
   /* Shiau-Fan, five cells */
   { 5, 2, 3, 16, { { 0, 0, 0, 0, 8 },
                    { 1, 1, 2, 4, 0 } }, NULL },
-  /* clustered-dot halftone */
-  { 1, 1, 0, 1,  { { 0 } }, pattern_clustered_threshold },
-  /* random threshold */
-  { 1, 1, 0, 1,  { { 0 } }, dither_random_threshold },
+  /* Riemersma: no kernel; error travels along a Hilbert curve */
+  { 1, 1, 0, 1,  { { 0 } }, NULL },
+  /* Ostromoukhov: coefficients vary per pixel; only the shape is fixed */
+  { 3, 2, 1, OSTRO_DIV, { { 0 } }, NULL },
+  /* Zhou-Fang: Ostromoukhov's shape */
+  { 3, 2, 1, OSTRO_DIV, { { 0 } }, NULL },
 };
 
 /* ----- sRGB <-> linear light ----- */
