@@ -44,6 +44,7 @@ typedef enum dither_method
   dither_BLUE_NOISE,         /**< Ordered, 64x64 blue-noise map. */
   dither_KNOLL,              /**< Knoll pattern dither, Bayer-ordered. */
   dither_RIEMERSMA,          /**< Diffuses along a Hilbert curve. */
+  dither_OSTROMOUKHOV,       /**< Coefficients vary with level. */
   dither__LIMIT
 }
 dither_method_t;
@@ -95,6 +96,12 @@ dither_options_t;
  * The curve has no preferred direction, so the result shows none of a
  * kernel's directional artefacts. It honours `linear` and ignores
  * `serpentine`.
+ *
+ * \ref dither_OSTROMOUKHOV diffuses to the same three neighbours as
+ * Floyd-Steinberg's right, down-left and down, but splits each channel's
+ * error by a table indexed by that channel's source level. The table is
+ * tuned for blue-noise output across the whole tonal range. It is meant to
+ * be run serpentine.
  *
  * \param[in]  src  Source bitmap, \ref pixelfmt_rgbx8888 or \ref
  *                  pixelfmt_rgba8888.
