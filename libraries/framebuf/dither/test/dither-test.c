@@ -210,7 +210,38 @@ result_t dither_test(const char *resources)
   free_bitmap(ref);
   free_bitmap(out);
 
-  /* 5. bad arguments */
+  /* 5. flat sRGB grey 128 against black and white: sRGB diffusion lights
+   * about half the pixels, linear about 22% (128 decodes to 0.216) */
+  for (i = 0; i < W * H; i++)
+    pixels[i] = PIXELFMT_MAKE_RGBA8888(128, 128, 128, 255);
+
+  opts.method     = dither_FLOYD_STEINBERG;
+  opts.strength   = 100;
+  opts.serpentine = 1;
+
+  for (i = 0; i < 2; i++)
+  {
+    opts.linear = i;
+    rc = dither_bitmap(&src, &opts, &out);
+    if (rc != result_OK)
+      return result_TEST_FAILED;
+
+    sum = 0;
+    for (y = 0; y < H; y++)
+      for (x = 0; x < W; x++)
+        sum += get_index(out, x, y);
+    free_bitmap(out);
+
+    mean = (int) (sum * 100 / (W * H));
+    if (mean < (i ? 19 : 47) || mean > (i ? 25 : 53))
+    {
+      printf("dither: linear %d lit %d%% of pixels\n", i, mean);
+      return result_TEST_FAILED;
+    }
+  }
+  opts.linear = 0;
+
+  /* 6. bad arguments */
   opts.strength = 101;
   if (dither_bitmap(&src, &opts, &out) != result_BAD_ARG)
   {

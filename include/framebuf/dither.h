@@ -6,7 +6,8 @@
  * Reduces a deep image to a paletted one, spreading each pixel's
  * quantisation error over its unvisited neighbours using a standard
  * error-diffusion kernel. Errors are kept per channel in integer arithmetic
- * and diffused in sRGB. Nearest-colour lookups go through \ref pixelmap_get.
+ * and diffused in sRGB or, optionally, in linear light. Nearest-colour
+ * lookups go through \ref pixelmap_get, so they are always made in sRGB.
  */
 
 #ifndef FRAMEBUF_DITHER_H
@@ -45,6 +46,7 @@ typedef struct dither_options
   int             ncolours;   /**< Entries in `palette`, 1 to 256. */
   int             strength;   /**< Percentage of error diffused, 0 to 100. */
   int             serpentine; /**< Non-zero: alternate row direction. */
+  int             linear;     /**< Non-zero: diffuse in linear light. */
 }
 dither_options_t;
 
@@ -59,6 +61,11 @@ dither_options_t;
  *
  * Serpentine scanning runs odd rows right to left, mirroring the kernel. It
  * avoids the diagonal artefacts that raster order produces.
+ *
+ * Linear diffusion decodes each channel from sRGB before the error is added
+ * and measured, so the dithered result keeps the source's physical
+ * brightness. Diffusing in sRGB instead makes sparse palettes come out too
+ * bright in the midtones.
  *
  * \param[in]  src  Source bitmap, \ref pixelfmt_rgbx8888 or \ref
  *                  pixelfmt_rgba8888.

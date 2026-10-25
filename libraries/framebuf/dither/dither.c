@@ -1,5 +1,6 @@
 /* framebuf/dither/dither.c -- error-diffusion dithering to a palette */
 
+#include <math.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -57,16 +58,57 @@ static const dither_kernel_t dither_kernels[dither__LIMIT] =
                    { 0, 2, 3, 2, 0 } } },
 };
 
+/* ----- sRGB <-> linear light ----- */
+
+#define LINEAR_MAX  65535
+#define ENCODE_BITS 12 /* linear-to-sRGB table has 2^ENCODE_BITS entries */
+
+/* ponytail: same tables as bitmap/resize.c; share them if a third user
+ * appears */
+static struct
+{
+  unsigned short decode[256];
+  unsigned char  encode[1 << ENCODE_BITS];
+  int            ready;
+}
+dither_tables;
+
+static void dither_make_tables(void)
+{
+  int    i;
+  double c;
+
+  if (dither_tables.ready)
+    return;
+
+  for (i = 0; i < 256; i++)
+  {
+    c = i / 255.0;
+    c = c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4);
+    dither_tables.decode[i] = (unsigned short) (c * LINEAR_MAX + 0.5);
+  }
+
+  for (i = 0; i < (1 << ENCODE_BITS); i++)
+  {
+    c = i / (double) ((1 << ENCODE_BITS) - 1);
+    c = c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1 / 2.4) - 0.055;
+    dither_tables.encode[i] = (unsigned char) (c * 255 + 0.5);
+  }
+
+  dither_tables.ready = 1;
+}
+
 /* ----------------------------------------------------------------------- */
 
-/* add accumulated error `e`, scaled by `total`, to channel value `c` */
-static unsigned int dither_apply(unsigned int c, int e, int total)
+/* add accumulated error `e`, scaled by `total`, to channel value `c`,
+ * clamping to 0..max */
+static unsigned int dither_apply(unsigned int c, int e, int total, int max)
 {
   int v;
 
   v = (e >= 0) ? (e + total / 2) / total : -((-e + total / 2) / total);
 
-  return (unsigned int) CLAMP((int) c + v, 0, 255);
+  return (unsigned int) CLAMP((int) c + v, 0, max);
 }
 
 static unsigned int dither_lookup(const pixelmap_t *pm,
@@ -134,6 +176,8 @@ result_t dither_bitmap(const bitmap_t         *src,
   int                        stride;
   int                       *err;
   int                        total;
+  const unsigned short      *dec;
+  int                        max;
   int                        i;
   int                        x, y;
   int                        cur;
@@ -213,6 +257,17 @@ result_t dither_bitmap(const bitmap_t         *src,
    * weights need only one division, at read time */
   total = k->divisor * 100;
 
+  /* in linear light channels run 0..LINEAR_MAX through dec[], and are
+   * re-encoded only for the nearest-colour lookup */
+  dec = NULL;
+  max = 255;
+  if (opts->linear)
+  {
+    dither_make_tables();
+    dec = dither_tables.decode;
+    max = LINEAR_MAX;
+  }
+
   srcrow = src->base;
   dstrow = base;
   for (y = 0; y < src->size.h; y++)
@@ -226,17 +281,39 @@ result_t dither_bitmap(const bitmap_t         *src,
       x = (dir > 0) ? i : src->size.w - 1 - i;
       e = &err[(cur * stride + x + DITHER_PAD) * 3];
 
-      r = dither_apply(PIXELFMT_Rxxx8888(px[x]), e[0], total);
-      g = dither_apply(PIXELFMT_xGxx8888(px[x]), e[1], total);
-      b = dither_apply(PIXELFMT_xxBx8888(px[x]), e[2], total);
+      r = PIXELFMT_Rxxx8888(px[x]);
+      g = PIXELFMT_xGxx8888(px[x]);
+      b = PIXELFMT_xxBx8888(px[x]);
+      if (dec)
+      {
+        r = dec[r];
+        g = dec[g];
+        b = dec[b];
+      }
 
-      index = dither_lookup(pm, r, g, b);
+      r = dither_apply(r, e[0], total, max);
+      g = dither_apply(g, e[1], total, max);
+      b = dither_apply(b, e[2], total, max);
+
+      if (dec)
+        index = dither_lookup(pm,
+                              dither_tables.encode[r >> (16 - ENCODE_BITS)],
+                              dither_tables.encode[g >> (16 - ENCODE_BITS)],
+                              dither_tables.encode[b >> (16 - ENCODE_BITS)]);
+      else
+        index = dither_lookup(pm, r, g, b);
       dither_put(dstrow, x, log2bpp, index);
 
       if (opts->method == dither_NONE || opts->strength == 0)
         continue;
 
       colour_get_rgb(&palette[index], &pr, &pg, &pb);
+      if (dec)
+      {
+        pr = dec[pr];
+        pg = dec[pg];
+        pb = dec[pb];
+      }
       qr = ((int) r - (int) pr) * opts->strength;
       qg = ((int) g - (int) pg) * opts->strength;
       qb = ((int) b - (int) pb) * opts->strength;
