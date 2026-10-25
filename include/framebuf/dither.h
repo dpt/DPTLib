@@ -1,13 +1,15 @@
-/* framebuf/dither.h -- error-diffusion dithering to a palette */
+/* framebuf/dither.h -- error-diffusion and ordered dithering to a palette */
 
 /**
  * \file dither.h
  *
- * Reduces a deep image to a paletted one, spreading each pixel's
- * quantisation error over its unvisited neighbours using a standard
- * error-diffusion kernel. Errors are kept per channel in integer arithmetic
- * and diffused in sRGB or, optionally, in linear light. Nearest-colour
- * lookups go through \ref pixelmap_get, so they are always made in sRGB.
+ * Reduces a deep image to a paletted one. Error-diffusion methods spread
+ * each pixel's quantisation error over its unvisited neighbours using a
+ * standard kernel. Errors are kept per channel in integer arithmetic and
+ * diffused in sRGB or, optionally, in linear light. Ordered methods instead
+ * nudge each pixel by a fixed threshold map before the lookup.
+ * Nearest-colour lookups go through \ref pixelmap_get, so they are always
+ * made in sRGB.
  */
 
 #ifndef FRAMEBUF_DITHER_H
@@ -24,7 +26,9 @@ extern "C"
 
 /* ----------------------------------------------------------------------- */
 
-/** Error-diffusion kernels. */
+/**
+ * Dithering methods: error-diffusion kernels, then ordered threshold maps.
+ */
 typedef enum dither_method
 {
   dither_NONE,               /**< Nearest colour only, no diffusion. */
@@ -36,6 +40,8 @@ typedef enum dither_method
   dither_SIERRA,
   dither_SIERRA_TWO_ROW,
   dither_SIERRA_LITE,        /**< Cheapest kernel: three neighbours. */
+  dither_BAYER,              /**< Ordered, 8x8 Bayer matrix. */
+  dither_BLUE_NOISE,         /**< Ordered, 64x64 blue-noise map. */
   dither__LIMIT
 }
 dither_method_t;
@@ -46,7 +52,8 @@ typedef struct dither_options
   dither_method_t method;
   const colour_t *palette;    /**< Target palette. */
   int             ncolours;   /**< Entries in `palette`, 1 to 256. */
-  int             strength;   /**< Percentage of error diffused, 0 to 100. */
+  int             strength;   /**< Percentage of error diffused, or of
+                               *   the ordered spread, 0 to 100. */
   int             serpentine; /**< Non-zero: alternate row direction. */
   int             linear;     /**< Non-zero: diffuse in linear light. */
 }
@@ -68,6 +75,11 @@ dither_options_t;
  * and measured, so the dithered result keeps the source's physical
  * brightness. Diffusing in sRGB instead makes sparse palettes come out too
  * bright in the midtones.
+ *
+ * Ordered methods add a bias of up to half the palette's typical channel gap
+ * (\ref pixelmap_t's `step`) either way, chosen per pixel by the threshold
+ * map. They have no error to carry, so they ignore `serpentine` and
+ * `linear`.
  *
  * \param[in]  src  Source bitmap, \ref pixelfmt_rgbx8888 or \ref
  *                  pixelfmt_rgba8888.

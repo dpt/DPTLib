@@ -1,4 +1,5 @@
-/* framebuf/dither/dither.c -- error-diffusion dithering to a palette */
+/* framebuf/dither/dither.c -- error-diffusion and ordered dithering to a
+ * palette */
 
 #include <math.h>
 #include <stddef.h>
@@ -9,6 +10,7 @@
 #include "base/utils.h"
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
+#include "framebuf/pattern.h"
 #include "framebuf/pixelfmt.h"
 #include "framebuf/pixelmap.h"
 
@@ -20,48 +22,54 @@
 #define DITHER_MAX_H 3
 #define DITHER_PAD   2 /* columns either side absorbing off-image error */
 
-/* coeff[0] is the current row; entries at or left of cx on it are zero */
+/* coeff[0] is the current row; entries at or left of cx on it are zero. An
+ * ordered method has no coefficients and a threshold map instead. */
 typedef struct dither_kernel
 {
   int           w, h;
   int           cx;      /* column of the current pixel */
   int           divisor;
   unsigned char coeff[DITHER_MAX_H][DITHER_MAX_W];
+  int         (*threshold)(int x, int y); /* 0..63, or NULL to diffuse */
 }
 dither_kernel_t;
 
 static const dither_kernel_t dither_kernels[dither__LIMIT] =
 {
   /* none */
-  { 1, 1, 0, 1, { { 0 } } },
+  { 1, 1, 0, 1, { { 0 } }, NULL },
   /* Floyd-Steinberg */
   { 3, 2, 1, 16, { { 0, 0, 7 },
-                   { 3, 5, 1 } } },
+                   { 3, 5, 1 } }, NULL },
   /* Jarvis, Judice and Ninke */
   { 5, 3, 2, 48, { { 0, 0, 0, 7, 5 },
                    { 3, 5, 7, 5, 3 },
-                   { 1, 3, 5, 3, 1 } } },
+                   { 1, 3, 5, 3, 1 } }, NULL },
   /* Stucki */
   { 5, 3, 2, 42, { { 0, 0, 0, 8, 4 },
                    { 2, 4, 8, 4, 2 },
-                   { 1, 2, 4, 2, 1 } } },
+                   { 1, 2, 4, 2, 1 } }, NULL },
   /* Atkinson */
   { 4, 3, 1, 8,  { { 0, 0, 1, 1 },
                    { 1, 1, 1, 0 },
-                   { 0, 1, 0, 0 } } },
+                   { 0, 1, 0, 0 } }, NULL },
   /* Burkes */
   { 5, 2, 2, 32, { { 0, 0, 0, 8, 4 },
-                   { 2, 4, 8, 4, 2 } } },
+                   { 2, 4, 8, 4, 2 } }, NULL },
   /* Sierra */
   { 5, 3, 2, 32, { { 0, 0, 0, 5, 3 },
                    { 2, 4, 5, 4, 2 },
-                   { 0, 2, 3, 2, 0 } } },
+                   { 0, 2, 3, 2, 0 } }, NULL },
   /* Sierra two-row */
   { 5, 2, 2, 16, { { 0, 0, 0, 4, 3 },
-                   { 1, 2, 3, 2, 1 } } },
+                   { 1, 2, 3, 2, 1 } }, NULL },
   /* Sierra lite */
   { 3, 2, 1, 4,  { { 0, 0, 2 },
-                   { 1, 1, 0 } } },
+                   { 1, 1, 0 } }, NULL },
+  /* Bayer */
+  { 1, 1, 0, 1,  { { 0 } }, pattern_bayer_threshold },
+  /* blue noise */
+  { 1, 1, 0, 1,  { { 0 } }, pattern_blue_noise_threshold },
 };
 
 /* ----- sRGB <-> linear light ----- */
@@ -184,6 +192,7 @@ result_t dither_bitmap(const bitmap_t         *src,
   int                        total;
   const unsigned short      *dec;
   int                        max;
+  int                        bias[64];
   int                        i;
   int                        x, y;
   int                        cur;
@@ -193,6 +202,7 @@ result_t dither_bitmap(const bitmap_t         *src,
   const pixelfmt_rgbx8888_t *px;
   int                       *e;
   unsigned int               r, g, b;
+  int                        t;
   unsigned int               index;
   unsigned int               pr, pg, pb;
   int                        qr, qg, qb;
@@ -267,12 +277,16 @@ result_t dither_bitmap(const bitmap_t         *src,
    * re-encoded only for the nearest-colour lookup */
   dec = NULL;
   max = 255;
-  if (opts->linear)
+  if (opts->linear && k->threshold == NULL)
   {
     dither_make_tables();
     dec = dither_tables.decode;
     max = LINEAR_MAX;
   }
+
+  /* an ordered method's bias per threshold: -step/2..step/2, symmetric */
+  for (i = 0; i < 64; i++)
+    bias[i] = ((2 * i - 63) * (int) pm->step * opts->strength) / (128 * 100);
 
   srcrow = src->base;
   dstrow = base;
@@ -297,9 +311,19 @@ result_t dither_bitmap(const bitmap_t         *src,
         b = dec[b];
       }
 
-      r = dither_apply(r, e[0], total, max);
-      g = dither_apply(g, e[1], total, max);
-      b = dither_apply(b, e[2], total, max);
+      if (k->threshold)
+      {
+        t = bias[k->threshold(x, y)];
+        r = (unsigned int) CLAMP((int) r + t, 0, 255);
+        g = (unsigned int) CLAMP((int) g + t, 0, 255);
+        b = (unsigned int) CLAMP((int) b + t, 0, 255);
+      }
+      else
+      {
+        r = dither_apply(r, e[0], total, max);
+        g = dither_apply(g, e[1], total, max);
+        b = dither_apply(b, e[2], total, max);
+      }
 
       if (dec)
         index = dither_lookup(pm,
@@ -310,7 +334,8 @@ result_t dither_bitmap(const bitmap_t         *src,
         index = dither_lookup(pm, r, g, b);
       dither_put(dstrow, x, log2bpp, index);
 
-      if (opts->method == dither_NONE || opts->strength == 0)
+      if (opts->method == dither_NONE || k->threshold ||
+          opts->strength == 0)
         continue;
 
       colour_get_rgb(&palette[index], &pr, &pg, &pb);
