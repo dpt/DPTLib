@@ -42,6 +42,7 @@ typedef enum dither_method
   dither_SIERRA_LITE,        /**< Cheapest kernel: three neighbours. */
   dither_BAYER,              /**< Ordered, 8x8 Bayer matrix. */
   dither_BLUE_NOISE,         /**< Ordered, 64x64 blue-noise map. */
+  dither_KNOLL,              /**< Knoll pattern dither, Bayer-ordered. */
   dither__LIMIT
 }
 dither_method_t;
@@ -52,8 +53,9 @@ typedef struct dither_options
   dither_method_t method;
   const colour_t *palette;    /**< Target palette. */
   int             ncolours;   /**< Entries in `palette`, 1 to 256. */
-  int             strength;   /**< Percentage of error diffused, or of
-                               *   the ordered spread, 0 to 100. */
+  int             strength;   /**< Percentage of error diffused, of the
+                               *   ordered spread or of Knoll's carried
+                               *   error, 0 to 100. */
   int             serpentine; /**< Non-zero: alternate row direction. */
   int             linear;     /**< Non-zero: diffuse in linear light. */
 }
@@ -80,6 +82,12 @@ dither_options_t;
  * (\ref pixelmap_t's `step`) either way, chosen per pixel by the threshold
  * map. They have no error to carry, so they ignore `serpentine` and
  * `linear`.
+ *
+ * \ref dither_KNOLL is Thomas Knoll's pattern dither. Per pixel it picks 16
+ * candidate colours whose mix approximates the source, sorts them by luma
+ * and takes the one the Bayer threshold selects. It costs 16 lookups a pixel
+ * but suits fixed, uneven palettes better than a plain ordered bias. Like
+ * the ordered methods it ignores `serpentine` and `linear`.
  *
  * \param[in]  src  Source bitmap, \ref pixelfmt_rgbx8888 or \ref
  *                  pixelfmt_rgba8888.
