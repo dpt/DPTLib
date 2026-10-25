@@ -28,6 +28,7 @@ static int test_registry(void)
     pixelfmt_p1, pixelfmt_p2, pixelfmt_p4, pixelfmt_p8,
     pixelfmt_rgbx5551, pixelfmt_rgb565,
     pixelfmt_bgrx8888, pixelfmt_rgbx8888, pixelfmt_xbgr8888,
+    pixelfmt_bgra8888,
   };
 
   const span_t *span;
@@ -241,6 +242,45 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
+static int test_blend_bgra8888(void)
+{
+  static const unsigned char alphas[3] = { 0, 255, 128 };
+
+  unsigned int  src1[3];
+  unsigned int  src2[3];
+  unsigned int  dst[3];
+  const span_t *span;
+
+  printf("test: bgra8888 blends source over destination, keeping alpha\n");
+
+  span = spanregistry_get(pixelfmt_bgra8888);
+
+  /* over a transparent pixel the colour is kept and the coverage becomes
+   * the alpha; the source's own alpha byte is ignored */
+  src1[0] = src1[1] = src1[2] = 0x00000000u;
+  src2[0] = src2[1] = src2[2] = 0x00112233u;
+
+  span->blendarray(dst, src1, src2, 3, alphas);
+  if (dst[0] != 0x00000000u || dst[1] != 0xFF112233u ||
+      dst[2] != 0x80112233u)
+    FAIL("bgra8888 over transparent");
+
+  /* over an opaque pixel it is an ordinary mix, and stays opaque */
+  src1[0] = src1[1] = src1[2] = 0xFF000000u;
+  src2[0] = src2[1] = src2[2] = 0x00FFFFFFu;
+
+  span->blendconst(dst, src1, src2, 3, 128, NULL);
+  if (dst[0] != 0xFF808080u || dst[2] != 0xFF808080u)
+    FAIL("bgra8888 over opaque");
+
+  return 1;
+
+Failure:
+  return 0;
+}
+
+/* ----------------------------------------------------------------------- */
+
 static int test_blend_paletted(void)
 {
   static const struct
@@ -319,6 +359,7 @@ result_t span_test(const char *resources)
       !test_copy() ||
       !test_fill() ||
       !test_blend_16bpp() ||
+      !test_blend_bgra8888() ||
       !test_blend_paletted())
     return result_TEST_FAILED;
 

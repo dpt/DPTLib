@@ -92,6 +92,7 @@ set(PUBLIC_HEADERS
     include/framebuf/pixelfmt.h
     include/framebuf/pixelmap.h
     include/framebuf/screen.h
+    include/framebuf/span-bgra8888.h
     include/framebuf/span-bgrx8888.h
     include/framebuf/span-p1.h
     include/framebuf/span-p2.h
@@ -306,6 +307,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/span/all16bpp.h
     libraries/framebuf/span/all8888.c
     libraries/framebuf/span/all8888.h
+    libraries/framebuf/span/bgra8888.c
     libraries/framebuf/span/bgrx8888.c
     libraries/framebuf/span/p1.c
     libraries/framebuf/span/p2.c

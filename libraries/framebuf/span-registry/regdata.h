@@ -5,6 +5,7 @@
 
 #include "base/utils.h"
 
+#include "framebuf/span-bgra8888.h"
 #include "framebuf/span-bgrx8888.h"
 #include "framebuf/span-p1.h"
 #include "framebuf/span-p2.h"
@@ -19,6 +20,7 @@
  * spans into the binary. */
 static const span_t *spans[] =
 {
+  &span_bgra8888,
   &span_bgrx8888,
   &span_p1,
   &span_p2,
