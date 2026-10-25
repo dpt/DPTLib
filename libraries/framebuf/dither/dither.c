@@ -13,6 +13,7 @@
 #include "framebuf/pattern.h"
 #include "framebuf/pixelfmt.h"
 #include "framebuf/pixelmap.h"
+#include "utils/rng.h"
 
 #include "framebuf/dither.h"
 
@@ -76,6 +77,8 @@ static const dither_kernel_t dither_kernels[dither__LIMIT] =
   /* Riemersma: no kernel; error travels along a Hilbert curve */
   { 1, 1, 0, 1,  { { 0 } }, NULL },
   /* Ostromoukhov: coefficients vary per pixel; only the shape is fixed */
+  { 3, 2, 1, OSTRO_DIV, { { 0 } }, NULL },
+  /* Zhou-Fang: Ostromoukhov's shape */
   { 3, 2, 1, OSTRO_DIV, { { 0 } }, NULL },
 };
 
@@ -390,6 +393,54 @@ static void dither_ostromoukhov(int                       *err,
   }
 }
 
+/* ----- Zhou-Fang dithering ----- */
+
+/* Zhou and Fang's threshold modulation strength (SIGGRAPH 2003), in percent,
+ * at key levels in 0..127; levels between are interpolated and levels
+ * 128..255 mirror them. */
+static const unsigned char dither_zf_keys[][2] =
+{
+  {   0,   0 },
+  {  44,  34 },
+  {  64,  50 },
+  {  85, 100 },
+  {  95,  17 },
+  { 102,  50 },
+  { 107,  70 },
+  { 112,  79 },
+  { 127, 100 }
+};
+
+/* Nudge channel c, already carrying its error, for the lookup only. v is
+ * the channel's source level and t the pixel's noise, -128..127. The nudge
+ * is at most half pm's step, scaled by the strength for v, by opts'
+ * strength and to max. */
+static unsigned int dither_zhou_fang(unsigned int            c,
+                                     unsigned int            v,
+                                     int                     t,
+                                     const pixelmap_t       *pm,
+                                     const dither_options_t *opts,
+                                     int                     max)
+{
+  int i;
+  int m;
+  int n;
+
+  if (v >= 128)
+    v = 255 - v;
+
+  for (i = 1; dither_zf_keys[i][0] < v; i++)
+    ;
+  m = dither_zf_keys[i - 1][1] +
+      (dither_zf_keys[i][1] - dither_zf_keys[i - 1][1]) *
+      ((int) v - dither_zf_keys[i - 1][0]) /
+      (dither_zf_keys[i][0] - dither_zf_keys[i - 1][0]);
+
+  n = t * m * (int) pm->step / (256 * 100);
+
+  return dither_apply(c, n * max / 255 * opts->strength, 100, max);
+}
+
 /* ----- Riemersma dithering ----- */
 
 #define RIEMERSMA_Q     16 /* errors remembered along the curve */
@@ -566,6 +617,7 @@ result_t dither_bitmap(const bitmap_t         *src,
   int                        qr, qg, qb;
   int                        mx, my;
   int                        weight;
+  rng_t                      rng;
 
   *dst = NULL;
 
@@ -658,6 +710,8 @@ result_t dither_bitmap(const bitmap_t         *src,
     return result_OK;
   }
 
+  rng_seed(&rng, 1); /* Zhou-Fang's noise, the same every call */
+
   srcrow = src->base;
   dstrow = base;
   for (y = 0; y < src->size.h; y++)
@@ -699,7 +753,20 @@ result_t dither_bitmap(const bitmap_t         *src,
         r = dither_apply(r, e[0], total, max);
         g = dither_apply(g, e[1], total, max);
         b = dither_apply(b, e[2], total, max);
-        index = dither_nearest(pm, dec, r, g, b);
+        if (opts->method == dither_ZHOU_FANG)
+        {
+          /* pr, pg, pb hold the nudged pixel until the palette colour
+           * replaces them; the error is measured from the un-nudged r, g, b */
+          t  = (int) (rng_xorshift32(&rng) & 255) - 128;
+          pr = dither_zhou_fang(r, PIXELFMT_Rxxx8888(px[x]), t, pm, opts, max);
+          pg = dither_zhou_fang(g, PIXELFMT_xGxx8888(px[x]), t, pm, opts, max);
+          pb = dither_zhou_fang(b, PIXELFMT_xxBx8888(px[x]), t, pm, opts, max);
+          index = dither_nearest(pm, dec, pr, pg, pb);
+        }
+        else
+        {
+          index = dither_nearest(pm, dec, r, g, b);
+        }
       }
       dither_put(dstrow, x, log2bpp, index);
 
@@ -718,7 +785,8 @@ result_t dither_bitmap(const bitmap_t         *src,
       qg = ((int) g - (int) pg) * opts->strength;
       qb = ((int) b - (int) pb) * opts->strength;
 
-      if (opts->method == dither_OSTROMOUKHOV)
+      if (opts->method == dither_OSTROMOUKHOV ||
+          opts->method == dither_ZHOU_FANG)
       {
         dither_ostromoukhov(err, stride, cur, (cur + 1) % k->h, x, dir, &px[x],
                             qr, qg, qb);

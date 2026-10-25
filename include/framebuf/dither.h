@@ -45,6 +45,7 @@ typedef enum dither_method
   dither_KNOLL,              /**< Knoll pattern dither, Bayer-ordered. */
   dither_RIEMERSMA,          /**< Diffuses along a Hilbert curve. */
   dither_OSTROMOUKHOV,       /**< Coefficients vary with level. */
+  dither_ZHOU_FANG,          /**< Ostromoukhov plus threshold noise. */
   dither__LIMIT
 }
 dither_method_t;
@@ -102,6 +103,14 @@ dither_options_t;
  * error by a table indexed by that channel's source level. The table is
  * tuned for blue-noise output across the whole tonal range. It is meant to
  * be run serpentine.
+ *
+ * \ref dither_ZHOU_FANG adds Zhou and Fang's threshold modulation to that
+ * diffusion: each lookup sees the pixel nudged by white noise whose spread
+ * depends on the source level, while the error carried on is measured from
+ * the un-nudged pixel. The noise breaks up the worms and regular patterns
+ * left in the midtones. It reuses Ostromoukhov's coefficients rather than
+ * Zhou and Fang's own and is seeded the same every call, so it is
+ * repeatable. `strength` scales the noise as well as the error.
  *
  * \param[in]  src  Source bitmap, \ref pixelfmt_rgbx8888 or \ref
  *                  pixelfmt_rgba8888.
