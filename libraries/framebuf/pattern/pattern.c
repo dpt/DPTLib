@@ -509,3 +509,24 @@ int pattern_blue_noise_threshold(int x, int y)
 {
   return blue_noise64x64[y & 63][x & 63];
 }
+
+int pattern_clustered_threshold(int x, int y)
+{
+  /* two dots per cell, one centred and one split over the corners, so the
+   * screen runs at 45 degrees. Each pixel joins the nearer dot and is ranked
+   * by its distance from it; the dots take turns, even thresholds for the
+   * centre and odd for the corners, so they grow together. */
+  static const uint8_t clustered8x8[8][8] =
+  {
+    {  5, 17, 41, 58, 63, 47, 23,  7 },
+    { 19, 29, 50, 34, 36, 55, 31, 21 },
+    { 43, 48, 24, 10, 12, 26, 53, 45 },
+    { 56, 32,  8,  0,  2, 14, 38, 61 },
+    { 57, 46, 22,  6,  4, 16, 40, 60 },
+    { 37, 49, 30, 20, 18, 28, 52, 35 },
+    { 13, 27, 51, 44, 42, 54, 25, 11 },
+    {  3, 15, 39, 59, 62, 33,  9,  1 }
+  };
+
+  return clustered8x8[y & 7][x & 7];
+}

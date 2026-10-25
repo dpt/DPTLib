@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "base/result.h"
 #include "framebuf/colour.h"
@@ -75,6 +76,8 @@ result_t pattern_test(const char *resources)
   colour_t  rb[2];
   pattern_t pat;
   int       ok;
+  int       seen[64];
+  int       i;
 
   (void) resources;
 
@@ -105,6 +108,15 @@ result_t pattern_test(const char *resources)
   rb[1] = colour_rgb(0, 0, 255);
   pat = pattern_from_colour(rb, 2, colour_rgb(128, 0, 128));
   CHECK(mixes_to(&pat, 128, 0, 128, 4));
+
+  /* the clustered-dot matrix holds each threshold once and tiles */
+  memset(seen, 0, sizeof(seen));
+  for (i = 0; i < 64; i++)
+    seen[pattern_clustered_threshold(i & 7, i >> 3)]++;
+  for (i = 0; i < 64; i++)
+    CHECK(seen[i] == 1);
+  CHECK(pattern_clustered_threshold(-1, -8) ==
+        pattern_clustered_threshold(7, 0));
 
   return ok ? result_TEST_PASSED : result_TEST_FAILED;
 }

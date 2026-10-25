@@ -151,4 +151,16 @@ int pattern_bayer_threshold(int x, int y);
  */
 int pattern_blue_noise_threshold(int x, int y);
 
+/**
+ * As `pattern_bayer_threshold`, but from an 8x8 clustered-dot matrix: the
+ * thresholds grow two round dots per cell on a 45 degree screen, like a
+ * printed halftone, rather than scattering single pixels. Each threshold 0
+ * to 63 appears once. `x` and `y` may be negative.
+ *
+ * \param[in] x Screen X coordinate.
+ * \param[in] y Screen Y coordinate.
+ * \return The threshold, 0 to 63.
+ */
+int pattern_clustered_threshold(int x, int y);
+
 #endif /* FRAMEBUF_PATTERN_H */

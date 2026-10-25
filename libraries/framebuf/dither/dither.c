@@ -90,6 +90,8 @@ static const dither_kernel_t dither_kernels[dither__LIMIT] =
   /* Shiau-Fan, five cells */
   { 5, 2, 3, 16, { { 0, 0, 0, 0, 8 },
                    { 1, 1, 2, 4, 0 } }, NULL },
+  /* clustered-dot halftone */
+  { 1, 1, 0, 1,  { { 0 } }, pattern_clustered_threshold },
 };
 
 /* ----- sRGB <-> linear light ----- */
