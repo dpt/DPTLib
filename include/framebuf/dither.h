@@ -36,7 +36,10 @@ typedef enum dither_method
 
   dither_CLUSTERED,          /**< Ordered, 8x8 clustered-dot halftone. */
   dither_RANDOM,             /**< Threshold from white noise. */
-  dither_BAYER,              /**< Ordered, 8x8 Bayer matrix. */
+  dither_BAYER_2,            /**< Ordered, 2x2 Bayer matrix. */
+  dither_BAYER_4,            /**< Ordered, 4x4 Bayer matrix. */
+  dither_BAYER_8,            /**< Ordered, 8x8 Bayer matrix. */
+  dither_BAYER_16,           /**< Ordered, 16x16 Bayer matrix. */
   dither_BLUE_NOISE,         /**< Ordered, 64x64 blue-noise map. */
   dither_KNOLL,              /**< Knoll pattern dither, Bayer-ordered. */
 

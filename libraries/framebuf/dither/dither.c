@@ -34,9 +34,44 @@ typedef struct dither_kernel
   int           cx;      /* column of the current pixel */
   int           divisor;
   unsigned char coeff[DITHER_MAX_H][DITHER_MAX_W];
-  int         (*threshold)(int x, int y); /* 0..63, or NULL to diffuse */
+  int         (*threshold)(int x, int y); /* 0..levels-1, or NULL to diffuse */
+  int           levels;  /* distinct thresholds, at most DITHER_MAX_LEVELS */
 }
 dither_kernel_t;
+
+#define DITHER_MAX_LEVELS 256 /* the 16x16 Bayer matrix's */
+
+/* Bayer threshold, 0..n*n-1, for an n x n matrix with n = 1 << log2n. Each
+ * level interleaves a bit of x ^ y above the same bit of y, lowest bits
+ * first, which builds the matrix recursively. The 8x8 result matches
+ * pattern_bayer_threshold. */
+static int dither_bayer(int x, int y, int log2n)
+{
+  int t;
+  int i;
+
+  t = 0;
+  for (i = 0; i < log2n; i++)
+    t |= ((((x ^ y) >> i) & 1) << 1 | ((y >> i) & 1)) <<
+         (2 * (log2n - 1 - i));
+
+  return t;
+}
+
+static int dither_bayer2(int x, int y)
+{
+  return dither_bayer(x, y, 1);
+}
+
+static int dither_bayer4(int x, int y)
+{
+  return dither_bayer(x, y, 2);
+}
+
+static int dither_bayer16(int x, int y)
+{
+  return dither_bayer(x, y, 4);
+}
 
 /* White-noise threshold, 0..63: a hash of the pixel's position, so the
  * same image always dithers the same way. */
@@ -57,60 +92,63 @@ static int dither_random_threshold(int x, int y)
 static const dither_kernel_t dither_kernels[dither__LIMIT] =
 {
   /* none */
-  { 1, 1, 0, 1, { { 0 } }, NULL },
+  { 1, 1, 0, 1, { { 0 } }, NULL, 0 },
   /* clustered-dot halftone */
-  { 1, 1, 0, 1,  { { 0 } }, pattern_clustered_threshold },
+  { 1, 1, 0, 1,  { { 0 } }, pattern_clustered_threshold, 64 },
   /* random threshold */
-  { 1, 1, 0, 1,  { { 0 } }, dither_random_threshold },
-  /* Bayer */
-  { 1, 1, 0, 1,  { { 0 } }, pattern_bayer_threshold },
+  { 1, 1, 0, 1,  { { 0 } }, dither_random_threshold, 64 },
+  /* Bayer, 2x2 to 16x16 */
+  { 1, 1, 0, 1,  { { 0 } }, dither_bayer2, 4 },
+  { 1, 1, 0, 1,  { { 0 } }, dither_bayer4, 16 },
+  { 1, 1, 0, 1,  { { 0 } }, pattern_bayer_threshold, 64 },
+  { 1, 1, 0, 1,  { { 0 } }, dither_bayer16, 256 },
   /* blue noise */
-  { 1, 1, 0, 1,  { { 0 } }, pattern_blue_noise_threshold },
+  { 1, 1, 0, 1,  { { 0 } }, pattern_blue_noise_threshold, 64 },
   /* Knoll: candidates chosen by Bayer threshold */
-  { 1, 1, 0, 1,  { { 0 } }, pattern_bayer_threshold },
+  { 1, 1, 0, 1,  { { 0 } }, pattern_bayer_threshold, 64 },
   /* Floyd-Steinberg */
   { 3, 2, 1, 16, { { 0, 0, 7 },
-                   { 3, 5, 1 } }, NULL },
+                   { 3, 5, 1 } }, NULL, 0 },
   /* Jarvis, Judice and Ninke */
   { 5, 3, 2, 48, { { 0, 0, 0, 7, 5 },
                    { 3, 5, 7, 5, 3 },
-                   { 1, 3, 5, 3, 1 } }, NULL },
+                   { 1, 3, 5, 3, 1 } }, NULL, 0 },
   /* Stucki */
   { 5, 3, 2, 42, { { 0, 0, 0, 8, 4 },
                    { 2, 4, 8, 4, 2 },
-                   { 1, 2, 4, 2, 1 } }, NULL },
+                   { 1, 2, 4, 2, 1 } }, NULL, 0 },
   /* Atkinson */
   { 4, 3, 1, 8,  { { 0, 0, 1, 1 },
                    { 1, 1, 1, 0 },
-                   { 0, 1, 0, 0 } }, NULL },
+                   { 0, 1, 0, 0 } }, NULL, 0 },
   /* Burkes */
   { 5, 2, 2, 32, { { 0, 0, 0, 8, 4 },
-                   { 2, 4, 8, 4, 2 } }, NULL },
+                   { 2, 4, 8, 4, 2 } }, NULL, 0 },
   /* Sierra */
   { 5, 3, 2, 32, { { 0, 0, 0, 5, 3 },
                    { 2, 4, 5, 4, 2 },
-                   { 0, 2, 3, 2, 0 } }, NULL },
+                   { 0, 2, 3, 2, 0 } }, NULL, 0 },
   /* Sierra two-row */
   { 5, 2, 2, 16, { { 0, 0, 0, 4, 3 },
-                   { 1, 2, 3, 2, 1 } }, NULL },
+                   { 1, 2, 3, 2, 1 } }, NULL, 0 },
   /* Sierra lite */
   { 3, 2, 1, 4,  { { 0, 0, 2 },
-                   { 1, 1, 0 } }, NULL },
+                   { 1, 1, 0 } }, NULL, 0 },
   /* Fan */
   { 4, 2, 2, 16, { { 0, 0, 0, 7 },
-                   { 1, 3, 5, 0 } }, NULL },
+                   { 1, 3, 5, 0 } }, NULL, 0 },
   /* Shiau-Fan, four cells */
   { 4, 2, 2, 8,  { { 0, 0, 0, 4 },
-                   { 1, 1, 2, 0 } }, NULL },
+                   { 1, 1, 2, 0 } }, NULL, 0 },
   /* Shiau-Fan, five cells */
   { 5, 2, 3, 16, { { 0, 0, 0, 0, 8 },
-                   { 1, 1, 2, 4, 0 } }, NULL },
+                   { 1, 1, 2, 4, 0 } }, NULL, 0 },
   /* Riemersma: no kernel; error travels along a Hilbert curve */
-  { 1, 1, 0, 1,  { { 0 } }, NULL },
+  { 1, 1, 0, 1,  { { 0 } }, NULL, 0 },
   /* Ostromoukhov: coefficients vary per pixel; only the shape is fixed */
-  { 3, 2, 1, OSTRO_DIV, { { 0 } }, NULL },
+  { 3, 2, 1, OSTRO_DIV, { { 0 } }, NULL, 0 },
   /* Zhou-Fang: Ostromoukhov's shape */
-  { 3, 2, 1, OSTRO_DIV, { { 0 } }, NULL },
+  { 3, 2, 1, OSTRO_DIV, { { 0 } }, NULL, 0 },
 };
 
 /* ----- sRGB <-> linear light ----- */
@@ -724,7 +762,7 @@ result_t dither_bitmap(const bitmap_t         *src,
   int                        total;
   const unsigned short      *dec;
   int                        max;
-  int                        bias[64];
+  int                        bias[DITHER_MAX_LEVELS];
   unsigned char              rank[256];
   int                        i;
   int                        x, y;
@@ -821,8 +859,9 @@ result_t dither_bitmap(const bitmap_t         *src,
   lim = dither_limit(pm, max);
 
   /* an ordered method's bias per threshold: -step/2..step/2, symmetric */
-  for (i = 0; i < 64; i++)
-    bias[i] = ((2 * i - 63) * (int) pm->step * opts->strength) / (128 * 100);
+  for (i = 0; i < k->levels; i++)
+    bias[i] = ((2 * i - (k->levels - 1)) * (int) pm->step * opts->strength) /
+              (2 * k->levels * 100);
 
   if (opts->method == dither_KNOLL)
     dither_luma_ranks(palette, opts->ncolours, rank);
