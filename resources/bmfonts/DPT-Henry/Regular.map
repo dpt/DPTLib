@@ -2,4 +2,107 @@
 U+0020..U+007E  0     # printable ASCII
 U+00A0          0     # NBSP shares space
 U+00A9          95    # copyright sign, drawn in the DEL cell
+# Lookalikes below reuse the ASCII cells: spaces, dashes, quotes, Greek,
+# Cyrillic, Roman numerals, maths operators and fullwidth forms.
+U+02B9          7     # modifier prime
+U+02BC          7     # modifier apostrophe
+U+02C6          62    # modifier circumflex
+U+02CB          64    # modifier grave
+U+02DC          94    # small tilde
+U+037E          27    # Greek question mark
+U+0391..U+0392  33    # Greek A, Greek B
+U+0395          37    # Greek E
+U+0396          58    # Greek Z
+U+0397          40    # Greek H
+U+0399          41    # Greek I
+U+039A          43    # Greek K
+U+039C..U+039D  45    # Greek M, Greek N
+U+039F          47    # Greek O
+U+03A1          48    # Greek P
+U+03A4          52    # Greek T
+U+03A5          57    # Greek Y
+U+03A7          56    # Greek X
+U+03BF          79    # Greek o
+U+03F3          74    # Greek j
+U+0405          51    # Cyrillic S
+U+0406          41    # Cyrillic I
+U+0408          42    # Cyrillic J
+U+0410          33    # Cyrillic A
+U+0412          34    # Cyrillic B
+U+0415          37    # Cyrillic E
+U+041A          43    # Cyrillic K
+U+041C          45    # Cyrillic M
+U+041D          40    # Cyrillic H
+U+041E          47    # Cyrillic O
+U+0420          48    # Cyrillic P
+U+0421          35    # Cyrillic C
+U+0422          52    # Cyrillic T
+U+0425          56    # Cyrillic X
+U+0430          65    # Cyrillic a
+U+0435          69    # Cyrillic e
+U+043E          79    # Cyrillic o
+U+0440          80    # Cyrillic p
+U+0441          67    # Cyrillic c
+U+0443          89    # Cyrillic y
+U+0445          88    # Cyrillic x
+U+0455          83    # Cyrillic s
+U+0456          73    # Cyrillic i
+U+0458          74    # Cyrillic j
+U+04AE          57    # Cyrillic Y
+U+04C0          41    # Cyrillic I
+U+051A          49    # Cyrillic Q
+U+051B          81    # Cyrillic q
+U+051C          55    # Cyrillic W
+U+051D          87    # Cyrillic w
+U+2000          0     # en quad
+U+2001          0     # em quad
+U+2002          0     # en space
+U+2003          0     # em space
+U+2004          0     # three-per-em space
+U+2005          0     # four-per-em space
+U+2006          0     # six-per-em space
+U+2007          0     # figure space
+U+2008          0     # punctuation space
+U+2009          0     # thin space
+U+200A          0     # hair space
+U+2010          13    # hyphen
+U+2011          13    # non-breaking hyphen
+U+2012          13    # figure dash
+U+2013          13    # en dash
 U+2014          13    # em dash
+U+2015          13    # horizontal bar
+U+2018          64    # left single quote
+U+2019          7     # right single quote
+U+201A          12    # single low-9 quote
+U+201C          2     # left double quote
+U+201D          2     # right double quote
+U+2024          14    # one dot leader
+U+202F          0     # narrow NBSP
+U+2032          7     # prime
+U+2033          2     # double prime
+U+2039          28    # single left angle quote
+U+203A          30    # single right angle quote
+U+2044          15    # fraction slash
+U+205F          0     # medium mathematical space
+U+212A          43    # Kelvin sign
+U+2160          41    # Roman numeral I
+U+2164          54    # Roman numeral V
+U+2169          56    # Roman numeral X
+U+216C          44    # Roman numeral L
+U+216D..U+216E  35    # Roman numeral C, Roman numeral D
+U+216F          45    # Roman numeral M
+U+2170          73    # Roman numeral i
+U+2174          86    # Roman numeral v
+U+2179          88    # Roman numeral x
+U+217C          76    # Roman numeral l
+U+217D..U+217E  67    # Roman numeral c, Roman numeral d
+U+217F          77    # Roman numeral m
+U+2212          13    # minus sign
+U+2215          15    # division slash
+U+2216          60    # set minus
+U+2217          10    # asterisk operator
+U+2223          92    # divides
+U+2236          26    # ratio
+U+223C          94    # tilde operator
+U+3000          0     # ideographic space
+U+FF01..U+FF5E  1     # fullwidth ASCII
