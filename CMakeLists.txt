@@ -580,7 +580,11 @@ install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include
 #
 
 option(BUILD_TESTS "Build test program" OFF)
-option(BUILD_SDL_TESTS "Build tests that use SDL" OFF)
+
+# Only offered at top level: a parent project's cache should not carry it
+if(PROJECT_IS_TOP_LEVEL)
+    option(BUILD_SDL_TESTS "Build tests that use SDL" OFF)
+endif()
 
 # Only when DPTLib is the top-level project, so a parent project's own
 # BUILD_TESTS does not also build DPTLibTest
