@@ -55,6 +55,39 @@ result_t region_from_polygon(const point_t *pts,
                              region_t     **out);
 
 /**
+ * Decides whether a pixel may join a flood. Called with the `opaque` given
+ * to `region_from_flood`; may be called more than once per pixel.
+ *
+ * \param[in] opaque Caller's data.
+ * \param[in] x      Pixel X coordinate.
+ * \param[in] y      Pixel Y coordinate.
+ * \return Non-zero if the pixel may join.
+ */
+typedef int (region_inside_fn_t)(void *opaque, int x, int y);
+
+/**
+ * Creates the region of pixels 4-connected to a seed through pixels that
+ * `inside` accepts: the area a flood fill would cover, as a selection, so
+ * nothing is drawn. Suits a paint program's magic wand, with `inside`
+ * comparing colours against the seed's.
+ *
+ * Uses one byte of scratch per pixel of `within` while running.
+ *
+ * \param[in]  seed   The pixel to start from.
+ * \param[in]  within The box (x1,y1 exclusive) the flood may not leave.
+ * \param[in]  inside Decides which pixels join.
+ * \param[in]  opaque Passed to `inside`.
+ * \param[out] out    The new region, or NULL if the seed lies outside
+ *                    `within` or `inside` rejects it.
+ * \return result_OK or result_OOM.
+ */
+result_t region_from_flood(point_t             seed,
+                           const box_t        *within,
+                           region_inside_fn_t *inside,
+                           void               *opaque,
+                           region_t          **out);
+
+/**
  * Creates the complement of a region within a box: the pixels of the box
  * which are not in the region.
  *

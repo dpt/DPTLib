@@ -30,8 +30,8 @@ static int area(const region_t *r)
 static result_t test_box(void)
 {
   static const box_t b = { 3, 4, 10, 9 };
-  region_t *r;
-  box_t     bb;
+  region_t          *r;
+  box_t              bb;
 
   if (region_from_box(&b, &r) != result_OK || r == NULL)
     return result_TEST_FAILED;
@@ -52,7 +52,7 @@ static result_t test_box(void)
 
 static result_t test_empty(void)
 {
-  static const box_t  e     = { 5, 5, 5, 9 };
+  static const box_t   e     = { 5, 5, 5, 9 };
   static const point_t line[] = { {0,5}, {10,5}, {20,5} };
   region_t *r = (region_t *) 1;
 
@@ -101,8 +101,8 @@ static result_t test_polygon(void)
 static result_t test_polygon_clip(void)
 {
   static const point_t poly[] = { {-20,-20}, {60,-20}, {60,60}, {-20,60} };
-  region_t *r;
-  box_t     bb;
+  region_t            *r;
+  box_t                bb;
 
   if (region_from_polygon(poly, 4, &clip, &r) != result_OK || r == NULL)
     return result_TEST_FAILED;
@@ -124,9 +124,9 @@ static result_t outline_matches(const region_t *r)
 {
   static const int dx[] = { -1, 1, 0, 0 };
   static const int dy[] = { 0, 0, -1, 1 };
-  unsigned char *got, *want;
-  box_t         *spans;
-  int            n, i, x, y, k, bad = 0;
+  unsigned char   *got, *want;
+  box_t           *spans;
+  int              n, i, x, y, k, bad = 0;
 
   if (region_outline(r, &spans, &n) != result_OK)
     return result_TEST_FAILED;
@@ -158,9 +158,9 @@ static result_t test_outline(void)
 {
   static const point_t poly[] =
   { {5,3}, {30,10}, {12,20}, {35,35}, {8,28}, {15,12} };
-  static const box_t   b = { 4, 4, 20, 15 };
-  region_t *r;
-  result_t  rc;
+  static const box_t b = { 4, 4, 20, 15 };
+  region_t          *r;
+  result_t           rc;
 
   if (region_from_box(&b, &r) != result_OK)
     return result_TEST_FAILED;
@@ -177,12 +177,57 @@ static result_t test_outline(void)
   return rc;
 }
 
+/* a wall down x == 20, with a gap at row *opaque (or none if negative) */
+static int beside_wall(void *opaque, int x, int y)
+{
+  return x != 20 || y == *(int *) opaque;
+}
+
+static result_t test_flood(void)
+{
+  region_t *r;
+  box_t     bb;
+  int       gap;
+  int       ok;
+
+  /* walled off: only the left half */
+  gap = -1;
+  if (region_from_flood(POINT(5, 5), &clip, beside_wall, &gap, &r) !=
+      result_OK || r == NULL)
+    return result_TEST_FAILED;
+
+  bb = region_bounds(r);
+  ok = bb.x0 == 0 && bb.y0 == 0 && bb.x1 == 20 && bb.y1 == H &&
+       area(r) == 20 * H;
+  region_destroy(r);
+
+  /* through the gap: everything but the wall */
+  gap = 30;
+  if (region_from_flood(POINT(5, 5), &clip, beside_wall, &gap, &r) !=
+      result_OK || r == NULL)
+    return result_TEST_FAILED;
+
+  ok = ok && area(r) == W * H - (H - 1) && region_contains(r, 20, 30) &&
+       !region_contains(r, 20, 29);
+  region_destroy(r);
+
+  /* a rejected or outside seed takes nothing */
+  if (region_from_flood(POINT(20, 5), &clip, beside_wall, &gap, &r) !=
+      result_OK || r != NULL)
+    ok = 0;
+  if (region_from_flood(POINT(W, 5), &clip, beside_wall, &gap, &r) !=
+      result_OK || r != NULL)
+    ok = 0;
+
+  return ok ? result_TEST_PASSED : result_TEST_FAILED;
+}
+
 static result_t test_invert(void)
 {
   static const box_t b = { 4, 4, 20, 15 };
-  region_t *r, *inv, *back = NULL;
-  box_t     bb;
-  int       ok;
+  region_t          *r, *inv, *back = NULL;
+  box_t              bb;
+  int                ok;
 
   if (region_from_box(&b, &r) != result_OK)
     return result_TEST_FAILED;
@@ -232,6 +277,7 @@ result_t region_test(const char *resources)
     test_polygon,
     test_polygon_clip,
     test_outline,
+    test_flood,
     test_invert
   };
 

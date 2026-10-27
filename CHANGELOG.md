@@ -39,6 +39,9 @@ _Unreleased_ until one is cut.
   from a Bayer matrix of any power of two size.
 - `framebuf/pattern.h`: `pattern_is_solid` reports whether a pattern paints
   a single colour, so it can be drawn as a plain rectangle fill.
+- `geom/region.h`: `region_from_flood` builds the region 4-connected to a
+  seed through pixels a caller's predicate accepts, such as a magic wand
+  selection.
 - `text/utf8.h`: `utf8_rune_start` snaps a byte index to the start of its
   codepoint; `utf8_word_left` and `utf8_word_right` step over
   space-separated words.
