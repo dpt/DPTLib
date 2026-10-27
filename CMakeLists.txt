@@ -131,6 +131,7 @@ set(PUBLIC_HEADERS
     include/text/bmtext.h
     include/text/txtfmt.h
     include/text/utf8.h
+    include/utils/alloc.h
     include/utils/array.h
     include/utils/barith.h
     include/utils/bsearch.h
@@ -388,6 +389,7 @@ set(TEXT_SOURCES
     libraries/text/utf8/prev.c)
 
 set(UTILS_SOURCES
+    libraries/utils/alloc/alloc.c
     libraries/utils/array/delelem.c
     libraries/utils/array/delelems.c
     libraries/utils/array/grow.c

@@ -16,6 +16,8 @@ extern "C"
 
 #include <stdlib.h>
 
+#include "utils/alloc.h"
+
 /* ----------------------------------------------------------------------- */
 
 /**
@@ -83,6 +85,27 @@ int array_grow(void **block,
                int   *allocated,
                int    need,
                int    minimum);
+
+/**
+ * As `array_grow`, but reallocating through an allocator's realloc hook.
+ *
+ * \param a         Allocator.
+ * \param block     Pointer to pointer to block. Updated on success.
+ * \param elemsize  Element size in bytes.
+ * \param used      Number of currently occupied elements.
+ * \param allocated Pointer to number of allocated elements. Updated on exit.
+ * \param need      Number of unoccupied elements we need.
+ * \param minimum   Minimum number of elements to allocate.
+ *
+ * \return 0 - ok, 1 - out of memory
+ */
+int array_grow_alloc(const alloc_t *a,
+                     void         **block,
+                     size_t         elemsize,
+                     int            used,
+                     int           *allocated,
+                     int            need,
+                     int            minimum);
 
 /**
  * Shrink a dynamically allocated array to have no free entries.

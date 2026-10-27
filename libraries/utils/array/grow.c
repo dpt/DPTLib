@@ -8,16 +8,24 @@
 #endif
 
 #include "base/utils.h"
+#include "utils/alloc.h"
 #include "utils/array.h"
 #include "utils/barith.h"
 
+/* a function, not the bare name, so Fortify's realloc macro applies */
+static void *grow_realloc(void *ptr, size_t size)
+{
+  return realloc(ptr, size);
+}
+
 /* used, need, minimum - specified as number of elements (not bytes) */
-int array_grow(void **pblock,
-               size_t elemsize,
-               int    used,
-               int   *pallocated,
-               int    need,
-               int    minimum)
+static int grow(void  *(*reallocfn)(void *, size_t),
+                void **pblock,
+                size_t elemsize,
+                int    used,
+                int   *pallocated,
+                int    need,
+                int    minimum)
 {
   int   to_allocate;
   void *block;
@@ -38,7 +46,7 @@ int array_grow(void **pblock,
   /* Rounding up to the next largest power of two strategy. */
   to_allocate = power2gt(need - 1); /* subtract 1 to make greater or equal */
 
-  block = realloc(*pblock, elemsize * to_allocate);
+  block = reallocfn(*pblock, elemsize * to_allocate);
   if (block == NULL)
     return 1; /* out of memory */
 
@@ -46,4 +54,29 @@ int array_grow(void **pblock,
   *pallocated = to_allocate;
 
   return 0;
+}
+
+int array_grow(void **pblock,
+               size_t elemsize,
+               int    used,
+               int   *pallocated,
+               int    need,
+               int    minimum)
+{
+  return grow(grow_realloc, pblock, elemsize, used, pallocated, need,
+              minimum);
+}
+
+int array_grow_alloc(const alloc_t *a,
+                     void         **pblock,
+                     size_t         elemsize,
+                     int            used,
+                     int           *pallocated,
+                     int            need,
+                     int            minimum)
+{
+  assert(a);
+
+  return grow(a->realloc, pblock, elemsize, used, pallocated, need,
+              minimum);
 }
