@@ -106,6 +106,7 @@ set(PUBLIC_HEADERS
     include/framebuf/span-xbgr8888.h
     include/framebuf/span.h
     include/geom/box.h
+    include/geom/hull.h
     include/geom/inset.h
     include/geom/layout.h
     include/geom/line.h
@@ -342,6 +343,7 @@ set(GEOM_SOURCES
     libraries/geom/box/size.c
     libraries/geom/box/translated.c
     libraries/geom/box/union.c
+    libraries/geom/hull/hull.c
     libraries/geom/layout/layout.c
     libraries/geom/line/line.c
     libraries/geom/stage/stage.c
@@ -629,6 +631,7 @@ if(BUILD_TESTS AND PROJECT_IS_TOP_LEVEL)
         libraries/framebuf/tonemap/test/tonemap-test.c
         libraries/framebuf/screen/test/screen-test.c
         libraries/geom/box/test/box-test.c
+        libraries/geom/hull/test/hull-test.c
         libraries/geom/layout/test/layout-test.c
         libraries/geom/stage/test/stage-test.c
         libraries/geom/packer/test/packer-test.c

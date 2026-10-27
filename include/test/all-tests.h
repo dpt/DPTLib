@@ -47,6 +47,7 @@ extern testfn_t bitmap_load_test,
 
 /* geom */
 extern testfn_t box_test,
+                hull_test,
                 layout_test,
                 packer_test,
                 region_test,

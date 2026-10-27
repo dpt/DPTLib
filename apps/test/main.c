@@ -74,6 +74,7 @@ static const test_t tests[] =
   { "tonemap",     tonemap_test     },
 
   { "box",        box_test        },
+  { "hull",       hull_test       },
   { "layout",     layout_test     },
   { "packer",     packer_test     },
   { "region",     region_test     },
