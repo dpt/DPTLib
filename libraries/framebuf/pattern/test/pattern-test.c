@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "base/result.h"
+#include "base/utils.h"
 #include "framebuf/colour.h"
 
 #include "framebuf/pattern.h"
@@ -56,6 +57,80 @@ static int solid_in(const pattern_t *pat, colour_t c)
          (n == 64 || pat->bg.primary == c.primary);
 }
 
+/* pattern_from_colour's error for target 't' shown as a mix of 'b' over 'a'
+ * at Bayer 'level', 64x scale, spread penalty included. */
+static long mix_error(colour_t t, colour_t a, colour_t b, int level)
+{
+  unsigned int tr, tg, tb;
+  unsigned int ar, ag, ab;
+  unsigned int br, bg, bb;
+  long         dr, dg, db;
+  long         er, eg, eb;
+  long         err;
+
+  colour_get_rgb(&t, &tr, &tg, &tb);
+  colour_get_rgb(&a, &ar, &ag, &ab);
+  colour_get_rgb(&b, &br, &bg, &bb);
+
+  dr = (long) br - (long) ar;
+  dg = (long) bg - (long) ag;
+  db = (long) bb - (long) ab;
+
+  er  = 64 * ((long) tr - (long) ar) - dr * level;
+  eg  = 64 * ((long) tg - (long) ag) - dg * level;
+  eb  = 64 * ((long) tb - (long) ab) - db * level;
+  err = er * er + eg * eg + eb * eb;
+  if (level > 0 && level < 64)
+    err += (dr * dr + dg * dg + db * db) * 64;
+
+  return err;
+}
+
+/* The lowest error over every pair, by brute force. Each pair mixes at the
+ * level nearest the target's projection onto it; its ends are covered by the
+ * solid pairs. */
+static long best_error(const colour_t *palette, int n, colour_t t)
+{
+  unsigned int tr, tg, tb;
+  long         best;
+  int          i;
+  unsigned int ar, ag, ab;
+  int          j;
+  unsigned int br, bg, bb;
+  long         dr, dg, db;
+  long         len2;
+  long         dot;
+  int          level;
+  long         err;
+
+  colour_get_rgb(&t, &tr, &tg, &tb);
+
+  best = -1;
+  for (i = 0; i < n; i++)
+  {
+    colour_get_rgb(&palette[i], &ar, &ag, &ab);
+    for (j = i; j < n; j++)
+    {
+      colour_get_rgb(&palette[j], &br, &bg, &bb);
+      dr    = (long) br - (long) ar;
+      dg    = (long) bg - (long) ag;
+      db    = (long) bb - (long) ab;
+      len2  = dr * dr + dg * dg + db * db;
+      dot   = ((long) tr - (long) ar) * dr + ((long) tg - (long) ag) * dg +
+              ((long) tb - (long) ab) * db;
+      level = 0;
+      if (len2 > 0 && dot > 0)
+        level = (int) MIN((dot * 64 + len2 / 2) / len2, 64);
+
+      err = mix_error(t, palette[i], palette[j], level);
+      if (best < 0 || err < best)
+        best = err;
+    }
+  }
+
+  return best;
+}
+
 #define CHECK(expr)                                             \
   do                                                            \
   {                                                             \
@@ -78,6 +153,9 @@ result_t pattern_test(const char *resources)
   int       ok;
   int       seen[64];
   int       i;
+  colour_t  pal[16 + 216];
+  unsigned  seed;
+  colour_t  t;
 
   (void) resources;
 
@@ -142,6 +220,28 @@ result_t pattern_test(const char *resources)
   CHECK(pattern_bayer_threshold_n(-1, -3, 2) ==
         pattern_bayer_threshold_n(3, 1, 2));
   CHECK(pattern_bayer_threshold_n(5, 9, 0) == 0);
+
+  /* the pruned pair search finds as good a mix as trying every pair: a
+   * 256-colour-style palette of a web-safe cube plus odd extras, against
+   * pseudo-random targets */
+  seed = 1;
+  for (i = 0; i < 16; i++)
+  {
+    seed   = seed * 1103515245u + 12345u;
+    pal[i] = colour_rgb((seed >> 8) & 0xFF, (seed >> 16) & 0xFF,
+                        (seed >> 24) & 0xFF);
+  }
+  for (i = 0; i < 216; i++)
+    pal[16 + i] = colour_rgb(i / 36 * 51, i / 6 % 6 * 51, i % 6 * 51);
+  for (i = 0; i < 24; i++)
+  {
+    seed = seed * 1103515245u + 12345u;
+    t    = colour_rgb((seed >> 8) & 0xFF, (seed >> 16) & 0xFF,
+                      (seed >> 24) & 0xFF);
+    pat  = pattern_from_colour(pal, (int) NELEMS(pal), t);
+    CHECK(mix_error(t, pat.bg, pat.fg, coverage(&pat)) ==
+          best_error(pal, (int) NELEMS(pal), t));
+  }
 
   return ok ? result_TEST_PASSED : result_TEST_FAILED;
 }

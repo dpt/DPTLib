@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "base/utils.h"
@@ -139,13 +140,44 @@ pattern_t pattern_from_mask(const uint8_t mask[8], colour_t colour)
   return pat;
 }
 
+/* A palette entry and its squared distance from the target. */
+typedef struct
+{
+  long d;
+  int  i;
+}
+near_t;
+
+/* Orders near_t by distance, then by palette index so ties keep palette
+ * order. */
+static int near_compare(const void *va, const void *vb)
+{
+  const near_t *a = va;
+  const near_t *b = vb;
+
+  if (a->d != b->d)
+    return a->d < b->d ? -1 : 1;
+
+  return a->i - b->i;
+}
+
 /* Errors below are held at 64x scale (64 * channel difference) so the Bayer
- * level's quantisation is measured exactly without division. */
+ * level's quantisation is measured exactly without division.
+ *
+ * Pairs are tried nearest first. A pair's error is at least 4096 r^2 / 65,
+ * where r is the farther entry's distance from the target: the mix point M
+ * is within |B-A| of each entry, so r <= |T-M| + |B-A|, and minimising
+ * |T-M|^2 + |B-A|^2 / 64 (the penalty) under that gives r^2 / 65. A solid
+ * entry costs 4096 r^2 outright. So once an entry's bound reaches the best
+ * error found, it and every farther entry are out, which leaves a handful of
+ * pairs rather than all of them. */
 pattern_t pattern_from_colour(const colour_t *palette,
                               int             nentries,
                               colour_t        target)
 {
   unsigned int tr, tg, tb;
+  near_t       order[256];
+  int          n;
   long         best_err;
   int          best_a;
   int          best_b;
@@ -167,21 +199,38 @@ pattern_t pattern_from_colour(const colour_t *palette,
 
   colour_get_rgb(&target, &tr, &tg, &tb);
 
-  best_err   = -1;
-  best_a     = 0;
-  best_b     = 0;
-  best_level = 0;
-
-  for (i = 0; i < nentries; i++)
+  n = MIN(nentries, (int) NELEMS(order));
+  for (i = 0; i < n; i++)
   {
     colour_get_rgb(&palette[i], &ar, &ag, &ab);
     ur = (long) tr - (long) ar;
     ug = (long) tg - (long) ag;
     ub = (long) tb - (long) ab;
 
-    for (j = i; j < nentries; j++)
+    order[i].d = ur * ur + ug * ug + ub * ub;
+    order[i].i = i;
+  }
+  qsort(order, (size_t) n, sizeof order[0], near_compare);
+
+  best_err   = -1;
+  best_a     = 0;
+  best_b     = 0;
+  best_level = 0;
+
+  /* B is the farther entry of each pair, A the nearer */
+  for (j = 0; j < n; j++)
+  {
+    if (best_err >= 0 && 4096 * order[j].d / 65 >= best_err)
+      break;
+
+    colour_get_rgb(&palette[order[j].i], &br, &bg, &bb);
+
+    for (i = 0; i <= j; i++)
     {
-      colour_get_rgb(&palette[j], &br, &bg, &bb);
+      colour_get_rgb(&palette[order[i].i], &ar, &ag, &ab);
+      ur = (long) tr - (long) ar;
+      ug = (long) tg - (long) ag;
+      ub = (long) tb - (long) ab;
 
       dr = (long) br - (long) ar;
       dg = (long) bg - (long) ag;
@@ -208,8 +257,8 @@ pattern_t pattern_from_colour(const colour_t *palette,
       if (best_err < 0 || err < best_err)
       {
         best_err   = err;
-        best_a     = i;
-        best_b     = j;
+        best_a     = order[i].i;
+        best_b     = order[j].i;
         best_level = level;
       }
     }

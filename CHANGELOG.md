@@ -291,6 +291,9 @@ _Unreleased_ until one is cut.
 
 ### Changed
 
+- `pattern_from_colour` tries pairs nearest first and stops once no farther
+  pair can win, so a 256-entry palette costs a sort and a few pairs rather
+  than all 32,896. Only the first 256 entries are considered.
 - **Breaking:** `screen_DITHER_NONE` is renamed `screen_DITHER_NEAREST`, and
   None menu rows become Nearest.
 - **Breaking:** `filetype_t.ext` is undotted (`"png"`, not `".png"`);
