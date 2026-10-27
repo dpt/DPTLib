@@ -597,6 +597,67 @@ static result_t test_fill_checks(void)
   return result_TEST_PASSED;
 }
 
+static result_t test_fill_linear_gradient(void)
+{
+  static testscreen_t ts;
+  static testscreen_t enc;
+
+  const int back = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
+
+  box_t     box = { 4, 4, 24, 6 };
+  colour_t  red, blue;
+  int       lo, mid, hi;
+
+  red  = colour_rgb(255, 0, 0);
+  blue = colour_rgb(0, 0, 255);
+  lo   = (int) np_encode(&enc, 255, 0, 0);
+  mid  = (int) np_encode(&enc, 127, 0, 128);
+  hi   = (int) np_encode(&enc, 0, 0, 255);
+
+  /* red up to x = 8, blue from x = 16, step 128 of 255 at x = 12 */
+  testscreen_init(&ts);
+  screen_fill_linear_gradient(&ts.scr, &box, POINT(8, 0), POINT(16, 0),
+                              red, blue);
+  if (np_at(&ts, 4, 4)  != lo  ||
+      np_at(&ts, 8, 5)  != lo  ||
+      np_at(&ts, 12, 4) != mid ||
+      np_at(&ts, 16, 5) != hi  ||
+      np_at(&ts, 23, 4) != hi)
+  {
+    printf("screen: fill_linear_gradient wrong ramp\n");
+    return result_TEST_FAILED;
+  }
+  if (np_at(&ts, 3, 4) != back || np_at(&ts, 24, 4) != back ||
+      np_at(&ts, 10, 6) != back)
+  {
+    printf("screen: fill_linear_gradient drew outside the box\n");
+    return result_TEST_FAILED;
+  }
+
+  /* honours the screen clip */
+  testscreen_init(&ts);
+  ts.scr.clip = (box_t) { 0, 0, 10, 64 };
+  screen_fill_linear_gradient(&ts.scr, &box, POINT(8, 0), POINT(16, 0),
+                              red, blue);
+  if (np_at(&ts, 9, 4) == back || np_at(&ts, 10, 4) != back)
+  {
+    printf("screen: fill_linear_gradient ignored the screen clip\n");
+    return result_TEST_FAILED;
+  }
+
+  /* a == b draws nothing */
+  testscreen_init(&ts);
+  screen_fill_linear_gradient(&ts.scr, &box, POINT(8, 0), POINT(8, 0),
+                              red, blue);
+  if (np_at(&ts, 8, 4) != back)
+  {
+    printf("screen: fill_linear_gradient drew with a == b\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
 /* ----------------------------------------------------------------------- */
 
 static result_t test_dashed_line(void)
@@ -2540,6 +2601,7 @@ result_t screen_test(const char *resources)
     test_tiled,
     test_fill_pattern,
     test_fill_checks,
+    test_fill_linear_gradient,
     test_dashed_line,
     test_draw_lines,
     test_draw_thick_line,

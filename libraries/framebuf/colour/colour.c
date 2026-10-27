@@ -79,6 +79,27 @@ colour_t colour_mix(colour_t     a,
                     (ab * (den - num) + bb * num) / den);
 }
 
+colour_t colour_mix_rgba(colour_t     a,
+                         colour_t     b,
+                         unsigned int num,
+                         unsigned int den)
+{
+  unsigned int ar, ag, ab, aa;
+  unsigned int br, bg, bb, ba;
+  unsigned int half;
+
+  colour_get_rgb(&a, &ar, &ag, &ab);
+  aa = colour_get_alpha(&a);
+  colour_get_rgb(&b, &br, &bg, &bb);
+  ba = colour_get_alpha(&b);
+  half = den / 2;
+
+  return colour_rgba((ar * (den - num) + br * num + half) / den,
+                     (ag * (den - num) + bg * num + half) / den,
+                     (ab * (den - num) + bb * num + half) / den,
+                     (aa * (den - num) + ba * num + half) / den);
+}
+
 static unsigned int closest_palette_entry(const colour_t *palette,
                                           int             nentries,
                                           colour_t        required)

@@ -25,6 +25,10 @@ _Unreleased_ until one is cut.
 - `utils/rng.h`: `rng_bits` returns the low bits of an xorshift32 step.
 - `framebuf/bitmap.h`: `bitmap_flood_fill`, a scanline flood fill for 32bpp
   bitmaps that reports the bounds it changed.
+- `framebuf/colour.h`: `colour_mix_rgba` blends alpha too and rounds to
+  nearest, where `colour_mix` is opaque and truncates.
+- `framebuf/screen.h`: `screen_fill_linear_gradient` fills a box with a
+  256-step linear gradient between two points, alpha included.
 - `framebuf/tonemap.h`: `tonemap_rgb_in_sync` and `tonemap_has_alpha` report
   whether red, green and blue were last set together and whether alpha is
   present, so a tone map editor can choose between one combined curve and

@@ -105,4 +105,18 @@ colour_t colour_mix(colour_t     a,
                     unsigned int num,
                     unsigned int den);
 
+/**
+ * Blend two colours, per component, alpha included, rounding to nearest.
+ *
+ * \param[in] a   Colour returned when num is 0.
+ * \param[in] b   Colour returned when num equals den.
+ * \param[in] num Numerator of the blend fraction, at most den.
+ * \param[in] den Denominator of the blend fraction, non-zero.
+ * \return Colour num/den of the way from a to b.
+ */
+colour_t colour_mix_rgba(colour_t     a,
+                         colour_t     b,
+                         unsigned int num,
+                         unsigned int den);
+
 #endif /* FRAMEBUF_COLOUR_H */

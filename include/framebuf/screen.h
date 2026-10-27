@@ -220,6 +220,28 @@ void screen_fill_checks(screen_t    *scr,
                         colour_t     odd);
 
 /**
+ * Fill a box with a linear gradient, alpha included, from `c0` at `a` to
+ * `c1` at `b`. Pixels beyond either end take that end's colour. The gradient
+ * is quantised to 256 steps.
+ *
+ * Pixels are written, not blended. Clipped to the screen's clip region.
+ * Draws nothing if `a` equals `b`.
+ *
+ * \param[in] scr Screen to draw upon.
+ * \param[in] box Box to fill, inclusive-exclusive.
+ * \param[in] a   Screen coordinate where the gradient is `c0`.
+ * \param[in] b   Screen coordinate where the gradient is `c1`.
+ * \param[in] c0  Colour at `a`.
+ * \param[in] c1  Colour at `b`.
+ */
+void screen_fill_linear_gradient(screen_t    *scr,
+                                 const box_t *box,
+                                 point_t      a,
+                                 point_t      b,
+                                 colour_t     c0,
+                                 colour_t     c1);
+
+/**
  * Copies a bitmap onto the screen, alpha-blending it against the screen
  * where the bitmap has an alpha channel. On paletted screens, which have no
  * linear channel bits to blend, this falls back to alpha-tested transparency

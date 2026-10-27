@@ -303,6 +303,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/screen/screen-draw-ellipse.c
     libraries/framebuf/screen/screen-draw-thick-line.c
     libraries/framebuf/screen/screen-fill-checks.c
+    libraries/framebuf/screen/screen-fill-gradient.c
     libraries/framebuf/screen/screen-fill-hline.c
     libraries/framebuf/screen/screen-fill-pattern.c
     libraries/framebuf/span-registry/get.c

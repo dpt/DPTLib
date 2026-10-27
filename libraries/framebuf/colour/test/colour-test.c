@@ -70,6 +70,10 @@ result_t colour_test(const char *resources)
   mid = colour_mix(colour_rgb(0, 200, 40), colour_rgb(255, 100, 10), 1, 2);
   if (mid.primary != colour_rgb(127, 150, 25).primary)
     FAIL("mix halfway");
+  mid = colour_mix_rgba(colour_rgba(0, 200, 40, 0),
+                        colour_rgba(255, 100, 10, 255), 1, 2);
+  if (mid.primary != colour_rgba(128, 150, 25, 128).primary)
+    FAIL("mix_rgba halfway");
 
   printf("test: colour to pixel\n");
 
