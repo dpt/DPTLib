@@ -1,4 +1,4 @@
-/* framebuf/bitmap/test/convert-test.c -- bitmap palette, clear and convert tests */
+/* framebuf/bitmap/test/convert-test.c -- bitmap palette, clear, convert and fill tests */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -648,6 +648,65 @@ Failure:
   return 0;
 }
 
+/* A ring of 1s with a gap at the top, around a hole of 0s, in a field of 0s:
+ * a fill from inside leaks out through the gap, but not into the 2s.
+ *
+ *   0 0 0 0 0 0
+ *   0 1 0 1 1 0
+ *   0 1 0 0 1 0
+ *   0 1 1 1 1 0
+ *   2 2 2 2 2 2 */
+static int test_flood_fill(void)
+{
+  static const unsigned int start[5][6] =
+  {
+    { 0, 0, 0, 0, 0, 0 },
+    { 0, 1, 0, 1, 1, 0 },
+    { 0, 1, 0, 0, 1, 0 },
+    { 0, 1, 1, 1, 1, 0 },
+    { 2, 2, 2, 2, 2, 2 }
+  };
+  unsigned int px[5][6];
+  unsigned int fill;
+  bitmap_t     bm;
+  box_t        dirty;
+  int          x, y;
+
+  printf("test: flood_fill\n");
+
+  memcpy(px, start, sizeof(px));
+  bitmap_init(&bm, SIZE2D(6, 5), pixelfmt_bgrx8888, 6 * 4, NULL, px);
+  fill = colour_to_pixel(NULL, 0, colour_rgb(255, 0, 0), pixelfmt_bgrx8888);
+
+  if (bitmap_flood_fill(&bm, POINT(3, 2), colour_rgb(255, 0, 0), &dirty) !=
+      result_OK)
+    FAIL("flood_fill rc");
+  for (y = 0; y < 5; y++)
+    for (x = 0; x < 6; x++)
+      if (px[y][x] != (start[y][x] == 0 ? fill : start[y][x]))
+        FAIL("flood_fill pixel");
+  if (dirty.x0 != 0 || dirty.y0 != 0 || dirty.x1 != 6 || dirty.y1 != 4)
+    FAIL("flood_fill dirty");
+
+  /* already the fill colour, and off the bitmap: nothing to do */
+  if (bitmap_flood_fill(&bm, POINT(0, 0), colour_rgb(255, 0, 0), &dirty) !=
+      result_OK || !box_is_empty(&dirty))
+    FAIL("flood_fill same colour");
+  if (bitmap_flood_fill(&bm, POINT(-1, 0), colour_rgb(0, 0, 0), &dirty) !=
+      result_OK || !box_is_empty(&dirty))
+    FAIL("flood_fill off bitmap");
+
+  bm.format = pixelfmt_rgb565;
+  if (bitmap_flood_fill(&bm, POINT(0, 0), colour_rgb(0, 0, 0), NULL) !=
+      result_NOT_SUPPORTED)
+    FAIL("flood_fill 16bpp");
+
+  return 1;
+
+Failure:
+  return 0;
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t bitmap_convert_test(const char *resources)
@@ -665,7 +724,8 @@ result_t bitmap_convert_test(const char *resources)
       !test_convert_unsupported() ||
       !test_convert_in_place() ||
       !test_clone() ||
-      !test_fill_pattern())
+      !test_fill_pattern() ||
+      !test_flood_fill())
     return result_TEST_FAILED;
 
   return result_TEST_PASSED;

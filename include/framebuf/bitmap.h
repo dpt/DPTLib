@@ -11,6 +11,7 @@
 #include "framebuf/pixelfmt.h"
 #include "framebuf/span.h"
 #include "geom/box.h"
+#include "geom/point.h"
 #include "geom/size.h"
 
 /** Common bitmap structure members (used for screens too). */
@@ -107,6 +108,30 @@ void bitmap_clear(bitmap_t *bm, colour_t colour);
 result_t bitmap_fill_pattern(bitmap_t        *bm,
                              const box_t     *area,
                              const pattern_t *pattern);
+
+/**
+ * Flood fill the 4-connected area of pixels matching the one at `seed` with
+ * `colour`.
+ *
+ * Pixels match only if exactly equal. Nothing is drawn if `seed` is off the
+ * bitmap or already `colour`.
+ *
+ * Supported for unpaletted 32bpp formats only; other formats return \ref
+ * result_NOT_SUPPORTED.
+ *
+ * \param[in]  bm     Bitmap to fill.
+ * \param[in]  seed   Pixel to start from.
+ * \param[in]  colour Colour to fill with.
+ * \param[out] dirty  Bounds of the pixels changed, or an empty box if none.
+ *                    May be NULL.
+ * \return \ref result_OK on success, \ref result_OOM if the fill ran out of
+ *         memory part way (`dirty` still bounds what was filled) or \ref
+ *         result_NOT_SUPPORTED for an unsupported pixel format.
+ */
+result_t bitmap_flood_fill(bitmap_t *bm,
+                           point_t   seed,
+                           colour_t  colour,
+                           box_t    *dirty);
 
 /**
  * Load a PNG image into the given bitmap.

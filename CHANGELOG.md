@@ -23,6 +23,8 @@ _Unreleased_ until one is cut.
   the stdlib `alloc_default` and `alloc_strdup`, moved from Wuss's
   `wuss_alloc_t`. `array_grow_alloc` grows an array through an `alloc_t`.
 - `utils/rng.h`: `rng_bits` returns the low bits of an xorshift32 step.
+- `framebuf/bitmap.h`: `bitmap_flood_fill`, a scanline flood fill for 32bpp
+  bitmaps that reports the bounds it changed.
 - `framebuf/tonemap.h`: `tonemap_rgb_in_sync` and `tonemap_has_alpha` report
   whether red, green and blue were last set together and whether alpha is
   present, so a tone map editor can choose between one combined curve and
