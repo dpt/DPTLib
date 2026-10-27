@@ -64,6 +64,9 @@ _Unreleased_ until one is cut.
   OKLab as unclamped doubles, so out-of-gamut values survive round trips;
   `colourspace_to_colour()` clamps and quantises. Also parses `#RRGGBB` and
   `#RGB` hex colours.
+- `framebuf/colourspace.h`: `colourspace_srgb_decode` and
+  `colourspace_srgb_encode` return shared sRGB/linear-light lookup tables.
+  Dithering and resizing now use them instead of building their own.
 - `bmtext_layout_measured()` wraps text with a caller-supplied measure
   callback, so a line can mix faces; `bmtext_layout()` wraps it.
 - `io/filetype.h` holds every allocated RISC OS file type (1026, from

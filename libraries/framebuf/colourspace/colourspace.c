@@ -3,6 +3,7 @@
 #include <ctype.h>
 #include <math.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "base/result.h"
 #include "base/utils.h"
@@ -261,6 +262,53 @@ static double colourspace_from_linear(double x)
   a = (a <= 0.0031308) ? a * 12.92 : 1.055 * pow(a, 1.0 / 2.4) - 0.055;
 
   return (x < 0.0) ? -a : a;
+}
+
+static struct
+{
+  uint16_t decode[256];
+  uint8_t  encode[1 << colourspace_ENCODE_BITS];
+  int      ready;
+}
+colourspace_tables;
+
+static void colourspace_make_tables(void)
+{
+  int    i;
+  double c;
+
+  if (colourspace_tables.ready)
+    return;
+
+  for (i = 0; i < 256; i++)
+  {
+    c = colourspace_to_linear(i / 255.0);
+    colourspace_tables.decode[i] =
+      (uint16_t) (c * colourspace_LINEAR_MAX + 0.5);
+  }
+
+  for (i = 0; i < (1 << colourspace_ENCODE_BITS); i++)
+  {
+    c = i / (double) ((1 << colourspace_ENCODE_BITS) - 1);
+    colourspace_tables.encode[i] =
+      (uint8_t) (colourspace_from_linear(c) * 255 + 0.5);
+  }
+
+  colourspace_tables.ready = 1;
+}
+
+const uint16_t *colourspace_srgb_decode(void)
+{
+  colourspace_make_tables();
+
+  return colourspace_tables.decode;
+}
+
+const uint8_t *colourspace_srgb_encode(void)
+{
+  colourspace_make_tables();
+
+  return colourspace_tables.encode;
 }
 
 void colourspace_rgb_to_oklab(const colourspace_rgb_t *rgb,

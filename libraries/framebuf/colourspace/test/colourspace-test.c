@@ -238,6 +238,38 @@ static int colourspace_test_hex(void)
   return 1;
 }
 
+/* The linear-light tables span their ranges and climb steadily. */
+static int colourspace_test_tables(void)
+{
+  const uint16_t *dec;
+  const uint8_t  *enc;
+  int             i;
+
+  dec = colourspace_srgb_decode();
+  enc = colourspace_srgb_encode();
+
+  if (dec[0] != 0 || dec[255] != colourspace_LINEAR_MAX ||
+      dec[128] != 14146) /* sRGB 128 is 21.586% linear */
+  {
+    printf("colourspace: decode table wrong\n");
+    return 0;
+  }
+
+  if (enc[0] != 0 || enc[(1 << colourspace_ENCODE_BITS) - 1] != 255)
+  {
+    printf("colourspace: encode table wrong\n");
+    return 0;
+  }
+
+  for (i = 1; i < (1 << colourspace_ENCODE_BITS); i++)
+    if (enc[i] < enc[i - 1])
+    {
+      printf("colourspace: encode table falls at %d\n", i);
+      return 0;
+    }
+  return 1;
+}
+
 result_t colourspace_test(const char *resources)
 {
   (void) resources;
@@ -245,6 +277,7 @@ result_t colourspace_test(const char *resources)
   if (!colourspace_test_round_trips() ||
       !colourspace_test_references() ||
       !colourspace_test_gamut() ||
+      !colourspace_test_tables() ||
       !colourspace_test_hex())
     return result_TEST_FAILED;
 

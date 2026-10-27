@@ -10,6 +10,7 @@
 
 #include "base/utils.h"
 #include "framebuf/bitmap.h"
+#include "framebuf/colourspace.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -41,40 +42,20 @@ static int64_t resize_lerp(int64_t v00,
 
 /* ----- sRGB <-> linear light ----- */
 
-#define LINEAR_MAX   65535
-#define ENCODE_SIZE  4096 /* entries in the linear-to-sRGB table */
+#define LINEAR_MAX   colourspace_LINEAR_MAX
+#define ENCODE_SIZE  (1 << colourspace_ENCODE_BITS)
 
 static struct
 {
-  uint16_t decode[256];
-  uint8_t  encode[ENCODE_SIZE];
-  int      tables_ready;
+  const uint16_t *decode;
+  const uint8_t  *encode;
 }
 g;
 
 static void resize_make_tables(void)
 {
-  int    i;
-  double c;
-
-  if (g.tables_ready)
-    return;
-
-  for (i = 0; i < 256; i++)
-  {
-    c = i / 255.0;
-    c = c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4);
-    g.decode[i] = (uint16_t) (c * LINEAR_MAX + 0.5);
-  }
-
-  for (i = 0; i < ENCODE_SIZE; i++)
-  {
-    c = i / (double) (ENCODE_SIZE - 1);
-    c = c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1 / 2.4) - 0.055;
-    g.encode[i] = (uint8_t) (c * 255 + 0.5);
-  }
-
-  g.tables_ready = 1;
+  g.decode = colourspace_srgb_decode();
+  g.encode = colourspace_srgb_encode();
 }
 
 /* Lane of a 32bpp pixel that is not a colour (alpha or padding): always

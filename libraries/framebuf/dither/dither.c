@@ -3,6 +3,7 @@
 
 #include <math.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -10,6 +11,7 @@
 #include "base/utils.h"
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
+#include "framebuf/colourspace.h"
 #include "framebuf/pattern.h"
 #include "framebuf/pixelfmt.h"
 #include "framebuf/pixelmap.h"
@@ -133,46 +135,6 @@ static const dither_kernel_t dither_kernels[dither__LIMIT] =
   /* Zhou-Fang: Ostromoukhov's shape */
   { 3, 2, 1, OSTRO_DIV, { { 0 } }, NULL, 0 },
 };
-
-/* ----- sRGB <-> linear light ----- */
-
-#define LINEAR_MAX  65535
-#define ENCODE_BITS 12 /* linear-to-sRGB table has 2^ENCODE_BITS entries */
-
-/* ponytail: same tables as bitmap/resize.c; share them if a third user
- * appears */
-static struct
-{
-  unsigned short decode[256];
-  unsigned char  encode[1 << ENCODE_BITS];
-  int            ready;
-}
-dither_tables;
-
-static void dither_make_tables(void)
-{
-  int    i;
-  double c;
-
-  if (dither_tables.ready)
-    return;
-
-  for (i = 0; i < 256; i++)
-  {
-    c = i / 255.0;
-    c = c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4);
-    dither_tables.decode[i] = (unsigned short) (c * LINEAR_MAX + 0.5);
-  }
-
-  for (i = 0; i < (1 << ENCODE_BITS); i++)
-  {
-    c = i / (double) ((1 << ENCODE_BITS) - 1);
-    c = c <= 0.0031308 ? c * 12.92 : 1.055 * pow(c, 1 / 2.4) - 0.055;
-    dither_tables.encode[i] = (unsigned char) (c * 255 + 0.5);
-  }
-
-  dither_tables.ready = 1;
-}
 
 /* ----------------------------------------------------------------------- */
 
@@ -593,19 +555,23 @@ static unsigned int dither_zhou_fang(unsigned int            c,
 
 /* Nearest palette index for channels r, g, b: sRGB, or linear when dec is
  * set. */
-static unsigned int dither_nearest(const pixelmap_t     *pm,
-                                   const unsigned short *dec,
-                                   unsigned int          r,
-                                   unsigned int          g,
-                                   unsigned int          b)
+static unsigned int dither_nearest(const pixelmap_t *pm,
+                                   const uint16_t   *dec,
+                                   unsigned int      r,
+                                   unsigned int      g,
+                                   unsigned int      b)
 {
+  const uint8_t *enc;
+
   if (dec == NULL)
     return dither_lookup(pm, r, g, b);
 
+  enc = colourspace_srgb_encode();
+
   return dither_lookup(pm,
-                       dither_tables.encode[r >> (16 - ENCODE_BITS)],
-                       dither_tables.encode[g >> (16 - ENCODE_BITS)],
-                       dither_tables.encode[b >> (16 - ENCODE_BITS)]);
+                       enc[r >> (16 - colourspace_ENCODE_BITS)],
+                       enc[g >> (16 - colourspace_ENCODE_BITS)],
+                       enc[b >> (16 - colourspace_ENCODE_BITS)]);
 }
 
 /* Position d along a Hilbert curve filling an n by n square, n a power of
@@ -650,7 +616,7 @@ static void dither_riemersma(const bitmap_t         *src,
                              const dither_options_t *opts,
                              const pixelmap_t       *pm,
                              const colour_t         *palette,
-                             const unsigned short   *dec,
+                             const uint16_t         *dec,
                              int                     max,
                              bitmap_t               *out)
 {
@@ -743,7 +709,7 @@ result_t dither_bitmap(const bitmap_t         *src,
   int                        stride;
   int                       *err;
   int                        total;
-  const unsigned short      *dec;
+  const uint16_t            *dec;
   int                        max;
   int                        bias[DITHER_MAX_LEVELS];
   unsigned char              rank[256];
@@ -829,15 +795,14 @@ result_t dither_bitmap(const bitmap_t         *src,
    * weights need only one division, at read time */
   total = k->divisor * 100;
 
-  /* in linear light channels run 0..LINEAR_MAX through dec[], and are
-   * re-encoded only for the nearest-colour lookup */
+  /* in linear light channels run 0..colourspace_LINEAR_MAX through dec[],
+   * and are re-encoded only for the nearest-colour lookup */
   dec = NULL;
   max = 255;
   if (opts->linear && k->threshold == NULL)
   {
-    dither_make_tables();
-    dec = dither_tables.decode;
-    max = LINEAR_MAX;
+    dec = colourspace_srgb_decode();
+    max = colourspace_LINEAR_MAX;
   }
   lim = dither_limit(pm, max);
 

@@ -25,6 +25,8 @@ extern "C"
 {
 #endif
 
+#include <stdint.h>
+
 #include "base/result.h"
 #include "framebuf/colour.h"
 
@@ -168,6 +170,33 @@ void colourspace_rgb_to_oklab(const colourspace_rgb_t *rgb,
  */
 void colourspace_oklab_to_rgb(const colourspace_oklab_t *oklab,
                               colourspace_rgb_t         *rgb);
+
+/* ----------------------------------------------------------------------- */
+
+/** Top of the linear-light range \ref colourspace_srgb_decode maps onto. */
+#define colourspace_LINEAR_MAX 65535
+
+/** Log2 of the number of entries in \ref colourspace_srgb_encode's table. */
+#define colourspace_ENCODE_BITS 12
+
+/**
+ * The sRGB-to-linear-light table: entry i is the linear light of channel
+ * level i, 0 to \ref colourspace_LINEAR_MAX. Built on first call; not
+ * thread-safe until then.
+ *
+ * \return 256 entries.
+ */
+const uint16_t *colourspace_srgb_decode(void);
+
+/**
+ * The linear-light-to-sRGB table: entry i is the channel level, 0 to 255, of
+ * linear light i / (2^\ref colourspace_ENCODE_BITS - 1). Index it with a
+ * linear value shifted right by 16 - \ref colourspace_ENCODE_BITS. Built on
+ * first call; not thread-safe until then.
+ *
+ * \return 2^\ref colourspace_ENCODE_BITS entries.
+ */
+const uint8_t *colourspace_srgb_encode(void);
 
 #ifdef __cplusplus
 }
