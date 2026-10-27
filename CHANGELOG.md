@@ -37,6 +37,9 @@ _Unreleased_ until one is cut.
   as a closed polyline.
 - `framebuf/pattern.h`: `pattern_bayer_threshold_n` gives the threshold
   from a Bayer matrix of any power of two size.
+- `text/utf8.h`: `utf8_rune_start` snaps a byte index to the start of its
+  codepoint; `utf8_word_left` and `utf8_word_right` step over
+  space-separated words.
 - `framebuf/pixelfmt.h`: `pixelfmt_channel_step` gives the gap between
   adjacent levels of a direct-colour format's channel.
 - `framebuf/tonemap.h`: `tonemap_rgb_in_sync` and `tonemap_has_alpha` report

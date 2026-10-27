@@ -393,7 +393,9 @@ set(TEXT_SOURCES
     libraries/text/txtfmt/wrap.c
     libraries/text/utf8/decode.c
     libraries/text/utf8/encode.c
-    libraries/text/utf8/prev.c)
+    libraries/text/utf8/prev.c
+    libraries/text/utf8/rune-start.c
+    libraries/text/utf8/word.c)
 
 set(UTILS_SOURCES
     libraries/utils/alloc/alloc.c

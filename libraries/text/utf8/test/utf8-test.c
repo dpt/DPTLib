@@ -95,5 +95,26 @@ result_t utf8_test(const char *resources)
     return result_TEST_FAILED;
   }
 
+  /* "A" U+00A9 "B": byte 2, inside the copyright sign, snaps back to 1 */
+  if (utf8_rune_start("A\xC2\xA9" "B", 4, 0) != 0 ||
+      utf8_rune_start("A\xC2\xA9" "B", 4, 2) != 1 ||
+      utf8_rune_start("A\xC2\xA9" "B", 4, 3) != 3 ||
+      utf8_rune_start("A\xC2\xA9" "B", 4, 9) != 4)
+  {
+    fprintf(stderr, "error: utf8_rune_start\n");
+    return result_TEST_FAILED;
+  }
+
+  if (utf8_word_left("ab  \xC2\xA9" "d ", 6) != 4 ||
+      utf8_word_left("ab  \xC2\xA9" "d ", 4) != 0 ||
+      utf8_word_left("ab", 0) != 0 ||
+      utf8_word_right(" \xC2\xA9" "d  ef", 8, 0) != 4 ||
+      utf8_word_right(" \xC2\xA9" "d  ef", 8, 4) != 8 ||
+      utf8_word_right("ab", 2, 2) != 2)
+  {
+    fprintf(stderr, "error: utf8_word_left/right\n");
+    return result_TEST_FAILED;
+  }
+
   return result_TEST_PASSED;
 }

@@ -60,6 +60,44 @@ int utf8_encode(unsigned long codepoint, char *buf);
  */
 int utf8_prev(const char *s, int index);
 
+/**
+ * Find the start of the codepoint containing \p index, stepping from the
+ * start of the string as utf8_decode() does. Use it to snap an arbitrary
+ * byte index to a codepoint boundary.
+ *
+ * \param[in]  s      UTF-8 string.
+ * \param[in]  len    Bytes in \p s.
+ * \param[in]  index  Byte index.
+ *
+ * \return Byte index of the codepoint containing \p index, or \p len past
+ *         the end.
+ */
+int utf8_rune_start(const char *s, int len, int index);
+
+/**
+ * Find the start of the word before \p index: skip spaces, then non-spaces.
+ * Only U+0020 separates words. No continuation byte equals it, so the result
+ * is always on a codepoint boundary if \p index is.
+ *
+ * \param[in]  s      UTF-8 string.
+ * \param[in]  index  Byte index.
+ *
+ * \return Byte index of the start of the word.
+ */
+int utf8_word_left(const char *s, int index);
+
+/**
+ * Find the end of the word after \p index: skip spaces, then non-spaces.
+ * Words are separated as for utf8_word_left().
+ *
+ * \param[in]  s      UTF-8 string.
+ * \param[in]  len    Bytes in \p s.
+ * \param[in]  index  Byte index.
+ *
+ * \return Byte index of the end of the word.
+ */
+int utf8_word_right(const char *s, int len, int index);
+
 /* ----------------------------------------------------------------------- */
 
 #ifdef __cplusplus
