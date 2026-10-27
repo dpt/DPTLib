@@ -427,7 +427,7 @@ static int test_convert_in_place(void)
   };
   static const unsigned int bgra[6] =
   {
-    0x40102030, 0x80507060, 0xDEADBEEF,
+    0x40102030, 0x80506070, 0xDEADBEEF,
     0x00AABBCC, 0xFF112233, 0xDEADBEEF
   };
 
