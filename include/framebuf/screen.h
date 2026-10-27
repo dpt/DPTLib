@@ -193,6 +193,33 @@ void screen_fill_pattern(screen_t        *scr,
                          const pattern_t *pattern);
 
 /**
+ * Fills a box with a checkerboard of `size` by `size` pixel squares in two
+ * colours, e.g. to show through transparent pixels drawn over it.
+ *
+ * The squares are phased against `origin`: the absolute screen coordinate
+ * where the top-left corner of an `even` square lands, whatever the box.
+ * Setting it to the screen position of the caller's content origin keeps
+ * partial redraws in phase and the squares locked to content. Unlike
+ * `screen_fill_pattern` the square size is not limited to the 8x8 tile.
+ *
+ * Clipped to the screen's clip region. A non-positive `size` draws nothing.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] box     Box to fill, inclusive-exclusive.
+ * \param[in] origin  Screen coordinate of an `even` square's top-left.
+ * \param[in] size    Width and height of each square, in pixels.
+ * \param[in] even    Colour of the square at `origin` and those an even
+ *                    number of squares away.
+ * \param[in] odd     Colour of the other squares.
+ */
+void screen_fill_checks(screen_t    *scr,
+                        const box_t *box,
+                        point_t      origin,
+                        int          size,
+                        colour_t     even,
+                        colour_t     odd);
+
+/**
  * Copies a bitmap onto the screen, alpha-blending it against the screen
  * where the bitmap has an alpha channel. On paletted screens, which have no
  * linear channel bits to blend, this falls back to alpha-tested transparency

@@ -529,6 +529,76 @@ static result_t test_fill_pattern(void)
 
 /* ----------------------------------------------------------------------- */
 
+static result_t test_fill_checks(void)
+{
+  static testscreen_t ts;
+  static testscreen_t enc;
+
+  const int back = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
+
+  box_t     box = { 8, 8, 24, 24 };
+  colour_t  red, blue;
+  int       ev, od;
+
+  red  = colour_rgb(255, 0, 0);
+  blue = colour_rgb(0, 0, 255);
+  ev   = (int) np_encode(&enc, 255, 0, 0);
+  od   = (int) np_encode(&enc, 0, 0, 255);
+
+  /* origin (2,3), 4px squares: (8,8) is square (1,1), even; (10,8) is
+   * (2,1) and (8,11) is (1,2), both odd */
+  testscreen_init(&ts);
+  screen_fill_checks(&ts.scr, &box, POINT(2, 3), 4, red, blue);
+  if (np_at(&ts, 8, 8)  != ev ||
+      np_at(&ts, 9, 9)  != ev ||
+      np_at(&ts, 10, 8) != od ||
+      np_at(&ts, 8, 11) != od)
+  {
+    printf("screen: fill_checks wrong phase\n");
+    return result_TEST_FAILED;
+  }
+  if (np_at(&ts, 7, 7) != back || np_at(&ts, 24, 24) != back)
+  {
+    printf("screen: fill_checks drew outside the box\n");
+    return result_TEST_FAILED;
+  }
+
+  /* origin beyond the box, so square indices are negative: (8,8) is square
+   * (-3,-3), even; (12,8) is (-2,-3), odd; (16,8) is (-1,-3), even */
+  testscreen_init(&ts);
+  screen_fill_checks(&ts.scr, &box, POINT(20, 20), 4, red, blue);
+  if (np_at(&ts, 8, 8)  != ev ||
+      np_at(&ts, 12, 8) != od ||
+      np_at(&ts, 16, 8) != ev)
+  {
+    printf("screen: fill_checks wrong phase left of origin\n");
+    return result_TEST_FAILED;
+  }
+
+  /* honours the screen clip */
+  testscreen_init(&ts);
+  ts.scr.clip = (box_t) { 0, 0, 16, 64 };
+  screen_fill_checks(&ts.scr, &box, POINT(0, 0), 4, red, blue);
+  if (np_at(&ts, 8, 8) != ev || np_at(&ts, 20, 10) != back)
+  {
+    printf("screen: fill_checks ignored the screen clip\n");
+    return result_TEST_FAILED;
+  }
+
+  /* a non-positive size draws nothing */
+  testscreen_init(&ts);
+  screen_fill_checks(&ts.scr, &box, POINT(0, 0), 0, red, blue);
+  if (np_at(&ts, 8, 8) != back)
+  {
+    printf("screen: fill_checks drew with size 0\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 static result_t test_dashed_line(void)
 {
   static testscreen_t ts;
@@ -2469,6 +2539,7 @@ result_t screen_test(const char *resources)
     test_ninepatch,
     test_tiled,
     test_fill_pattern,
+    test_fill_checks,
     test_dashed_line,
     test_draw_lines,
     test_draw_thick_line,
