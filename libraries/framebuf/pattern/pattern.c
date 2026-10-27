@@ -8,6 +8,7 @@
 
 #include "base/utils.h"
 #include "framebuf/colour.h"
+#include "framebuf/colourspace.h"
 
 #include "framebuf/pattern.h"
 
@@ -140,11 +141,27 @@ pattern_t pattern_from_mask(const uint8_t mask[8], colour_t colour)
   return pat;
 }
 
-/* A palette entry and its squared distance from the target. */
+/* Channel weights for distances, in linear light: the eye is keenest on green
+ * and least on blue.
+ * ponytail: fixed guesses; tune if hues match poorly, or measure in OKLab if
+ * weights alone fall short */
+#define W_R 3
+#define W_G 4
+#define W_B 2
+
+/* A true mix costs |B-A|^2 / SPREAD on top of its error, so a near solid
+ * entry beats a wide stipple such as black and white for a grey.
+ * ponytail: flat guess; tune it if stipples look too coarse or too rare, or
+ * weight it by level */
+#define SPREAD 1024
+
+/* A palette entry in 12-bit linear light, and its weighted squared distance
+ * from the target. */
 typedef struct
 {
-  long d;
-  int  i;
+  int64_t d;
+  int     i;
+  int     r, g, b;
 }
 near_t;
 
@@ -161,54 +178,68 @@ static int near_compare(const void *va, const void *vb)
   return a->i - b->i;
 }
 
-/* Errors below are held at 64x scale (64 * channel difference) so the Bayer
- * level's quantisation is measured exactly without division.
+/* Colours are compared in linear light, where a stipple's average is what
+ * the eye sees, with W_R/W_G/W_B weighting the channels. Errors are held at
+ * 64x scale (64 * channel difference) so the Bayer level's quantisation is
+ * measured exactly without division.
  *
- * Pairs are tried nearest first. A pair's error is at least 4096 r^2 / 65,
- * where r is the farther entry's distance from the target: the mix point M
- * is within |B-A| of each entry, so r <= |T-M| + |B-A|, and minimising
- * |T-M|^2 + |B-A|^2 / 64 (the penalty) under that gives r^2 / 65. A solid
+ * Pairs are tried nearest first. A pair's error is at least
+ * 4096 r^2 / (SPREAD + 1), where r is the farther entry's distance from the
+ * target: the mix point M is within |B-A| of each entry, so
+ * r <= |T-M| + |B-A|, and minimising |T-M|^2 + |B-A|^2 / SPREAD (the
+ * penalty) under that gives r^2 / (SPREAD + 1). A solid
  * entry costs 4096 r^2 outright. So once an entry's bound reaches the best
  * error found, it and every farther entry are out, which leaves a handful of
- * pairs rather than all of them. */
+ * pairs rather than all of them. Weighting keeps the distance Euclidean, so
+ * the bound holds. */
 pattern_t pattern_from_colour(const colour_t *palette,
                               int             nentries,
                               colour_t        target)
 {
-  unsigned int tr, tg, tb;
-  near_t       order[256];
-  int          n;
-  long         best_err;
-  int          best_a;
-  int          best_b;
-  int          best_level;
-  int          i;
-  unsigned int ar, ag, ab;
-  long         ur, ug, ub;
-  int          j;
-  unsigned int br, bg, bb;
-  long         dr, dg, db;
-  long         len2;
-  long         dot;
-  int          level;
-  long         er, eg, eb;
-  long         err;
+  const uint16_t *dec;
+  unsigned int    r, g, b;
+  int             tr, tg, tb;
+  near_t          order[256];
+  int             n;
+  int             i;
+  int64_t         ur, ug, ub;
+  int64_t         best_err;
+  int             best_a;
+  int             best_b;
+  int             best_level;
+  int             j;
+  const near_t   *pb;
+  const near_t   *pa;
+  int64_t         dr, dg, db;
+  int64_t         len2;
+  int64_t         dot;
+  int             level;
+  int64_t         er, eg, eb;
+  int64_t         err;
 
   assert(palette);
   assert(nentries >= 1);
 
-  colour_get_rgb(&target, &tr, &tg, &tb);
+  dec = colourspace_srgb_decode();
+
+  colour_get_rgb(&target, &r, &g, &b);
+  tr = dec[r] >> 4;
+  tg = dec[g] >> 4;
+  tb = dec[b] >> 4;
 
   n = MIN(nentries, (int) NELEMS(order));
   for (i = 0; i < n; i++)
   {
-    colour_get_rgb(&palette[i], &ar, &ag, &ab);
-    ur = (long) tr - (long) ar;
-    ug = (long) tg - (long) ag;
-    ub = (long) tb - (long) ab;
-
-    order[i].d = ur * ur + ug * ug + ub * ub;
+    colour_get_rgb(&palette[i], &r, &g, &b);
     order[i].i = i;
+    order[i].r = dec[r] >> 4;
+    order[i].g = dec[g] >> 4;
+    order[i].b = dec[b] >> 4;
+
+    ur = tr - order[i].r;
+    ug = tg - order[i].g;
+    ub = tb - order[i].b;
+    order[i].d = W_R * ur * ur + W_G * ug * ug + W_B * ub * ub;
   }
   qsort(order, (size_t) n, sizeof order[0], near_compare);
 
@@ -220,25 +251,25 @@ pattern_t pattern_from_colour(const colour_t *palette,
   /* B is the farther entry of each pair, A the nearer */
   for (j = 0; j < n; j++)
   {
-    if (best_err >= 0 && 4096 * order[j].d / 65 >= best_err)
+    if (best_err >= 0 && 4096 * order[j].d / (SPREAD + 1) >= best_err)
       break;
 
-    colour_get_rgb(&palette[order[j].i], &br, &bg, &bb);
+    pb = &order[j];
 
     for (i = 0; i <= j; i++)
     {
-      colour_get_rgb(&palette[order[i].i], &ar, &ag, &ab);
-      ur = (long) tr - (long) ar;
-      ug = (long) tg - (long) ag;
-      ub = (long) tb - (long) ab;
+      pa = &order[i];
+      ur = tr - pa->r;
+      ug = tg - pa->g;
+      ub = tb - pa->b;
 
-      dr = (long) br - (long) ar;
-      dg = (long) bg - (long) ag;
-      db = (long) bb - (long) ab;
+      dr = pb->r - pa->r;
+      dg = pb->g - pa->g;
+      db = pb->b - pa->b;
 
       /* project target onto segment A->B, quantised to a Bayer level */
-      len2  = dr * dr + dg * dg + db * db;
-      dot   = ur * dr + ug * dg + ub * db;
+      len2  = W_R * dr * dr + W_G * dg * dg + W_B * db * db;
+      dot   = W_R * ur * dr + W_G * ug * dg + W_B * ub * db;
       level = 0;
       if (len2 > 0 && dot > 0)
         level = (int) MIN((dot * 64 + len2 / 2) / len2, 64);
@@ -246,19 +277,16 @@ pattern_t pattern_from_colour(const colour_t *palette,
       er  = 64 * ur - dr * level;
       eg  = 64 * ug - dg * level;
       eb  = 64 * ub - db * level;
-      err = er * er + eg * eg + eb * eb;
+      err = W_R * er * er + W_G * eg * eg + W_B * eb * eb;
 
-      /* ponytail: flat |B-A|^2/64 spread penalty on true mixes (a black/white
-       * pair costs ~32 per channel); tune the divisor, or weight by level, if
-       * stipples look too coarse or too rare */
       if (level > 0 && level < 64)
-        err += len2 * 64; /* (64 * 64) / 64 */
+        err += len2 * (64 * 64 / SPREAD);
 
       if (best_err < 0 || err < best_err)
       {
         best_err   = err;
-        best_a     = order[i].i;
-        best_b     = order[j].i;
+        best_a     = pa->i;
+        best_b     = pb->i;
         best_level = level;
       }
     }

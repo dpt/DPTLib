@@ -110,10 +110,12 @@ pattern_t pattern_from_mask(const uint8_t mask[8], colour_t colour);
  * Build an ordered-dither `pattern_t` approximating an arbitrary colour from
  * a palette. Of every pair of palette entries, the pair whose Bayer mix lies
  * closest to `target` wins, with the mix ratio choosing the
- * `screen_PATTERN_BAYER*` coverage level. Widely-spaced pairs are penalised
- * so a near solid entry is preferred over, say, a black/white stipple for a
- * grey. An exact palette match comes back as a single-colour tile. Alpha is
- * ignored. The result has no flags set and a zero origin.
+ * `screen_PATTERN_BAYER*` coverage level. Mixes are made in linear light, as
+ * the eye averages a stipple, and errors weight green over red over blue.
+ * Widely-spaced pairs are penalised so a near solid entry is preferred over,
+ * say, a black/white stipple for a grey. An exact palette match comes back
+ * as a single-colour tile. Alpha is ignored. The result has no flags set and
+ * a zero origin.
  *
  * Pairs are tried nearest first and the search stops once no farther pair
  * can win, so a target among close entries costs a sort and a few pairs. A

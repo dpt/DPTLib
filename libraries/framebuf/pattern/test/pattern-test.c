@@ -1,5 +1,6 @@
 /* framebuf/pattern/test/pattern-test.c */
 
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -7,6 +8,7 @@
 #include "base/result.h"
 #include "base/utils.h"
 #include "framebuf/colour.h"
+#include "framebuf/colourspace.h"
 
 #include "framebuf/pattern.h"
 
@@ -27,23 +29,48 @@ static int coverage(const pattern_t *pat)
   return n;
 }
 
-/* True if the tile's average colour is within 'tol' of (r,g,b) per channel. */
+/* A colour's channels in 12-bit linear light, as pattern_from_colour sees
+ * them. */
+static void linear(colour_t c, int lin[3])
+{
+  const uint16_t *dec;
+  unsigned int    r, g, b;
+
+  dec = colourspace_srgb_decode();
+  colour_get_rgb(&c, &r, &g, &b);
+  lin[0] = dec[r] >> 4;
+  lin[1] = dec[g] >> 4;
+  lin[2] = dec[b] >> 4;
+}
+
+/* True if the tile's average colour, as the eye sees it (in linear light),
+ * is within 'tol' of (r,g,b) per sRGB channel. */
 static int mixes_to(const pattern_t *pat, int r, int g, int b, int tol)
 {
-  int          n;
-  unsigned int fr, fg, fb;
-  unsigned int br, bg, bb;
-  int          mr, mg, mb;
+  const uint8_t *enc;
+  int            n;
+  int            f[3];
+  int            k[3];
+  int            want[3];
+  int            c;
+  int            m;
 
-  n = coverage(pat);
-  colour_get_rgb(&pat->fg, &fr, &fg, &fb);
-  colour_get_rgb(&pat->bg, &br, &bg, &bb);
+  enc = colourspace_srgb_encode();
+  n   = coverage(pat);
+  linear(pat->fg, f);
+  linear(pat->bg, k);
+  want[0] = r;
+  want[1] = g;
+  want[2] = b;
 
-  mr = (int) (fr * n + br * (64 - n) + 32) / 64;
-  mg = (int) (fg * n + bg * (64 - n) + 32) / 64;
-  mb = (int) (fb * n + bb * (64 - n) + 32) / 64;
+  for (c = 0; c < 3; c++)
+  {
+    m = (f[c] * n + k[c] * (64 - n) + 32) / 64;
+    if (abs(enc[m] - want[c]) > tol)
+      return 0;
+  }
 
-  return abs(mr - r) <= tol && abs(mg - g) <= tol && abs(mb - b) <= tol;
+  return 1;
 }
 
 /* True if every pixel the tile paints is colour 'c'. */
@@ -57,31 +84,39 @@ static int solid_in(const pattern_t *pat, colour_t c)
          (n == 64 || pat->bg.primary == c.primary);
 }
 
+/* pattern_from_colour's channel weights and spread penalty divisor */
+static const int weight[3] = { 3, 4, 2 };
+#define SPREAD 1024
+
 /* pattern_from_colour's error for target 't' shown as a mix of 'b' over 'a'
- * at Bayer 'level', 64x scale, spread penalty included. */
-static long mix_error(colour_t t, colour_t a, colour_t b, int level)
+ * at Bayer 'level': weighted, in linear light, 64x scale, spread penalty
+ * included. */
+static int64_t mix_error(colour_t t, colour_t a, colour_t b, int level)
 {
-  unsigned int tr, tg, tb;
-  unsigned int ar, ag, ab;
-  unsigned int br, bg, bb;
-  long         dr, dg, db;
-  long         er, eg, eb;
-  long         err;
+  int     lt[3];
+  int     la[3];
+  int     lb[3];
+  int64_t err;
+  int64_t len2;
+  int     c;
+  int64_t d;
+  int64_t e;
 
-  colour_get_rgb(&t, &tr, &tg, &tb);
-  colour_get_rgb(&a, &ar, &ag, &ab);
-  colour_get_rgb(&b, &br, &bg, &bb);
+  linear(t, lt);
+  linear(a, la);
+  linear(b, lb);
 
-  dr = (long) br - (long) ar;
-  dg = (long) bg - (long) ag;
-  db = (long) bb - (long) ab;
-
-  er  = 64 * ((long) tr - (long) ar) - dr * level;
-  eg  = 64 * ((long) tg - (long) ag) - dg * level;
-  eb  = 64 * ((long) tb - (long) ab) - db * level;
-  err = er * er + eg * eg + eb * eb;
+  err  = 0;
+  len2 = 0;
+  for (c = 0; c < 3; c++)
+  {
+    d     = lb[c] - la[c];
+    e     = 64 * (lt[c] - la[c]) - d * level;
+    err  += weight[c] * e * e;
+    len2 += weight[c] * d * d;
+  }
   if (level > 0 && level < 64)
-    err += (dr * dr + dg * dg + db * db) * 64;
+    err += len2 * (64 * 64 / SPREAD);
 
   return err;
 }
@@ -89,35 +124,38 @@ static long mix_error(colour_t t, colour_t a, colour_t b, int level)
 /* The lowest error over every pair, by brute force. Each pair mixes at the
  * level nearest the target's projection onto it; its ends are covered by the
  * solid pairs. */
-static long best_error(const colour_t *palette, int n, colour_t t)
+static int64_t best_error(const colour_t *palette, int n, colour_t t)
 {
-  unsigned int tr, tg, tb;
-  long         best;
-  int          i;
-  unsigned int ar, ag, ab;
-  int          j;
-  unsigned int br, bg, bb;
-  long         dr, dg, db;
-  long         len2;
-  long         dot;
-  int          level;
-  long         err;
+  int     lt[3];
+  int64_t best;
+  int     i;
+  int     la[3];
+  int     j;
+  int     lb[3];
+  int64_t len2;
+  int64_t dot;
+  int     c;
+  int64_t d;
+  int     level;
+  int64_t err;
 
-  colour_get_rgb(&t, &tr, &tg, &tb);
+  linear(t, lt);
 
   best = -1;
   for (i = 0; i < n; i++)
   {
-    colour_get_rgb(&palette[i], &ar, &ag, &ab);
+    linear(palette[i], la);
     for (j = i; j < n; j++)
     {
-      colour_get_rgb(&palette[j], &br, &bg, &bb);
-      dr    = (long) br - (long) ar;
-      dg    = (long) bg - (long) ag;
-      db    = (long) bb - (long) ab;
-      len2  = dr * dr + dg * dg + db * db;
-      dot   = ((long) tr - (long) ar) * dr + ((long) tg - (long) ag) * dg +
-              ((long) tb - (long) ab) * db;
+      linear(palette[j], lb);
+      len2 = 0;
+      dot  = 0;
+      for (c = 0; c < 3; c++)
+      {
+        d     = lb[c] - la[c];
+        len2 += weight[c] * d * d;
+        dot  += weight[c] * (int64_t) (lt[c] - la[c]) * d;
+      }
       level = 0;
       if (len2 > 0 && dot > 0)
         level = (int) MIN((dot * 64 + len2 / 2) / len2, 64);
@@ -186,18 +224,20 @@ result_t pattern_test(const char *resources)
   pat.flags = pattern_FLAG_STENCIL;
   CHECK(!pattern_is_solid(&pat));
 
-  /* a near grey entry beats a black/white stipple */
+  /* a near grey entry beats a black/white stipple: solid, or sprinkled with
+   * white to lift it */
   bwg[0] = bw[0];
   bwg[1] = bw[1];
   bwg[2] = colour_rgb(120, 120, 120);
   pat = pattern_from_colour(bwg, 3, colour_rgb(128, 128, 128));
-  CHECK(solid_in(&pat, bwg[2]));
+  CHECK(pat.fg.primary == bwg[2].primary || pat.bg.primary == bwg[2].primary);
+  CHECK(mixes_to(&pat, 128, 128, 128, 2));
 
-  /* chromatic mix */
+  /* chromatic mix: an even red/blue stipple is (188,0,188) to the eye */
   rb[0] = colour_rgb(255, 0, 0);
   rb[1] = colour_rgb(0, 0, 255);
-  pat = pattern_from_colour(rb, 2, colour_rgb(128, 0, 128));
-  CHECK(mixes_to(&pat, 128, 0, 128, 4));
+  pat = pattern_from_colour(rb, 2, colour_rgb(188, 0, 188));
+  CHECK(mixes_to(&pat, 188, 0, 188, 4));
 
   /* the clustered-dot matrix holds each threshold once and tiles */
   memset(seen, 0, sizeof(seen));

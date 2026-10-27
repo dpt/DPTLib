@@ -297,6 +297,9 @@ _Unreleased_ until one is cut.
 - `pattern_from_colour` tries pairs nearest first and stops once no farther
   pair can win, so a 256-entry palette costs a sort and a few pairs rather
   than all 32,896. Only the first 256 entries are considered.
+- `pattern_from_colour` mixes in linear light with perceptual channel
+  weights, so stipples average as the eye sees them: greys stay neutral and
+  1bpp gradients dither smoothly rather than jumping between solids.
 - **Breaking:** `screen_DITHER_NONE` is renamed `screen_DITHER_NEAREST`, and
   None menu rows become Nearest.
 - **Breaking:** `filetype_t.ext` is undotted (`"png"`, not `".png"`);
