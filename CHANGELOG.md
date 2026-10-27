@@ -42,6 +42,8 @@ _Unreleased_ until one is cut.
 - `geom/region.h`: `region_from_flood` builds the region 4-connected to a
   seed through pixels a caller's predicate accepts, such as a magic wand
   selection.
+- `geom/region.h`: `region_union` and `region_subtract` combine two regions
+  row by row, in proportion to their runs.
 - `text/utf8.h`: `utf8_rune_start` snaps a byte index to the start of its
   codepoint; `utf8_word_left` and `utf8_word_right` step over
   space-separated words.

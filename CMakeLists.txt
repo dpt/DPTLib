@@ -352,6 +352,7 @@ set(GEOM_SOURCES
     libraries/geom/packer/packer.c
     libraries/geom/region/impl.h
     libraries/geom/region/builder.c
+    libraries/geom/region/combine.c
     libraries/geom/region/flood.c
     libraries/geom/region/invert.c
     libraries/geom/region/outline.c

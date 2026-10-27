@@ -177,6 +177,55 @@ static result_t test_outline(void)
   return rc;
 }
 
+static result_t test_combine(void)
+{
+  static const box_t ba = { 0, 0, 10, 10 };
+  static const box_t bb = { 5, 5, 15, 15 };
+  static const box_t bc = { 2, 2, 4, 30 };
+  region_t          *a, *b, *c, *r;
+  int                ok;
+
+  if (region_from_box(&ba, &a) != result_OK ||
+      region_from_box(&bb, &b) != result_OK ||
+      region_from_box(&bc, &c) != result_OK)
+    return result_TEST_FAILED;
+
+  ok = region_union(a, b, &r) == result_OK && r != NULL &&
+       area(r) == 100 + 100 - 25 && region_contains(r, 14, 14) &&
+       !region_contains(r, 12, 2);
+  region_destroy(r);
+
+  ok = ok && region_subtract(a, b, &r) == result_OK && r != NULL &&
+       area(r) == 100 - 25 && region_contains(r, 9, 4) &&
+       !region_contains(r, 5, 5);
+  region_destroy(r);
+
+  /* a hole through the middle of a run splits it in two */
+  ok = ok && region_subtract(a, c, &r) == result_OK && r != NULL &&
+       area(r) == 100 - 16 && region_contains(r, 1, 3) &&
+       region_contains(r, 4, 3) && !region_contains(r, 2, 3);
+  region_destroy(r);
+
+  /* rows only one side has */
+  ok = ok && region_union(a, c, &r) == result_OK && r != NULL &&
+       area(r) == 100 + 2 * 20 && region_contains(r, 3, 29);
+  region_destroy(r);
+
+  /* empties */
+  ok = ok && region_subtract(a, a, &r) == result_OK && r == NULL;
+  ok = ok && region_subtract(NULL, a, &r) == result_OK && r == NULL;
+  ok = ok && region_union(NULL, NULL, &r) == result_OK && r == NULL;
+  ok = ok && region_union(NULL, b, &r) == result_OK && r != NULL &&
+       area(r) == 100;
+  region_destroy(r);
+
+  region_destroy(c);
+  region_destroy(b);
+  region_destroy(a);
+
+  return ok ? result_TEST_PASSED : result_TEST_FAILED;
+}
+
 /* a wall down x == 20, with a gap at row *opaque (or none if negative) */
 static int beside_wall(void *opaque, int x, int y)
 {
@@ -278,6 +327,7 @@ result_t region_test(const char *resources)
     test_polygon_clip,
     test_outline,
     test_flood,
+    test_combine,
     test_invert
   };
 

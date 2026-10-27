@@ -100,6 +100,28 @@ result_t region_invert(const region_t *region,
                        const box_t    *within,
                        region_t      **out);
 
+/**
+ * Creates the union of two regions: the pixels in either.
+ *
+ * \param[in]  a   A region (may be NULL).
+ * \param[in]  b   Another region (may be NULL).
+ * \param[out] out The new region, or NULL if it is empty.
+ * \return result_OK or result_OOM.
+ */
+result_t region_union(const region_t *a, const region_t *b, region_t **out);
+
+/**
+ * Creates the difference of two regions: the pixels of `a` not in `b`.
+ *
+ * \param[in]  a   The region to take from (may be NULL).
+ * \param[in]  b   The region to take away (may be NULL).
+ * \param[out] out The new region, or NULL if it is empty.
+ * \return result_OK or result_OOM.
+ */
+result_t region_subtract(const region_t *a,
+                         const region_t *b,
+                         region_t      **out);
+
 /** Frees a region. */
 void region_destroy(region_t *region);
 
