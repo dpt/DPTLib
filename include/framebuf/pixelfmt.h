@@ -237,6 +237,18 @@ int pixelfmt_log2bpp(pixelfmt_t fmt);
  */
 int pixelfmt_paletted_nentries(pixelfmt_t fmt);
 
+/**
+ * The gap between adjacent levels of a direct-colour format's red, green or
+ * blue channel, in 8-bit units: 16 for a 4-bit channel, 8 for 5 bits, 4 for
+ * 6 bits and 1 for 8 bits. An ordered dither spreads its bias across one
+ * such step. Paletted and unknown formats have no fixed step.
+ *
+ * \param fmt     Pixel format.
+ * \param channel 0 for red, 1 for green, 2 for blue.
+ * \return Step, or 0 if `fmt` is not a direct-colour format.
+ */
+int pixelfmt_channel_step(pixelfmt_t fmt, int channel);
+
 /* ----------------------------------------------------------------------- */
 
 #ifdef __cplusplus

@@ -290,6 +290,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/pattern/pattern.c
     libraries/framebuf/tonemap/plot.c
     libraries/framebuf/tonemap/tonemap.c
+    libraries/framebuf/pixelfmt/channel-step.c
     libraries/framebuf/pixelfmt/log2bpp.c
     libraries/framebuf/pixelfmt/paletted-nentries.c
     libraries/framebuf/pixelmap/build.c

@@ -41,36 +41,19 @@ dither_kernel_t;
 
 #define DITHER_MAX_LEVELS 256 /* the 16x16 Bayer matrix's */
 
-/* Bayer threshold, 0..n*n-1, for an n x n matrix with n = 1 << log2n. Each
- * level interleaves a bit of x ^ y above the same bit of y, lowest bits
- * first, which builds the matrix recursively. The 8x8 result matches
- * pattern_bayer_threshold. */
-static int dither_bayer(int x, int y, int log2n)
-{
-  int t;
-  int i;
-
-  t = 0;
-  for (i = 0; i < log2n; i++)
-    t |= ((((x ^ y) >> i) & 1) << 1 | ((y >> i) & 1)) <<
-         (2 * (log2n - 1 - i));
-
-  return t;
-}
-
 static int dither_bayer2(int x, int y)
 {
-  return dither_bayer(x, y, 1);
+  return pattern_bayer_threshold_n(x, y, 1);
 }
 
 static int dither_bayer4(int x, int y)
 {
-  return dither_bayer(x, y, 2);
+  return pattern_bayer_threshold_n(x, y, 2);
 }
 
 static int dither_bayer16(int x, int y)
 {
-  return dither_bayer(x, y, 4);
+  return pattern_bayer_threshold_n(x, y, 4);
 }
 
 /* White-noise threshold, 0..63: a hash of the pixel's position, so the

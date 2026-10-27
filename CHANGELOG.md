@@ -35,6 +35,10 @@ _Unreleased_ until one is cut.
   is less than opaque.
 - `geom/hull.h`: `hull_convex` computes the convex hull of a set of points
   as a closed polyline.
+- `framebuf/pattern.h`: `pattern_bayer_threshold_n` gives the threshold
+  from a Bayer matrix of any power of two size.
+- `framebuf/pixelfmt.h`: `pixelfmt_channel_step` gives the gap between
+  adjacent levels of a direct-colour format's channel.
 - `framebuf/tonemap.h`: `tonemap_rgb_in_sync` and `tonemap_has_alpha` report
   whether red, green and blue were last set together and whether alpha is
   present, so a tone map editor can choose between one combined curve and

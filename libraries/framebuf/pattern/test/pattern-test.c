@@ -118,5 +118,18 @@ result_t pattern_test(const char *resources)
   CHECK(pattern_clustered_threshold(-1, -8) ==
         pattern_clustered_threshold(7, 0));
 
+  /* the sized Bayer matrices: 8x8 matches the fixed one, smaller ones are
+   * the standard 2x2 and 4x4, and all tile through negative coordinates */
+  for (i = 0; i < 64; i++)
+    CHECK(pattern_bayer_threshold_n(i & 7, i >> 3, 3) ==
+          pattern_bayer_threshold(i & 7, i >> 3));
+  CHECK(pattern_bayer_threshold_n(1, 0, 1) == 2);
+  CHECK(pattern_bayer_threshold_n(0, 1, 1) == 3);
+  CHECK(pattern_bayer_threshold_n(1, 1, 1) == 1);
+  CHECK(pattern_bayer_threshold_n(3, 1, 2) == 6);
+  CHECK(pattern_bayer_threshold_n(-1, -3, 2) ==
+        pattern_bayer_threshold_n(3, 1, 2));
+  CHECK(pattern_bayer_threshold_n(5, 9, 0) == 0);
+
   return ok ? result_TEST_PASSED : result_TEST_FAILED;
 }

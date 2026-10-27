@@ -140,6 +140,18 @@ pattern_t pattern_from_colour(const colour_t *palette,
 int pattern_bayer_threshold(int x, int y);
 
 /**
+ * As `pattern_bayer_threshold`, but from an n x n Bayer matrix of any power
+ * of two size, n = 1 << `log2n`. The 8x8 matrix (`log2n` of 3) is the same
+ * as `pattern_bayer_threshold`'s. `x` and `y` may be negative.
+ *
+ * \param[in] x     Screen X coordinate.
+ * \param[in] y     Screen Y coordinate.
+ * \param[in] log2n Log2 of the matrix size, 0 to 15. 0 gives a 1x1 matrix.
+ * \return The threshold, 0 to n * n - 1.
+ */
+int pattern_bayer_threshold_n(int x, int y, int log2n);
+
+/**
  * As `pattern_bayer_threshold`, but from a 64x64 blue-noise map: each
  * threshold 0 to 63 appears equally often, spread with no low-frequency
  * structure, so a dither driven by it reads as fine grain rather than a
