@@ -766,3 +766,81 @@ result_t bitmap_convert_into(const bitmap_t *src,
     return result_NOT_SUPPORTED;
   }
 }
+
+result_t bitmap_convert_in_place(bitmap_t *bm, pixelfmt_t newfmt)
+{
+  int                  opaque;
+  int                  y;
+  pixelfmt_rgba8888_t *row;
+  int                  x;
+  pixelfmt_rgba8888_t  px;
+
+  if (bm->format == newfmt)
+    return result_OK;
+
+  if (newfmt != pixelfmt_bgra8888 ||
+      (bm->format != pixelfmt_rgbx8888 && bm->format != pixelfmt_rgba8888))
+    return result_NOT_SUPPORTED;
+
+  /* rgbx8888's x byte isn't a real alpha channel, so force it opaque */
+  opaque = (bm->format == pixelfmt_rgbx8888);
+
+  for (y = 0; y < bm->size.h; y++)
+  {
+    row = (pixelfmt_rgba8888_t *) ((char *) bm->base +
+                                   (size_t) y * bm->rowbytes);
+    for (x = 0; x < bm->size.w; x++)
+    {
+      px     = row[x];
+      row[x] = PIXELFMT_MAKE_BGRA8888(PIXELFMT_Bxxx8888(px),
+                                      PIXELFMT_xGxx8888(px),
+                                      PIXELFMT_xxRx8888(px),
+                                      opaque ? 0xFF : PIXELFMT_xxxA8888(px));
+    }
+  }
+
+  bm->format = newfmt;
+  bm->span   = spanregistry_get(newfmt);
+
+  return result_OK;
+}
+
+result_t bitmap_clone(const bitmap_t *src, bitmap_t *dst)
+{
+  result_t rc;
+  size_t   n;
+  void    *pixels;
+
+  if (bitmap_is_compressed(src))
+    return result_NOT_SUPPORTED;
+
+  n      = (size_t) src->size.h * src->rowbytes;
+  pixels = malloc(n);
+  if (pixels == NULL)
+    return result_OOM;
+
+  memcpy(pixels, src->base, n);
+
+  rc = bitmap_init(dst, src->size, src->format, src->rowbytes, src->palette,
+                   pixels);
+  if (rc != result_OK)
+    free(pixels);
+
+  return rc;
+}
+
+result_t bitmap_copy_pixels(const bitmap_t *src, bitmap_t *dst)
+{
+  if (bitmap_is_compressed(src) || bitmap_is_compressed(dst))
+    return result_NOT_SUPPORTED;
+
+  if (dst->size.w   != src->size.w ||
+      dst->size.h   != src->size.h ||
+      dst->format   != src->format ||
+      dst->rowbytes != src->rowbytes)
+    return result_INCOMPATIBLE;
+
+  memcpy(dst->base, src->base, (size_t) src->size.h * src->rowbytes);
+
+  return result_OK;
+}

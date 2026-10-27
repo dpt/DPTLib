@@ -193,6 +193,43 @@ result_t bitmap_convert_into(const bitmap_t *bm,
                              pixelfmt_t      newfmt,
                              bitmap_t       *newbm);
 
+/**
+ * Convert the given bitmap's pixels to another format of the same depth, in
+ * place.
+ *
+ * Supported: `rgbx8888` or `rgba8888` to `bgra8888` (the `x` byte of
+ * `rgbx8888` becomes opaque alpha), and any format to itself.
+ *
+ * \param[in,out] bm     Bitmap to convert.
+ * \param[in]     newfmt New pixel format.
+ * \return \ref result_OK on success, \ref result_NOT_SUPPORTED for any other
+ *         pair of formats.
+ */
+result_t bitmap_convert_in_place(bitmap_t *bm, pixelfmt_t newfmt);
+
+/**
+ * Make `dst` a copy of `src`: same size, format and rowbytes, with its own
+ * newly allocated pixels and (for a paletted format) palette. The caller
+ * frees `dst->base` and `dst->palette`.
+ *
+ * \param[in]  src Bitmap to copy.
+ * \param[out] dst Bitmap to initialise as the copy.
+ * \return \ref result_OK on success, \ref result_OOM if out of memory, or
+ *         \ref result_NOT_SUPPORTED for a compressed `src`.
+ */
+result_t bitmap_clone(const bitmap_t *src, bitmap_t *dst);
+
+/**
+ * Copy the pixels of `src` over those of `dst`, which must match it in size,
+ * format and rowbytes (e.g. one made by \ref bitmap_clone).
+ *
+ * \param[in]  src Bitmap to copy from.
+ * \param[out] dst Bitmap to copy into.
+ * \return \ref result_OK on success, \ref result_INCOMPATIBLE if the bitmaps
+ *         differ, or \ref result_NOT_SUPPORTED if either is compressed.
+ */
+result_t bitmap_copy_pixels(const bitmap_t *src, bitmap_t *dst);
+
 /** Non-zero if `bm` holds an RLE-compressed (read-only) pixel store. */
 #define bitmap_is_compressed(bm) pixelfmt_is_rle((bm)->format)
 

@@ -1,6 +1,5 @@
 /* framebuf/composite/test/composite-test.c */
 
-#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -23,46 +22,6 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* Move these bitmap_* functions out to common, but the memory management
- * will need to be abstracted. */
-
-static result_t bitmap_clone_by_size(bitmap_t *cloned, const bitmap_t *src)
-{
-  size_t pixelbytes;
-  void  *pixels;
-
-  assert(cloned);
-  assert(src);
-
-  pixelbytes = src->size.h * src->rowbytes;
-  pixels = malloc(pixelbytes);
-  if (pixels == NULL)
-    return result_OOM;
-
-  /* FIXME: This clones the palette pointer too, which is dubious. */
-
-  *cloned = *src;
-  cloned->base = pixels;
-
-  return result_OK;
-}
-
-static result_t bitmap_clone_pixels(bitmap_t *dst, const bitmap_t *src)
-{
-  assert(dst);
-  assert(src);
-
-  if (dst->size.w    != src->size.w  ||
-      dst->size.h   != src->size.h ||
-      dst->format   != src->format ||
-      dst->rowbytes != src->rowbytes)
-    return result_INCOMPATIBLE;
-
-  memcpy(dst->base, src->base, src->size.h * src->rowbytes);
-
-  return result_OK;
-}
-
 static result_t bitmap_plot(const bitmap_t *src, bitmap_t *dst, int x, int y)
 {
   pixelfmt_xxxa8888_t *sp = dst->base; /* FIXME: ought to have an xxxx_t type */
@@ -83,79 +42,6 @@ static result_t bitmap_plot(const bitmap_t *src, bitmap_t *dst, int x, int y)
   return result_OK;
 }
 
-static result_t bitmap_convert_inplace(bitmap_t *bm, pixelfmt_t new_fmt)
-{
-  switch (bm->format)
-  {
-  case pixelfmt_rgbx8888:
-    /* same format - assume x byte is 0xFF so ok for alpha */
-    switch (new_fmt)
-    {
-    case pixelfmt_rgba8888:
-      return result_OK;
-
-    case pixelfmt_bgra8888:
-      {
-        pixelfmt_rgbx8888_t *p = bm->base;
-        int                  x,y;
-
-        for (y = 0; y < bm->size.h; y++)
-        {
-          for (x = 0; x < bm->size.w; x++)
-          {
-            pixelfmt_rgbx8888_t px = *p;
-            *p++ = PIXELFMT_MAKE_BGRA8888(PIXELFMT_Bxxx8888(px),
-                                          PIXELFMT_xGxx8888(px),
-                                          PIXELFMT_xxRx8888(px),
-                                          0xFF);
-          }
-        }
-
-        bm->format = pixelfmt_bgra8888;
-      }
-      return result_OK;
-
-    default:
-      return result_NOT_IMPLEMENTED;
-    }
-    break;
-
-  case pixelfmt_rgba8888:
-    switch (new_fmt)
-    {
-    case pixelfmt_rgba8888:
-      return result_OK; /* same format */
-
-    case pixelfmt_bgra8888:
-      {
-        pixelfmt_rgba8888_t *p = bm->base;
-        int                  x,y;
-
-        for (y = 0; y < bm->size.h; y++)
-        {
-          for (x = 0; x < bm->size.w; x++)
-          {
-            pixelfmt_rgba8888_t px = *p;
-            *p++ = PIXELFMT_MAKE_BGRA8888(PIXELFMT_Bxxx8888(px),
-                                          PIXELFMT_xGxx8888(px),
-                                          PIXELFMT_xxRx8888(px),
-                                          PIXELFMT_xxxA8888(px));
-          }
-        }
-
-        bm->format = pixelfmt_bgra8888;
-      }
-      return result_OK;
-
-    default:
-      return result_NOT_IMPLEMENTED;
-    }
-
-  default:
-    return result_NOT_IMPLEMENTED;
-  }
-}
-
 /* ----------------------------------------------------------------------- */
 
 static result_t load_test_png(bitmap_t   *bm,
@@ -171,9 +57,12 @@ static result_t load_test_png(bitmap_t   *bm,
   if (rc)
     return rc;
 
-  rc = bitmap_convert_inplace(bm, FORMAT);
+  rc = bitmap_convert_in_place(bm, FORMAT);
   if (rc)
+  {
+    free(bm->base);
     return rc;
+  }
 
   if (bm->size.w != SMALLWIDTH || bm->size.h != SMALLHEIGHT || bm->format != FORMAT)
   {
@@ -218,7 +107,7 @@ result_t composite_test(const char *resources)
   if (rc)
     goto Failure;
 
-  rc = bitmap_clone_by_size(&bmtmp, &bm[1]);
+  rc = bitmap_clone(&bm[1], &bmtmp);
   if (rc)
     goto Failure;
 
@@ -231,7 +120,7 @@ result_t composite_test(const char *resources)
         continue;
 
       /* reset the temporary output back to the 'destination' pixels */
-      rc = bitmap_clone_pixels(&bmtmp, &bm[1]);
+      rc = bitmap_copy_pixels(&bm[1], &bmtmp);
       if (rc)
         goto Failure;
 

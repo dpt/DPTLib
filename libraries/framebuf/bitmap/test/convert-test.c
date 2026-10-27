@@ -417,6 +417,111 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
+static int test_convert_in_place(void)
+{
+  /* two pixels per row, then a padding word that must be left alone */
+  static const unsigned int rgba[6] =
+  {
+    0x40302010, 0x80706050, 0xDEADBEEF,
+    0x00CCBBAA, 0xFF332211, 0xDEADBEEF
+  };
+  static const unsigned int bgra[6] =
+  {
+    0x40102030, 0x80507060, 0xDEADBEEF,
+    0x00AABBCC, 0xFF112233, 0xDEADBEEF
+  };
+
+  unsigned int px[6];
+  bitmap_t     bm;
+  int          i;
+
+  printf("test: convert_in_place swaps rgbx/rgba8888 to bgra8888\n");
+
+  memcpy(px, rgba, sizeof(px));
+  bitmap_init(&bm, SIZE2D(2, 2), pixelfmt_rgba8888, 3 * 4, NULL, px);
+  if (bitmap_convert_in_place(&bm, pixelfmt_bgra8888) != result_OK ||
+      bm.format != pixelfmt_bgra8888)
+    FAIL("convert_in_place rgba");
+  for (i = 0; i < 6; i++)
+    if (px[i] != bgra[i])
+      FAIL("convert_in_place rgba pixels");
+
+  /* rgbx gains opaque alpha whatever its x byte held */
+  memcpy(px, rgba, sizeof(px));
+  bitmap_init(&bm, SIZE2D(2, 2), pixelfmt_rgbx8888, 3 * 4, NULL, px);
+  if (bitmap_convert_in_place(&bm, pixelfmt_bgra8888) != result_OK)
+    FAIL("convert_in_place rgbx");
+  for (i = 0; i < 6; i++)
+    if (px[i] != (i % 3 == 2 ? bgra[i] : (bgra[i] | 0xFF000000u)))
+      FAIL("convert_in_place rgbx pixels");
+
+  if (bitmap_convert_in_place(&bm, pixelfmt_bgra8888) != result_OK)
+    FAIL("convert_in_place same format");
+  if (bitmap_convert_in_place(&bm, pixelfmt_rgb565) != result_NOT_SUPPORTED)
+    FAIL("convert_in_place unsupported");
+
+  return 1;
+
+Failure:
+  return 0;
+}
+
+static int test_clone(void)
+{
+  colour_t     pal[256];
+  unsigned int px[4] = { 1, 2, 3, 4 };
+  bitmap_t     src;
+  bitmap_t     dst;
+  bitmap_t     other;
+
+  printf("test: clone and copy_pixels\n");
+
+  mk_palette(pal);
+  bitmap_init(&src, SIZE2D(4, 1), pixelfmt_p8, 16, pal, px);
+
+  if (bitmap_clone(&src, &dst) != result_OK)
+    FAIL("clone");
+  if (dst.base == src.base || dst.palette == src.palette ||
+      dst.format != src.format || dst.rowbytes != src.rowbytes ||
+      memcmp(dst.base, px, sizeof(px)) != 0 ||
+      memcmp(dst.palette, pal, sizeof(pal)) != 0)
+  {
+    free(dst.base);
+    free(dst.palette);
+    FAIL("clone contents");
+  }
+
+  memset(dst.base, 0, sizeof(px));
+  if (bitmap_copy_pixels(&src, &dst) != result_OK ||
+      memcmp(dst.base, px, sizeof(px)) != 0)
+  {
+    free(dst.base);
+    free(dst.palette);
+    FAIL("copy_pixels");
+  }
+
+  other        = dst;
+  other.size.w = 3;
+  if (bitmap_copy_pixels(&src, &other) != result_INCOMPATIBLE)
+  {
+    free(dst.base);
+    free(dst.palette);
+    FAIL("copy_pixels mismatch");
+  }
+
+  free(dst.base);
+  free(dst.palette);
+  free(src.palette);
+
+  return 1;
+
+Failure:
+  free(src.palette);
+  return 0;
+}
+
+/* ----------------------------------------------------------------------- */
+
 /* Reads pixel (x,y) of an 8, 16 or 32bpp bitmap. */
 static unsigned int read_pixel(const bitmap_t *bm, int x, int y)
 {
@@ -558,6 +663,8 @@ result_t bitmap_convert_test(const char *resources)
       !test_convert_paletted() ||
       !test_convert_16bpp() ||
       !test_convert_unsupported() ||
+      !test_convert_in_place() ||
+      !test_clone() ||
       !test_fill_pattern())
     return result_TEST_FAILED;
 
