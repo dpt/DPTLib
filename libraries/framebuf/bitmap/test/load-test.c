@@ -380,6 +380,59 @@ static int test_deep(const char *resources)
   return ok;
 }
 
+/* bitmap_load_png_deep expands a paletted PNG to the requested format and
+ * leaves an RGB one as loaded. */
+static int test_load_deep(const char *resources)
+{
+  static const unsigned char red[] = { 255, 0, 0 };
+  static const unsigned char rgb[] = { 1, 2, 3 };
+
+  result_t rc;
+  bitmap_t bm;
+  int      ok;
+
+  ok = 1;
+
+  rc = bitmap_load_png_deep(&bm, pathf("%s/resources/test/bitmap/pal2.png",
+                                       resources), pixelfmt_rgbx8888);
+  if (rc == result_OK)
+  {
+    if (bm.format != pixelfmt_rgbx8888 || bm.palette != NULL)
+    {
+      printf("load: deep pal2: format %d, palette %p\n", (int) bm.format,
+             (void *) bm.palette);
+      ok = 0;
+    }
+    ok &= row_is(&bm, "deep pal2", 0, red, 3);
+    load_free(&bm);
+  }
+  else
+  {
+    printf("load: deep pal2: rc=&%x\n", rc);
+    ok = 0;
+  }
+
+  rc = bitmap_load_png_deep(&bm, pathf("%s/resources/test/bitmap/rgb.png",
+                                       resources), pixelfmt_rgbx8888);
+  if (rc == result_OK)
+  {
+    if (bm.format != pixelfmt_rgbx8888)
+    {
+      printf("load: deep rgb: format %d\n", (int) bm.format);
+      ok = 0;
+    }
+    ok &= row_is(&bm, "deep rgb", 0, rgb, 3);
+    load_free(&bm);
+  }
+  else
+  {
+    printf("load: deep rgb: rc=&%x\n", rc);
+    ok = 0;
+  }
+
+  return ok;
+}
+
 /* A colour-key tRNS on a truecolour or greyscale PNG makes the keyed colour
  * transparent. */
 static int test_colour_key(const char *resources)
@@ -556,6 +609,7 @@ result_t bitmap_load_test(const char *resources)
   ok &= test_palette(resources);
   ok &= test_palette_depths(resources);
   ok &= test_deep(resources);
+  ok &= test_load_deep(resources);
   ok &= test_colour_key(resources);
   ok &= test_errors(resources);
 #ifndef DPTLIB_IMAGES_READ_ONLY

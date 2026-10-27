@@ -125,6 +125,23 @@ result_t bitmap_fill_pattern(bitmap_t        *bm,
 result_t bitmap_load_png(bitmap_t *bm, const char *filename);
 
 /**
+ * Load a PNG image as \ref bitmap_load_png, then expand a paletted result
+ * (palette-type or greyscale PNG) to the deep format `fmt`, freeing its
+ * pixels and palette. Palette alpha is not carried across. RGB PNGs are left
+ * as `rgbx8888` / `rgba8888`. On failure nothing is left allocated.
+ *
+ * \param[in] bm       Bitmap to load the image into.
+ * \param[in] filename Filename of the image to load.
+ * \param[in] fmt      Deep format to expand a paletted image to, one that
+ *                     \ref bitmap_convert accepts from each paletted format
+ *                     (e.g. `rgbx8888` or `bgrx8888`).
+ * \return \ref result_OK on success, or appropriate result code otherwise.
+ */
+result_t bitmap_load_png_deep(bitmap_t   *bm,
+                              const char *filename,
+                              pixelfmt_t  fmt);
+
+/**
  * Save the given bitmap as a PNG image.
  *
  * Supported formats: `bgrx8888` (written as RGB), `bgra8888` (RGBA), and

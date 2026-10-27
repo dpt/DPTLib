@@ -251,4 +251,30 @@ cleanup:
   return rc;
 }
 
+result_t bitmap_load_png_deep(bitmap_t   *bm,
+                              const char *filename,
+                              pixelfmt_t  fmt)
+{
+  result_t  rc;
+  bitmap_t *deep;
+
+  rc = bitmap_load_png(bm, filename);
+  if (rc != result_OK)
+    return rc;
+
+  if (bm->format < pixelfmt_p1 || bm->format > pixelfmt_p8)
+    return result_OK;
+
+  rc = bitmap_convert(bm, fmt, &deep);
+  free(bm->base);
+  free(bm->palette);
+  if (rc != result_OK)
+    return rc;
+
+  *bm = *deep;
+  free(deep);
+
+  return result_OK;
+}
+
 /* vim: set ts=8 sts=2 sw=2 et: */
