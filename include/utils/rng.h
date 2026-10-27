@@ -106,6 +106,22 @@ static INLINE int rng_range(rng_t *s, int n)
   return (int) (rng_xorshift32(s) % (uint32_t) n);
 }
 
+/**
+ * Return the low nbits of an xorshift32 step.
+ *
+ * \param[in,out] s     Generator state.
+ * \param[in]     nbits Number of bits wanted (> 0). 32 or more returns the
+ *                      whole word.
+ * \return A value in [0, 2^nbits).
+ */
+static INLINE uint32_t rng_bits(rng_t *s, int nbits)
+{
+  uint32_t r;
+
+  r = rng_xorshift32(s);
+  return (nbits >= 32) ? r : r & ((1u << nbits) - 1);
+}
+
 /* ----------------------------------------------------------------------- */
 
 #ifdef __cplusplus
