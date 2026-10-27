@@ -982,6 +982,75 @@ static result_t test_rounded_rect(void)
 
 /* ----------------------------------------------------------------------- */
 
+static result_t test_ellipse(void)
+{
+  static testscreen_t outline;
+  static testscreen_t filled;
+  static testscreen_t enc;
+
+  int                 fg, bg;
+  int                 x, y;
+
+  fg = (int) np_encode(&enc, 0, 255, 0);
+  bg = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
+
+  /* 31x11 at (10,20) with a 2px outline: the axis extremes are lit, the box
+   * corners, the centre and the pixels beyond the ends are not. */
+  testscreen_init(&outline);
+  screen_draw_ellipse(&outline.scr, 10, 20, SIZE2D(31, 11), 2,
+                      colour_rgb(0, 255, 0));
+  testscreen_init(&filled);
+  screen_fill_ellipse(&filled.scr, 10, 20, SIZE2D(31, 11),
+                      colour_rgb(0, 255, 0));
+
+  if (np_at(&outline, 10, 25) != fg || np_at(&outline, 40, 25) != fg ||
+      np_at(&outline, 25, 20) != fg || np_at(&outline, 25, 30) != fg ||
+      np_at(&outline, 25, 21) != fg)
+  {
+    printf("screen: draw_ellipse missing an axis point\n");
+    return result_TEST_FAILED;
+  }
+  if (np_at(&outline, 10, 20) != bg || np_at(&outline, 40, 30) != bg ||
+      np_at(&outline, 25, 25) != bg || np_at(&outline, 25, 22) != bg ||
+      np_at(&outline, 9, 25) != bg || np_at(&outline, 41, 25) != bg)
+  {
+    printf("screen: draw_ellipse lit a corner, its interior or beyond\n");
+    return result_TEST_FAILED;
+  }
+
+  /* the fill covers every outline pixel plus the interior */
+  for (y = 0; y < HEIGHT; y++)
+    for (x = 0; x < WIDTH; x++)
+      if (np_at(&outline, x, y) == fg && np_at(&filled, x, y) != fg)
+      {
+        printf("screen: fill_ellipse missed outline pixel (%d,%d)\n", x, y);
+        return result_TEST_FAILED;
+      }
+  if (np_at(&filled, 25, 25) != fg || np_at(&filled, 10, 20) != bg)
+  {
+    printf("screen: fill_ellipse wrong interior or spilled\n");
+    return result_TEST_FAILED;
+  }
+
+  /* an empty size draws nothing */
+  testscreen_init(&filled);
+  screen_fill_ellipse(&filled.scr, 10, 20, SIZE2D(0, 11),
+                      colour_rgb(0, 255, 0));
+  screen_draw_ellipse(&filled.scr, 10, 20, SIZE2D(31, 0), 1,
+                      colour_rgb(0, 255, 0));
+  for (y = 0; y < HEIGHT; y++)
+    for (x = 0; x < WIDTH; x++)
+      if (np_at(&filled, x, y) != bg)
+      {
+        printf("screen: an empty ellipse drew (%d,%d)\n", x, y);
+        return result_TEST_FAILED;
+      }
+
+  return result_TEST_PASSED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 /* Blit an rgba8888 source onto a 1bpp screen: each pixel must quantise to
  * the nearer of the two palette entries and pack MSB-first, bit 7 leftmost. */
 static result_t test_copy_bitmap_p1(void)
@@ -2407,6 +2476,7 @@ result_t screen_test(const char *resources)
     test_draw_circle,
     test_fill_circle,
     test_rounded_rect,
+    test_ellipse,
     test_copy_bitmap_p1,
     test_copy_bitmap_p2,
     test_copy_bitmap_rle_p1,

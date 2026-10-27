@@ -298,6 +298,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/screen/screen-copy-rect.c
     libraries/framebuf/screen/screen-draw.c
     libraries/framebuf/screen/screen-draw-circle.c
+    libraries/framebuf/screen/screen-draw-ellipse.c
     libraries/framebuf/screen/screen-draw-thick-line.c
     libraries/framebuf/screen/screen-fill-hline.c
     libraries/framebuf/screen/screen-fill-pattern.c

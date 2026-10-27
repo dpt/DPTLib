@@ -536,6 +536,45 @@ void screen_fill_rounded_rect(screen_t *scr,
                               colour_t  colour);
 
 /**
+ * Draws an unfilled axis-aligned ellipse inscribed in the rectangle at (`x`,
+ * `y`) of `size`, its outline `thickness` pixels wide (at least one). A
+ * pixel is inside the ellipse when its centre is. Where the outline is
+ * thicker than half the ellipse it draws as filled. An empty size draws
+ * nothing. Clipped to the screen's clip region.
+ *
+ * \param[in] scr        Screen to draw upon.
+ * \param[in] x          X coordinate of leftmost point of rectangle.
+ * \param[in] y          Y coordinate of topmost point of rectangle.
+ * \param[in] size       Width and height of rectangle.
+ * \param[in] thickness  Width of the outline in pixels.
+ * \param[in] colour     Colour of the outline.
+ */
+void screen_draw_ellipse(screen_t *scr,
+                         int       x,
+                         int       y,
+                         size2d_t  size,
+                         int       thickness,
+                         colour_t  colour);
+
+/**
+ * Draws a solid axis-aligned ellipse inscribed in the rectangle at (`x`,
+ * `y`) of `size`, covering exactly the pixels `screen_draw_ellipse` outlines
+ * and those inside them. An empty size draws nothing. Clipped to the
+ * screen's clip region.
+ *
+ * \param[in] scr     Screen to draw upon.
+ * \param[in] x       X coordinate of leftmost point of rectangle.
+ * \param[in] y       Y coordinate of topmost point of rectangle.
+ * \param[in] size    Width and height of rectangle.
+ * \param[in] colour  Colour of the ellipse.
+ */
+void screen_fill_ellipse(screen_t *scr,
+                         int       x,
+                         int       y,
+                         size2d_t  size,
+                         colour_t  colour);
+
+/**
  * Draws a stippled line: `on` pixels drawn, then `off` skipped, repeating
  * along the line. Bresenham stepping, so the dash period is measured in
  * steps not Euclidean distance. `on` <= 0 draws nothing; `off` <= 0 gives a
