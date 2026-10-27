@@ -31,6 +31,8 @@ _Unreleased_ until one is cut.
   256-step linear gradient between two points, alpha included.
 - `framebuf/bitmap.h`: `bitmap_restore_outside_region` copies back from a
   second bitmap the pixels of a box that lie outside a region.
+- `framebuf/bitmap.h`: `bitmap_has_transparency` reports whether any pixel
+  is less than opaque.
 - `framebuf/tonemap.h`: `tonemap_rgb_in_sync` and `tonemap_has_alpha` report
   whether red, green and blue were last set together and whether alpha is
   present, so a tone map editor can choose between one combined curve and

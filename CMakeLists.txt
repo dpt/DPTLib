@@ -258,6 +258,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/bitmap/compress.c
     libraries/framebuf/bitmap/fill-pattern.c
     libraries/framebuf/bitmap/flood-fill.c
+    libraries/framebuf/bitmap/has-transparency.c
     libraries/framebuf/bitmap/load.c
     libraries/framebuf/bitmap/resize.c
     libraries/framebuf/bitmap/restore-outside-region.c

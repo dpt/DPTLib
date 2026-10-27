@@ -755,6 +755,52 @@ Failure:
   return 0;
 }
 
+static int test_has_transparency(void)
+{
+  unsigned int px[2][3];
+  colour_t     pal[2];
+  bitmap_t     bm;
+
+  printf("test: has_transparency\n");
+
+  /* opaque, then one translucent pixel at the end, in both alpha layouts */
+  memset(px, 0xFF, sizeof(px));
+  bitmap_init(&bm, SIZE2D(2, 2), pixelfmt_bgra8888, 3 * 4, NULL, px);
+  px[0][2] = 0; /* in the row padding: must be ignored */
+  if (bitmap_has_transparency(&bm))
+    FAIL("has_transparency opaque");
+  px[1][1] = 0x80FFFFFFu;
+  if (!bitmap_has_transparency(&bm))
+    FAIL("has_transparency bgra");
+  bm.format = pixelfmt_abgr8888;
+  if (bitmap_has_transparency(&bm))
+    FAIL("has_transparency abgr opaque");
+  px[1][1] = 0xFFFFFF80u;
+  if (!bitmap_has_transparency(&bm))
+    FAIL("has_transparency abgr");
+  bm.format = pixelfmt_bgrx8888;
+  if (bitmap_has_transparency(&bm))
+    FAIL("has_transparency no alpha");
+
+  /* paletted: judged by the palette */
+  pal[0] = colour_rgb(0, 0, 0);
+  pal[1] = colour_rgb(255, 255, 255);
+  bitmap_init(&bm, SIZE2D(2, 2), pixelfmt_p1, 4, pal, px);
+  if (bitmap_has_transparency(&bm))
+    FAIL("has_transparency opaque palette");
+  pal[1] = colour_rgba(255, 255, 255, 0);
+  bitmap_set_palette(&bm, pal);
+  if (!bitmap_has_transparency(&bm))
+    FAIL("has_transparency palette");
+
+  free(bm.palette);
+  return 1;
+
+Failure:
+  free(bm.palette);
+  return 0;
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t bitmap_convert_test(const char *resources)
@@ -774,7 +820,8 @@ result_t bitmap_convert_test(const char *resources)
       !test_clone() ||
       !test_fill_pattern() ||
       !test_flood_fill() ||
-      !test_restore_outside_region())
+      !test_restore_outside_region() ||
+      !test_has_transparency())
     return result_TEST_FAILED;
 
   return result_TEST_PASSED;

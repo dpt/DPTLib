@@ -281,6 +281,18 @@ result_t bitmap_restore_outside_region(bitmap_t       *dst,
                                        const box_t    *box);
 
 /**
+ * Affirm whether any pixel of `bm` is less than opaque.
+ *
+ * The 32bpp alpha formats are judged pixel by pixel. Paletted formats are
+ * judged by their palette: any entry less than opaque counts, used or not.
+ * Other formats, and compressed bitmaps, are always opaque.
+ *
+ * \param[in] bm Bitmap to examine.
+ * \return Non-zero if any pixel is less than opaque.
+ */
+int bitmap_has_transparency(const bitmap_t *bm);
+
+/**
  * Compress a bitmap's pixels in place into a read-only run-length-encoded
  * blob, replacing `bm->base`. `bm->size`, `bm->palette` and `bm->span` stay
  * valid for the decoded format; `bm->format` gains \ref pixelfmt_RLE_FLAG
