@@ -127,6 +127,16 @@ pattern_t pattern_from_colour(const colour_t *palette,
                               colour_t        target);
 
 /**
+ * Whether a pattern paints a single colour: every bit set, every bit clear
+ * (unless it is a stencil), or `fg` and `bg` the same RGB. Alpha is ignored.
+ * A solid pattern can be drawn as a plain rectangle fill.
+ *
+ * \param[in] pat Pattern to test.
+ * \return Non-zero if solid.
+ */
+int pattern_is_solid(const pattern_t *pat);
+
+/**
  * The 8x8 ordered (Bayer) dither threshold for screen pixel (`x`, `y`), a
  * value in the range 0 to 63. This is the recursively-built matrix the
  * `screen_PATTERN_BAYER*` tiles are derived from, exposed for callers that

@@ -220,6 +220,29 @@ pattern_t pattern_from_colour(const colour_t *palette,
                              palette[best_a]);
 }
 
+int pattern_is_solid(const pattern_t *pat)
+{
+  unsigned int r0, g0, b0;
+  unsigned int r1, g1, b1;
+  int          i;
+
+  for (i = 1; i < 8; i++)
+    if (pat->bits[i] != pat->bits[0])
+      break;
+  if (i == 8 && (pat->bits[0] == 0xFF ||
+                 (pat->bits[0] == 0x00 &&
+                  (pat->flags & pattern_FLAG_STENCIL) == 0)))
+    return 1;
+
+  if (pat->flags & pattern_FLAG_STENCIL)
+    return 0;
+
+  colour_get_rgb(&pat->fg, &r0, &g0, &b0);
+  colour_get_rgb(&pat->bg, &r1, &g1, &b1);
+
+  return r0 == r1 && g0 == g1 && b0 == b1;
+}
+
 /* ----------------------------------------------------------------------- */
 
 /* The recursively-built 8x8 ordered dither matrix, cell values 0..63. The

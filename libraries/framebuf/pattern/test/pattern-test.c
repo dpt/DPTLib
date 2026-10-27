@@ -95,6 +95,18 @@ result_t pattern_test(const char *resources)
   /* exact entry comes back solid */
   pat = pattern_from_colour(bw, 2, colour_rgb(255, 255, 255));
   CHECK(solid_in(&pat, bw[1]));
+  CHECK(pattern_is_solid(&pat));
+
+  /* a stipple is solid only when its two colours match; an empty stencil
+   * paints nothing, so is not */
+  pat = pattern_from_preset(screen_PATTERN_GREY50, bw[0], bw[1]);
+  CHECK(!pattern_is_solid(&pat));
+  pat.bg = pat.fg;
+  CHECK(pattern_is_solid(&pat));
+  memset(pat.bits, 0, sizeof(pat.bits));
+  CHECK(pattern_is_solid(&pat));
+  pat.flags = pattern_FLAG_STENCIL;
+  CHECK(!pattern_is_solid(&pat));
 
   /* a near grey entry beats a black/white stipple */
   bwg[0] = bw[0];
