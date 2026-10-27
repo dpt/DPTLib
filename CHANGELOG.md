@@ -29,6 +29,8 @@ _Unreleased_ until one is cut.
   nearest, where `colour_mix` is opaque and truncates.
 - `framebuf/screen.h`: `screen_fill_linear_gradient` fills a box with a
   256-step linear gradient between two points, alpha included.
+- `framebuf/bitmap.h`: `bitmap_restore_outside_region` copies back from a
+  second bitmap the pixels of a box that lie outside a region.
 - `framebuf/tonemap.h`: `tonemap_rgb_in_sync` and `tonemap_has_alpha` report
   whether red, green and blue were last set together and whether alpha is
   present, so a tone map editor can choose between one combined curve and

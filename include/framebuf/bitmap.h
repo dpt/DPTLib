@@ -12,6 +12,7 @@
 #include "framebuf/span.h"
 #include "geom/box.h"
 #include "geom/point.h"
+#include "geom/region.h"
 #include "geom/size.h"
 
 /** Common bitmap structure members (used for screens too). */
@@ -257,6 +258,27 @@ result_t bitmap_copy_pixels(const bitmap_t *src, bitmap_t *dst);
 
 /** Non-zero if `bm` holds an RLE-compressed (read-only) pixel store. */
 #define bitmap_is_compressed(bm) pixelfmt_is_rle((bm)->format)
+
+/**
+ * Copy back from `src` the pixels of `box` that lie outside `region`,
+ * undoing drawing that strayed beyond it.
+ *
+ * The bitmaps must share size and format; their row strides may differ.
+ * Supported for 8bpp and deeper formats only.
+ *
+ * \param[out] dst    Bitmap to restore into.
+ * \param[in]  src    Bitmap holding the pixels to put back.
+ * \param[in]  region Pixels to leave alone.
+ * \param[in]  box    Area to restore, clipped to the bitmap bounds. NULL
+ *                    restores the whole bitmap.
+ * \return \ref result_OK on success, \ref result_INCOMPATIBLE if the bitmaps
+ *         differ, or \ref result_NOT_SUPPORTED for a compressed or sub-byte
+ *         format.
+ */
+result_t bitmap_restore_outside_region(bitmap_t       *dst,
+                                       const bitmap_t *src,
+                                       const region_t *region,
+                                       const box_t    *box);
 
 /**
  * Compress a bitmap's pixels in place into a read-only run-length-encoded

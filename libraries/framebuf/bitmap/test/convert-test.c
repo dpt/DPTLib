@@ -707,6 +707,54 @@ Failure:
   return 0;
 }
 
+/* Restore box (1,0)-(5,4) around region (2,1)-(4,3) from a source with a
+ * wider stride: only the ring between them takes the source's 0s. */
+static int test_restore_outside_region(void)
+{
+  static const box_t keep = { 2, 1, 4, 3 };
+  static const box_t area = { 1, 0, 5, 4 };
+  unsigned int       dpx[4][6];
+  unsigned int       spx[4][8];
+  bitmap_t           dst, src;
+  region_t          *region;
+  int                x, y;
+  int                inside_area, inside_keep;
+
+  printf("test: restore_outside_region\n");
+
+  for (y = 0; y < 4; y++)
+    for (x = 0; x < 6; x++)
+      dpx[y][x] = 1;
+  memset(spx, 0, sizeof(spx));
+  bitmap_init(&dst, SIZE2D(6, 4), pixelfmt_bgrx8888, 6 * 4, NULL, dpx);
+  bitmap_init(&src, SIZE2D(6, 4), pixelfmt_bgrx8888, 8 * 4, NULL, spx);
+
+  if (region_from_box(&keep, &region) != result_OK)
+    FAIL("restore_outside_region region");
+
+  if (bitmap_restore_outside_region(&dst, &src, region, &area) != result_OK)
+    FAIL("restore_outside_region rc");
+  for (y = 0; y < 4; y++)
+    for (x = 0; x < 6; x++)
+    {
+      inside_area = box_contains_point(&area, x, y);
+      inside_keep = box_contains_point(&keep, x, y);
+      if (dpx[y][x] != (unsigned int) (inside_area && !inside_keep ? 0 : 1))
+        FAIL("restore_outside_region pixel");
+    }
+
+  src.format = pixelfmt_rgb565;
+  if (bitmap_restore_outside_region(&dst, &src, region, NULL) !=
+      result_INCOMPATIBLE)
+    FAIL("restore_outside_region format");
+
+  region_destroy(region);
+  return 1;
+
+Failure:
+  return 0;
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t bitmap_convert_test(const char *resources)
@@ -725,7 +773,8 @@ result_t bitmap_convert_test(const char *resources)
       !test_convert_in_place() ||
       !test_clone() ||
       !test_fill_pattern() ||
-      !test_flood_fill())
+      !test_flood_fill() ||
+      !test_restore_outside_region())
     return result_TEST_FAILED;
 
   return result_TEST_PASSED;

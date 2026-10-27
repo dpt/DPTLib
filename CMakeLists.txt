@@ -260,6 +260,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/bitmap/flood-fill.c
     libraries/framebuf/bitmap/load.c
     libraries/framebuf/bitmap/resize.c
+    libraries/framebuf/bitmap/restore-outside-region.c
     libraries/framebuf/bitmap/rle.h
     libraries/framebuf/bitmap/save.c
     libraries/framebuf/bmfont/bmfont.c
