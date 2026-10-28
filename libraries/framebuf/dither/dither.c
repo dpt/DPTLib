@@ -91,6 +91,8 @@ static const dither_kernel_t dither_kernels[dither__LIMIT] =
   { 1, 1, 0, 1,  { { 0 } }, pattern_blue_noise_threshold, 64 },
   /* Knoll: candidates chosen by Bayer threshold */
   { 1, 1, 0, 1,  { { 0 } }, pattern_bayer_threshold, 64 },
+  /* Yliluoma: plan entries chosen by Bayer threshold */
+  { 1, 1, 0, 1,  { { 0 } }, pattern_bayer_threshold, 64 },
   /* Floyd-Steinberg */
   { 3, 2, 1, 16, { { 0, 0, 7 },
                    { 3, 5, 1 } }, NULL, 0 },
@@ -330,6 +332,139 @@ static unsigned int dither_knoll(const pixelmap_t    *pm,
     want -= count[j];
 
   return idx[j];
+}
+
+/* ----- Yliluoma dithering ----- */
+
+#define YLILUOMA_N 16 /* plan entries */
+
+/* Plans are cached per source colour cut to 5:6:5 bits, each built for its
+ * bucket's centre: a plan only mixes in sixteenths, so the cut costs
+ * nothing visible and bounds the work at 65536 plans. */
+#define YLILUOMA_KEY(r, g, b) \
+  ((((r) >> 3) << 11) | (((g) >> 2) << 5) | ((b) >> 3))
+
+typedef struct dither_yliluoma
+{
+  double        pal[256][3]; /* palette channels */
+  unsigned char made[65536]; /* non-zero: plan[key] is built */
+  unsigned char plan[65536][YLILUOMA_N];
+}
+dither_yliluoma_t;
+
+/* Yliluoma's psychovisual distance between colours a and b, channels
+ * 0..255: channel differences weighted by their luma share, plus the luma
+ * difference, which counts for more. */
+static double dither_yliluoma_compare(const double *a, const double *b)
+{
+  double la, lb;
+  double dl, dr, dg, db;
+
+  la = (a[0] * 299 + a[1] * 587 + a[2] * 114) / (255.0 * 1000);
+  lb = (b[0] * 299 + b[1] * 587 + b[2] * 114) / (255.0 * 1000);
+  dl = la - lb;
+  dr = (a[0] - b[0]) / 255.0;
+  dg = (a[1] - b[1]) / 255.0;
+  db = (a[2] - b[2]) / 255.0;
+
+  return (dr * dr * 0.299 + dg * dg * 0.587 + db * db * 0.114) * 0.75 +
+         dl * dl;
+}
+
+/* Build into plan Yliluoma's mix of YLILUOMA_N palette entries for colour
+ * want: each step adds the entry and power-of-two quantity whose mix with
+ * the plan so far best matches want, the quantity at most the plan's size
+ * so far. The plan ends sorted into luma order. */
+static void dither_yliluoma_plan(const dither_yliluoma_t *yl,
+                                 int                      ncolours,
+                                 const unsigned char     *rank,
+                                 const double            *want,
+                                 unsigned char           *plan)
+{
+  double        so_far[3];
+  int           total;
+  double        least;
+  int           chosen;
+  int           amount;
+  int           i;
+  int           p;
+  int           ch;
+  double        test[3];
+  double        penalty;
+  int           j;
+  unsigned char c;
+
+  so_far[0] = so_far[1] = so_far[2] = 0.0;
+
+  total = 0;
+  while (total < YLILUOMA_N)
+  {
+    least  = -1.0;
+    chosen = 0;
+    amount = 1;
+    for (i = 0; i < ncolours; i++)
+    {
+      for (p = 1; p <= MAX(1, total) && total + p <= YLILUOMA_N; p *= 2)
+      {
+        for (ch = 0; ch < 3; ch++)
+          test[ch] = (so_far[ch] + p * yl->pal[i][ch]) / (total + p);
+
+        penalty = dither_yliluoma_compare(want, test);
+        if (least < 0.0 || penalty < least)
+        {
+          least  = penalty;
+          chosen = i;
+          amount = p;
+        }
+      }
+    }
+
+    for (p = 0; p < amount; p++)
+      plan[total + p] = (unsigned char) chosen;
+    for (ch = 0; ch < 3; ch++)
+      so_far[ch] += amount * yl->pal[chosen][ch];
+    total += amount;
+  }
+
+  /* insertion sort into luma order */
+  for (i = 1; i < YLILUOMA_N; i++)
+  {
+    c = plan[i];
+    for (j = i; j > 0 && rank[plan[j - 1]] > rank[c]; j--)
+      plan[j] = plan[j - 1];
+    plan[j] = c;
+  }
+}
+
+/* Joel Yliluoma's arbitrary-palette positional dither, algorithm 2: take the
+ * entry at threshold t (0..63) from the plan for r, g, b, pulled toward the
+ * plan's middle as strength falls. */
+static unsigned int dither_yliluoma(dither_yliluoma_t   *yl,
+                                    int                  ncolours,
+                                    const unsigned char *rank,
+                                    unsigned int         r,
+                                    unsigned int         g,
+                                    unsigned int         b,
+                                    int                  t,
+                                    int                  strength)
+{
+  unsigned int key;
+  double       want[3];
+  int          pos;
+
+  key = YLILUOMA_KEY(r, g, b);
+  if (!yl->made[key])
+  {
+    want[0] = (r & ~7u) | 4;
+    want[1] = (g & ~3u) | 2;
+    want[2] = (b & ~7u) | 4;
+    dither_yliluoma_plan(yl, ncolours, rank, want, yl->plan[key]);
+    yl->made[key] = 1;
+  }
+
+  pos = t * YLILUOMA_N / 64 - YLILUOMA_N / 2;
+
+  return yl->plan[key][YLILUOMA_N / 2 + pos * strength / 100];
 }
 
 /* ----- Ostromoukhov dithering ----- */
@@ -713,7 +848,9 @@ result_t dither_bitmap(const bitmap_t         *src,
   int                        max;
   int                        bias[DITHER_MAX_LEVELS];
   unsigned char              rank[256];
+  dither_yliluoma_t         *yl;
   int                        i;
+  unsigned int               pr, pg, pb;
   int                        x, y;
   int                        cur;
   int                        dir;
@@ -724,7 +861,6 @@ result_t dither_bitmap(const bitmap_t         *src,
   unsigned int               r, g, b;
   int                        t;
   unsigned int               index;
-  unsigned int               pr, pg, pb;
   int                        qr, qg, qb;
   int                        mx, my;
   int                        weight;
@@ -776,12 +912,16 @@ result_t dither_bitmap(const bitmap_t         *src,
   base   = NULL;
   out    = NULL;
   err    = NULL;
+  yl     = NULL;
   stride = src->size.w + 2 * DITHER_PAD;
 
   base = calloc((size_t) rowbytes * src->size.h, 1);
   out  = malloc(sizeof(*out));
   err  = calloc((size_t) stride * k->h * 3, sizeof(*err));
-  if (base == NULL || out == NULL || err == NULL)
+  if (opts->method == dither_YLILUOMA)
+    yl = calloc(1, sizeof(*yl));
+  if (base == NULL || out == NULL || err == NULL ||
+      (opts->method == dither_YLILUOMA && yl == NULL))
   {
     rc = result_OOM;
     goto failure;
@@ -811,8 +951,19 @@ result_t dither_bitmap(const bitmap_t         *src,
     bias[i] = ((2 * i - (k->levels - 1)) * (int) pm->step * opts->strength) /
               (2 * k->levels * 100);
 
-  if (opts->method == dither_KNOLL)
+  if (opts->method == dither_KNOLL || opts->method == dither_YLILUOMA)
     dither_luma_ranks(palette, opts->ncolours, rank);
+
+  if (yl)
+  {
+    for (i = 0; i < opts->ncolours; i++)
+    {
+      colour_get_rgb(&palette[i], &pr, &pg, &pb);
+      yl->pal[i][0] = pr;
+      yl->pal[i][1] = pg;
+      yl->pal[i][2] = pb;
+    }
+  }
 
   /* Riemersma walks its own curve rather than rows */
   if (opts->method == dither_RIEMERSMA)
@@ -852,6 +1003,11 @@ result_t dither_bitmap(const bitmap_t         *src,
       {
         index = dither_knoll(pm, palette, rank, r, g, b, k->threshold(x, y),
                              opts->strength);
+      }
+      else if (opts->method == dither_YLILUOMA)
+      {
+        index = dither_yliluoma(yl, opts->ncolours, rank, r, g, b,
+                                k->threshold(x, y), opts->strength);
       }
       else if (k->threshold)
       {
@@ -929,12 +1085,14 @@ result_t dither_bitmap(const bitmap_t         *src,
     dstrow += rowbytes;
   }
 
+  free(yl);
   free(err);
   *dst = out;
 
   return result_OK;
 
 failure:
+  free(yl);
   free(err);
   free(out);
   free(base);

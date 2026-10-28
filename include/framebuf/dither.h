@@ -42,6 +42,7 @@ typedef enum dither_method
   dither_BAYER_16,           /**< Ordered, 16x16 Bayer matrix. */
   dither_BLUE_NOISE,         /**< Ordered, 64x64 blue-noise map. */
   dither_KNOLL,              /**< Knoll pattern dither, Bayer-ordered. */
+  dither_YLILUOMA,           /**< Yliluoma's mixing-plan dither. */
 
   dither_FLOYD_STEINBERG,
   dither_JARVIS_JUDICE_NINKE,
@@ -108,6 +109,16 @@ dither_options_t;
  * and takes the one the Bayer threshold selects. It costs 16 lookups a pixel
  * but suits fixed, uneven palettes better than a plain ordered bias. Like
  * the ordered methods it ignores `serpentine` and `linear`.
+ *
+ * \ref dither_YLILUOMA is Joel Yliluoma's arbitrary-palette positional
+ * dither, his algorithm 2. Per pixel it builds a plan of 16 palette entries,
+ * each step adding the entry, in a power-of-two quantity, whose mix with
+ * those so far is psychovisually closest to the source. The plan is sorted
+ * by luma and the Bayer threshold picks from it. Every step tries the whole
+ * palette, so plans are cached per colour cut to 5:6:5 bits. Even so it is
+ * far slower than Knoll on large palettes, but its mixes are closer.
+ * `strength` scales how far the threshold strays from the plan's middle
+ * entry. It ignores `serpentine` and `linear`.
  *
  * \ref dither_RIEMERSMA walks the image along a Hilbert curve and adds to
  * each pixel a weighted sum of the last 16 errors, the newest weighted most.
