@@ -14,11 +14,13 @@ extern "C"
 #include "geom/box.h"
 
 /**
- * \fileLays out the background of a document: a content area (the page)
- * inside a margin, surrounded by a stroked border and an optional drop
- * shadow, all floating on a pasteboard that fills the rest of the work area.
- * The page is centred in the work area. The output is a list of boxes, each
- * tagged with what to draw there, ready to be filled by the caller.
+ * \file stage.h
+ *
+ * Lays out the background of a document: a content area (the page) inside a
+ * margin, surrounded by a stroked border and an optional drop shadow, all
+ * floating on a pasteboard that fills the rest of the work area. The page is
+ * centred in the work area. The output is a list of boxes, each tagged with
+ * what to draw there, ready to be filled by the caller.
  */
 
 /** Maximum number of boxes stage_generate will emit. */
@@ -52,7 +54,7 @@ typedef struct stageconfig
 {
   stageflags_t flags;
 
-  int          pasteboard_min; /**< Least pasteboard on each axis. */
+  int          pasteboard_min; /**< Pasteboard minimum size on each axis. */
   int          stroke;         /**< Border outline thickness. */
   int          margin;         /**< Space between the content and border. */
   int          shadow;         /**< Drop shadow offset. */
