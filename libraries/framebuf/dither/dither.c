@@ -687,6 +687,7 @@ static unsigned int dither_zhou_fang(unsigned int            c,
 
 #define RIEMERSMA_Q     16 /* errors remembered along the curve */
 #define RIEMERSMA_RATIO 16 /* newest error's weight over the oldest's */
+#define RIEMERSMA_ONE   1024 /* the newest error's weight */
 
 /* Nearest palette index for channels r, g, b: sRGB, or linear when dec is
  * set. */
@@ -741,8 +742,11 @@ static void dither_hilbert(int n, int d, int *x, int *y)
 
 /* Riemersma's dither: walk a Hilbert curve over the image, adding to each
  * pixel a weighted sum of the last RIEMERSMA_Q quantisation errors, the
- * newest weighted most. The weights sum to one, so the mean is kept, and the
- * curve has no preferred direction, so there are no directional artefacts.
+ * newest weighted 1 and the oldest 1 / RIEMERSMA_RATIO. As in Riemersma's
+ * original, an error is the source pixel less its output, not counting the
+ * sum added to it: the sum then tracks the error left over across the
+ * window, so the mean is kept. The curve has no preferred direction, so
+ * there are no directional artefacts.
  *
  * ponytail: the curve covers the enclosing power-of-two square and skips
  * the cells outside the image, wasting up to 4x the steps on long thin
@@ -756,7 +760,6 @@ static void dither_riemersma(const bitmap_t         *src,
                              bitmap_t               *out)
 {
   int                        weight[RIEMERSMA_Q];
-  int                        wsum;
   int                        queue[RIEMERSMA_Q][3];
   int                        head;
   int                        n;
@@ -765,20 +768,19 @@ static void dither_riemersma(const bitmap_t         *src,
   int                        a;
   const pixelfmt_rgbx8888_t *px;
   unsigned int               c[3];
-  int                        sum[3];
   int                        ch;
+  unsigned int               s[3];
+  int                        sum[3];
   unsigned int               index;
   unsigned int               p[3];
   int                        log2bpp;
 
-  /* weight[a] for an error a steps old: RATIO^(-a / (Q - 1)), scaled */
-  wsum = 0;
+  /* weight[a] for an error a steps old: RATIO^(-a / (Q - 1)), scaled by
+   * RIEMERSMA_ONE */
   for (a = 0; a < RIEMERSMA_Q; a++)
-  {
-    weight[a] = (int) (1024.0 * pow(RIEMERSMA_RATIO,
-                                    -a / (double) (RIEMERSMA_Q - 1)) + 0.5);
-    wsum += weight[a];
-  }
+    weight[a] = (int) (RIEMERSMA_ONE * pow(RIEMERSMA_RATIO,
+                                           -a / (double) (RIEMERSMA_Q - 1)) +
+                       0.5);
 
   memset(queue, 0, sizeof(queue));
   head = 0;
@@ -801,17 +803,18 @@ static void dither_riemersma(const bitmap_t         *src,
     c[2] = PIXELFMT_xxBx8888(*px);
 
     /* the newest error is at head - 1; raw errors are at most 65535 and the
-     * weights 1024, so 16 of them fit an int */
+     * weights RIEMERSMA_ONE, so 16 of them fit an int */
     for (ch = 0; ch < 3; ch++)
     {
       if (dec)
         c[ch] = dec[c[ch]];
+      s[ch] = c[ch];
 
       sum[ch] = 0;
       for (a = 0; a < RIEMERSMA_Q; a++)
         sum[ch] += queue[(head - 1 - a + RIEMERSMA_Q) % RIEMERSMA_Q][ch] *
                    weight[a];
-      sum[ch] = sum[ch] / wsum * opts->strength;
+      sum[ch] = sum[ch] / RIEMERSMA_ONE * opts->strength;
     }
     dither_apply3(&c[0], &c[1], &c[2], sum, 100, dither_limit(pm, max), max);
 
@@ -821,7 +824,7 @@ static void dither_riemersma(const bitmap_t         *src,
 
     colour_get_rgb(&palette[index], &p[0], &p[1], &p[2]);
     for (ch = 0; ch < 3; ch++)
-      queue[head][ch] = (int) c[ch] - (int) (dec ? dec[p[ch]] : p[ch]);
+      queue[head][ch] = (int) s[ch] - (int) (dec ? dec[p[ch]] : p[ch]);
     head = (head + 1) % RIEMERSMA_Q;
   }
 }
