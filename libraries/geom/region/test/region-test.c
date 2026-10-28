@@ -315,6 +315,50 @@ static result_t test_invert(void)
   return ok ? result_TEST_PASSED : result_TEST_FAILED;
 }
 
+static result_t test_translate(void)
+{
+  static const box_t b = { 4, 4, 20, 15 };
+  region_t          *r, *t = NULL;
+  box_t              bb;
+  int                ok;
+
+  if (region_from_box(&b, &r) != result_OK)
+    return result_TEST_FAILED;
+
+  /* wholly inside the clip */
+  ok = region_translate(r, 3, -2, &clip, &t) == result_OK && t != NULL;
+  if (ok)
+  {
+    bb = region_bounds(t);
+    ok = bb.x0 == 7 && bb.y0 == 2 && bb.x1 == 23 && bb.y1 == 13 &&
+         area(t) == 16 * 11;
+  }
+  region_destroy(t);
+
+  /* partly off the clip's top left */
+  t  = NULL;
+  ok = ok && region_translate(r, -10, -8, &clip, &t) == result_OK &&
+       t != NULL;
+  if (ok)
+  {
+    bb = region_bounds(t);
+    ok = bb.x0 == 0 && bb.y0 == 0 && bb.x1 == 10 && bb.y1 == 7 &&
+         area(t) == 10 * 7;
+  }
+  region_destroy(t);
+
+  /* wholly off the clip, and of nothing */
+  t  = (region_t *) 1;
+  ok = ok && region_translate(r, W, 0, &clip, &t) == result_OK && t == NULL;
+  t  = (region_t *) 1;
+  ok = ok && region_translate(NULL, 1, 1, &clip, &t) == result_OK &&
+       t == NULL;
+
+  region_destroy(r);
+
+  return ok ? result_TEST_PASSED : result_TEST_FAILED;
+}
+
 result_t region_test(const char *resources)
 {
   typedef result_t (*regiontestfn)(void);
@@ -328,7 +372,8 @@ result_t region_test(const char *resources)
     test_outline,
     test_flood,
     test_combine,
-    test_invert
+    test_invert,
+    test_translate
   };
 
   size_t i;

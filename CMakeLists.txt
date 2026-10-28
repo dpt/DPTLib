@@ -359,6 +359,7 @@ set(GEOM_SOURCES
     libraries/geom/region/outline.c
     libraries/geom/region/polygon.c
     libraries/geom/region/region.c
+    libraries/geom/region/translate.c
     libraries/geom/stack/impl.h
     libraries/geom/stack/axis-size.c
     libraries/geom/stack/measure-min.c

@@ -122,6 +122,22 @@ result_t region_subtract(const region_t *a,
                          const region_t *b,
                          region_t      **out);
 
+/**
+ * Creates a copy of a region shifted by (dx,dy) and clipped to a box.
+ *
+ * \param[in]  region The region to shift (may be NULL).
+ * \param[in]  dx     The horizontal shift.
+ * \param[in]  dy     The vertical shift.
+ * \param[in]  clip   Pixels outside this box (x1,y1 exclusive) are dropped.
+ * \param[out] out    The new region, or NULL if it is empty.
+ * \return result_OK or result_OOM.
+ */
+result_t region_translate(const region_t *region,
+                          int             dx,
+                          int             dy,
+                          const box_t    *clip,
+                          region_t      **out);
+
 /** Frees a region. */
 void region_destroy(region_t *region);
 
