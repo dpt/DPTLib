@@ -12,10 +12,16 @@
 
 #include "test/all-tests.h"
 
-static int boxeq(const box_t *a, const box_t *b)
+static result_t test_equal(void)
 {
-  return a->x0 == b->x0 && a->y0 == b->y0 &&
-         a->x1 == b->x1 && a->y1 == b->y1;
+  static const box_t a = { 10, 20, 30, 40 };
+  static const box_t b = { 10, 20, 30, 40 };
+  static const box_t c = { 10, 20, 30, 41 };
+
+  if (!box_equal(&a, &a) || !box_equal(&a, &b) || box_equal(&a, &c))
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
 }
 
 static result_t test_reset_empty(void)
@@ -79,11 +85,11 @@ static result_t test_translated(void)
   box_t translated;
 
   box_translated(&initial, 0, 0, &translated);
-  if (!boxeq(&translated, &initial))
+  if (!box_equal(&translated, &initial))
     return result_TEST_FAILED;
 
   box_translated(&initial, 3, 5, &translated);
-  if (!boxeq(&translated, &expected))
+  if (!box_equal(&translated, &expected))
     return result_TEST_FAILED;
 
   return result_TEST_PASSED;
@@ -114,14 +120,14 @@ static result_t test_list_add(void)
     return result_TEST_FAILED;
 
   /* a shared edge merges into one exact box */
-  if (box_list_add(list, &n, 2, &right) || n != 1 || !boxeq(&list[0], &ab))
+  if (box_list_add(list, &n, 2, &right) || n != 1 || !box_equal(&list[0], &ab))
     return result_TEST_FAILED;
 
   if (box_list_add(list, &n, 2, &far1) || n != 2)
     return result_TEST_FAILED;
 
   /* full: unions into the last entry and says so */
-  if (!box_list_add(list, &n, 2, &far2) || n != 2 || !boxeq(&list[1], &last))
+  if (!box_list_add(list, &n, 2, &far2) || n != 2 || !box_equal(&list[1], &last))
     return result_TEST_FAILED;
 
   /* full again: the two near boxes merge and the far one keeps its own
@@ -137,8 +143,8 @@ static result_t test_list_add(void)
     box_list_add(list, &n, 2, &near2);
     if (n != 2 || !box_list_add(list, &n, 2, &far3) || n != 2)
       return result_TEST_FAILED;
-    if (!((boxeq(&list[0], &near12) && boxeq(&list[1], &far3)) ||
-          (boxeq(&list[1], &near12) && boxeq(&list[0], &far3))))
+    if (!((box_equal(&list[0], &near12) && box_equal(&list[1], &far3)) ||
+          (box_equal(&list[1], &near12) && box_equal(&list[0], &far3))))
       return result_TEST_FAILED;
   }
 
@@ -151,6 +157,7 @@ result_t box_test(const char *resources)
 
   static const boxtestfn tests[] =
   {
+    test_equal,
     test_reset_empty,
     test_contains_box,
     test_contains_point,

@@ -140,6 +140,15 @@ int box_list_add(box_t *list, int *n, int max, const box_t *box);
 int box_is_empty(const box_t *b);
 
 /**
+ * Affirms if the specified boxes are the same.
+ *
+ * \param[in] a The first box.
+ * \param[in] b The second box.
+ * \return Non-zero if every coordinate matches.
+ */
+int box_equal(const box_t *a, const box_t *b);
+
+/**
  * Scales the box by log2scale.
  *
  * \param[in] b The box to grow.

@@ -332,6 +332,7 @@ set(GEOM_SOURCES
     libraries/geom/box/contains-box.c
     libraries/geom/box/contains-point.c
     libraries/geom/box/could-hold.c
+    libraries/geom/box/equal.c
     libraries/geom/box/extend.c
     libraries/geom/box/grow.c
     libraries/geom/box/intersection.c
