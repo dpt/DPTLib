@@ -19,6 +19,27 @@ _Unreleased_ until one is cut.
 
 ### Added
 
+- `text/mdspans.h`: `mdspans_parse` turns minimal Markdown into plain text
+  and styled spans, moved from Wuss's Reading task. Inline runs within a
+  header are stripped but not styled, so spans never overlap, and a header
+  prefix is limited to six `#`.
+- `utils/rng.h`: `rng_hash32`, a stateless keyed hash, and `rng_noise1d`,
+  smooth 1-D value noise.
+- `framebuf/bitmap.h`: `bitmap_clear_transparent` clears colour-keyed
+  pixels to transparent.
+- `framebuf/bmfontfamily.h`: `bmfontfamily_split_label` splits a
+  `Family Style` label; `bmfontfamily_label_path` uses it.
+- `io/path.h`: `path_parent`.
+- `framebuf/palettes.h`: `palettes_load_hex` reads Lospec-style `.hex`
+  palette files, one colour per line. Moved from Wuss's Palette task.
+- `geom/box.h`: `box_subtract` splits one box minus another into up to four
+  non-overlapping bands, moved from Wuss's invalidation code; `box_equal`
+  compares two boxes.
+- `geom/region.h`: `region_translate` copies a region shifted by (dx,dy)
+  and clipped to a box, for moving a selection.
+- `framebuf/dither.h`: `dither_YLILUOMA`, Joel Yliluoma's arbitrary-palette
+  ordered dither (algorithm 2). Plans of 16 palette entries are cached per
+  colour cut to 5:6:5 bits.
 - `utils/alloc.h`: `alloc_t` allocator hooks (malloc, realloc and free),
   the stdlib `alloc_default` and `alloc_strdup`, moved from Wuss's
   `wuss_alloc_t`. `array_grow_alloc` grows an array through an `alloc_t`.
@@ -294,6 +315,9 @@ _Unreleased_ until one is cut.
 
 ### Changed
 
+- `bitmap_convert_in_place` swaps red and blue between rgbx, rgba, bgrx and
+  bgra in any direction, forcing alpha opaque only when going from an x
+  format to an alpha one.
 - `pattern_from_colour` tries pairs nearest first and stops once no farther
   pair can win, so a 256-entry palette costs a sort and a few pairs rather
   than all 32,896. Only the first 256 entries are considered.
@@ -373,6 +397,11 @@ _Unreleased_ until one is cut.
 
 ### Fixed
 
+- Riemersma dithering carries errors as in the original: each pixel queues
+  its source less its output, weighted 1 for the newest down to 1/16 for
+  the oldest. It had re-diffused error already applied and ran at about a
+  sixth of the original's gain, leaving flat patches where the palette had
+  to mix.
 - `ntree_append()` was declared but never defined.
 - `stream`: PackBits fills never rewound their buffers, so output stopped
   after the first buffer's worth.
