@@ -124,6 +124,56 @@ static INLINE uint32_t rng_bits(rng_t *s, int nbits)
 
 /* ----------------------------------------------------------------------- */
 
+/**
+ * Hash an integer key under a seed to a well-mixed 32-bit value.
+ *
+ * Stateless: the same seed and key always give the same value, so values can
+ * be looked up in any order, unlike the step functions above.
+ *
+ * \param[in] seed Seed value.
+ * \param[in] k    Key, e.g. a position along a line.
+ * \return The hashed value.
+ */
+static INLINE uint32_t rng_hash32(uint32_t seed, int k)
+{
+  uint32_t h;
+
+  h  = seed ^ ((uint32_t) k * 0x9E3779B9u);
+  h ^= h >> 16;
+  h *= 0x7FEB352Du;
+  h ^= h >> 15;
+  h *= 0x846CA68Bu;
+  h ^= h >> 16;
+
+  return h;
+}
+
+/**
+ * Smooth one-dimensional value noise.
+ *
+ * A random knot sits every "period" steps; between knots the value is eased
+ * from one to the next with a smoothstep curve.
+ *
+ * \param[in] seed   Seed value.
+ * \param[in] s      Step (>= 0).
+ * \param[in] period Steps between knots (> 0).
+ * \return A value in [-256, 256).
+ */
+static INLINE int rng_noise1d(uint32_t seed, int s, int period)
+{
+  int k, f, v0, v1, t;
+
+  k  = s / period;
+  f  = s % period;
+  v0 = (int) (rng_hash32(seed, k) & 511) - 256;
+  v1 = (int) (rng_hash32(seed, k + 1) & 511) - 256;
+  t  = 256 * f * f * (3 * period - 2 * f) / (period * period * period);
+
+  return v0 + (v1 - v0) * t / 256;
+}
+
+/* ----------------------------------------------------------------------- */
+
 #ifdef __cplusplus
 }
 #endif

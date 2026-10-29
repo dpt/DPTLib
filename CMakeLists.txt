@@ -659,6 +659,7 @@ if(BUILD_TESTS AND PROJECT_IS_TOP_LEVEL)
         libraries/utils/bytesex/test/bytesex-test.c
         libraries/utils/easing/test/easing-test.c
         libraries/utils/pack/test/pack-test.c
+        libraries/utils/rng/test/rng-test.c
         libraries/datastruct/vector/test/vector-test.c)
 
     source_group(TREE "${CMAKE_CURRENT_SOURCE_DIR}" FILES ${TEST_SOURCES})

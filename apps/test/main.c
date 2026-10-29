@@ -93,6 +93,7 @@ static const test_t tests[] =
   { "bytesex",    bytesex_test    },
   { "easing",     easing_test     },
   { "pack",       pack_test       },
+  { "rng",        rng_test        },
 };
 
 static const int ntests = NELEMS(tests);

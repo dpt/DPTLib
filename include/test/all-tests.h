@@ -72,6 +72,7 @@ extern testfn_t array_test,
                 bsearch_test,
                 bytesex_test,
                 easing_test,
-                pack_test;
+                pack_test,
+                rng_test;
 
 #endif /* TESTS_ALL_TESTS_H */
