@@ -201,6 +201,33 @@ static result_t test_errors(const char *resources)
   return result_TEST_PASSED;
 }
 
+static result_t test_split_label(const char *resources)
+{
+  char        family[8];
+  const char *style;
+
+  (void) resources;
+
+  if (bmfontfamily_split_label("MS Sans Bold", family, sizeof(family),
+                               &style) != result_OK ||
+      strcmp(family, "MS Sans") != 0 || strcmp(style, "Bold") != 0)
+  {
+    printf("bmfontfamily_split_label: bad split\n");
+    return result_TEST_FAILED;
+  }
+
+  if (bmfontfamily_split_label("Tiny", family, sizeof(family), &style) !=
+      result_BAD_ARG ||
+      bmfontfamily_split_label("GrongyUI Bold", family, sizeof(family),
+                               &style) != result_BUFFER_OVERFLOW)
+  {
+    printf("bmfontfamily_split_label: bad label not rejected\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+}
+
 result_t bmfontfamily_test(const char *resources)
 {
   static result_t (*const tests[])(const char *) =
@@ -208,7 +235,8 @@ result_t bmfontfamily_test(const char *resources)
     test_scan_order,
     test_selection,
     test_real_family,
-    test_errors
+    test_errors,
+    test_split_label
   };
 
   result_t rc;

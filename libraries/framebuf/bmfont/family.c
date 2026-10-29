@@ -214,15 +214,41 @@ result_t bmfontfamily_scan(const char *dir, bmfontfamily_t **family)
   return result_OK;
 }
 
+result_t bmfontfamily_split_label(const char  *label,
+                                  char        *family,
+                                  size_t       cap,
+                                  const char **style)
+{
+  const char *space;
+  size_t      len;
+
+  if (label == NULL || family == NULL || style == NULL)
+    return result_NULL_ARG;
+
+  space = strrchr(label, ' ');
+  if (space == NULL)
+    return result_BAD_ARG;
+
+  len = (size_t) (space - label);
+  if (len >= cap)
+    return result_BUFFER_OVERFLOW;
+  memcpy(family, label, len);
+  family[len] = '\0';
+
+  *style = space + 1;
+
+  return result_OK;
+}
+
 result_t bmfontfamily_label_path(const char *dir,
                                  const char *label,
                                  char       *path,
                                  size_t      cap)
 {
+  result_t    rc;
   char        dircopy[512];
-  const char *space;
   char        family[256];
-  size_t      len;
+  const char *style;
 
   if (dir == NULL || label == NULL || path == NULL)
     return result_NULL_ARG;
@@ -232,20 +258,14 @@ result_t bmfontfamily_label_path(const char *dir,
     return result_BUFFER_OVERFLOW;
   dir = dircopy;
 
-  space = strrchr(label, ' ');
-  if (space == NULL)
-    return result_BAD_ARG;
-
-  len = (size_t) (space - label);
-  if (len >= sizeof(family))
-    return result_BUFFER_OVERFLOW;
-  memcpy(family, label, len);
-  family[len] = '\0';
+  rc = bmfontfamily_split_label(label, family, sizeof(family), &style);
+  if (rc != result_OK)
+    return rc;
 
   /* pathf's buffer is shared, so a copy is unavoidable */
   if ((size_t) snprintf(path, cap, "%s",
                         pathf("%s/%s/%s" BMFONT_EXT, dir, family,
-                              space + 1)) >= cap)
+                              style)) >= cap)
     return result_BUFFER_OVERFLOW;
 
   return result_OK;

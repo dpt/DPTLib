@@ -71,6 +71,23 @@ typedef struct bmfontfamily bmfontfamily_t;
 result_t bmfontfamily_scan(const char *dir, bmfontfamily_t **family);
 
 /**
+ * Split a "Family Style" label, as reported by bmfont_enumerate(), at its
+ * last space.
+ *
+ * \param[in]  label   Label such as "MS Sans Serif Bold".
+ * \param[out] family  Receives the family name, e.g. "MS Sans Serif".
+ * \param[in]  cap     Capacity of \p family.
+ * \param[out] style   Receives a pointer into \p label at the style, e.g.
+ *                     "Bold".
+ * \return \ref result_OK on success, \ref result_BAD_ARG if \p label has no
+ *         space, or \ref result_BUFFER_OVERFLOW if the family does not fit.
+ */
+result_t bmfontfamily_split_label(const char  *label,
+                                  char        *family,
+                                  size_t       cap,
+                                  const char **style);
+
+/**
  * Build the path for a face from its "Family Style" label, as reported by
  * bmfont_enumerate() (the style is whatever follows the last space).
  *
