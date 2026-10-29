@@ -223,8 +223,10 @@ result_t bitmap_convert_into(const bitmap_t *bm,
  * Convert the given bitmap's pixels to another format of the same depth, in
  * place.
  *
- * Supported: `rgbx8888` or `rgba8888` to `bgra8888` (the `x` byte of
- * `rgbx8888` becomes opaque alpha), and any format to itself.
+ * Supported: any pair of `rgbx8888`, `rgba8888`, `bgrx8888` and `bgra8888`,
+ * swapping red and blue where their orders differ, and any format to itself.
+ * An `x` byte becomes opaque alpha when converting to an alpha format; an
+ * alpha byte is kept as-is when converting to an `x` format.
  *
  * \param[in,out] bm     Bitmap to convert.
  * \param[in]     newfmt New pixel format.

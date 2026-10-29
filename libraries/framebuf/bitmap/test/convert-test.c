@@ -435,7 +435,7 @@ static int test_convert_in_place(void)
   bitmap_t     bm;
   int          i;
 
-  printf("test: convert_in_place swaps rgbx/rgba8888 to bgra8888\n");
+  printf("test: convert_in_place swaps between rgb/bgr x/a 8888\n");
 
   memcpy(px, rgba, sizeof(px));
   bitmap_init(&bm, SIZE2D(2, 2), pixelfmt_rgba8888, 3 * 4, NULL, px);
@@ -459,6 +459,25 @@ static int test_convert_in_place(void)
     FAIL("convert_in_place same format");
   if (bitmap_convert_in_place(&bm, pixelfmt_rgb565) != result_NOT_SUPPORTED)
     FAIL("convert_in_place unsupported");
+
+  /* bgra back to rgbx swaps again and keeps the alpha byte */
+  memcpy(px, bgra, sizeof(px));
+  bitmap_init(&bm, SIZE2D(2, 2), pixelfmt_bgra8888, 3 * 4, NULL, px);
+  if (bitmap_convert_in_place(&bm, pixelfmt_rgbx8888) != result_OK ||
+      bm.format != pixelfmt_rgbx8888)
+    FAIL("convert_in_place bgra to rgbx");
+  for (i = 0; i < 6; i++)
+    if (px[i] != rgba[i])
+      FAIL("convert_in_place bgra to rgbx pixels");
+
+  /* same order, x to alpha: only the top byte changes */
+  memcpy(px, rgba, sizeof(px));
+  bitmap_init(&bm, SIZE2D(2, 2), pixelfmt_rgbx8888, 3 * 4, NULL, px);
+  if (bitmap_convert_in_place(&bm, pixelfmt_rgba8888) != result_OK)
+    FAIL("convert_in_place rgbx to rgba");
+  for (i = 0; i < 6; i++)
+    if (px[i] != (i % 3 == 2 ? rgba[i] : (rgba[i] | 0xFF000000u)))
+      FAIL("convert_in_place rgbx to rgba pixels");
 
   return 1;
 

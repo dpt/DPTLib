@@ -767,8 +767,31 @@ result_t bitmap_convert_into(const bitmap_t *src,
   }
 }
 
+/* 0 for rgbx/rgba8888, 1 for bgrx/bgra8888, -1 for anything else. Each of
+ * the four keeps its x or alpha byte on top, so they differ only in whether
+ * the low and third bytes are swapped. */
+static int bitmap_rb_order(pixelfmt_t fmt)
+{
+  switch (fmt)
+  {
+  case pixelfmt_rgbx8888:
+  case pixelfmt_rgba8888:
+    return 0;
+
+  case pixelfmt_bgrx8888:
+  case pixelfmt_bgra8888:
+    return 1;
+
+  default:
+    return -1;
+  }
+}
+
 result_t bitmap_convert_in_place(bitmap_t *bm, pixelfmt_t newfmt)
 {
+  int                  from;
+  int                  to;
+  int                  swap;
   int                  opaque;
   int                  y;
   pixelfmt_rgba8888_t *row;
@@ -778,12 +801,15 @@ result_t bitmap_convert_in_place(bitmap_t *bm, pixelfmt_t newfmt)
   if (bm->format == newfmt)
     return result_OK;
 
-  if (newfmt != pixelfmt_bgra8888 ||
-      (bm->format != pixelfmt_rgbx8888 && bm->format != pixelfmt_rgba8888))
+  from = bitmap_rb_order(bm->format);
+  to   = bitmap_rb_order(newfmt);
+  if (from < 0 || to < 0)
     return result_NOT_SUPPORTED;
 
-  /* rgbx8888's x byte isn't a real alpha channel, so force it opaque */
-  opaque = (bm->format == pixelfmt_rgbx8888);
+  swap = (from != to);
+
+  /* an x byte isn't a real alpha channel, so force it opaque */
+  opaque = !pixelfmt_has_alpha(bm->format) && pixelfmt_has_alpha(newfmt);
 
   for (y = 0; y < bm->size.h; y++)
   {
@@ -791,11 +817,12 @@ result_t bitmap_convert_in_place(bitmap_t *bm, pixelfmt_t newfmt)
                                    (size_t) y * bm->rowbytes);
     for (x = 0; x < bm->size.w; x++)
     {
-      px     = row[x];
-      row[x] = PIXELFMT_MAKE_BGRA8888(PIXELFMT_Bxxx8888(px),
-                                      PIXELFMT_xGxx8888(px),
-                                      PIXELFMT_xxRx8888(px),
-                                      opaque ? 0xFF : PIXELFMT_xxxA8888(px));
+      px = row[x];
+      if (swap)
+        px = (px & 0xFF00FF00u) | ((px >> 16) & 0xFFu) | ((px & 0xFFu) << 16);
+      if (opaque)
+        px |= 0xFF000000u;
+      row[x] = px;
     }
   }
 
