@@ -130,6 +130,7 @@ set(PUBLIC_HEADERS
     include/test/tmpdir.h
     include/test/txtscr.h
     include/text/bmtext.h
+    include/text/mdspans.h
     include/text/txtfmt.h
     include/text/utf8.h
     include/utils/alloc.h
@@ -387,6 +388,7 @@ set(TESTLIB_SOURCES
 set(TEXT_SOURCES
     libraries/text/bmtext/draw.c
     libraries/text/bmtext/layout.c
+    libraries/text/mdspans/parse.c
     libraries/text/txtfmt/create.c
     libraries/text/txtfmt/destroy.c
     libraries/text/txtfmt/get-length.c
@@ -651,6 +653,7 @@ if(BUILD_TESTS AND PROJECT_IS_TOP_LEVEL)
         libraries/io/path/test/path-test.c
         libraries/io/stream/test/stream-test.c
         libraries/text/bmtext/test/bmtext-test.c
+        libraries/text/mdspans/test/mdspans-test.c
         libraries/text/txtfmt/test/txtfmt-test.c
         libraries/text/utf8/test/utf8-test.c
         libraries/utils/array/test/array-test.c
