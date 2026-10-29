@@ -151,6 +151,32 @@ static result_t test_is_full(void)
   return result_TEST_PASSED;
 }
 
+static result_t test_parent(void)
+{
+  char out[16];
+
+#ifdef __riscos
+  if (!path_parent("ADFS::disc.$.dir", out, sizeof(out)) ||
+      strcmp(out, "ADFS::disc.$") != 0)
+    return result_TEST_FAILED;
+  if (path_parent("file", out, sizeof(out)) ||
+      path_parent("ADFS::disc.$.dir", out, 4))
+    return result_TEST_FAILED;
+#else
+  if (!path_parent("/dir/file", out, sizeof(out)) ||
+      strcmp(out, "/dir") != 0)
+    return result_TEST_FAILED;
+  if (!path_parent("/dir", out, sizeof(out)) || strcmp(out, "/") != 0)
+    return result_TEST_FAILED;
+  if (path_parent("/", out, sizeof(out)) ||
+      path_parent("file", out, sizeof(out)) ||
+      path_parent("/dir/file", out, 4))
+    return result_TEST_FAILED;
+#endif
+
+  return result_TEST_PASSED;
+}
+
 result_t path_test(const char *resources)
 {
   static result_t (*const tests[])(void) =
@@ -162,7 +188,8 @@ result_t path_test(const char *resources)
     test_leaf_valid_accepts,
     test_leaf_valid_rejects,
     test_leaf,
-    test_is_full
+    test_is_full,
+    test_parent
   };
 
   result_t rc;

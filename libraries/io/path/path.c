@@ -182,3 +182,37 @@ int path_is_full(const char *path)
 
 #endif
 }
+
+int path_parent(const char *path, char *out, size_t cap)
+{
+  const char *sep;
+  size_t      len;
+
+  assert(path);
+  assert(out);
+
+#ifdef __riscos
+  /* "adfs::Disc.$.Dir" -> "adfs::Disc.$"; stop at the root or a bare name */
+  sep = strrchr(path, '.');
+  if (sep == NULL || sep == path)
+    return 0;
+
+  len = (size_t) (sep - path);
+#else
+  sep = strrchr(path, '/');
+  if (sep == NULL || (sep == path && path[1] == '\0'))
+    return 0;
+
+  len = (size_t) (sep - path);
+  if (len == 0)
+    len = 1; /* the parent of "/a" is "/" */
+#endif
+
+  if (len >= cap)
+    return 0;
+
+  memcpy(out, path, len);
+  out[len] = '\0';
+
+  return 1;
+}

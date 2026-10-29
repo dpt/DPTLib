@@ -84,4 +84,14 @@ const char *path_leaf(const char *path);
  */
 int path_is_full(const char *path);
 
+/**
+ * Writes the directory holding 'path' into 'out' (capacity 'cap'): 'path' up
+ * to its last host path separator ('/' on the desktop, '.' on RISC OS). On
+ * the desktop the parent of "/a" is "/".
+ *
+ * \return Nonzero on success, zero if 'path' is the root, has no separator
+ *         or its parent does not fit 'cap'.
+ */
+int path_parent(const char *path, char *out, size_t cap);
+
 #endif /* DPTLIB_PATH */
