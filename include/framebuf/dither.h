@@ -7,9 +7,9 @@
  * each pixel's quantisation error over its unvisited neighbours using a
  * standard kernel. Errors are kept per channel in integer arithmetic and
  * diffused in sRGB or, optionally, in linear light. Ordered methods instead
- * nudge each pixel by a fixed threshold map before the lookup.
- * Nearest-colour lookups go through \ref pixelmap_get, so they are always
- * made in sRGB.
+ * nudge each pixel by a fixed threshold map before the lookup, again
+ * optionally in linear light. Nearest-colour lookups go through \ref
+ * pixelmap_get, so they are always made in sRGB.
  */
 
 #ifndef FRAMEBUF_DITHER_H
@@ -72,7 +72,7 @@ typedef struct dither_options
                                *   ordered spread or of Knoll's carried
                                *   error, 0 to 100. */
   int             serpentine; /**< Non-zero: alternate row direction. */
-  int             linear;     /**< Non-zero: diffuse in linear light. */
+  int             linear;     /**< Non-zero: dither in linear light. */
 }
 dither_options_t;
 
@@ -101,14 +101,17 @@ dither_options_t;
  *
  * Ordered methods add a bias of up to half the palette's typical channel gap
  * (\ref pixelmap_t's `step`) either way, chosen per pixel by the threshold
- * map. They have no error to carry, so they ignore `serpentine` and
- * `linear`.
+ * map. They have no error to carry, so they ignore `serpentine`. With
+ * `linear` the bias is added in linear light, rescaled to the linear width
+ * of the gap around each channel, so the threshold splits pixels between
+ * palette entries in proportion to their physical brightness.
  *
  * \ref dither_KNOLL is Thomas Knoll's pattern dither. Per pixel it picks 16
  * candidate colours whose mix approximates the source, sorts them by luma
  * and takes the one the Bayer threshold selects. It costs 16 lookups a pixel
  * but suits fixed, uneven palettes better than a plain ordered bias. Like
- * the ordered methods it ignores `serpentine` and `linear`.
+ * the ordered methods it ignores `serpentine`; with `linear` its candidates'
+ * error is carried in linear light.
  *
  * \ref dither_YLILUOMA is Joel Yliluoma's arbitrary-palette positional
  * dither, his algorithm 2. Per pixel it builds a plan of 16 palette entries,
@@ -118,7 +121,8 @@ dither_options_t;
  * palette, so plans are cached per colour cut to 5:6:5 bits. Even so it is
  * far slower than Knoll on large palettes, but its mixes are closer.
  * `strength` scales how far the threshold strays from the plan's middle
- * entry. It ignores `serpentine` and `linear`.
+ * entry. It ignores `serpentine`; with `linear` its plans mix in linear
+ * light.
  *
  * \ref dither_RIEMERSMA walks the image along a Hilbert curve and adds to
  * each pixel a weighted sum of the last 16 errors, the newest weighted most.

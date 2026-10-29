@@ -213,6 +213,52 @@ static unsigned int dither_lookup(const pixelmap_t *pm,
          ((1u << (1u << pm->dest_log2bpp)) - 1);
 }
 
+/* Nearest palette index for channels r, g, b: sRGB, or linear when dec is
+ * set. */
+static unsigned int dither_nearest(const pixelmap_t *pm,
+                                   const uint16_t   *dec,
+                                   unsigned int      r,
+                                   unsigned int      g,
+                                   unsigned int      b)
+{
+  const uint8_t *enc;
+
+  if (dec == NULL)
+    return dither_lookup(pm, r, g, b);
+
+  enc = colourspace_srgb_encode();
+
+  return dither_lookup(pm,
+                       enc[r >> (16 - colourspace_ENCODE_BITS)],
+                       enc[g >> (16 - colourspace_ENCODE_BITS)],
+                       enc[b >> (16 - colourspace_ENCODE_BITS)]);
+}
+
+/* Nudge sRGB channel c by an ordered method's bias t, a share of the
+ * palette's sRGB step. With dec, c is first moved within the step holding
+ * it to where its linear light falls between the step's ends, so that the
+ * threshold splits pixels between the palette entries either side in
+ * proportion to their physical brightness.
+ * ponytail: assumes palette levels at multiples of pm->step, as on an even
+ * grid; an uneven palette's true brackets would need a search per pixel. */
+static unsigned int dither_bias(const pixelmap_t *pm,
+                                const uint16_t   *dec,
+                                unsigned int      c,
+                                int               t)
+{
+  unsigned int a, b;
+
+  if (dec && pm->step > 0)
+  {
+    a = c / pm->step * pm->step;
+    b = MIN(a + pm->step, 255u);
+    if (b > a)
+      c = a + (unsigned int) ((dec[c] - dec[a]) * (b - a) / (dec[b] - dec[a]));
+  }
+
+  return (unsigned int) CLAMP((int) c + t, 0, 255);
+}
+
 /* Store a palette index using the bitmap module's packing: p4 low nibble
  * first, p1 and p2 most significant bits first. */
 static void dither_put(unsigned char *row,
@@ -277,10 +323,13 @@ static void dither_luma_ranks(const colour_t *palette,
 /* Thomas Knoll's pattern dither: pick KNOLL_N candidates by looking up the
  * source plus the error the candidates so far have accumulated (scaled by
  * strength), so that their mix approximates the source. Then take the
- * candidate at threshold t (0..63) in luma order. */
+ * candidate at threshold t (0..63) in luma order. r, g, b are sRGB; with
+ * dec set the error is measured in linear light, 0..max. */
 static unsigned int dither_knoll(const pixelmap_t    *pm,
                                  const colour_t      *palette,
                                  const unsigned char *rank,
+                                 const uint16_t      *dec,
+                                 int                  max,
                                  unsigned int         r,
                                  unsigned int         g,
                                  unsigned int         b,
@@ -296,16 +345,29 @@ static unsigned int dither_knoll(const pixelmap_t    *pm,
   unsigned int pr, pg, pb;
   int          want;
 
+  if (dec)
+  {
+    r = dec[r];
+    g = dec[g];
+    b = dec[b];
+  }
+
   /* distinct candidates in idx[0..n), each seen count[] times */
   n  = 0;
   er = eg = eb = 0;
   for (i = 0; i < KNOLL_N; i++)
   {
-    c = dither_lookup(pm,
-                      dither_apply(r, er * strength, 100, 255),
-                      dither_apply(g, eg * strength, 100, 255),
-                      dither_apply(b, eb * strength, 100, 255));
+    c = dither_nearest(pm, dec,
+                       dither_apply(r, er * strength, 100, max),
+                       dither_apply(g, eg * strength, 100, max),
+                       dither_apply(b, eb * strength, 100, max));
     colour_get_rgb(&palette[c], &pr, &pg, &pb);
+    if (dec)
+    {
+      pr = dec[pr];
+      pg = dec[pg];
+      pb = dec[pb];
+    }
     er += (int) r - (int) pr;
     eg += (int) g - (int) pg;
     eb += (int) b - (int) pb;
@@ -346,7 +408,8 @@ static unsigned int dither_knoll(const pixelmap_t    *pm,
 
 typedef struct dither_yliluoma
 {
-  double        pal[256][3]; /* palette channels */
+  double        pal[256][3]; /* palette channels, 0..255 in sRGB or in
+                              * linear light */
   unsigned char made[65536]; /* non-zero: plan[key] is built */
   unsigned char plan[65536][YLILUOMA_N];
 }
@@ -438,10 +501,12 @@ static void dither_yliluoma_plan(const dither_yliluoma_t *yl,
 
 /* Joel Yliluoma's arbitrary-palette positional dither, algorithm 2: take the
  * entry at threshold t (0..63) from the plan for r, g, b, pulled toward the
- * plan's middle as strength falls. */
+ * plan's middle as strength falls. r, g, b are sRGB; with dec set the plan
+ * mixes in linear light, as yl->pal must then hold. */
 static unsigned int dither_yliluoma(dither_yliluoma_t   *yl,
                                     int                  ncolours,
                                     const unsigned char *rank,
+                                    const uint16_t      *dec,
                                     unsigned int         r,
                                     unsigned int         g,
                                     unsigned int         b,
@@ -450,6 +515,7 @@ static unsigned int dither_yliluoma(dither_yliluoma_t   *yl,
 {
   unsigned int key;
   double       want[3];
+  int          ch;
   int          pos;
 
   key = YLILUOMA_KEY(r, g, b);
@@ -458,6 +524,9 @@ static unsigned int dither_yliluoma(dither_yliluoma_t   *yl,
     want[0] = (r & ~7u) | 4;
     want[1] = (g & ~3u) | 2;
     want[2] = (b & ~7u) | 4;
+    if (dec)
+      for (ch = 0; ch < 3; ch++)
+        want[ch] = dec[(int) want[ch]] / 257.0;
     dither_yliluoma_plan(yl, ncolours, rank, want, yl->plan[key]);
     yl->made[key] = 1;
   }
@@ -688,27 +757,6 @@ static unsigned int dither_zhou_fang(unsigned int            c,
 #define RIEMERSMA_Q     16 /* errors remembered along the curve */
 #define RIEMERSMA_RATIO 16 /* newest error's weight over the oldest's */
 #define RIEMERSMA_ONE   1024 /* the newest error's weight */
-
-/* Nearest palette index for channels r, g, b: sRGB, or linear when dec is
- * set. */
-static unsigned int dither_nearest(const pixelmap_t *pm,
-                                   const uint16_t   *dec,
-                                   unsigned int      r,
-                                   unsigned int      g,
-                                   unsigned int      b)
-{
-  const uint8_t *enc;
-
-  if (dec == NULL)
-    return dither_lookup(pm, r, g, b);
-
-  enc = colourspace_srgb_encode();
-
-  return dither_lookup(pm,
-                       enc[r >> (16 - colourspace_ENCODE_BITS)],
-                       enc[g >> (16 - colourspace_ENCODE_BITS)],
-                       enc[b >> (16 - colourspace_ENCODE_BITS)]);
-}
 
 /* Position d along a Hilbert curve filling an n by n square, n a power of
  * two. */
@@ -942,7 +990,7 @@ result_t dither_bitmap(const bitmap_t         *src,
    * and are re-encoded only for the nearest-colour lookup */
   dec = NULL;
   max = 255;
-  if (opts->linear && k->threshold == NULL)
+  if (opts->linear)
   {
     dec = colourspace_srgb_decode();
     max = colourspace_LINEAR_MAX;
@@ -962,9 +1010,9 @@ result_t dither_bitmap(const bitmap_t         *src,
     for (i = 0; i < opts->ncolours; i++)
     {
       colour_get_rgb(&palette[i], &pr, &pg, &pb);
-      yl->pal[i][0] = pr;
-      yl->pal[i][1] = pg;
-      yl->pal[i][2] = pb;
+      yl->pal[i][0] = dec ? dec[pr] / 257.0 : pr;
+      yl->pal[i][1] = dec ? dec[pg] / 257.0 : pg;
+      yl->pal[i][2] = dec ? dec[pb] / 257.0 : pb;
     }
   }
 
@@ -995,7 +1043,8 @@ result_t dither_bitmap(const bitmap_t         *src,
       r = PIXELFMT_Rxxx8888(px[x]);
       g = PIXELFMT_xGxx8888(px[x]);
       b = PIXELFMT_xxBx8888(px[x]);
-      if (dec)
+      /* the threshold methods decode for themselves */
+      if (dec && k->threshold == NULL)
       {
         r = dec[r];
         g = dec[g];
@@ -1004,20 +1053,20 @@ result_t dither_bitmap(const bitmap_t         *src,
 
       if (opts->method == dither_KNOLL)
       {
-        index = dither_knoll(pm, palette, rank, r, g, b, k->threshold(x, y),
-                             opts->strength);
+        index = dither_knoll(pm, palette, rank, dec, max, r, g, b,
+                             k->threshold(x, y), opts->strength);
       }
       else if (opts->method == dither_YLILUOMA)
       {
-        index = dither_yliluoma(yl, opts->ncolours, rank, r, g, b,
+        index = dither_yliluoma(yl, opts->ncolours, rank, dec, r, g, b,
                                 k->threshold(x, y), opts->strength);
       }
       else if (k->threshold)
       {
         t = bias[k->threshold(x, y)];
-        r = (unsigned int) CLAMP((int) r + t, 0, 255);
-        g = (unsigned int) CLAMP((int) g + t, 0, 255);
-        b = (unsigned int) CLAMP((int) b + t, 0, 255);
+        r = dither_bias(pm, dec, r, t);
+        g = dither_bias(pm, dec, g, t);
+        b = dither_bias(pm, dec, b, t);
         index = dither_lookup(pm, r, g, b);
       }
       else

@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `dither_options_t`'s `linear` now applies to the ordered methods, Knoll and
+  Yliluoma too: ordered thresholds split pixels in proportion to linear
+  light, Knoll carries its error and Yliluoma mixes its plans in linear
+  light.
+
 ### Fixed
 
 - `bmfont_draw` draws to rgbx8888 and rgba8888 screens (such as RISC OS 16M

@@ -71,6 +71,14 @@ result_t dither_test(const char *resources)
     { 17,  pixelfmt_p8 },
     { 256, pixelfmt_p8 }
   };
+  static const dither_method_t linear_methods[] =
+  {
+    dither_FLOYD_STEINBERG,
+    dither_RIEMERSMA,
+    dither_BAYER_8,
+    dither_KNOLL,
+    dither_YLILUOMA
+  };
 
   result_t            rc;
   pixelfmt_rgbx8888_t pixels[W * H];
@@ -213,18 +221,18 @@ result_t dither_test(const char *resources)
   free_bitmap(ref);
   free_bitmap(out);
 
-  /* 5. flat sRGB grey 128 against black and white, by Floyd-Steinberg and by
-   * Riemersma: sRGB diffusion lights about half the pixels, linear about 22%
-   * (128 decodes to 0.216) */
+  /* 5. flat sRGB grey 128 against black and white, diffused and ordered: in
+   * sRGB about half the pixels light, in linear light about 22% (128
+   * decodes to 0.216) */
   for (i = 0; i < W * H; i++)
     pixels[i] = PIXELFMT_MAKE_RGBA8888(128, 128, 128, 255);
 
   opts.strength   = 100;
   opts.serpentine = 1;
 
-  for (i = 0; i < 4; i++)
+  for (i = 0; i < 2 * (int) NELEMS(linear_methods); i++)
   {
-    opts.method = (i & 2) ? dither_RIEMERSMA : dither_FLOYD_STEINBERG;
+    opts.method = linear_methods[i / 2];
     opts.linear = i & 1;
     rc = dither_bitmap(&src, &opts, &out);
     if (rc != result_OK)
