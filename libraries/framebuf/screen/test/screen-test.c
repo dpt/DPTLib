@@ -47,7 +47,7 @@ linetest_t;
 
 /* Rectangles which, taken together, cover the whole canvas without overlap.
  * Three separate partitions: vertical strips, horizontal strips, and an
- * irregular split, mirroring the pieces wuss__clip_to_visible() generates. */
+ * irregular split, as a window manager's visible-region clipping generates. */
 typedef struct partition
 {
   int    nboxes;

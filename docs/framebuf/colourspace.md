@@ -1,8 +1,8 @@
 # [DPTLib](https://github.com/dpt/DPTLib) > framebuf > colourspace
 
 `colourspace` converts colours between sRGB and the CMYK, HSL, HSV and OKLab
-models. It is the maths behind the true-colour colour picker, but has no
-dependence on wuss.
+models. It is the maths behind Wuss's true-colour colour picker, but has no
+dependence on Wuss.
 
 ## Design
 

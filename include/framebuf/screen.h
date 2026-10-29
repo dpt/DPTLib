@@ -490,8 +490,8 @@ void screen_draw_rect(screen_t *scr,
  * the ring is drawn -- fill the interior first if you want one. `box` is
  * inclusive-exclusive, as elsewhere. Swap `a` and `b` for a sunken rather
  * than a raised look; pass the same colour for both for a plain 2px frame.
- * Nest calls on successively inset boxes to build a thicker surround (as the
- * wuss action-button border does).
+ * Nest calls on successively inset boxes to build a thicker surround (as
+ * Wuss's action-button border does).
  *
  * Assumes `box` is at least 4x4; smaller boxes lose their edge shape but
  * draw harmlessly. Clipped to the screen's clip region.
