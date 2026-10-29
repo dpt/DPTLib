@@ -295,6 +295,18 @@ result_t bitmap_restore_outside_region(bitmap_t       *dst,
 int bitmap_has_transparency(const bitmap_t *bm);
 
 /**
+ * Zero every fully transparent pixel of `bm`, colour bits included.
+ *
+ * A colour-keyed image can load with its key colour kept under alpha 0;
+ * clearing it lets \ref bitmap_compress encode those pixels as skips. Only
+ * the 32bpp alpha formats are changed: other formats, and compressed
+ * bitmaps, are left alone.
+ *
+ * \param[in,out] bm Bitmap to clear.
+ */
+void bitmap_clear_transparent(bitmap_t *bm);
+
+/**
  * Compress a bitmap's pixels in place into a read-only run-length-encoded
  * blob, replacing `bm->base`. `bm->size`, `bm->palette` and `bm->span` stay
  * valid for the decoded format; `bm->format` gains \ref pixelfmt_RLE_FLAG

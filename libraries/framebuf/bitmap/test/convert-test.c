@@ -820,6 +820,41 @@ Failure:
   return 0;
 }
 
+static int test_clear_transparent(void)
+{
+  unsigned int px[3];
+  bitmap_t     bm;
+
+  printf("test: clear_transparent\n");
+
+  /* only the alpha-0 pixel is zeroed, in both alpha layouts */
+  px[0] = 0x00FF00FFu;
+  px[1] = 0x01FF00FFu;
+  px[2] = 0xFFFF00FFu;
+  bitmap_init(&bm, SIZE2D(3, 1), pixelfmt_bgra8888, 3 * 4, NULL, px);
+  bitmap_clear_transparent(&bm);
+  if (px[0] != 0 || px[1] != 0x01FF00FFu || px[2] != 0xFFFF00FFu)
+    FAIL("clear_transparent bgra");
+
+  px[0] = 0xFF00FF00u;
+  bm.format = pixelfmt_abgr8888;
+  bitmap_clear_transparent(&bm);
+  if (px[0] != 0 || px[2] != 0xFFFF00FFu)
+    FAIL("clear_transparent abgr");
+
+  /* no alpha: left alone */
+  px[0] = 0x00FF00FFu;
+  bm.format = pixelfmt_bgrx8888;
+  bitmap_clear_transparent(&bm);
+  if (px[0] != 0x00FF00FFu)
+    FAIL("clear_transparent no alpha");
+
+  return 1;
+
+Failure:
+  return 0;
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t bitmap_convert_test(const char *resources)
@@ -840,7 +875,8 @@ result_t bitmap_convert_test(const char *resources)
       !test_fill_pattern() ||
       !test_flood_fill() ||
       !test_restore_outside_region() ||
-      !test_has_transparency())
+      !test_has_transparency() ||
+      !test_clear_transparent())
     return result_TEST_FAILED;
 
   return result_TEST_PASSED;

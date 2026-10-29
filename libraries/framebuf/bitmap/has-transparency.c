@@ -1,4 +1,4 @@
-/* framebuf/bitmap/has-transparency.c -- whether any pixel is less than opaque */
+/* framebuf/bitmap/has-transparency.c -- find and clear transparent pixels */
 
 #include <assert.h>
 #include <stddef.h>
@@ -55,4 +55,30 @@ int bitmap_has_transparency(const bitmap_t *bm)
   }
 
   return 0;
+}
+
+void bitmap_clear_transparent(bitmap_t *bm)
+{
+  int               shift;
+  int               y;
+  pixelfmt_any32_t *row;
+  int               x;
+
+  assert(bm);
+
+  if (bitmap_is_compressed(bm) || pixelfmt_log2bpp(bm->format) != 5 ||
+      !pixelfmt_has_alpha(bm->format))
+    return;
+
+  shift = (bm->format == pixelfmt_bgra8888 ||
+           bm->format == pixelfmt_rgba8888) ? 24 : 0;
+
+  for (y = 0; y < bm->size.h; y++)
+  {
+    row = (pixelfmt_any32_t *) ((uint8_t *) bm->base +
+                                (size_t) y * bm->rowbytes);
+    for (x = 0; x < bm->size.w; x++)
+      if (((row[x] >> shift) & 0xFF) == 0)
+        row[x] = 0;
+  }
 }
