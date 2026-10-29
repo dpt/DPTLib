@@ -2041,7 +2041,8 @@ result_t bmfont_test(const char *resources)
     { 800, 600, pixelfmt_p8       },
     { 800, 600, pixelfmt_rgbx5551 },
     { 800, 600, pixelfmt_rgb565   },
-    { 800, 600, pixelfmt_bgrx8888 }
+    { 800, 600, pixelfmt_bgrx8888 },
+    { 800, 600, pixelfmt_rgbx8888 }
   };
 
   result_t rc;

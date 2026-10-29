@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- `bmfont_draw` draws to rgbx8888 and rgba8888 screens (such as RISC OS 16M
+  colour modes) instead of failing with `result_NOT_SUPPORTED`.
+
 ## [0.7.0] - 2026-10-29
 
 ### Added

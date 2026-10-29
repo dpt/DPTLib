@@ -3093,7 +3093,7 @@ result_t bmfont_draw(bmfont_t               *bmfont,
       { bmfont_drawchar_p8_2w_o,      bmfont_drawchar_p8_2w_t      },
       { bmfont_drawchar_p8_4w_o,      bmfont_drawchar_p8_4w_t      },
     },
-    { /* pixelfmt_bgra8888 / pixelfmt_bgrx8888 */
+    { /* pixelfmt_{bgra,bgrx,rgba,rgbx}8888 */
       { bmfont_drawchar_any8888_1w_o, bmfont_drawchar_any8888_1w_t },
       { bmfont_drawchar_any8888_2w_o, bmfont_drawchar_any8888_2w_t },
       { bmfont_drawchar_any8888_4w_o, bmfont_drawchar_any8888_4w_t },
@@ -3131,7 +3131,9 @@ result_t bmfont_draw(bmfont_t               *bmfont,
     case pixelfmt_p4:       fmt_idx = 2; break;
     case pixelfmt_p8:       fmt_idx = 3; break;
     case pixelfmt_bgra8888:
-    case pixelfmt_bgrx8888: fmt_idx = 4; break;
+    case pixelfmt_bgrx8888:
+    case pixelfmt_rgba8888:
+    case pixelfmt_rgbx8888: fmt_idx = 4; break;
     case pixelfmt_rgb565:
     case pixelfmt_rgbx5551: fmt_idx = 5; break;
     default: assert(0); return result_NOT_SUPPORTED;
