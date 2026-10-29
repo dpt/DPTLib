@@ -151,6 +151,40 @@ static result_t test_list_add(void)
   return result_TEST_PASSED;
 }
 
+static result_t test_subtract(void)
+{
+  static const box_t a       = {  0,  0, 10, 10 };
+  static const box_t middle  = {  3,  4,  6,  7 };
+  static const box_t above   = {  0,  0, 10,  4 };
+  static const box_t below   = {  0,  7, 10, 10 };
+  static const box_t left    = {  0,  4,  3,  7 };
+  static const box_t right   = {  6,  4, 10,  7 };
+  static const box_t topspan = { -5, -5, 15,  5 }; /* covers a's top half */
+  static const box_t bottom  = {  0,  5, 10, 10 };
+  static const box_t far     = { 50, 50, 60, 60 };
+  static const box_t cover   = { -1, -1, 11, 11 };
+
+  box_t out[4];
+
+  /* a hole in the middle leaves all four bands, in order */
+  if (box_subtract(&a, &middle, out) != 4 ||
+      !box_equal(&out[0], &above) || !box_equal(&out[1], &below) ||
+      !box_equal(&out[2], &left)  || !box_equal(&out[3], &right))
+    return result_TEST_FAILED;
+
+  /* "b" may overhang "a": only the overlap is removed */
+  if (box_subtract(&a, &topspan, out) != 1 || !box_equal(&out[0], &bottom))
+    return result_TEST_FAILED;
+
+  if (box_subtract(&a, &far, out) != 1 || !box_equal(&out[0], &a))
+    return result_TEST_FAILED;
+
+  if (box_subtract(&a, &cover, out) != 0)
+    return result_TEST_FAILED;
+
+  return result_TEST_PASSED;
+}
+
 result_t box_test(const char *resources)
 {
   typedef result_t (*boxtestfn)(void);
@@ -162,7 +196,8 @@ result_t box_test(const char *resources)
     test_contains_box,
     test_contains_point,
     test_translated,
-    test_list_add
+    test_list_add,
+    test_subtract
   };
 
   result_t rc;

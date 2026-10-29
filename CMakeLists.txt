@@ -343,6 +343,7 @@ set(GEOM_SOURCES
     libraries/geom/box/round.c
     libraries/geom/box/round4.c
     libraries/geom/box/size.c
+    libraries/geom/box/subtract.c
     libraries/geom/box/translated.c
     libraries/geom/box/union.c
     libraries/geom/hull/hull.c

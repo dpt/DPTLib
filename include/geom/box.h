@@ -116,6 +116,19 @@ void box_clipped(const box_t *a, const box_t *b, box_t *clipped);
 void box_union(const box_t *a, const box_t *b, box_t *c);
 
 /**
+ * Splits box "a" minus box "b" into non-overlapping bands: full-width bands
+ * above and below "b", then bands to its left and right spanning only the
+ * overlap's height.
+ *
+ * \param[in]  a   The box to cut from.
+ * \param[in]  b   The box to remove.
+ * \param[out] out Up to four surviving bands, in the order above, below,
+ *                 left, right. "a" itself if the boxes do not overlap.
+ * \return The number of bands written to "out", 0 if "b" covers "a".
+ */
+int box_subtract(const box_t *a, const box_t *b, box_t out[4]);
+
+/**
  * Adds a box to a bounded list of boxes, such as a list of dirty regions.
  *
  * Entries the new box covers, or with which it shares a complete edge, are
