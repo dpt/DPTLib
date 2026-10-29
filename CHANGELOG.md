@@ -3,10 +3,104 @@
 All notable changes to DPTLib are recorded here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
-This project does not yet publish versioned releases; entries are grouped under
-_Unreleased_ until one is cut.
 
 ## [Unreleased]
+
+## [0.7.0] - 2026-10-29
+
+### Added
+
+- `framebuf/dither.h` gains ordered and further diffusion methods. Ordered:
+  2x2, 4x4, 8x8 and 16x16 Bayer (`dither_BAYER_2` to `dither_BAYER_16`),
+  64x64 blue noise, an 8x8 clustered-dot halftone
+  (`pattern_clustered_threshold`), repeatable white-noise thresholds
+  (`dither_RANDOM`), Knoll's pattern dither and Yliluoma's positional dither
+  (algorithm 2). Diffusion: Sierra two-row and Sierra lite, Fan and
+  Shiau-Fan (four and five cell), Riemersma along a Hilbert curve,
+  Ostromoukhov's variable coefficients and Zhou-Fang threshold modulation.
+  `dither_options_t` gains `linear` to diffuse in linear light.
+- `framebuf/colourspace.h`: `colourspace_srgb_decode` and
+  `colourspace_srgb_encode` return shared sRGB/linear-light lookup tables.
+  Dithering and resizing now use them instead of building their own.
+- `framebuf/bitmap.h`: `bitmap_convert_in_place` swaps red and blue between
+  any pair of rgbx, rgba, bgrx and bgra; `bitmap_clone` and
+  `bitmap_copy_pixels`; `bitmap_load_png_deep` loads a PNG and expands a
+  paletted result to a deep format; `bitmap_flood_fill`, a scanline flood
+  fill for 32bpp bitmaps that reports the bounds it changed;
+  `bitmap_restore_outside_region` copies back from a second bitmap the
+  pixels of a box that lie outside a region; `bitmap_has_transparency`
+  reports whether any pixel is less than opaque; `bitmap_clear_transparent`
+  clears colour-keyed pixels to transparent.
+- `framebuf/screen.h`: `screen_draw_ellipse` and `screen_fill_ellipse` for
+  axis-aligned ellipses; `screen_fill_checks` fills a box with a phased
+  checkerboard; `screen_fill_linear_gradient` fills a box with a 256-step
+  linear gradient between two points, alpha included.
+- `framebuf/colour.h`: `colour_mix_rgba` blends alpha too and rounds to
+  nearest, where `colour_mix` is opaque and truncates.
+- `framebuf/span-bgra8888.h`: a bgra8888 span blending on straight alpha.
+- `framebuf/pattern.h`: `pattern_bayer_threshold_n` gives the threshold
+  from a Bayer matrix of any power of two size; `pattern_is_solid` reports
+  whether a pattern paints a single colour.
+- `framebuf/pixelfmt.h`: `pixelfmt_channel_step` gives the gap between
+  adjacent levels of a direct-colour format's channel.
+- `framebuf/tonemap.h`: `tonemap_rgb_in_sync` and `tonemap_has_alpha` report
+  whether red, green and blue were last set together and whether alpha is
+  present, so a tone map editor can choose between one combined curve and
+  separate ones.
+- `framebuf/bmfontfamily.h`: `bmfontfamily_split_label` splits a
+  `Family Style` label; `bmfontfamily_label_path` uses it.
+- `framebuf/palettes.h`: `palettes_load_hex` reads Lospec-style `.hex`
+  palette files, one colour per line.
+- DPT-Henry maps the em dash and lookalike codepoints (spaces, dashes,
+  quotes, primes, Greek and Cyrillic lookalikes, Roman numerals, maths
+  operators and fullwidth ASCII) onto its existing ASCII cells.
+- `geom/box.h`: `box_subtract` splits one box minus another into up to four
+  non-overlapping bands; `box_equal` compares two boxes.
+- `geom/hull.h`: `hull_convex` computes the convex hull of a set of points
+  as a closed polyline.
+- `geom/region.h`: `region_from_flood` builds the region 4-connected to a
+  seed through pixels a caller's predicate accepts, such as a magic wand
+  selection; `region_union` and `region_subtract` combine two regions row
+  by row; `region_translate` copies a region shifted and clipped to a box.
+- `text/mdspans.h`: `mdspans_parse` turns minimal Markdown into plain text
+  and styled spans, without overlaps.
+- `text/utf8.h`: `utf8_rune_start` snaps a byte index to the start of its
+  codepoint; `utf8_word_left` and `utf8_word_right` step over
+  space-separated words.
+- `io/path.h`: `path_parent`.
+- `utils/alloc.h`: `alloc_t` allocator hooks (malloc, realloc and free),
+  the stdlib `alloc_default` and `alloc_strdup`, moved from Wuss's
+  `wuss_alloc_t`. `array_grow_alloc` grows an array through an `alloc_t`.
+- `utils/rng.h`: `rng_bits` returns the low bits of an xorshift32 step;
+  `rng_hash32` is a stateless keyed hash and `rng_noise1d` smooth 1-D value
+  noise.
+
+### Changed
+
+- **Breaking:** `dither_method_t` is renumbered: nearest first, then the
+  threshold methods, then the error-diffusion methods. `dither_BAYER` is
+  renamed `dither_BAYER_8`.
+- `pattern_from_colour` tries pairs nearest first and stops once no farther
+  pair can win, so a 256-entry palette costs a sort and a few pairs rather
+  than all 32,896. Only the first 256 entries are considered.
+- `pattern_from_colour` mixes in linear light with perceptual channel
+  weights, so stipples average as the eye sees them: greys stay neutral and
+  1bpp gradients dither smoothly rather than jumping between solids.
+- `bmfont_lookup` answers ASCII from a 128-entry table rather than a binary
+  search.
+- `BUILD_SDL_TESTS` is offered only when DPTLib is the top-level project.
+- The default branch is renamed from `master` to `main`.
+
+### Fixed
+
+- Error diffusion limits the error each pixel carries to two of the
+  palette's typical gaps, so chroma a palette cannot express no longer
+  builds up until channels clip.
+
+## [0.6.0] - 2026-10-23
+
+Changes up to and including 0.6.0. Earlier releases were not recorded
+separately.
 
 ### Removed
 
@@ -19,61 +113,6 @@ _Unreleased_ until one is cut.
 
 ### Added
 
-- `text/mdspans.h`: `mdspans_parse` turns minimal Markdown into plain text
-  and styled spans, moved from Wuss's Reading task. Inline runs within a
-  header are stripped but not styled, so spans never overlap, and a header
-  prefix is limited to six `#`.
-- `utils/rng.h`: `rng_hash32`, a stateless keyed hash, and `rng_noise1d`,
-  smooth 1-D value noise.
-- `framebuf/bitmap.h`: `bitmap_clear_transparent` clears colour-keyed
-  pixels to transparent.
-- `framebuf/bmfontfamily.h`: `bmfontfamily_split_label` splits a
-  `Family Style` label; `bmfontfamily_label_path` uses it.
-- `io/path.h`: `path_parent`.
-- `framebuf/palettes.h`: `palettes_load_hex` reads Lospec-style `.hex`
-  palette files, one colour per line. Moved from Wuss's Palette task.
-- `geom/box.h`: `box_subtract` splits one box minus another into up to four
-  non-overlapping bands, moved from Wuss's invalidation code; `box_equal`
-  compares two boxes.
-- `geom/region.h`: `region_translate` copies a region shifted by (dx,dy)
-  and clipped to a box, for moving a selection.
-- `framebuf/dither.h`: `dither_YLILUOMA`, Joel Yliluoma's arbitrary-palette
-  ordered dither (algorithm 2). Plans of 16 palette entries are cached per
-  colour cut to 5:6:5 bits.
-- `utils/alloc.h`: `alloc_t` allocator hooks (malloc, realloc and free),
-  the stdlib `alloc_default` and `alloc_strdup`, moved from Wuss's
-  `wuss_alloc_t`. `array_grow_alloc` grows an array through an `alloc_t`.
-- `utils/rng.h`: `rng_bits` returns the low bits of an xorshift32 step.
-- `framebuf/bitmap.h`: `bitmap_flood_fill`, a scanline flood fill for 32bpp
-  bitmaps that reports the bounds it changed.
-- `framebuf/colour.h`: `colour_mix_rgba` blends alpha too and rounds to
-  nearest, where `colour_mix` is opaque and truncates.
-- `framebuf/screen.h`: `screen_fill_linear_gradient` fills a box with a
-  256-step linear gradient between two points, alpha included.
-- `framebuf/bitmap.h`: `bitmap_restore_outside_region` copies back from a
-  second bitmap the pixels of a box that lie outside a region.
-- `framebuf/bitmap.h`: `bitmap_has_transparency` reports whether any pixel
-  is less than opaque.
-- `geom/hull.h`: `hull_convex` computes the convex hull of a set of points
-  as a closed polyline.
-- `framebuf/pattern.h`: `pattern_bayer_threshold_n` gives the threshold
-  from a Bayer matrix of any power of two size.
-- `framebuf/pattern.h`: `pattern_is_solid` reports whether a pattern paints
-  a single colour, so it can be drawn as a plain rectangle fill.
-- `geom/region.h`: `region_from_flood` builds the region 4-connected to a
-  seed through pixels a caller's predicate accepts, such as a magic wand
-  selection.
-- `geom/region.h`: `region_union` and `region_subtract` combine two regions
-  row by row, in proportion to their runs.
-- `text/utf8.h`: `utf8_rune_start` snaps a byte index to the start of its
-  codepoint; `utf8_word_left` and `utf8_word_right` step over
-  space-separated words.
-- `framebuf/pixelfmt.h`: `pixelfmt_channel_step` gives the gap between
-  adjacent levels of a direct-colour format's channel.
-- `framebuf/tonemap.h`: `tonemap_rgb_in_sync` and `tonemap_has_alpha` report
-  whether red, green and blue were last set together and whether alpha is
-  present, so a tone map editor can choose between one combined curve and
-  separate ones.
 - `geom/stage.h`: lays out a document background (a page in a margin, with a
   stroked border and optional drop shadow, centred on a pasteboard) as a list
   of tagged boxes to fill. Ported from PrivateEye's `stage`, with `box_t` in
@@ -85,9 +124,6 @@ _Unreleased_ until one is cut.
   OKLab as unclamped doubles, so out-of-gamut values survive round trips;
   `colourspace_to_colour()` clamps and quantises. Also parses `#RRGGBB` and
   `#RGB` hex colours.
-- `framebuf/colourspace.h`: `colourspace_srgb_decode` and
-  `colourspace_srgb_encode` return shared sRGB/linear-light lookup tables.
-  Dithering and resizing now use them instead of building their own.
 - `bmtext_layout_measured()` wraps text with a caller-supplied measure
   callback, so a line can mix faces; `bmtext_layout()` wraps it.
 - `io/filetype.h` holds every allocated RISC OS file type (1026, from
@@ -315,15 +351,6 @@ _Unreleased_ until one is cut.
 
 ### Changed
 
-- `bitmap_convert_in_place` swaps red and blue between rgbx, rgba, bgrx and
-  bgra in any direction, forcing alpha opaque only when going from an x
-  format to an alpha one.
-- `pattern_from_colour` tries pairs nearest first and stops once no farther
-  pair can win, so a 256-entry palette costs a sort and a few pairs rather
-  than all 32,896. Only the first 256 entries are considered.
-- `pattern_from_colour` mixes in linear light with perceptual channel
-  weights, so stipples average as the eye sees them: greys stay neutral and
-  1bpp gradients dither smoothly rather than jumping between solids.
 - **Breaking:** `screen_DITHER_NONE` is renamed `screen_DITHER_NEAREST`, and
   None menu rows become Nearest.
 - **Breaking:** `filetype_t.ext` is undotted (`"png"`, not `".png"`);
@@ -397,11 +424,6 @@ _Unreleased_ until one is cut.
 
 ### Fixed
 
-- Riemersma dithering carries errors as in the original: each pixel queues
-  its source less its output, weighted 1 for the newest down to 1/16 for
-  the oldest. It had re-diffused error already applied and ran at about a
-  sixth of the original's gain, leaving flat patches where the palette had
-  to mix.
 - `ntree_append()` was declared but never defined.
 - `stream`: PackBits fills never rewound their buffers, so output stopped
   after the first buffer's worth.
