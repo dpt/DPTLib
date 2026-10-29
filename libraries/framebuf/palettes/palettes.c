@@ -1,6 +1,11 @@
 /* framebuf/palettes/palettes.c */
 
+#include <stdio.h>
+#include <string.h>
+
+#include "base/result.h"
 #include "framebuf/colour.h"
+#include "framebuf/colourspace.h"
 
 #include "framebuf/palettes.h"
 
@@ -44,4 +49,47 @@ void define_wimp16_palette(colour_t palette[palette_WIMP16__LENGTH])
   palette[palette_WIMP16_DARK_GREEN] = colour_rgb(0x55, 0x88, 0x00);
   palette[palette_WIMP16_ORANGE    ] = colour_rgb(0xFF, 0xBB, 0x00);
   palette[palette_WIMP16_LIGHT_BLUE] = colour_rgb(0x00, 0xBB, 0xFF);
+}
+
+result_t palettes_load_hex(const char *filename,
+                           colour_t   *palette,
+                           int         max,
+                           int        *n)
+{
+  result_t rc;
+  FILE    *fp;
+  int      count;
+  char     line[32];
+  size_t   len;
+  colour_t c;
+
+  fp = fopen(filename, "r");
+  if (fp == NULL)
+    return result_FILE_NOT_FOUND;
+
+  rc    = result_OK;
+  count = 0;
+  while (fgets(line, sizeof(line), fp) != NULL)
+  {
+    len       = strcspn(line, "\r\n");
+    line[len] = '\0';
+    if (len == 0)
+      continue; /* blank line */
+
+    if (count == max || colourspace_parse_hex(line, &c) != result_OK)
+    {
+      rc = result_BAD_ARG;
+      break;
+    }
+    palette[count++] = c;
+  }
+
+  fclose(fp);
+
+  if (rc == result_OK && count == 0)
+    rc = result_BAD_ARG;
+  if (rc == result_OK)
+    *n = count;
+
+  return rc;
 }

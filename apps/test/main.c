@@ -68,6 +68,7 @@ static const test_t tests[] =
   { "dither",      dither_test      },
   { "effects",     effects_test     },
   { "octree",      octree_test      },
+  { "palettes",    palettes_test    },
   { "pattern",     pattern_test     },
   { "pixelmap",    pixelmap_test    },
   { "screen",      screen_test      },

@@ -3,6 +3,7 @@
 #ifndef PALETTES_H
 #define PALETTES_H
 
+#include "base/result.h"
 #include "framebuf/colour.h"
 
 /* PICO-8 palette */
@@ -59,5 +60,23 @@ void define_pico8_palette(colour_t palette[palette_PICO8__LENGTH]);
  * \param[out] palette RISC OS 16-colour palette.
  */
 void define_wimp16_palette(colour_t palette[palette_WIMP16__LENGTH]);
+
+/**
+ * Load a `.hex` palette file, the format Lospec exports: one colour per line
+ * as "RRGGBB" (anything \ref colourspace_parse_hex accepts). Blank lines and
+ * CR/LF endings are allowed.
+ *
+ * \param[in]  filename Filename of the palette to load.
+ * \param[out] palette  Colours read, with room for "max" entries.
+ * \param[in]  max      Capacity of "palette".
+ * \param[out] n        Number of colours read. Set only on success.
+ * \return \ref result_OK on success, \ref result_FILE_NOT_FOUND if the file
+ *         cannot be opened, or \ref result_BAD_ARG if a line is not a
+ *         colour, the file holds no colours or more than "max".
+ */
+result_t palettes_load_hex(const char *filename,
+                           colour_t   *palette,
+                           int         max,
+                           int        *n);
 
 #endif /* PALETTES_H */

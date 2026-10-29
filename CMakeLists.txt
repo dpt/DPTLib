@@ -634,6 +634,7 @@ if(BUILD_TESTS AND PROJECT_IS_TOP_LEVEL)
         libraries/framebuf/dither/test/dither-test.c
         libraries/framebuf/effects/test/effects-test.c
         libraries/framebuf/octree/test/octree-test.c
+        libraries/framebuf/palettes/test/palettes-test.c
         libraries/framebuf/pattern/test/pattern-test.c
         libraries/framebuf/pixelmap/test/pixelmap-test.c
         libraries/framebuf/tonemap/test/tonemap-test.c
