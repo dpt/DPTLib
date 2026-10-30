@@ -17,6 +17,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `bmfont_draw` draws to rgbx8888 and rgba8888 screens (such as RISC OS 16M
   colour modes) instead of failing with `result_NOT_SUPPORTED`.
+- `tools/bmfont/ttf2bmfont.py`'s default TTF-advance mode stores the
+  glyph's own width, dropping the trailing spacing pixel a pixel-design
+  font's advance carries, so the loader's added letter spacing no longer
+  doubles it.
 
 ## [0.7.0] - 2026-10-29
 

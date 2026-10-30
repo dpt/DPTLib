@@ -12,7 +12,10 @@ proportional bitmap fonts from a very specific 2bpp paletted PNG:
     and cellW must be <= 16.
   * the top row of every cell is the "advance strip": it holds `advance`
     index-2 pixels (left-justified here) and no index-1 pixels. The loader
-    counts index-2 pixels in the cell to get the advance width.
+    counts index-2 pixels in the cell to get the advance width, then adds
+    one pixel of letter spacing at use (LETTER_SPACING in bmfont.c). So the
+    strip holds the glyph's own width only: a TTF advance has its trailing
+    spacing pixel taken off here.
   * the remaining cellH-1 rows are the glyph bitmap; index-1 pixels are ink.
   * cell 0 is U+0020 (space); codepoints run contiguously upward. There is no
     character map and no stored first-codepoint.
@@ -101,8 +104,7 @@ def measure_cell(glyphs, pad, advance_source):
 
     max_advance = 0
     for g in glyphs:
-        adv = g["advance"] if advance_source == "ttf" else _ink_advance(g)
-        max_advance = max(max_advance, adv)
+        max_advance = max(max_advance, _raw_advance(g, advance_source))
 
     cell_w = max(ink_right - min_left, max_advance) + pad
     char_h = ascent + descent + pad
@@ -123,13 +125,20 @@ def _ink_advance(g):
     return g["left"] + g["width"]
 
 
+def _raw_advance(g, advance_source):
+    """The glyph's width without the letter-spacing pixel the loader adds."""
+    if advance_source == "ttf":
+        return g["advance"] - 1
+    return _ink_advance(g)
+
+
 def advance_for(g, cell_w, advance_source):
     """Clamp the chosen advance into [1, cell_w].
 
     At least 1 so every strip row carries an index-2 pixel (the loader's
     height detector requires it).
     """
-    adv = g["advance"] if advance_source == "ttf" else _ink_advance(g)
+    adv = _raw_advance(g, advance_source)
     if adv < 1:
         adv = 1
     if adv > cell_w:
