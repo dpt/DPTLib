@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 
 #include "base/utils.h"
 #include "io/path.h"
@@ -199,7 +198,6 @@ static result_t test_user_data(void)
   const char *env;
   char        out[DPTLIB_MAXPATH];
   int         ok;
-  struct stat st;
 
   env = getenv("HOME");
   snprintf(saved_home, sizeof(saved_home), "%s", env ? env : "");
@@ -211,8 +209,23 @@ static result_t test_user_data(void)
 
   ok = path_user_data("Test", out, sizeof(out)) &&
        strcmp(out, want) == 0 &&
-       stat(out, &st) == 0 && S_ISDIR(st.st_mode) &&
+       path_exists(out) && path_is_dir(out) &&
        !path_user_data("Test", out, 8);
+
+  /* path_is_dir must tell a file from a directory */
+  if (ok)
+  {
+    FILE *f;
+
+    snprintf(out, sizeof(out), "%s/file", home);
+    f  = fopen(out, "w");
+    ok = f != NULL;
+    if (f != NULL)
+      fclose(f);
+    ok = ok && path_exists(out) && !path_is_dir(out);
+    remove(out);
+    ok = ok && !path_exists(out) && !path_is_dir(out);
+  }
 
   setenv("HOME", saved_home, 1);
   if (saved_xdg[0] != '\0')

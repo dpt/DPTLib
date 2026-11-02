@@ -95,6 +95,21 @@ int path_is_full(const char *path);
 int path_parent(const char *path, char *out, size_t cap);
 
 /**
+ * Tests whether anything (a file or a directory) is at 'path'.
+ *
+ * \return Nonzero if 'path' exists, zero if not.
+ */
+int path_exists(const char *path);
+
+/**
+ * Tests whether 'path' is a directory. On RISC OS an image file (such as an
+ * archive) is not a directory.
+ *
+ * \return Nonzero if 'path' is a directory, zero if not or it is absent.
+ */
+int path_is_dir(const char *path);
+
+/**
  * Writes the per-user data directory for application 'app' into 'out'
  * (capacity 'cap'), creating it and any missing parents. That is
  * `~/Library/Application Support/<app>` on macOS, `%APPDATA%\<app>` on

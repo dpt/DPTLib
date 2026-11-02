@@ -14,6 +14,11 @@
 #include <direct.h>
 #endif
 
+#ifdef __riscos
+#include "kernel.h"
+#include "swis.h"
+#endif
+
 #include "base/utils.h"
 #include "io/path.h"
 
@@ -226,10 +231,49 @@ int path_parent(const char *path, char *out, size_t cap)
   return 1;
 }
 
+/* 0 if nothing is at 'path', 1 for a file, 2 for a directory. SharedCLibrary
+ * has no stat() so RISC OS asks OS_File 17, where an image file counts as a
+ * file. */
+static int path_kind(const char *path)
+{
+#ifdef __riscos
+  int type;
+
+  if (_swix(OS_File, _INR(0,1) | _OUT(0), 17, path, &type) != NULL)
+    return 0;
+
+  return type == 2 ? 2 : type != 0;
+#else
+  struct stat st;
+
+  if (stat(path, &st) != 0)
+    return 0;
+
+  return (st.st_mode & S_IFMT) == S_IFDIR ? 2 : 1;
+#endif
+}
+
+int path_exists(const char *path)
+{
+  assert(path);
+
+  return path_kind(path) != 0;
+}
+
+int path_is_dir(const char *path)
+{
+  assert(path);
+
+  return path_kind(path) == 2;
+}
+
 /* make one directory, succeeding if it is already there */
 static int path_mkdir(const char *path)
 {
-#ifdef _WIN32
+#if defined(__riscos)
+  /* OS_File 8 leaves an existing directory alone */
+  return _swix(OS_File, _INR(0,1) | _IN(4), 8, path, 0) == NULL;
+#elif defined(_WIN32)
   return _mkdir(path) == 0 || errno == EEXIST;
 #else
   return mkdir(path, 0755) == 0 || errno == EEXIST;
@@ -240,9 +284,10 @@ int path_user_data(const char *app, char *out, size_t cap)
 {
   const char *base;
   int         n;
-  char       *p;
-  char        sep;
-  struct stat st;
+#ifndef __riscos
+  char *p;
+  char  sep;
+#endif
 
   assert(app);
   assert(out);
@@ -299,6 +344,5 @@ int path_user_data(const char *app, char *out, size_t cap)
   }
 #endif
 
-  return path_mkdir(out) && stat(out, &st) == 0 &&
-         (st.st_mode & S_IFMT) == S_IFDIR;
+  return path_mkdir(out) && path_is_dir(out);
 }
