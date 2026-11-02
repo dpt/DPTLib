@@ -94,4 +94,17 @@ int path_is_full(const char *path);
  */
 int path_parent(const char *path, char *out, size_t cap);
 
+/**
+ * Writes the per-user data directory for application 'app' into 'out'
+ * (capacity 'cap'), creating it and any missing parents. That is
+ * `~/Library/Application Support/<app>` on macOS, `%APPDATA%\<app>` on
+ * Windows and `<Choices$Write>.<app>` on RISC OS. Elsewhere it is
+ * `$XDG_DATA_HOME/<app>`, or `~/.local/share/<app>` when that is unset, with
+ * 'app' in lower case.
+ *
+ * \return Nonzero on success, zero if the base is unknown, the path does not
+ *         fit 'cap' or the directory cannot be made.
+ */
+int path_user_data(const char *app, char *out, size_t cap);
+
 #endif /* DPTLIB_PATH */

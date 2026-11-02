@@ -1,7 +1,9 @@
 /* io/path/test/path-test.c */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "base/utils.h"
 #include "io/path.h"
@@ -177,6 +179,49 @@ static result_t test_parent(void)
   return result_TEST_PASSED;
 }
 
+/* point HOME at a scratch directory so the real one is never touched */
+static result_t test_user_data(void)
+{
+#if defined(__riscos) || defined(_WIN32)
+  return result_TEST_PASSED;
+#else
+  static const char home[] = DPTLIB_TMPPREFIX "dptlib-path-test";
+#ifdef __APPLE__
+  static const char want[] = DPTLIB_TMPPREFIX
+                             "dptlib-path-test/Library/Application Support/Test";
+#else
+  static const char want[] = DPTLIB_TMPPREFIX
+                             "dptlib-path-test/.local/share/test";
+#endif
+
+  char        saved_home[DPTLIB_MAXPATH];
+  char        saved_xdg[DPTLIB_MAXPATH];
+  const char *env;
+  char        out[DPTLIB_MAXPATH];
+  int         ok;
+  struct stat st;
+
+  env = getenv("HOME");
+  snprintf(saved_home, sizeof(saved_home), "%s", env ? env : "");
+  env = getenv("XDG_DATA_HOME");
+  snprintf(saved_xdg, sizeof(saved_xdg), "%s", env ? env : "");
+
+  setenv("HOME", home, 1);
+  unsetenv("XDG_DATA_HOME");
+
+  ok = path_user_data("Test", out, sizeof(out)) &&
+       strcmp(out, want) == 0 &&
+       stat(out, &st) == 0 && S_ISDIR(st.st_mode) &&
+       !path_user_data("Test", out, 8);
+
+  setenv("HOME", saved_home, 1);
+  if (saved_xdg[0] != '\0')
+    setenv("XDG_DATA_HOME", saved_xdg, 1);
+
+  return ok ? result_TEST_PASSED : result_TEST_FAILED;
+#endif
+}
+
 result_t path_test(const char *resources)
 {
   static result_t (*const tests[])(void) =
@@ -189,7 +234,8 @@ result_t path_test(const char *resources)
     test_leaf_valid_rejects,
     test_leaf,
     test_is_full,
-    test_parent
+    test_parent,
+    test_user_data
   };
 
   result_t rc;

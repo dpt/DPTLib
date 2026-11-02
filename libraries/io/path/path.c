@@ -1,9 +1,18 @@
 /* io/path/path.c */
 
 #include <assert.h>
+#include <ctype.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
+#ifdef _WIN32
+#include <direct.h>
+#endif
 
 #include "base/utils.h"
 #include "io/path.h"
@@ -215,4 +224,81 @@ int path_parent(const char *path, char *out, size_t cap)
   out[len] = '\0';
 
   return 1;
+}
+
+/* make one directory, succeeding if it is already there */
+static int path_mkdir(const char *path)
+{
+#ifdef _WIN32
+  return _mkdir(path) == 0 || errno == EEXIST;
+#else
+  return mkdir(path, 0755) == 0 || errno == EEXIST;
+#endif
+}
+
+int path_user_data(const char *app, char *out, size_t cap)
+{
+  const char *base;
+  int         n;
+  char       *p;
+  char        sep;
+  struct stat st;
+
+  assert(app);
+  assert(out);
+
+  n = -1;
+#if defined(__riscos)
+  base = getenv("Choices$Write");
+  if (base != NULL)
+    n = snprintf(out, cap, "%s.%s", base, app);
+#elif defined(_WIN32)
+  base = getenv("APPDATA");
+  if (base != NULL)
+    n = snprintf(out, cap, "%s\\%s", base, app);
+#elif defined(__APPLE__)
+  base = getenv("HOME");
+  if (base != NULL)
+    n = snprintf(out, cap, "%s/Library/Application Support/%s", base, app);
+#else
+  /* XDG names are lower case by convention */
+  base = getenv("XDG_DATA_HOME");
+  if (base != NULL && base[0] != '\0')
+  {
+    n = snprintf(out, cap, "%s/%s", base, app);
+  }
+  else
+  {
+    base = getenv("HOME");
+    if (base != NULL)
+      n = snprintf(out, cap, "%s/.local/share/%s", base, app);
+  }
+  if (n >= 0 && (size_t) n < cap)
+    for (p = out + n - strlen(app); *p != '\0'; p++)
+      *p = (char) tolower((unsigned char) *p);
+#endif
+  if (n < 0 || (size_t) n >= cap)
+    return 0;
+
+#ifndef __riscos
+  /* make any missing parents first, as mkdir -p does; failures there show
+   * up as a failure to make the leaf */
+  for (p = out + 1; *p != '\0'; p++)
+  {
+#ifdef _WIN32
+    if (*p != '\\' && *p != '/')
+      continue;
+#else
+    if (*p != '/')
+      continue;
+#endif
+    sep = *p;
+    *p  = '\0';
+    (void) path_mkdir(out);
+    *p  = sep;
+  }
+#endif
+
+  return path_mkdir(out) && stat(out, &st) == 0 &&
+         (st.st_mode & S_IFMT) == S_IFDIR;
 }
