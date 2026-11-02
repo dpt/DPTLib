@@ -47,6 +47,7 @@ static const test_t tests[] =
   { "ntree",      ntree_test      },
   { "bmtext",     bmtext_test     },
   { "mdspans",    mdspans_test    },
+  { "mdtext",     mdtext_test     },
   { "txtfmt",     txtfmt_test     },
   { "utf8",       utf8_test       },
   { "vector",     vector_test     },

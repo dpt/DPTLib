@@ -64,6 +64,7 @@ extern testfn_t dirlist_test,
 /* text */
 extern testfn_t bmtext_test,
                 mdspans_test,
+                mdtext_test,
                 txtfmt_test,
                 utf8_test;
 
