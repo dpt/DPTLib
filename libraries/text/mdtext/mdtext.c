@@ -1,5 +1,6 @@
 /* text/mdtext/mdtext.c -- lay out and draw Markdown or plain text in a bmfont */
 
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -320,6 +321,63 @@ void mdtext_draw(mdtext_t *mdtext,
       cursor += run_len;
     }
   }
+}
+
+int mdtext_caret_pos(mdtext_t *mdtext, int index, point_t *pos)
+{
+  int             ascent;
+  int             i;
+  int             off;
+  int             cursor;
+  int             x;
+  const mdspan_t *span;
+  int             run_len;
+  int             split;
+  bmfont_width_t  width;
+
+  if (mdtext->lines == NULL || mdtext->nlines == 0)
+    return 0;
+
+  bmfont_get_info(mdtext->font, NULL, NULL, &ascent, NULL);
+
+  index = CLAMP(index, 0, (int) strlen(mdtext->text));
+
+  /* the last line starting at or before index */
+  for (i = mdtext->nlines - 1; i > 0; i--)
+    if (mdtext->lines[i].str - mdtext->text <= index)
+      break;
+
+  off   = (int) (mdtext->lines[i].str - mdtext->text);
+  index = MIN(index - off, mdtext->lines[i].len);
+
+  /* whole runs advance in full; the run holding the caret places it as
+   * bmfont_caret_x does */
+  x      = 0;
+  cursor = 0;
+  while (cursor < index)
+  {
+    span = mdtext_run(mdtext, off + cursor, index - cursor, &run_len);
+    if (cursor + run_len == index)
+    {
+      x += bmfont_caret_x(mdtext_run_font(mdtext, span),
+                          mdtext->lines[i].str + cursor, run_len,
+                          &mdtext->spacing);
+      break;
+    }
+
+    if (bmfont_measure(mdtext_run_font(mdtext, span),
+                       mdtext->lines[i].str + cursor, run_len,
+                       &mdtext->spacing, INT_MAX, &split,
+                       &width) != result_OK)
+      return 0;
+
+    x      += width;
+    cursor += run_len;
+  }
+
+  pos->x = mdtext->dx[i] + x;
+  pos->y = i * mdtext_line_height(mdtext) + ascent;
+  return 1;
 }
 
 void mdtext_free(mdtext_t *mdtext)

@@ -107,6 +107,19 @@ void mdtext_draw(mdtext_t *mdtext,
                  colour_t  bg);
 
 /**
+ * Find where a caret before byte 'index' of the laid-out text goes, for
+ * bmfont_draw_caret. 'index' counts bytes of the text as shown: of the
+ * source itself when it was set as plain text. An index in the spaces at a
+ * wrap stays at the end of the earlier line.
+ *
+ * \param[in]  index Byte index, clamped to 0..length of the text.
+ * \param[out] pos   Baseline position relative to mdtext_draw's 'origin'.
+ *
+ * \return Nonzero on success, zero if the text is not laid out.
+ */
+int mdtext_caret_pos(mdtext_t *mdtext, int index, point_t *pos);
+
+/**
  * Free the text and layout. The fonts are left alone. The block may be set
  * again afterwards.
  */

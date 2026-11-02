@@ -45,6 +45,8 @@ result_t mdtext_test(const char *resources)
   screen_t      scr;
   int           ok;
   int           lh;
+  point_t       caret;
+  point_t       caret2;
 
   font   = NULL;
   bold   = NULL;
@@ -71,6 +73,18 @@ result_t mdtext_test(const char *resources)
       mdtext_layout(&mdtext, W) != result_OK ||
       mdtext_nlines(&mdtext) != 3 ||
       mdtext.nspans != 0)
+    goto exit;
+
+  /* the caret: line start at x 0, the end of "three" on the third line, an
+   * index past the end clamped to it */
+  lh = mdtext_line_height(&mdtext);
+  if (!mdtext_caret_pos(&mdtext, 0, &caret) || caret.x != 0 ||
+      !mdtext_caret_pos(&mdtext, 5, &caret2) || caret2.y != caret.y + 2 * lh ||
+      caret2.x != 0 ||
+      !mdtext_caret_pos(&mdtext, (int) strlen(plain), &caret) ||
+      caret.y != caret2.y || caret.x != (int) bmfont_caret_x(font, "three", 5,
+                                                             NULL) ||
+      !mdtext_caret_pos(&mdtext, 99, &caret2) || caret2.x != caret.x)
     goto exit;
 
   /* Markdown: markers stripped, spans found, long lines wrapped */
