@@ -14,14 +14,16 @@
 
 /* Composite the colour of src2 at coverage alpha over src1, Porter-Duff
  * source over destination on straight (not premultiplied) alpha. src2's own
- * alpha byte is ignored: alpha is its coverage. */
+ * alpha byte is ignored: alpha is its coverage. memo holds the last divisor
+ * and its reciprocal, so a run of pixels sharing alphas divides once; a span
+ * starts it with a zero divisor. */
 static pixelfmt_bgra8888_t blend_pix(pixelfmt_bgra8888_t src1,
                                      pixelfmt_bgra8888_t src2,
-                                     int                 alpha)
+                                     int                 alpha,
+                                     unsigned int        memo[2])
 {
   unsigned int a1;
   unsigned int w1, w2, d;
-  unsigned int r;
   unsigned int out;
   int          shift;
 
@@ -49,14 +51,20 @@ static pixelfmt_bgra8888_t blend_pix(pixelfmt_bgra8888_t src1,
     return out;
   }
 
-  /* one division per pixel, not three: div_recip does the channels */
+  /* at most one division per pixel, not three: div_recip does the
+   * channels */
   d = w1 + w2; /* the result's alpha, times 255 */
-  r = DIV_RECIP(d);
+  if (d != memo[0])
+  {
+    memo[0] = d;
+    memo[1] = DIV_RECIP(d);
+  }
 
   out = ((d + 127) / 255) << 24;
   for (shift = 0; shift < 24; shift += 8)
     out |= div_recip(((src1 >> shift) & 0xFF) * w1 +
-                     ((src2 >> shift) & 0xFF) * w2 + d / 2, d, r) << shift;
+                     ((src2 >> shift) & 0xFF) * w2 + d / 2, d, memo[1])
+           << shift;
 
   return out;
 }
@@ -71,15 +79,18 @@ static void span_bgra8888_blendconst(void       *vdst,
   pixelfmt_bgra8888_t       *dst;
   const pixelfmt_bgra8888_t *src1;
   const pixelfmt_bgra8888_t *src2;
+  unsigned int               memo[2];
 
   NOT_USED(context);
 
-  dst  = vdst;
-  src1 = vsrc1;
-  src2 = vsrc2;
+  dst     = vdst;
+  src1    = vsrc1;
+  src2    = vsrc2;
+  memo[0] = 0;
+  memo[1] = 0;
 
   while (length--)
-    *dst++ = blend_pix(*src1++, *src2++, alpha);
+    *dst++ = blend_pix(*src1++, *src2++, alpha, memo);
 }
 
 static void span_bgra8888_blendarray(void                *vdst,
@@ -91,13 +102,16 @@ static void span_bgra8888_blendarray(void                *vdst,
   pixelfmt_bgra8888_t       *dst;
   const pixelfmt_bgra8888_t *src1;
   const pixelfmt_bgra8888_t *src2;
+  unsigned int               memo[2];
 
-  dst  = vdst;
-  src1 = vsrc1;
-  src2 = vsrc2;
+  dst     = vdst;
+  src1    = vsrc1;
+  src2    = vsrc2;
+  memo[0] = 0;
+  memo[1] = 0;
 
   while (length--)
-    *dst++ = blend_pix(*src1++, *src2++, *alphas++);
+    *dst++ = blend_pix(*src1++, *src2++, *alphas++, memo);
 }
 
 const span_t span_bgra8888 =
