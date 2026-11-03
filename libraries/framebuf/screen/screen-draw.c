@@ -1020,6 +1020,130 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
   return result_OK;
 }
 
+/* ----------------------------------------------------------------------- */
+
+/* Fast row conversion for a deep 32bpp source onto a deep screen: what
+ * src_fetch_rgba then colour_to_pixel does a pixel at a time, chosen once
+ * per blit and done in loops the compiler can vectorise. */
+
+typedef struct fastblit
+{
+  int              swap; /* swap R and B: one of source and screen is bgr */
+  pixelfmt_any32_t set;  /* bits forced on, for an opaque (x) screen */
+  int              pack; /* 16bpp screen: 0 = 32bpp, 565 or 5551 */
+}
+fastblit_t;
+
+/* Non-zero, with "fb" filled in, if "src" can blit onto "scr" by fastblit
+ * rows. Dithering and paletted or 16bpp sources take the per-pixel path. */
+static int fastblit_init(fastblit_t     *fb,
+                         const screen_t *scr,
+                         const bitmap_t *src,
+                         int             do_dither)
+{
+  int src_bgr;
+
+  if (do_dither || pixelfmt_log2bpp(src->format) != 5)
+    return 0;
+
+  /* as src_fetch_rgba: only these are decoded as R/B-swapped */
+  src_bgr = src->format == pixelfmt_bgrx8888 ||
+            src->format == pixelfmt_bgra8888;
+
+  fb->set  = 0;
+  fb->pack = 0;
+  switch (scr->format)
+  {
+  case pixelfmt_rgbx8888:
+    fb->set = (pixelfmt_any32_t) PIXELFMT_OPAQUE << PIXELFMT_xxxA8888_SHIFT;
+    /* FALLTHROUGH */
+  case pixelfmt_rgba8888:
+    fb->swap = src_bgr;
+    break;
+
+  case pixelfmt_bgrx8888:
+    fb->set = (pixelfmt_any32_t) PIXELFMT_OPAQUE << PIXELFMT_xxxA8888_SHIFT;
+    /* FALLTHROUGH */
+  case pixelfmt_bgra8888:
+    fb->swap = !src_bgr;
+    break;
+
+  case pixelfmt_rgb565:   fb->swap =  src_bgr; fb->pack = 565;  break;
+  case pixelfmt_bgr565:   fb->swap = !src_bgr; fb->pack = 565;  break;
+  case pixelfmt_rgbx5551: fb->swap =  src_bgr; fb->pack = 5551; break;
+  case pixelfmt_bgrx5551: fb->swap = !src_bgr; fb->pack = 5551; break;
+
+  default:
+    return 0;
+  }
+
+  return 1;
+}
+
+/* Convert "n" source pixels to 32bpp screen pixels, or for a 16bpp screen
+ * to rgba8888 in the screen's R/B order, ready for fastblit_pack. */
+static void fastblit_row32(const fastblit_t       *fb,
+                           pixelfmt_any32_t       *out,
+                           const pixelfmt_any32_t *in,
+                           int                     n)
+{
+  pixelfmt_any32_t set;
+  int              i;
+
+  set = fb->set;
+  if (fb->swap)
+    for (i = 0; i < n; i++)
+      out[i] = (pixelfmt_any32_t) PIXELFMT_MAKE_RGBA8888(PIXELFMT_xxRx8888(in[i]),
+                                                         PIXELFMT_xGxx8888(in[i]),
+                                                         PIXELFMT_Bxxx8888(in[i]),
+                                                         PIXELFMT_xxxA8888(in[i])) | set;
+  else
+    for (i = 0; i < n; i++)
+      out[i] = in[i] | set;
+}
+
+/* Pack "n" pixels from fastblit_row32 down to the 16bpp screen's format. */
+static void fastblit_pack(const fastblit_t       *fb,
+                          pixelfmt_any16_t       *out,
+                          const pixelfmt_any32_t *in,
+                          int                     n)
+{
+  int i;
+
+  if (fb->pack == 565)
+    for (i = 0; i < n; i++)
+      out[i] = (pixelfmt_any16_t) PIXELFMT_MAKE_RGB565(PIXELFMT_Rxxx8888(in[i]) >> 3,
+                                                       PIXELFMT_xGxx8888(in[i]) >> 2,
+                                                       PIXELFMT_xxBx8888(in[i]) >> 3);
+  else
+    for (i = 0; i < n; i++)
+      out[i] = (pixelfmt_any16_t) PIXELFMT_MAKE_RGBX5551(PIXELFMT_Rxxx8888(in[i]) >> 3,
+                                                         PIXELFMT_xGxx8888(in[i]) >> 3,
+                                                         PIXELFMT_xxBx8888(in[i]) >> 3);
+}
+
+/* The alpha of "n" source pixels, as src_fetch_rgba reads it. */
+static void fastblit_alpha(unsigned char          *out,
+                           const pixelfmt_any32_t *in,
+                           int                     n)
+{
+  int i;
+
+  for (i = 0; i < n; i++)
+    out[i] = (unsigned char) PIXELFMT_xxxA8888(in[i]);
+}
+
+/* The first source pixel of the blit's row "srcy". */
+static const pixelfmt_any32_t *fastblit_src(const bitmap_t *src,
+                                            const box_t    *draw_box,
+                                            int             x,
+                                            int             srcy)
+{
+  return (const pixelfmt_any32_t *) ((const unsigned char *) src->base +
+                                     srcy * src->rowbytes) +
+         draw_box->x0 - x;
+}
+
 /* Blit "src" onto the 32bpp screen, its top-left at (x, y), clipped to
  * "draw_box", alpha-blending row spans through the span registry. A paletted
  * "src" is decoded through "srcpm" (see src_fetch_rgba) a pixel at a time
@@ -1038,6 +1162,8 @@ static result_t screen_copy_bitmap_32(screen_t       *scr,
   pixelfmt_any32_t  colbuf[BITMAP_BLIT_CHUNK];
   unsigned char     alphabuf[BITMAP_BLIT_CHUNK];
   const pixelmap_t *srcpm;
+  fastblit_t        fb;
+  int               fast;
   pixelfmt_any32_t *dstrow;
   int               clipped_width, clipped_height;
   int               yy;
@@ -1051,19 +1177,40 @@ static result_t screen_copy_bitmap_32(screen_t       *scr,
   if (srcpm == NULL && !src_is_deep(src))
     return result_NOT_SUPPORTED;
 
+  fast = fastblit_init(&fb, scr, src, 0);
+  if (!has_alpha)
+    /* as the span blend at full alpha leaves a bgra8888 screen */
+    fb.set = (pixelfmt_any32_t) PIXELFMT_OPAQUE << PIXELFMT_xxxA8888_SHIFT;
+
   dstrow = scr->base;
   dstrow += draw_box->y0 * scr->rowbytes / (int) sizeof(*dstrow) + draw_box->x0;
 
   for (yy = 0; yy < clipped_height; yy++)
   {
-    pixelfmt_any32_t *dstpx;
-    int               srcy;
-    int               remaining, done;
+    const pixelfmt_any32_t *srcrow;
+    pixelfmt_any32_t       *dstpx;
+    int                     srcy;
+    int                     remaining, done;
 
     srcy      = draw_box->y0 - y + yy;
     dstpx     = dstrow;
     remaining = clipped_width;
     done      = 0;
+
+    if (fast)
+    {
+      srcrow = fastblit_src(src, draw_box, x, srcy);
+      if (!has_alpha)
+      {
+        /* a blend at full alpha is a copy */
+        fastblit_row32(&fb, dstpx, srcrow, clipped_width);
+        remaining = 0;
+      }
+    }
+    else
+    {
+      srcrow = NULL;
+    }
 
     while (remaining > 0)
     {
@@ -1071,13 +1218,21 @@ static result_t screen_copy_bitmap_32(screen_t       *scr,
 
       chunk = MIN(remaining, BITMAP_BLIT_CHUNK);
 
-      for (i = 0; i < chunk; i++)
+      if (fast)
       {
-        colour_t c;
+        fastblit_row32(&fb, colbuf, srcrow + done, chunk);
+        fastblit_alpha(alphabuf, srcrow + done, chunk);
+      }
+      else
+      {
+        for (i = 0; i < chunk; i++)
+        {
+          colour_t c;
 
-        c           = src_fetch_rgba(src, srcpm, draw_box->x0 + done + i - x, srcy);
-        colbuf[i]   = colour_to_pixel(scr->palette, 0, c, scr->format);
-        alphabuf[i] = has_alpha ? colour_get_alpha(&c) : PIXELFMT_OPAQUE;
+          c           = src_fetch_rgba(src, srcpm, draw_box->x0 + done + i - x, srcy);
+          colbuf[i]   = colour_to_pixel(scr->palette, 0, c, scr->format);
+          alphabuf[i] = has_alpha ? colour_get_alpha(&c) : PIXELFMT_OPAQUE;
+        }
       }
 
       scr->span->blendarray(dstpx, dstpx, colbuf, chunk, alphabuf);
@@ -1105,11 +1260,14 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
                                       screen_dither_t dither)
 {
   pixelfmt_any16_t  colbuf[BITMAP_BLIT_CHUNK];
+  pixelfmt_any32_t  rgbbuf[BITMAP_BLIT_CHUNK];
   unsigned char     alphabuf[BITMAP_BLIT_CHUNK];
   const pixelmap_t *srcpm;
   pixelfmt_any16_t *dstrow;
   dither_t          bias;
   int               do_dither;
+  fastblit_t        fb;
+  int               fast;
   int               clipped_width, clipped_height;
   int               yy;
 
@@ -1124,19 +1282,24 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
    * truncates, so the bias is lifted by half a step to keep it unbiased. */
   do_dither = dither_bias_build(&bias, 255 / 31, dither);
 
+  fast = fastblit_init(&fb, scr, src, do_dither);
+
   dstrow = scr->base;
   dstrow += draw_box->y0 * scr->rowbytes / (int) sizeof(*dstrow) + draw_box->x0;
 
   for (yy = 0; yy < clipped_height; yy++)
   {
-    pixelfmt_any16_t *dstpx;
-    int               srcy;
-    int               remaining, done;
+    const pixelfmt_any32_t *srcrow;
+    pixelfmt_any16_t       *dstpx;
+    int                     srcy;
+    int                     remaining, done;
 
     srcy      = draw_box->y0 - y + yy;
     dstpx     = dstrow;
     remaining = clipped_width;
     done      = 0;
+
+    srcrow = fast ? fastblit_src(src, draw_box, x, srcy) : NULL;
 
     while (remaining > 0)
     {
@@ -1144,24 +1307,42 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
 
       chunk = MIN(remaining, BITMAP_BLIT_CHUNK);
 
-      for (i = 0; i < chunk; i++)
+      if (fast)
       {
-        colour_t     c;
-        unsigned int r, g, b;
-        int          sx;
-
-        sx = draw_box->x0 + done + i - x;
-        c  = src_fetch_rgba(src, srcpm, sx, srcy);
-        if (do_dither)
+        fastblit_row32(&fb, rgbbuf, srcrow + done, chunk);
+        if (!has_alpha)
         {
-          colour_get_rgb(&c, &r, &g, &b);
-          r = dither_channel(r + 4, &bias, sx, srcy);
-          g = dither_channel(g + 4, &bias, sx, srcy);
-          b = dither_channel(b + 4, &bias, sx, srcy);
-          c = colour_rgba(r, g, b, colour_get_alpha(&c));
+          /* a blend at full alpha is a copy */
+          fastblit_pack(&fb, dstpx, rgbbuf, chunk);
+          dstpx     += chunk;
+          done      += chunk;
+          remaining -= chunk;
+          continue;
         }
-        colbuf[i]   = (pixelfmt_any16_t) colour_to_pixel(scr->palette, 0, c, scr->format);
-        alphabuf[i] = has_alpha ? colour_get_alpha(&c) : PIXELFMT_OPAQUE;
+        fastblit_pack(&fb, colbuf, rgbbuf, chunk);
+        fastblit_alpha(alphabuf, srcrow + done, chunk);
+      }
+      else
+      {
+        for (i = 0; i < chunk; i++)
+        {
+          colour_t     c;
+          unsigned int r, g, b;
+          int          sx;
+
+          sx = draw_box->x0 + done + i - x;
+          c  = src_fetch_rgba(src, srcpm, sx, srcy);
+          if (do_dither)
+          {
+            colour_get_rgb(&c, &r, &g, &b);
+            r = dither_channel(r + 4, &bias, sx, srcy);
+            g = dither_channel(g + 4, &bias, sx, srcy);
+            b = dither_channel(b + 4, &bias, sx, srcy);
+            c = colour_rgba(r, g, b, colour_get_alpha(&c));
+          }
+          colbuf[i]   = (pixelfmt_any16_t) colour_to_pixel(scr->palette, 0, c, scr->format);
+          alphabuf[i] = has_alpha ? colour_get_alpha(&c) : PIXELFMT_OPAQUE;
+        }
       }
 
       scr->span->blendarray(dstpx, dstpx, colbuf, chunk, alphabuf);

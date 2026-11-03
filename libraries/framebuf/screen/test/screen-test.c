@@ -1801,6 +1801,97 @@ static result_t test_copy_bitmap_bgr_source(void)
   return result_TEST_PASSED;
 }
 
+/* screen_copy_bitmap of each deep 32bpp source onto each deep screen, wider
+ * than a blit chunk and starting off the screen's left edge: every pixel must
+ * be what colour_to_pixel makes of it, or the background where an alpha
+ * source is transparent. An x source is opaque whatever its alpha byte. */
+static result_t test_copy_bitmap_deep_formats(void)
+{
+#define DF_W 300
+#define DF_SCR_W 320
+#define DF_X (-5)
+  static const pixelfmt_t srcfmts[] =
+  {
+    pixelfmt_rgba8888, pixelfmt_rgbx8888, pixelfmt_bgra8888, pixelfmt_bgrx8888
+  };
+  static const pixelfmt_t scrfmts[] =
+  {
+    pixelfmt_bgrx8888, pixelfmt_bgra8888, pixelfmt_rgbx8888, pixelfmt_rgb565,
+    pixelfmt_rgbx5551
+  };
+  static pixelfmt_any32_t srcbuf[DF_W];
+  static pixelfmt_any32_t scrbuf[DF_SCR_W];
+
+  unsigned int            seed;
+  size_t                  i, j;
+  int                     x;
+  int                     bpp;
+  int                     alpha, bgr;
+  bitmap_t                src;
+  screen_t                scr;
+  pixelfmt_any32_t        px;
+  colour_t                c;
+  pixelfmt_any32_t        got, want;
+
+  seed = 1;
+  for (x = 0; x < DF_W; x++)
+  {
+    seed      = seed * 1103515245u + 12345u;
+    srcbuf[x] = (seed >> 8) & 0x00FFFFFFu;
+    if (x % 3 != 0)
+      srcbuf[x] |= 0xFF000000u;
+  }
+
+  for (i = 0; i < NELEMS(srcfmts); i++)
+    for (j = 0; j < NELEMS(scrfmts); j++)
+    {
+      bpp   = pixelfmt_log2bpp(scrfmts[j]) == 5 ? 4 : 2;
+      alpha = pixelfmt_has_alpha(srcfmts[i]);
+      bgr   = srcfmts[i] == pixelfmt_bgra8888 ||
+              srcfmts[i] == pixelfmt_bgrx8888;
+
+      bitmap_init(&src, SIZE2D(DF_W, 1), srcfmts[i], (int) sizeof(srcbuf),
+                  NULL, srcbuf);
+      memset(scrbuf, 0x5A, sizeof(scrbuf));
+      screen_init(&scr, SIZE2D(DF_SCR_W, 1), scrfmts[j], DF_SCR_W * bpp, NULL,
+                  scrbuf);
+
+      if (screen_copy_bitmap(&scr, DF_X, 0, &src) != result_OK)
+        return result_TEST_FAILED;
+
+      for (x = 0; x < DF_SCR_W; x++)
+      {
+        got  = bpp == 4 ? scrbuf[x] : ((unsigned short *) scrbuf)[x];
+        want = bpp == 4 ? 0x5A5A5A5Au : 0x5A5Au;
+        if (x < DF_W + DF_X)
+        {
+          px = srcbuf[x - DF_X];
+          if (bgr)
+            px = PIXELFMT_MAKE_RGBA8888(PIXELFMT_xxRx8888(px),
+                                        PIXELFMT_xGxx8888(px),
+                                        PIXELFMT_Bxxx8888(px),
+                                        PIXELFMT_xxxA8888(px));
+          if (!alpha)
+            px |= 0xFF000000u; /* an x source is opaque */
+          c.primary = px;
+          if (!alpha || colour_get_alpha(&c) != 0)
+            want = colour_to_pixel(NULL, 0, c, scrfmts[j]);
+        }
+        if (got != want)
+        {
+          printf("screen: deep blit %d to %d at %d got 0x%08X want 0x%08X\n",
+                 (int) srcfmts[i], (int) scrfmts[j], x, got, want);
+          return result_TEST_FAILED;
+        }
+      }
+    }
+
+  return result_TEST_PASSED;
+#undef DF_X
+#undef DF_SCR_W
+#undef DF_W
+}
+
 /* screen_copy_bitmap with a *paletted* source (p4) onto a 32bpp screen: the
  * unpack path in screen_copy_bitmap_i must decode the packed source indices
  * through its own palette before the 32bpp blit runs, landing exact colours
@@ -2621,6 +2712,7 @@ result_t screen_test(const char *resources)
     test_copy_bitmap_paletted_source,
     test_copy_bitmap_p4_to_p4,
     test_copy_bitmap_bgr_source,
+    test_copy_bitmap_deep_formats,
     test_copy_bitmap_dithered,
     test_copy_rect_packed,
     test_copy_rect_packed_random,
