@@ -13,32 +13,23 @@
 /* Blend specified pixels. Channel fields are not byte-aligned (5 or 6 bits
  * wide), but the linear interpolation below works on the raw field value
  * regardless of its width -- only the final re-pack needs the field's own
- * shift and mask. */
+ * shift and mask. Selects, not branches, pick the unblended cases so that
+ * the loops vectorise. */
 #define SPAN_ALL16BPP_BLEND_PIX(fmt, src1, src2, alpha, dst)                   \
 {                                                                              \
-  fmt r1, g1, b1;                                                              \
-  fmt r2, g2, b2;                                                              \
+  fmt          s1, s2;                                                         \
+  unsigned int r, g, b;                                                        \
                                                                                \
-  if (alpha == 0)                                                             \
-    dst = src1;                                                               \
-  else if (alpha == 255)                                                      \
-    dst = src2;                                                               \
-  else                                                                        \
-  {                                                                           \
-    r1 = (src1 & RED_MASK) >> RED_SHIFT;                                      \
-    r2 = (src2 & RED_MASK) >> RED_SHIFT;                                      \
-    r1 = (r1 * (256 - alpha) + r2 * alpha) >> 8;                              \
-                                                                               \
-    g1 = (src1 & GREEN_MASK) >> GREEN_SHIFT;                                  \
-    g2 = (src2 & GREEN_MASK) >> GREEN_SHIFT;                                  \
-    g1 = (g1 * (256 - alpha) + g2 * alpha) >> 8;                              \
-                                                                               \
-    b1 = (src1 & BLUE_MASK) >> BLUE_SHIFT;                                    \
-    b2 = (src2 & BLUE_MASK) >> BLUE_SHIFT;                                    \
-    b1 = (b1 * (256 - alpha) + b2 * alpha) >> 8;                              \
-                                                                               \
-    dst = (fmt) ((r1 << RED_SHIFT) | (g1 << GREEN_SHIFT) | (b1 << BLUE_SHIFT)); \
-  }                                                                           \
+  s1 = (src1);                                                                 \
+  s2 = (src2);                                                                 \
+  r  = ((((s1 & RED_MASK) >> RED_SHIFT) * (256 - alpha) +                      \
+         ((s2 & RED_MASK) >> RED_SHIFT) * alpha) >> 8);                        \
+  g  = ((((s1 & GREEN_MASK) >> GREEN_SHIFT) * (256 - alpha) +                  \
+         ((s2 & GREEN_MASK) >> GREEN_SHIFT) * alpha) >> 8);                    \
+  b  = ((((s1 & BLUE_MASK) >> BLUE_SHIFT) * (256 - alpha) +                    \
+         ((s2 & BLUE_MASK) >> BLUE_SHIFT) * alpha) >> 8);                      \
+  dst = alpha == 0 ? s1 : alpha == 255 ? s2 :                                  \
+        (fmt) ((r << RED_SHIFT) | (g << GREEN_SHIFT) | (b << BLUE_SHIFT));     \
 }
 
 /* Alpha adjust, shared with all8888-generic.c's rounding convention. */
