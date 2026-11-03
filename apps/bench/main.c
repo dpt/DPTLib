@@ -15,6 +15,7 @@
 #include "framebuf/bitmap.h"
 #include "framebuf/composite.h"
 #include "framebuf/pixelfmt.h"
+#include "framebuf/screen.h"
 #include "framebuf/span.h"
 #include "framebuf/span-registry.h"
 
@@ -141,6 +142,50 @@ static void bench_composite(bitmap_t *src, bitmap_t *dst, const void *orig)
   }
 }
 
+/* blit a W x H bitmap of src's pixels in each source format onto a screen of
+ * each deep format */
+static void bench_blit(unsigned int *src, unsigned int *dst)
+{
+  static const struct
+  {
+    pixelfmt_t  fmt;
+    const char *name;
+    size_t      bpp; /* bytes per pixel */
+  }
+  scrs[] =
+  {
+    { pixelfmt_bgrx8888, "bgrx8888", 4 },
+    { pixelfmt_rgb565,   "rgb565",   2 },
+  },
+  srcs[] =
+  {
+    { pixelfmt_bgra8888, "bgra8888", 4 },
+    { pixelfmt_bgrx8888, "bgrx8888", 4 },
+    { pixelfmt_rgba8888, "rgba8888", 4 },
+  };
+
+  bitmap_t bm;
+  screen_t scr;
+  clock_t  start;
+  int      i, j, r;
+
+  for (i = 0; i < (int) NELEMS(scrs); i++)
+    for (j = 0; j < (int) NELEMS(srcs); j++)
+    {
+      bitmap_init(&bm, SIZE2D(W, H), srcs[j].fmt, W * 4, NULL, src);
+      screen_init(&scr, SIZE2D(W, H), scrs[i].fmt, W * (int) scrs[i].bpp,
+                  NULL, dst);
+
+      memset(dst, 0x80, N * scrs[i].bpp);
+      start = clock();
+      for (r = 0; r < 4; r++)
+        (void) screen_copy_bitmap(&scr, 0, 0, &bm);
+      printf("blit %-8s to %-8s %8.2f ms  %08x\n", srcs[j].name,
+             scrs[i].name, bench_ms(start, 4),
+             bench_hash(dst, N * scrs[i].bpp));
+    }
+}
+
 static void bench_resize(const bitmap_t *src)
 {
   static const struct
@@ -258,6 +303,8 @@ int main(void)
   bench_composite(&bsrc, &bdst, src1);
 
   bench_resize(&bsrc);
+
+  bench_blit(src1, dst);
 
   free(opaque);
   free(dst);
