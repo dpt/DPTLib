@@ -15,6 +15,7 @@
 #include "framebuf/pattern.h"
 #include "framebuf/pixelfmt.h"
 #include "framebuf/pixelmap.h"
+#include "utils/maths.h"
 #include "utils/rng.h"
 
 #include "framebuf/dither.h"
@@ -152,7 +153,8 @@ static unsigned int dither_apply(unsigned int c, int e, int total, int max)
 }
 
 /* Add accumulated error e[0..2], scaled by `total`, to a pixel's channels,
- * clamping each to 0..max. Error the palette cannot express, such as a
+ * clamping each to 0..max. rtotal is DIV_RECIP(total), so that the scaling
+ * costs no division. Error the palette cannot express, such as a
  * colour's chroma against a grey palette, would otherwise grow without bound
  * and drive channels to their limits, losing brightness where they clip. So
  * an error beyond lim in any channel is scaled down whole, keeping its
@@ -162,6 +164,7 @@ static void dither_apply3(unsigned int *r,
                           unsigned int *b,
                           const int    *e,
                           int           total,
+                          unsigned int  rtotal,
                           int           lim,
                           int           max)
 {
@@ -170,8 +173,11 @@ static void dither_apply3(unsigned int *r,
   int m;
 
   for (i = 0; i < 3; i++)
-    v[i] = (e[i] >= 0) ? (e[i] + total / 2) / total
-                       : -((-e[i] + total / 2) / total);
+    v[i] = (e[i] >= 0)
+           ?  (int) div_recip((unsigned int) (e[i] + total / 2),
+                              (unsigned int) total, rtotal)
+           : -(int) div_recip((unsigned int) (-e[i] + total / 2),
+                              (unsigned int) total, rtotal);
 
   m = MAX(abs(v[0]), MAX(abs(v[1]), abs(v[2])));
   if (m > lim)
@@ -196,7 +202,7 @@ static unsigned int dither_lookup(const pixelmap_t *pm,
                                   unsigned int      b)
 {
   unsigned int idx;
-  unsigned int per_byte;
+  unsigned int log2per_byte;
   unsigned int bit;
 
   idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits)) |
@@ -206,10 +212,10 @@ static unsigned int dither_lookup(const pixelmap_t *pm,
   if (pm->dest_log2bpp == 3)
     return pm->entries[idx];
 
-  per_byte = 8u >> pm->dest_log2bpp;
-  bit      = (idx % per_byte) << pm->dest_log2bpp;
+  log2per_byte = 3u - pm->dest_log2bpp;
+  bit          = (idx & ((1u << log2per_byte) - 1)) << pm->dest_log2bpp;
 
-  return (pm->entries[idx / per_byte] >> bit) &
+  return (pm->entries[idx >> log2per_byte] >> bit) &
          ((1u << (1u << pm->dest_log2bpp)) - 1);
 }
 
@@ -234,17 +240,17 @@ static unsigned int dither_nearest(const pixelmap_t *pm,
                        enc[b >> (16 - colourspace_ENCODE_BITS)]);
 }
 
-/* Nudge sRGB channel c by an ordered method's bias t, a share of the
- * palette's sRGB step. With dec, c is first moved within the step holding
- * it to where its linear light falls between the step's ends, so that the
+/* Where an ordered method's bias, a share of the palette's sRGB step, is
+ * added to sRGB channel c. With dec, c is moved within the step holding it
+ * to where its linear light falls between the step's ends, so that the
  * threshold splits pixels between the palette entries either side in
- * proportion to their physical brightness.
+ * proportion to their physical brightness. It depends on c alone, so
+ * dither_bitmap tabulates it rather than divide per pixel.
  * ponytail: assumes palette levels at multiples of pm->step, as on an even
  * grid; an uneven palette's true brackets would need a search per pixel. */
-static unsigned int dither_bias(const pixelmap_t *pm,
-                                const uint16_t   *dec,
-                                unsigned int      c,
-                                int               t)
+static unsigned int dither_bias_base(const pixelmap_t *pm,
+                                     const uint16_t   *dec,
+                                     unsigned int      c)
 {
   unsigned int a, b;
 
@@ -256,7 +262,7 @@ static unsigned int dither_bias(const pixelmap_t *pm,
       c = a + (unsigned int) ((dec[c] - dec[a]) * (b - a) / (dec[b] - dec[a]));
   }
 
-  return (unsigned int) CLAMP((int) c + t, 0, 255);
+  return c;
 }
 
 /* Store a palette index using the bitmap module's packing: p4 low nibble
@@ -654,10 +660,31 @@ static void dither_zf_coeffs_for(unsigned int v, unsigned int c[4])
   c[3] = c[0] + c[1] + c[2];
 }
 
+/* Ostromoukhov's split for each level 0..127 into w: the right and
+ * down-left neighbours' shares, rescaled to OSTRO_DIV. Zhou and Fang's
+ * coefficients replace Ostromoukhov's when zhou_fang is set. Tabulated once
+ * per call, so the pixel loop does no division. */
+static void dither_ostro_weights(int zhou_fang, int w[128][2])
+{
+  unsigned int l;
+  unsigned int c[4];
+
+  for (l = 0; l < 128; l++)
+  {
+    if (zhou_fang)
+      dither_zf_coeffs_for(l, c);
+    else
+      memcpy(c, dither_ostro[l], sizeof(c));
+
+    /* Zhou and Fang's largest coefficient times OSTRO_DIV fits an int */
+    w[l][0] = (int) ((c[0] * OSTRO_DIV + c[3] / 2) / c[3]);
+    w[l][1] = (int) ((c[1] * OSTRO_DIV + c[3] / 2) / c[3]);
+  }
+}
+
 /* Spread one pixel's error Ostromoukhov's way: each channel's split
  * between the right, down-left and down neighbours depends on that
- * channel's source level, rescaled to sum to OSTRO_DIV. Zhou and Fang's
- * coefficients replace Ostromoukhov's when zhou_fang is set. cur and next
+ * channel's source level, as w from dither_ostro_weights gives. cur and next
  * are the error rows; dir mirrors the split on right-to-left rows. */
 static void dither_ostromoukhov(int                       *err,
                                 int                        stride,
@@ -669,13 +696,12 @@ static void dither_ostromoukhov(int                       *err,
                                 int                        qr,
                                 int                        qg,
                                 int                        qb,
-                                int                        zhou_fang)
+                                const int                  w[128][2])
 {
   unsigned int v[3];
   int          q[3];
   int          ch;
   unsigned int l;
-  unsigned int c[4];
   int          wr, wdl, wd;
 
   v[0] = PIXELFMT_Rxxx8888(*px);
@@ -687,15 +713,9 @@ static void dither_ostromoukhov(int                       *err,
 
   for (ch = 0; ch < 3; ch++)
   {
-    l = v[ch] < 128 ? v[ch] : 255 - v[ch];
-    if (zhou_fang)
-      dither_zf_coeffs_for(l, c);
-    else
-      memcpy(c, dither_ostro[l], sizeof(c));
-
-    /* Zhou and Fang's largest coefficient times OSTRO_DIV fits an int */
-    wr  = (int) ((c[0] * OSTRO_DIV + c[3] / 2) / c[3]);
-    wdl = (int) ((c[1] * OSTRO_DIV + c[3] / 2) / c[3]);
+    l   = v[ch] < 128 ? v[ch] : 255 - v[ch];
+    wr  = w[l][0];
+    wdl = w[l][1];
     wd  = OSTRO_DIV - wr - wdl; /* so the mean is kept exactly */
 
     err[(cur  * stride + x + dir + DITHER_PAD) * 3 + ch] += q[ch] * wr;
@@ -722,32 +742,43 @@ static const unsigned char dither_zf_keys[][2] =
   { 127, 100 }
 };
 
+/* Zhou and Fang's modulation strength for each level 0..127 into m,
+ * interpolated between the keys. Tabulated once per call, so the pixel loop
+ * does no division. */
+static void dither_zf_strengths(int m[128])
+{
+  int v;
+  int i;
+
+  for (v = 0; v < 128; v++)
+  {
+    for (i = 1; dither_zf_keys[i][0] < v; i++)
+      ;
+    m[v] = dither_zf_keys[i - 1][1] +
+           (dither_zf_keys[i][1] - dither_zf_keys[i - 1][1]) *
+           (v - dither_zf_keys[i - 1][0]) /
+           (dither_zf_keys[i][0] - dither_zf_keys[i - 1][0]);
+  }
+}
+
 /* Nudge channel c, already carrying its error, for the lookup only. v is
  * the channel's source level and t the pixel's noise, -128..127. The nudge
- * is at most half pm's step, scaled by the strength for v, by opts'
- * strength and to max. */
+ * is at most half pm's step, scaled by the strength for v from strengths, by
+ * opts' strength and to max. */
 static unsigned int dither_zhou_fang(unsigned int            c,
                                      unsigned int            v,
                                      int                     t,
+                                     const int               strengths[128],
                                      const pixelmap_t       *pm,
                                      const dither_options_t *opts,
                                      int                     max)
 {
-  int i;
-  int m;
   int n;
 
   if (v >= 128)
     v = 255 - v;
 
-  for (i = 1; dither_zf_keys[i][0] < v; i++)
-    ;
-  m = dither_zf_keys[i - 1][1] +
-      (dither_zf_keys[i][1] - dither_zf_keys[i - 1][1]) *
-      ((int) v - dither_zf_keys[i - 1][0]) /
-      (dither_zf_keys[i][0] - dither_zf_keys[i - 1][0]);
-
-  n = t * m * (int) pm->step / (256 * 100);
+  n = t * strengths[v] * (int) pm->step / (256 * 100);
 
   return dither_apply(c, n * max / 255 * opts->strength, 100, max);
 }
@@ -864,7 +895,8 @@ static void dither_riemersma(const bitmap_t         *src,
                    weight[a];
       sum[ch] = sum[ch] / RIEMERSMA_ONE * opts->strength;
     }
-    dither_apply3(&c[0], &c[1], &c[2], sum, 100, dither_limit(pm, max), max);
+    dither_apply3(&c[0], &c[1], &c[2], sum, 100, DIV_RECIP(100),
+                  dither_limit(pm, max), max);
 
     index = dither_nearest(pm, dec, c[0], c[1], c[2]);
     dither_put((unsigned char *) out->base + y * out->rowbytes, x, log2bpp,
@@ -895,15 +927,21 @@ result_t dither_bitmap(const bitmap_t         *src,
   int                        stride;
   int                       *err;
   int                        total;
+  unsigned int               rtotal;
   const uint16_t            *dec;
   int                        max;
   int                        bias[DITHER_MAX_LEVELS];
+  unsigned char              bias_base[256];
+  int                        ostro_w[128][2];
+  int                        zf_m[128];
   unsigned char              rank[256];
   dither_yliluoma_t         *yl;
   int                        i;
   unsigned int               pr, pg, pb;
   int                        x, y;
   int                        cur;
+  int                        row[DITHER_MAX_H];
+  int                        next;
   int                        dir;
   const unsigned char       *srcrow;
   unsigned char             *dstrow;
@@ -984,7 +1022,8 @@ result_t dither_bitmap(const bitmap_t         *src,
 
   /* error is stored scaled by divisor * 100 so that strength and the kernel
    * weights need only one division, at read time */
-  total = k->divisor * 100;
+  total  = k->divisor * 100;
+  rtotal = DIV_RECIP((unsigned int) total);
 
   /* in linear light channels run 0..colourspace_LINEAR_MAX through dec[],
    * and are re-encoded only for the nearest-colour lookup */
@@ -1001,6 +1040,13 @@ result_t dither_bitmap(const bitmap_t         *src,
   for (i = 0; i < k->levels; i++)
     bias[i] = ((2 * i - (k->levels - 1)) * (int) pm->step * opts->strength) /
               (2 * k->levels * 100);
+  for (i = 0; i < 256; i++)
+    bias_base[i] = (unsigned char) dither_bias_base(pm, dec, (unsigned int) i);
+
+  if (opts->method == dither_OSTROMOUKHOV || opts->method == dither_ZHOU_FANG)
+    dither_ostro_weights(opts->method == dither_ZHOU_FANG, ostro_w);
+  if (opts->method == dither_ZHOU_FANG)
+    dither_zf_strengths(zf_m);
 
   if (opts->method == dither_KNOLL || opts->method == dither_YLILUOMA)
     dither_luma_ranks(palette, opts->ncolours, rank);
@@ -1032,7 +1078,11 @@ result_t dither_bitmap(const bitmap_t         *src,
   for (y = 0; y < src->size.h; y++)
   {
     cur = y % k->h;
-    dir = (opts->serpentine && (y & 1)) ? -1 : 1;
+    /* the error rows the kernel's rows land on, wrapping in the ring */
+    for (my = 0; my < k->h; my++)
+      row[my] = (cur + my) % k->h;
+    next = row[k->h > 1 ? 1 : 0];
+    dir  = (opts->serpentine && (y & 1)) ? -1 : 1;
     px  = (const pixelfmt_rgbx8888_t *) srcrow;
 
     for (i = 0; i < src->size.w; i++)
@@ -1064,22 +1114,25 @@ result_t dither_bitmap(const bitmap_t         *src,
       else if (k->threshold)
       {
         t = bias[k->threshold(x, y)];
-        r = dither_bias(pm, dec, r, t);
-        g = dither_bias(pm, dec, g, t);
-        b = dither_bias(pm, dec, b, t);
+        r = (unsigned int) CLAMP((int) bias_base[r] + t, 0, 255);
+        g = (unsigned int) CLAMP((int) bias_base[g] + t, 0, 255);
+        b = (unsigned int) CLAMP((int) bias_base[b] + t, 0, 255);
         index = dither_lookup(pm, r, g, b);
       }
       else
       {
-        dither_apply3(&r, &g, &b, e, total, lim, max);
+        dither_apply3(&r, &g, &b, e, total, rtotal, lim, max);
         if (opts->method == dither_ZHOU_FANG)
         {
           /* pr, pg, pb hold the nudged pixel until the palette colour
            * replaces them; the error is measured from the un-nudged r, g, b */
           t  = (int) (rng_xorshift32(&rng) & 255) - 128;
-          pr = dither_zhou_fang(r, PIXELFMT_Rxxx8888(px[x]), t, pm, opts, max);
-          pg = dither_zhou_fang(g, PIXELFMT_xGxx8888(px[x]), t, pm, opts, max);
-          pb = dither_zhou_fang(b, PIXELFMT_xxBx8888(px[x]), t, pm, opts, max);
+          pr = dither_zhou_fang(r, PIXELFMT_Rxxx8888(px[x]), t, zf_m, pm,
+                                opts, max);
+          pg = dither_zhou_fang(g, PIXELFMT_xGxx8888(px[x]), t, zf_m, pm,
+                                opts, max);
+          pb = dither_zhou_fang(b, PIXELFMT_xxBx8888(px[x]), t, zf_m, pm,
+                                opts, max);
           index = dither_nearest(pm, dec, pr, pg, pb);
         }
         else
@@ -1107,8 +1160,8 @@ result_t dither_bitmap(const bitmap_t         *src,
       if (opts->method == dither_OSTROMOUKHOV ||
           opts->method == dither_ZHOU_FANG)
       {
-        dither_ostromoukhov(err, stride, cur, (cur + 1) % k->h, x, dir, &px[x],
-                            qr, qg, qb, opts->method == dither_ZHOU_FANG);
+        dither_ostromoukhov(err, stride, cur, next, x, dir, &px[x],
+                            qr, qg, qb, (const int (*)[2]) ostro_w);
         continue;
       }
 
@@ -1121,8 +1174,8 @@ result_t dither_bitmap(const bitmap_t         *src,
           if (weight == 0)
             continue;
 
-          e = &err[(((cur + my) % k->h) * stride +
-                    x + (mx - k->cx) * dir + DITHER_PAD) * 3];
+          e = &err[(row[my] * stride + x + (mx - k->cx) * dir + DITHER_PAD) *
+                   3];
           e[0] += qr * weight;
           e[1] += qg * weight;
           e[2] += qb * weight;
