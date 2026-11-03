@@ -13,7 +13,9 @@
 #include "base/utils.h"
 
 #include "framebuf/bitmap.h"
+#include "framebuf/colour.h"
 #include "framebuf/composite.h"
+#include "framebuf/dither.h"
 #include "framebuf/pixelfmt.h"
 #include "framebuf/screen.h"
 #include "framebuf/span.h"
@@ -256,6 +258,74 @@ static void bench_resize(const bitmap_t *src)
     }
 }
 
+/* Dither a 640x480 gradient with noise to 16 and to 4 colours, by every
+ * method, in sRGB and in linear light. */
+static void bench_dither(void)
+{
+  enum { DW = 640, DH = 480 };
+
+  static const int counts[] = { 16, 4 };
+
+  result_t         rc;
+  unsigned int    *px;
+  colour_t         pal[16];
+  bitmap_t         src;
+  size2d_t         size;
+  dither_options_t opts;
+  bitmap_t        *out;
+  clock_t          start;
+  int              x, y;
+  int              i;
+  int              c;
+  int              m;
+  int              lin;
+
+  px = malloc((size_t) DW * DH * 4);
+  if (px == NULL)
+    return;
+
+  for (y = 0; y < DH; y++)
+    for (x = 0; x < DW; x++)
+      px[y * DW + x] = PIXELFMT_MAKE_RGBA8888((x * 255 / DW) ^ (bench_rng() & 15),
+                                              (y * 255 / DH) ^ (bench_rng() & 15),
+                                              ((x + y) * 255 / (DW + DH)) ^ (bench_rng() & 15),
+                                              255);
+  for (i = 0; i < (int) NELEMS(pal); i++)
+    pal[i] = colour_rgb(bench_rng() & 255, bench_rng() & 255, bench_rng() & 255);
+
+  size.w = DW;
+  size.h = DH;
+  bitmap_init(&src, size, pixelfmt_rgbx8888, DW * 4, NULL, px);
+
+  for (c = 0; c < (int) NELEMS(counts); c++)
+    for (lin = 0; lin < 2; lin++)
+      for (m = 0; m < dither__LIMIT; m++)
+      {
+        opts.method     = (dither_method_t) m;
+        opts.palette    = pal;
+        opts.ncolours   = counts[c];
+        opts.strength   = 100;
+        opts.serpentine = 1;
+        opts.linear     = lin;
+
+        start = clock();
+        rc    = dither_bitmap(&src, &opts, &out);
+        if (rc != result_OK)
+        {
+          printf("dither failed\n");
+          break;
+        }
+        printf("dither %2d %-3s %2d   %8.2f ms  %08x\n", counts[c],
+               lin ? "lin" : "srg", m, bench_ms(start, 1),
+               bench_hash(out->base, (size_t) out->rowbytes * DH));
+        free(out->base);
+        free(out->palette);
+        free(out);
+      }
+
+  free(px);
+}
+
 /* ----------------------------------------------------------------------- */
 
 int main(void)
@@ -320,6 +390,8 @@ int main(void)
   bench_resize(&bsrc);
 
   bench_blit(src1, dst);
+
+  bench_dither();
 
   free(opaque);
   free(dst);
