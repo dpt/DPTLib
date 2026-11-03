@@ -318,6 +318,41 @@
 /* Like LERP, but takes pre-multiplied values. */
 #define PRELERP(p,q,a,t) ((p) + (q) - MULT(a, p, t))
 
+/* Reciprocals of the alpha values, 0xFFFFFFFF / a, for div_alpha. They are
+ * constant expressions, so building the table costs no division. */
+#define RECIP(d)   (0xFFFFFFFFu / (d))
+#define RECIP4(d)  RECIP(d), RECIP(d + 1), RECIP(d + 2), RECIP(d + 3)
+#define RECIP16(d) RECIP4(d), RECIP4(d + 4), RECIP4(d + 8), RECIP4(d + 12)
+#define RECIP64(d) RECIP16(d), RECIP16(d + 16), RECIP16(d + 32), RECIP16(d + 48)
+
+static const unsigned int recip_alpha[256] =
+{
+  0, RECIP(1), RECIP(2), RECIP(3),
+  RECIP4(4), RECIP4(8), RECIP4(12),
+  RECIP16(16), RECIP16(32), RECIP16(48),
+  RECIP64(64), RECIP64(128), RECIP64(192)
+};
+
+#undef RECIP64
+#undef RECIP16
+#undef RECIP4
+#undef RECIP
+
+/* n / a for alpha a in 1..255 and n < 2^31. n * r / 2^32 falls short of
+ * n / a by less than one, so the estimate wants at most one step up. Targets
+ * without a hardware divide would otherwise pay for three divisions per
+ * pixel. */
+static INLINE unsigned int div_alpha(unsigned int n, unsigned int a)
+{
+  unsigned int q;
+
+  q = (unsigned int) (((unsigned long long) n * recip_alpha[a]) >> 32);
+  if (n - q * a >= a)
+    q++;
+
+  return q;
+}
+
 /* ----------------------------------------------------------------------- */
 
 /* Shorthands for pixel macros */
@@ -454,7 +489,7 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_src_over_general(pixelfmt_xxxa8
   dstG = GREEN(dst);
   dstB = BLUE(dst);
 
-#define BLEND(src, dst) ((src * srcalpha + ((dst * dstalpha * csrcalpha) >> 8)) >> 8) * 255 / newalpha
+#define BLEND(src, dst) div_alpha(((src * srcalpha + ((dst * dstalpha * csrcalpha) >> 8)) >> 8) * 255, newalpha)
   newR = BLEND(srcR, dstR);
   newG = BLEND(srcG, dstG);
   newB = BLEND(srcB, dstB);
@@ -646,7 +681,7 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_src_out_general(pixelfmt_xxxa88
   srcG = GREEN(src);
   srcB = BLUE(src);
 
-#define BLEND(src) (DIV_255(src * srcalpha * cdstalpha, tmp)) / newalpha
+#define BLEND(src) div_alpha(DIV_255(src * srcalpha * cdstalpha, tmp), newalpha)
   newR = BLEND(srcR);
   newG = BLEND(srcG);
   newB = BLEND(srcB);
@@ -754,7 +789,7 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_src_atop_general(pixelfmt_xxxa8
   dstG = GREEN(dst);
   dstB = BLUE(dst);
 
-#define BLEND(src, dst) ((src * srcalpha * dstalpha + dst * dstalpha * csrcalpha) >> 16) * 255 / newalpha
+#define BLEND(src, dst) div_alpha(((src * srcalpha * dstalpha + dst * dstalpha * csrcalpha) >> 16) * 255, newalpha)
   newR = BLEND(srcR, dstR);
   newG = BLEND(srcG, dstG);
   newB = BLEND(srcB, dstB);
@@ -859,7 +894,7 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_xor_general(pixelfmt_xxxa8888_t
   dstG = GREEN(dst);
   dstB = BLUE(dst);
 
-#define BLEND(src, dst) DIV_255(src * srcalpha * (255 - dstalpha) + dst * dstalpha * (255 - srcalpha), tmp) / newalpha
+#define BLEND(src, dst) div_alpha(DIV_255(src * srcalpha * (255 - dstalpha) + dst * dstalpha * (255 - srcalpha), tmp), newalpha)
   dstR = BLEND(srcR, dstR);
   dstG = BLEND(srcG, dstG);
   dstB = BLEND(srcB, dstB);
