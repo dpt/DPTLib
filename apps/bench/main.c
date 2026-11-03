@@ -97,6 +97,14 @@ static void bench_spans(const char          *tag,
     printf("blendarray %-8s %-4s %8.2f ms  %08x\n", fmts[i].name, tag,
            bench_ms(start, 10), bench_hash(dst, N * fmts[i].bpp));
 
+    /* in place, as the screen blits do */
+    memcpy(dst, src1, N * fmts[i].bpp);
+    start = clock();
+    for (r = 0; r < 10; r++)
+      span->blendarray(dst, dst, src2, (int) N, alphas);
+    printf("blendarray %-8s %-4s %8.2f ms  %08x  in place\n", fmts[i].name,
+           tag, bench_ms(start, 10), bench_hash(dst, N * fmts[i].bpp));
+
     /* timed over the whole buffer at 16 alphas from 0 to 255 */
     start = clock();
     for (a = 0; a < 256; a += 17)
@@ -111,6 +119,13 @@ static void bench_spans(const char          *tag,
       h ^= bench_hash(dst, W * 4 * fmts[i].bpp) + (unsigned int) a;
     }
     printf("blendconst %-8s %-4s %8.2f ms  %08x\n", fmts[i].name, tag, ms, h);
+
+    memcpy(dst, src1, N * fmts[i].bpp);
+    start = clock();
+    for (a = 0; a < 256; a += 17)
+      span->blendconst(dst, dst, src2, (int) N, a, NULL);
+    printf("blendconst %-8s %-4s %8.2f ms  %08x  in place\n", fmts[i].name,
+           tag, bench_ms(start, 16), bench_hash(dst, N * fmts[i].bpp));
   }
 }
 
