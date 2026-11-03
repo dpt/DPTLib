@@ -10,6 +10,21 @@
 
 #include "all8888.h"
 
+/* n / d for d > 0 and n < 2^31, given r = 0xFFFFFFFF / d. n * r / 2^32 falls
+ * short of n / d by less than one, so the estimate wants at most one step up.
+ * Targets without a hardware divide pay for one division per pixel, not
+ * three. */
+static unsigned int div_recip(unsigned int n, unsigned int d, unsigned int r)
+{
+  unsigned int q;
+
+  q = (unsigned int) (((unsigned long long) n * r) >> 32);
+  if (n - q * d >= d)
+    q++;
+
+  return q;
+}
+
 /* Composite the colour of src2 at coverage alpha over src1, Porter-Duff
  * source over destination on straight (not premultiplied) alpha. src2's own
  * alpha byte is ignored: alpha is its coverage. */
@@ -17,7 +32,9 @@ static pixelfmt_bgra8888_t blend_pix(pixelfmt_bgra8888_t src1,
                                      pixelfmt_bgra8888_t src2,
                                      int                 alpha)
 {
+  unsigned int a1;
   unsigned int w1, w2, d;
+  unsigned int r;
   unsigned int out;
   int          shift;
 
@@ -26,14 +43,32 @@ static pixelfmt_bgra8888_t blend_pix(pixelfmt_bgra8888_t src1,
   if (alpha >= 255)
     return src2 | 0xFF000000u;
 
+  a1 = src1 >> 24;
+  if (a1 == 0)
+    /* over nothing: the colour is src2's and the coverage is the alpha */
+    return (src2 & 0x00FFFFFFu) | ((unsigned int) alpha << 24);
+
   w2 = (unsigned int) alpha * 255;
-  w1 = (src1 >> 24) * (255 - (unsigned int) alpha);
-  d  = w1 + w2; /* the result's alpha, times 255 */
+  w1 = a1 * (255 - (unsigned int) alpha);
+
+  if (a1 == 255)
+  {
+    /* over opaque: d is 255 * 255, a constant the compiler divides by
+     * without a division */
+    out = 0xFF000000u;
+    for (shift = 0; shift < 24; shift += 8)
+      out |= ((((src1 >> shift) & 0xFF) * w1 +
+               ((src2 >> shift) & 0xFF) * w2 + 65025 / 2) / 65025) << shift;
+    return out;
+  }
+
+  d = w1 + w2; /* the result's alpha, times 255 */
+  r = 0xFFFFFFFFu / d;
 
   out = ((d + 127) / 255) << 24;
   for (shift = 0; shift < 24; shift += 8)
-    out |= ((((src1 >> shift) & 0xFF) * w1 +
-             ((src2 >> shift) & 0xFF) * w2 + d / 2) / d) << shift;
+    out |= div_recip(((src1 >> shift) & 0xFF) * w1 +
+                     ((src2 >> shift) & 0xFF) * w2 + d / 2, d, r) << shift;
 
   return out;
 }
