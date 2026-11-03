@@ -658,6 +658,67 @@ static result_t test_fill_linear_gradient(void)
   return result_TEST_PASSED;
 }
 
+/* Every pixel of gradients at assorted angles and lengths takes the step
+ * that projecting it onto a to b and dividing gives. */
+static result_t test_fill_linear_gradient_steps(void)
+{
+  static testscreen_t ts;
+
+  const box_t whole = { 0, 0, WIDTH, HEIGHT };
+
+  colour_t     red, blue;
+  unsigned int seed;
+  int          n;
+  point_t      a, b;
+  double       dx, dy, len2;
+  int          x, y;
+  int          i;
+
+  red  = colour_rgb(255, 0, 0);
+  blue = colour_rgb(0, 0, 255);
+  seed = 12345;
+
+  for (n = 0; n < 300; n++)
+  {
+    seed = seed * 1103515245u + 12345u;
+    a.x  = (int) (seed >> 16) % 260 - 100;
+    seed = seed * 1103515245u + 12345u;
+    a.y  = (int) (seed >> 16) % 260 - 100;
+    seed = seed * 1103515245u + 12345u;
+    b.x  = (int) (seed >> 16) % 260 - 100;
+    seed = seed * 1103515245u + 12345u;
+    b.y  = (int) (seed >> 16) % 260 - 100;
+    if (n % 3 == 0)
+      b.x = a.x + (b.x & 3); /* short ramps, many steps per pixel */
+
+    dx   = b.x - a.x;
+    dy   = b.y - a.y;
+    len2 = dx * dx + dy * dy;
+    if (len2 == 0)
+      continue;
+
+    testscreen_init(&ts);
+    screen_fill_linear_gradient(&ts.scr, &whole, a, b, red, blue);
+
+    for (y = 0; y < HEIGHT; y++)
+      for (x = 0; x < WIDTH; x++)
+      {
+        i = CLAMP((int) (((x - a.x) * dx + (y - a.y) * dy) / len2 * 255 +
+                         0.5), 0, 255);
+        if (np_at(&ts, x, y) !=
+            (int) screen_colour_to_pixel(&ts.scr,
+                                         colour_mix_rgba(red, blue, i, 255)))
+        {
+          printf("screen: fill_linear_gradient (%d,%d)-(%d,%d) wrong step at "
+                 "%d,%d\n", a.x, a.y, b.x, b.y, x, y);
+          return result_TEST_FAILED;
+        }
+      }
+  }
+
+  return result_TEST_PASSED;
+}
+
 /* ----------------------------------------------------------------------- */
 
 static result_t test_dashed_line(void)
@@ -2693,6 +2754,7 @@ result_t screen_test(const char *resources)
     test_fill_pattern,
     test_fill_checks,
     test_fill_linear_gradient,
+    test_fill_linear_gradient_steps,
     test_dashed_line,
     test_draw_lines,
     test_draw_thick_line,
