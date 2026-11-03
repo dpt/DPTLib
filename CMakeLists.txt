@@ -704,4 +704,9 @@ if(BUILD_TESTS AND PROJECT_IS_TOP_LEVEL)
 
     install(TARGETS DPTLibTest RUNTIME
         DESTINATION ${CMAKE_INSTALL_PREFIX})
+
+    # Pixel loop timings and output checksums; meaningful in Release only
+    add_executable(DPTLibBench apps/bench/main.c)
+    set_target_properties(DPTLibBench PROPERTIES C_STANDARD 99)
+    target_link_libraries(DPTLibBench DPTLib)
 endif()

@@ -63,6 +63,11 @@ waiting for Q.
 
 Success prints `++ Tests completed in Ns: N of N tests passed.`
 
+`DPTLibBench` (built with the tests) times the span blends, `composite` and
+`bitmap_resize` and prints a checksum of each output. Run
+`./build-nosdl/DPTLibBench` before and after a change to a pixel loop: the
+timings must improve and the checksums must not change.
+
 ### Adding a new test
 
 1. Write `libraries/<area>/<module>/test/<module>-test.c` exposing a `result_t <module>_test(const char *resources)`.
