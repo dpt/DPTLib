@@ -68,11 +68,14 @@ static void bench_spans(const char          *tag,
   {
     pixelfmt_t  fmt;
     const char *name;
+    size_t      bpp; /* bytes per pixel */
   }
   fmts[] =
   {
-    { pixelfmt_bgrx8888, "bgrx8888" },
-    { pixelfmt_bgra8888, "bgra8888" },
+    { pixelfmt_bgrx8888, "bgrx8888", 4 },
+    { pixelfmt_bgra8888, "bgra8888", 4 },
+    { pixelfmt_rgb565,   "rgb565",   2 },
+    { pixelfmt_rgbx5551, "rgbx5551", 2 },
   };
 
   const span_t *span;
@@ -91,7 +94,7 @@ static void bench_spans(const char          *tag,
     for (r = 0; r < 10; r++)
       span->blendarray(dst, src1, src2, (int) N, alphas);
     printf("blendarray %-8s %-4s %8.2f ms  %08x\n", fmts[i].name, tag,
-           bench_ms(start, 10), bench_hash(dst, N * 4));
+           bench_ms(start, 10), bench_hash(dst, N * fmts[i].bpp));
 
     /* timed over the whole buffer at 16 alphas from 0 to 255 */
     start = clock();
@@ -104,7 +107,7 @@ static void bench_spans(const char          *tag,
     for (a = 0; a < 256; a++)
     {
       span->blendconst(dst, src1, src2, W * 4, a, NULL);
-      h ^= bench_hash(dst, W * 16) + (unsigned int) a;
+      h ^= bench_hash(dst, W * 4 * fmts[i].bpp) + (unsigned int) a;
     }
     printf("blendconst %-8s %-4s %8.2f ms  %08x\n", fmts[i].name, tag, ms, h);
   }
