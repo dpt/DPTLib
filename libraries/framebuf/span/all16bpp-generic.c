@@ -36,6 +36,10 @@
 #define SPAN_ALL16BPP_BLEND_PIX_PRE(alpha) \
 alpha += alpha >= 128;
 
+/* Each blend below has a loop of its own for blending in place, src1 being
+ * dst: one through both pointers would not vectorise, as the compiler's
+ * overlap check sees them alias. */
+
 /* Blend run of pixels with constant alpha. */
 #define SPAN_ALL16BPP_BLEND_CONST(func, fmt)                                  \
 static void func(void       *vdst,                                            \
@@ -52,6 +56,17 @@ static void func(void       *vdst,                                            \
     NOT_USED(context);                                                       \
                                                                                \
     SPAN_ALL16BPP_BLEND_PIX_PRE(alpha)                                        \
+                                                                               \
+    if (pdst == psrc1)                                                        \
+    {                                                                         \
+        while (length--)                                                      \
+        {                                                                     \
+            SPAN_ALL16BPP_BLEND_PIX(fmt, *pdst, *psrc2, alpha, *pdst)         \
+            pdst++;                                                           \
+            psrc2++;                                                          \
+        }                                                                     \
+        return;                                                               \
+    }                                                                         \
                                                                                \
     while (length--)                                                         \
     {                                                                        \
@@ -74,6 +89,20 @@ static void func(void                *vdst,                                   \
     fmt       *pdst  = vdst;                                                 \
     const fmt *psrc1 = vsrc1;                                                \
     const fmt *psrc2 = vsrc2;                                                \
+                                                                               \
+    if (pdst == psrc1)                                                       \
+    {                                                                        \
+        while (length--)                                                     \
+        {                                                                    \
+            int alpha = *palphas++;                                          \
+                                                                               \
+            SPAN_ALL16BPP_BLEND_PIX_PRE(alpha)                                \
+            SPAN_ALL16BPP_BLEND_PIX(fmt, *pdst, *psrc2, alpha, *pdst)        \
+            pdst++;                                                          \
+            psrc2++;                                                         \
+        }                                                                    \
+        return;                                                              \
+    }                                                                        \
                                                                                \
     while (length--)                                                        \
     {                                                                        \

@@ -281,6 +281,69 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
+/* Blending in place, src1 being dst, takes a loop of its own: it must give
+ * what blending into a separate dst does. */
+static int test_blend_in_place(void)
+{
+  static const pixelfmt_t fmts[] =
+  {
+    pixelfmt_rgbx5551, pixelfmt_rgb565, pixelfmt_bgrx8888, pixelfmt_rgbx8888,
+    pixelfmt_xbgr8888, pixelfmt_bgra8888
+  };
+
+  unsigned int  src1[64];
+  unsigned int  src2[64];
+  unsigned int  want[64];
+  unsigned int  got[64];
+  unsigned char alphas[64];
+  unsigned int  seed;
+  const span_t *span;
+  int           i;
+  int           k;
+
+  printf("test: blending in place matches blending to a separate dst\n");
+
+  seed = 7;
+  for (i = 0; i < 64; i++)
+  {
+    seed      = seed * 1103515245u + 12345u;
+    src1[i]   = seed;
+    seed      = seed * 1103515245u + 12345u;
+    src2[i]   = seed;
+    alphas[i] = (unsigned char) (i % 4 == 0 ? 0 : i % 4 == 1 ? 255 : seed >> 24);
+  }
+
+  for (k = 0; k < (int) NELEMS(fmts); k++)
+  {
+    span = spanregistry_get(fmts[k]);
+
+    /* a 16bpp span leaves the buffers' second halves as copied */
+    memcpy(want, src1, sizeof(want));
+    span->blendarray(want, src1, src2, 64, alphas);
+    memcpy(got, src1, sizeof(got));
+    span->blendarray(got, got, src2, 64, alphas);
+    if (memcmp(got, want, sizeof(got)) != 0)
+    {
+      printf("  failed: format %d blendarray\n", fmts[k]);
+      return 0;
+    }
+
+    memcpy(want, src1, sizeof(want));
+    span->blendconst(want, src1, src2, 64, 100, NULL);
+    memcpy(got, src1, sizeof(got));
+    span->blendconst(got, got, src2, 64, 100, NULL);
+    if (memcmp(got, want, sizeof(got)) != 0)
+    {
+      printf("  failed: format %d blendconst\n", fmts[k]);
+      return 0;
+    }
+  }
+
+  return 1;
+}
+
+/* ----------------------------------------------------------------------- */
+
 static int test_blend_paletted(void)
 {
   static const struct
@@ -360,6 +423,7 @@ result_t span_test(const char *resources)
       !test_fill() ||
       !test_blend_16bpp() ||
       !test_blend_bgra8888() ||
+      !test_blend_in_place() ||
       !test_blend_paletted())
     return result_TEST_FAILED;
 
