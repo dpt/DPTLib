@@ -75,23 +75,46 @@ static int resize_other_lane(pixelfmt_t fmt)
   }
 }
 
-/* Box filter: each destination pixel is the area-weighted average of the
- * source rectangle it covers. */
-static void resize_box(const bitmap_t *src,
-                       uint8_t        *base,
-                       size2d_t        size,
-                       int             linear,
-                       int             other)
+/* A destination column's source span for the box filter: from f0 to f1,
+ * covering whole source columns s0 to s1 - 1. */
+typedef struct resize_box_col
 {
-  int            x, y, c;
-  int            sx, sy;
-  int            sx0, sx1, sy0, sy1;
-  double         fx0, fx1, fy0, fy1;
-  double         wx, wy, w, total;
-  double         acc[4];
-  const uint8_t *sp;
-  uint8_t       *px;
-  int            v;
+  double f0, f1;
+  int    s0, s1;
+}
+resize_box_col_t;
+
+/* Box filter: each destination pixel is the area-weighted average of the
+ * source rectangle it covers. The column spans are worked out once, not on
+ * every row. */
+static result_t resize_box(const bitmap_t *src,
+                           uint8_t        *base,
+                           size2d_t        size,
+                           int             linear,
+                           int             other)
+{
+  resize_box_col_t *cols;
+  int               x, y, c;
+  int               sx, sy;
+  int               sx0, sx1, sy0, sy1;
+  double            fx0, fx1, fy0, fy1;
+  double            wx, wy, w, total;
+  double            acc[4];
+  const uint8_t    *sp;
+  uint8_t          *px;
+  int               v;
+
+  cols = malloc((size_t) size.w * sizeof(*cols));
+  if (cols == NULL)
+    return result_OOM;
+
+  for (x = 0; x < size.w; x++)
+  {
+    cols[x].f0 = (double) x * src->size.w / size.w;
+    cols[x].f1 = (double) (x + 1) * src->size.w / size.w;
+    cols[x].s0 = (int) cols[x].f0;
+    cols[x].s1 = MIN((int) ceil(cols[x].f1), src->size.w);
+  }
 
   for (y = 0; y < size.h; y++)
   {
@@ -103,10 +126,10 @@ static void resize_box(const bitmap_t *src,
 
     for (x = 0; x < size.w; x++, px += 4)
     {
-      fx0 = (double) x * src->size.w / size.w;
-      fx1 = (double) (x + 1) * src->size.w / size.w;
-      sx0 = (int) fx0;
-      sx1 = MIN((int) ceil(fx1), src->size.w);
+      fx0 = cols[x].f0;
+      fx1 = cols[x].f1;
+      sx0 = cols[x].s0;
+      sx1 = cols[x].s1;
 
       acc[0] = acc[1] = acc[2] = acc[3] = 0;
       total  = 0;
@@ -141,6 +164,10 @@ static void resize_box(const bitmap_t *src,
       }
     }
   }
+
+  free(cols);
+
+  return result_OK;
 }
 
 /* Catmull-Rom weights for the four taps around a sample at fraction t. */
@@ -156,22 +183,45 @@ static void resize_cubic_weights(double t, double w[4])
   w[3] = (t3 - t2) / 2;
 }
 
-/* Bicubic (Catmull-Rom) over a 4x4 neighbourhood, clamped at the edges.
- * Sharper than bilinear but can overshoot, so the result is clamped. */
-static void resize_cubic(const bitmap_t *src,
-                         uint8_t        *base,
-                         size2d_t        size,
-                         int             linear,
-                         int             other)
+/* A destination column's taps for the cubic filter: the source column at
+ * or left of its centre and the four weights round it. */
+typedef struct resize_cubic_col
 {
-  int            x, y, c, i, j;
-  int            ix, iy, sx, sy;
-  double         fx, fy;
-  double         wx[4], wy[4];
-  double         acc[4], row[4];
-  const uint8_t *sp;
-  uint8_t       *px;
-  int            v, max;
+  int    ix;
+  double w[4];
+}
+resize_cubic_col_t;
+
+/* Bicubic (Catmull-Rom) over a 4x4 neighbourhood, clamped at the edges.
+ * Sharper than bilinear but can overshoot, so the result is clamped. The
+ * column taps are worked out once, not on every row. */
+static result_t resize_cubic(const bitmap_t *src,
+                             uint8_t        *base,
+                             size2d_t        size,
+                             int             linear,
+                             int             other)
+{
+  resize_cubic_col_t *cols;
+  int                 x, y, c, i, j;
+  int                 ix, iy, sx, sy;
+  double              fx, fy;
+  const double       *wx;
+  double              wy[4];
+  double              acc[4], row[4];
+  const uint8_t      *sp;
+  uint8_t            *px;
+  int                 v, max;
+
+  cols = malloc((size_t) size.w * sizeof(*cols));
+  if (cols == NULL)
+    return result_OOM;
+
+  for (x = 0; x < size.w; x++)
+  {
+    fx         = (x + 0.5) * src->size.w / size.w - 0.5;
+    cols[x].ix = (int) floor(fx);
+    resize_cubic_weights(fx - cols[x].ix, cols[x].w);
+  }
 
   for (y = 0; y < size.h; y++)
   {
@@ -182,9 +232,8 @@ static void resize_cubic(const bitmap_t *src,
 
     for (x = 0; x < size.w; x++, px += 4)
     {
-      fx = (x + 0.5) * src->size.w / size.w - 0.5;
-      ix = (int) floor(fx);
-      resize_cubic_weights(fx - ix, wx);
+      ix = cols[x].ix;
+      wx = cols[x].w;
 
       acc[0] = acc[1] = acc[2] = acc[3] = 0;
       for (j = 0; j < 4; j++)
@@ -220,6 +269,10 @@ static void resize_cubic(const bitmap_t *src,
       }
     }
   }
+
+  free(cols);
+
+  return result_OK;
 }
 
 /* Source byte offsets of the two pixels either side of a destination column
@@ -263,6 +316,7 @@ result_t bitmap_resize(const bitmap_t   *src,
                        int               linear,
                        bitmap_t        **out)
 {
+  result_t       rc;
   bitmap_t      *dst;
   uint8_t       *base;
   resize_col_t  *cols;
@@ -304,23 +358,24 @@ result_t bitmap_resize(const bitmap_t   *src,
   dst->palette = NULL;
   dst->base    = base;
 
-  if (method == bitmap_resample_CUBIC)
+  /* box only helps when shrinking; otherwise it is bilinear */
+  if (method == bitmap_resample_BOX &&
+      size.w >= src->size.w && size.h >= src->size.h)
+    method = bitmap_resample_BILINEAR;
+
+  if (method == bitmap_resample_CUBIC || method == bitmap_resample_BOX)
   {
-    resize_cubic(src, base, size, linear, other);
+    rc = (method == bitmap_resample_CUBIC)
+         ? resize_cubic(src, base, size, linear, other)
+         : resize_box(src, base, size, linear, other);
+    if (rc != result_OK)
+    {
+      free(dst);
+      free(base);
+      return rc;
+    }
     *out = dst;
     return result_OK;
-  }
-
-  /* box only helps when shrinking; otherwise it is bilinear */
-  if (method == bitmap_resample_BOX)
-  {
-    if (size.w < src->size.w || size.h < src->size.h)
-    {
-      resize_box(src, base, size, linear, other);
-      *out = dst;
-      return result_OK;
-    }
-    method = bitmap_resample_BILINEAR;
   }
 
   cols = malloc((size_t) size.w * sizeof(*cols));
@@ -372,7 +427,9 @@ result_t bitmap_resize(const bitmap_t   *src,
                           g.decode[row0[x1 + c]],
                           g.decode[row1[x0 + c]],
                           g.decode[row1[x1 + c]], wx, wy);
-          px[c] = g.encode[MIN((v * (ENCODE_SIZE - 1) +
+          /* v is 0..LINEAR_MAX, so the scaling fits 32 bits, where
+           * dividing by the constant needs no division call */
+          px[c] = g.encode[MIN(((unsigned int) v * (ENCODE_SIZE - 1) +
                                 LINEAR_MAX / 2) / LINEAR_MAX,
                                ENCODE_SIZE - 1)];
         }
