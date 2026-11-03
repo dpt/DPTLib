@@ -74,6 +74,7 @@ extern testfn_t array_test,
                 bsearch_test,
                 bytesex_test,
                 easing_test,
+                maths_test,
                 pack_test,
                 rng_test;
 

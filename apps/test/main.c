@@ -94,6 +94,7 @@ static const test_t tests[] =
   { "bsearch",    bsearch_test    },
   { "bytesex",    bytesex_test    },
   { "easing",     easing_test     },
+  { "maths",      maths_test      },
   { "pack",       pack_test       },
   { "rng",        rng_test        },
 };

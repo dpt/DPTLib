@@ -664,6 +664,7 @@ if(BUILD_TESTS AND PROJECT_IS_TOP_LEVEL)
         libraries/utils/bsearch/test/bsearch-test.c
         libraries/utils/bytesex/test/bytesex-test.c
         libraries/utils/easing/test/easing-test.c
+        libraries/utils/maths/test/maths-test.c
         libraries/utils/pack/test/pack-test.c
         libraries/utils/rng/test/rng-test.c
         libraries/datastruct/vector/test/vector-test.c)

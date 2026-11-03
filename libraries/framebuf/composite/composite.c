@@ -288,6 +288,8 @@
 
 #include "base/utils.h"
 
+#include "utils/maths.h"
+
 #include "framebuf/pixelfmt.h"
 
 #include "framebuf/composite.h"
@@ -318,9 +320,9 @@
 /* Like LERP, but takes pre-multiplied values. */
 #define PRELERP(p,q,a,t) ((p) + (q) - MULT(a, p, t))
 
-/* Reciprocals of the alpha values, 0xFFFFFFFF / a, for div_alpha. They are
- * constant expressions, so building the table costs no division. */
-#define RECIP(d)   (0xFFFFFFFFu / (d))
+/* Reciprocals of the alpha values for div_alpha. They are constant
+ * expressions, so building the table costs no division. */
+#define RECIP(d)   DIV_RECIP(d)
 #define RECIP4(d)  RECIP(d), RECIP(d + 1), RECIP(d + 2), RECIP(d + 3)
 #define RECIP16(d) RECIP4(d), RECIP4(d + 4), RECIP4(d + 8), RECIP4(d + 12)
 #define RECIP64(d) RECIP16(d), RECIP16(d + 16), RECIP16(d + 32), RECIP16(d + 48)
@@ -338,19 +340,11 @@ static const unsigned int recip_alpha[256] =
 #undef RECIP4
 #undef RECIP
 
-/* n / a for alpha a in 1..255 and n < 2^31. n * r / 2^32 falls short of
- * n / a by less than one, so the estimate wants at most one step up. Targets
- * without a hardware divide would otherwise pay for three divisions per
- * pixel. */
+/* n / a for alpha a in 1..255 and n < 2^31. Targets without a hardware
+ * divide would otherwise pay for three divisions per pixel. */
 static INLINE unsigned int div_alpha(unsigned int n, unsigned int a)
 {
-  unsigned int q;
-
-  q = (unsigned int) (((unsigned long long) n * recip_alpha[a]) >> 32);
-  if (n - q * a >= a)
-    q++;
-
-  return q;
+  return div_recip(n, a, recip_alpha[a]);
 }
 
 /* ----------------------------------------------------------------------- */

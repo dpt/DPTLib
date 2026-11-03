@@ -2,6 +2,8 @@
 
 #include "base/utils.h"
 
+#include "utils/maths.h"
+
 #include "framebuf/pixelfmt.h"
 
 #include "framebuf/span.h"
@@ -9,21 +11,6 @@
 #include "framebuf/span-bgra8888.h"
 
 #include "all8888.h"
-
-/* n / d for d > 0 and n < 2^31, given r = 0xFFFFFFFF / d. n * r / 2^32 falls
- * short of n / d by less than one, so the estimate wants at most one step up.
- * Targets without a hardware divide pay for one division per pixel, not
- * three. */
-static unsigned int div_recip(unsigned int n, unsigned int d, unsigned int r)
-{
-  unsigned int q;
-
-  q = (unsigned int) (((unsigned long long) n * r) >> 32);
-  if (n - q * d >= d)
-    q++;
-
-  return q;
-}
 
 /* Composite the colour of src2 at coverage alpha over src1, Porter-Duff
  * source over destination on straight (not premultiplied) alpha. src2's own
@@ -62,8 +49,9 @@ static pixelfmt_bgra8888_t blend_pix(pixelfmt_bgra8888_t src1,
     return out;
   }
 
+  /* one division per pixel, not three: div_recip does the channels */
   d = w1 + w2; /* the result's alpha, times 255 */
-  r = 0xFFFFFFFFu / d;
+  r = DIV_RECIP(d);
 
   out = ((d + 127) / 255) << 24;
   for (shift = 0; shift < 24; shift += 8)
