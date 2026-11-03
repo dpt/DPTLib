@@ -119,6 +119,80 @@ static result_t test_polygon_clip(void)
   return result_TEST_PASSED;
 }
 
+/* random polygons with slanted edges, some reaching outside the clip, must
+ * fill exactly the pixels between the crossings that each row's edges give
+ * by direct division: x = p.x + (y - p.y) * (q.x - p.x) / (q.y - p.y) */
+static result_t test_polygon_slanted(void)
+{
+  unsigned int seed;
+  point_t      poly[8];
+  region_t    *r;
+  int          xs[8];
+  int          trial;
+  int          n;
+  int          i, j, k;
+  int          nx;
+  int          x, y;
+  int          t;
+  int          want;
+  point_t      p, q;
+  int          bad;
+
+  seed = 12345;
+  bad  = 0;
+  for (trial = 0; trial < 500 && bad == 0; trial++)
+  {
+    seed = seed * 1103515245u + 12345u;
+    n    = 3 + (int) ((seed >> 16) % 6);
+    for (i = 0; i < n; i++)
+    {
+      seed      = seed * 1103515245u + 12345u;
+      poly[i].x = (int) ((seed >> 8) % 61) - 10;
+      seed      = seed * 1103515245u + 12345u;
+      poly[i].y = (int) ((seed >> 8) % 61) - 10;
+    }
+
+    if (region_from_polygon(poly, n, &clip, &r) != result_OK)
+      return result_TEST_FAILED;
+
+    for (y = 0; y < H && bad == 0; y++)
+    {
+      nx = 0;
+      for (i = 0; i < n; i++)
+      {
+        p = poly[i];
+        q = poly[(i + 1) % n];
+        if (y < MIN(p.y, q.y) || y >= MAX(p.y, q.y))
+          continue;
+
+        t = p.x + (y - p.y) * (q.x - p.x) / (q.y - p.y);
+        for (j = nx; j > 0 && xs[j - 1] > t; j--)
+          xs[j] = xs[j - 1];
+        xs[j] = t;
+        nx++;
+      }
+
+      for (x = 0; x < W; x++)
+      {
+        want = 0;
+        for (k = 0; k + 1 < nx; k += 2)
+          if (x >= xs[k] && x <= xs[k + 1])
+            want = 1;
+        if (want != (r != NULL && region_contains(r, x, y) != 0))
+        {
+          printf("polygon trial %d: pixel %d,%d wrong\n", trial, x, y);
+          bad = 1;
+          break;
+        }
+      }
+    }
+
+    region_destroy(r);
+  }
+
+  return bad ? result_TEST_FAILED : result_TEST_PASSED;
+}
+
 /* the outline spans must cover exactly the pixels with an outside neighbour */
 static result_t outline_matches(const region_t *r)
 {
@@ -369,6 +443,7 @@ result_t region_test(const char *resources)
     test_empty,
     test_polygon,
     test_polygon_clip,
+    test_polygon_slanted,
     test_outline,
     test_flood,
     test_combine,
