@@ -222,6 +222,41 @@ static void resize_cubic(const bitmap_t *src,
   }
 }
 
+/* Source byte offsets of the two pixels either side of a destination column
+ * and the 16.16 weight of the second. Nearest uses x0 alone. */
+typedef struct resize_col
+{
+  int x0, x1;
+  int wx;
+}
+resize_col_t;
+
+/* Fill one entry per destination column, so the row loops do no division. */
+static void resize_make_cols(resize_col_t     *cols,
+                             int               srclen,
+                             int               dstlen,
+                             bitmap_resample_t method)
+{
+  int     x;
+  int64_t fx;
+  int     x0;
+
+  for (x = 0; x < dstlen; x++)
+  {
+    if (method == bitmap_resample_NEAREST)
+    {
+      cols[x].x0 = (int) (((int64_t) x * srclen) / dstlen) * 4;
+      continue;
+    }
+
+    fx = resize_centre(x, srclen, dstlen);
+    x0 = (int) (fx >> FRAC_BITS); /* arithmetic shift floors */
+    cols[x].wx = (int) (fx - ((int64_t) x0 * (1 << FRAC_BITS)));
+    cols[x].x0 = CLAMP(x0, 0, srclen - 1) * 4;
+    cols[x].x1 = CLAMP(x0 + 1, 0, srclen - 1) * 4;
+  }
+}
+
 result_t bitmap_resize(const bitmap_t   *src,
                        size2d_t          size,
                        bitmap_resample_t method,
@@ -230,9 +265,10 @@ result_t bitmap_resize(const bitmap_t   *src,
 {
   bitmap_t      *dst;
   uint8_t       *base;
+  resize_col_t  *cols;
   int            dstrow;
   int            x, y, c;
-  int64_t        fx, fy;
+  int64_t        fy;
   int            x0, x1, y0, y1;
   int            wx, wy;
   const uint8_t *row0, *row1;
@@ -287,6 +323,15 @@ result_t bitmap_resize(const bitmap_t   *src,
     method = bitmap_resample_BILINEAR;
   }
 
+  cols = malloc((size_t) size.w * sizeof(*cols));
+  if (cols == NULL)
+  {
+    free(dst);
+    free(base);
+    return result_OOM;
+  }
+  resize_make_cols(cols, src->size.w, size.w, method);
+
   for (y = 0; y < size.h; y++)
   {
     px = base + (size_t) y * dstrow;
@@ -297,9 +342,9 @@ result_t bitmap_resize(const bitmap_t   *src,
       row0 = (const uint8_t *) src->base + (size_t) y0 * src->rowbytes;
       for (x = 0; x < size.w; x++, px += 4)
       {
-        x0 = (int) (((int64_t) x * src->size.w) / size.w);
+        x0 = cols[x].x0;
         for (c = 0; c < 4; c++)
-          px[c] = row0[x0 * 4 + c];
+          px[c] = row0[x0 + c];
       }
       continue;
     }
@@ -315,34 +360,33 @@ result_t bitmap_resize(const bitmap_t   *src,
 
     for (x = 0; x < size.w; x++, px += 4)
     {
-      fx = resize_centre(x, src->size.w, size.w);
-      x0 = (int) (fx >> FRAC_BITS);
-      wx = (int) (fx - ((int64_t) x0 * (1 << FRAC_BITS)));
-      x1 = x0 + 1;
-      x0 = CLAMP(x0, 0, src->size.w - 1);
-      x1 = CLAMP(x1, 0, src->size.w - 1);
+      x0 = cols[x].x0;
+      x1 = cols[x].x1;
+      wx = cols[x].wx;
 
       for (c = 0; c < 4; c++)
       {
         if (linear && c != other)
         {
-          v = resize_lerp(g.decode[row0[x0 * 4 + c]],
-                          g.decode[row0[x1 * 4 + c]],
-                          g.decode[row1[x0 * 4 + c]],
-                          g.decode[row1[x1 * 4 + c]], wx, wy);
+          v = resize_lerp(g.decode[row0[x0 + c]],
+                          g.decode[row0[x1 + c]],
+                          g.decode[row1[x0 + c]],
+                          g.decode[row1[x1 + c]], wx, wy);
           px[c] = g.encode[MIN((v * (ENCODE_SIZE - 1) +
                                 LINEAR_MAX / 2) / LINEAR_MAX,
                                ENCODE_SIZE - 1)];
         }
         else
         {
-          px[c] = (uint8_t) resize_lerp(row0[x0 * 4 + c], row0[x1 * 4 + c],
-                                        row1[x0 * 4 + c], row1[x1 * 4 + c],
+          px[c] = (uint8_t) resize_lerp(row0[x0 + c], row0[x1 + c],
+                                        row1[x0 + c], row1[x1 + c],
                                         wx, wy);
         }
       }
     }
   }
+
+  free(cols);
 
   *out = dst;
 
