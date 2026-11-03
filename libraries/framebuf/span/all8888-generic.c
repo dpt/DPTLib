@@ -6,9 +6,14 @@
 #error A required shift definition is missing.
 #endif
 
-#define RED_MASK   (0xFFu << RED_SHIFT)
+/* The blend works on red and blue together, so it needs them a lane apart
+ * with green between them. */
+#if GREEN_SHIFT != 8 || X_SHIFT != 24 || (RED_SHIFT | BLUE_SHIFT) != 16
+#error The blend expects red and blue at bits 0 and 16.
+#endif
+
+#define RB_MASK    0x00FF00FFu
 #define GREEN_MASK (0xFFu << GREEN_SHIFT)
-#define BLUE_MASK  (0xFFu << BLUE_SHIFT)
 #define X_MASK     (0xFFu << X_SHIFT)
 
 #define PASTE2(x,y) x##y
@@ -18,32 +23,21 @@
 #define SPAN_ALL8888_BLEND_PIX_PRE(alpha) \
 alpha += alpha >= 128;
 
-/* Blend specified pixels. */
+/* Blend specified pixels. Red and blue blend in one multiply: each lane's
+ * sum is at most 255 * 256, so neither carries into the next. Selects, not
+ * branches, pick the unblended cases so that the loops vectorise. */
 #define SPAN_ALL8888_BLEND_PIX(fmt, src1, src2, alpha, dst)                    \
 {                                                                              \
-  fmt r1, g1, b1;                                                              \
-  fmt r2, g2, b2;                                                              \
+  fmt s1, s2;                                                                  \
+  fmt rb, g;                                                                   \
                                                                                \
-  if (alpha == 0)                                                              \
-    dst = src1;                                                                \
-  else if (alpha == 255)                                                       \
-    dst = src2;                                                                \
-  else                                                                         \
-  {                                                                            \
-    r1 = (src1 & RED_MASK) >> RED_SHIFT;                                       \
-    r2 = (src2 & RED_MASK) >> RED_SHIFT;                                       \
-    r1 = (r1 * (256 - alpha) + r2 * alpha) >> 8;                               \
-                                                                               \
-    g1 = (src1 & GREEN_MASK) >> GREEN_SHIFT;                                   \
-    g2 = (src2 & GREEN_MASK) >> GREEN_SHIFT;                                   \
-    g1 = (g1 * (256 - alpha) + g2 * alpha) >> 8;                               \
-                                                                               \
-    b1 = (src1 & BLUE_MASK) >> BLUE_SHIFT;                                     \
-    b2 = (src2 & BLUE_MASK) >> BLUE_SHIFT;                                     \
-    b1 = (b1 * (256 - alpha) + b2 * alpha) >> 8;                               \
-                                                                               \
-    dst = (r1 << RED_SHIFT) | (g1 << GREEN_SHIFT) | (b1 << BLUE_SHIFT) | X_MASK; \
-  }                                                                            \
+  s1 = (src1);                                                                 \
+  s2 = (src2);                                                                 \
+  rb = (((s1 & RB_MASK) * (256 - alpha) +                                      \
+         (s2 & RB_MASK) * alpha) >> 8) & RB_MASK;                              \
+  g  = (((s1 & GREEN_MASK) * (256 - alpha) +                                   \
+         (s2 & GREEN_MASK) * alpha) >> 8) & GREEN_MASK;                        \
+  dst = alpha == 0 ? s1 : alpha == 255 ? s2 : (rb | g | X_MASK);               \
 }
 
 /* Blend run of pixels with constant alpha. */
