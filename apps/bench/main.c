@@ -228,6 +228,10 @@ static void bench_resize(const bitmap_t *src)
     { bitmap_resample_NEAREST,  0, "nearest" },
     { bitmap_resample_BILINEAR, 0, "bilin"   },
     { bitmap_resample_BILINEAR, 1, "bilin-l" },
+    { bitmap_resample_BOX,      0, "box"     },
+    { bitmap_resample_BOX,      1, "box-l"   },
+    { bitmap_resample_CUBIC,    0, "cubic"   },
+    { bitmap_resample_CUBIC,    1, "cubic-l" },
   };
 
   result_t  rc;
