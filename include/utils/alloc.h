@@ -34,18 +34,50 @@ alloc_t;
 extern const alloc_t alloc_default;
 
 /**
- * An allocator which keeps count of the bytes it has live. It sits on the C
- * library allocator and adds a small header to each block, so only its own
- * hooks can free what it allocates. The count is shared by all users.
+ * Statistics for the alloc_counting_* functions. Bytes are as requested, not
+ * counting block headers or C library overhead.
  */
-extern const alloc_t alloc_counting;
+typedef struct alloc_stats
+{
+  size_t bytes;       /**< Bytes allocated now. */
+  size_t bytes_low;   /**< Lowest \c bytes since the last reset. */
+  size_t bytes_high;  /**< Highest \c bytes ever. */
+  size_t blocks;      /**< Blocks allocated now. */
+  size_t blocks_low;  /**< Lowest \c blocks since the last reset. */
+  size_t blocks_high; /**< Highest \c blocks ever. */
+  size_t allocs;      /**< Blocks ever allocated. */
+  size_t frees;       /**< Blocks ever freed. */
+}
+alloc_stats_t;
 
 /**
- * Report how many bytes are allocated through \ref alloc_counting.
+ * Counterparts of the C library allocator which keep statistics. They add a
+ * small header to each block, so a block from one must only be released or
+ * resized by another. Statistics are shared by all callers and are not
+ * thread-safe.
  *
- * \return Bytes requested and not yet freed, not counting block headers.
+ * Setting the DPTLIB_ALLOC_COUNT build option sends all of DPTLib's and its
+ * dependants' malloc, calloc, realloc, free and strdup calls here, and so
+ * alloc_default too.
  */
-size_t alloc_counting_bytes(void);
+void *alloc_counting_malloc(size_t size);
+void *alloc_counting_calloc(size_t count, size_t size);
+void *alloc_counting_realloc(void *ptr, size_t size);
+void  alloc_counting_free(void *ptr);
+char *alloc_counting_strdup(const char *s);
+
+/**
+ * Retrieve the allocation statistics.
+ *
+ * \param[out] out Filled in with the statistics.
+ */
+void alloc_counting_get_stats(alloc_stats_t *out);
+
+/**
+ * Restart the lowest figures from the current ones. They otherwise read
+ * zero, as nothing is allocated when a program starts.
+ */
+void alloc_counting_reset_lows(void);
 
 /**
  * Duplicate a NUL-terminated string through an allocator's malloc hook.

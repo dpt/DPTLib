@@ -312,41 +312,68 @@ result_t array_test(const char *resources)
     goto Failure;
   }
 
-  printf("test: alloc_counting tracks live bytes\n");
+  printf("test: alloc_counting keeps statistics\n");
   {
-    size_t base;
-    char  *p, *q;
+    alloc_stats_t base;
+    alloc_stats_t now;
+    char         *p, *q, *r, *s;
 
-    base = alloc_counting_bytes();
+    alloc_counting_reset_lows();
+    alloc_counting_get_stats(&base);
 
-    p = alloc_counting.malloc(100);
-    q = alloc_counting.realloc(NULL, 50);
-    if (p == NULL || q == NULL || alloc_counting_bytes() != base + 150)
+    p = alloc_counting_malloc(100);
+    q = alloc_counting_realloc(NULL, 50);
+    r = alloc_counting_calloc(4, 5);
+    s = alloc_counting_strdup("abc");
+    alloc_counting_get_stats(&now);
+    if (p == NULL || q == NULL || r == NULL || r[19] != 0 ||
+        s == NULL || strcmp(s, "abc") != 0 ||
+        now.bytes != base.bytes + 174 || now.blocks != base.blocks + 4 ||
+        now.allocs != base.allocs + 4)
       goto Failure;
 
     memset(p, 0x55, 100);
-    p = alloc_counting.realloc(p, 1000); /* grow, keeping the contents */
-    if (p == NULL || p[99] != 0x55 || alloc_counting_bytes() != base + 1050)
+    p = alloc_counting_realloc(p, 1000); /* grow, keeping the contents */
+    alloc_counting_get_stats(&now);
+    if (p == NULL || p[99] != 0x55 || now.bytes != base.bytes + 1074 ||
+        now.blocks != base.blocks + 4 || now.allocs != base.allocs + 4)
       goto Failure;
 
-    p = alloc_counting.realloc(p, 10); /* shrink */
-    if (p == NULL || p[9] != 0x55 || alloc_counting_bytes() != base + 60)
+    p = alloc_counting_realloc(p, 10); /* shrink */
+    alloc_counting_get_stats(&now);
+    if (p == NULL || p[9] != 0x55 || now.bytes != base.bytes + 84)
       goto Failure;
 
-    alloc_counting.free(p);
-    alloc_counting.free(q);
-    alloc_counting.free(NULL);
-    if (alloc_counting_bytes() != base)
+    alloc_counting_free(p);
+    alloc_counting_free(q);
+    alloc_counting_free(r);
+    alloc_counting_free(s);
+    alloc_counting_free(NULL);
+    alloc_counting_get_stats(&now);
+    if (now.bytes != base.bytes || now.blocks != base.blocks ||
+        now.frees != base.frees + 4 ||
+        now.bytes_high < base.bytes + 1074 ||
+        now.blocks_high < base.blocks + 4 ||
+        now.bytes_low != base.bytes || now.blocks_low != base.blocks)
       goto Failure;
 
-    /* a refused size leaves the block and the count alone */
-    p = alloc_counting.malloc(10);
-    if (p == NULL || alloc_counting.malloc((size_t) -1) != NULL ||
-        alloc_counting.realloc(p, (size_t) -1) != NULL ||
-        alloc_counting_bytes() != base + 10)
+    /* a refused size leaves the block and the statistics alone */
+    p = alloc_counting_malloc(10);
+    if (p == NULL || alloc_counting_malloc((size_t) -1) != NULL ||
+        alloc_counting_calloc((size_t) -1, 2) != NULL ||
+        alloc_counting_realloc(p, (size_t) -1) != NULL)
       goto Failure;
 
-    alloc_counting.free(p);
+    alloc_counting_get_stats(&now);
+    if (now.bytes != base.bytes + 10 || now.blocks != base.blocks + 1)
+      goto Failure;
+
+    /* the lows fall when memory is released, once restarted above it */
+    alloc_counting_reset_lows();
+    alloc_counting_free(p);
+    alloc_counting_get_stats(&now);
+    if (now.bytes_low != base.bytes || now.blocks_low != base.blocks)
+      goto Failure;
   }
 
 

@@ -31,6 +31,7 @@ option(USE_FORTIFY "Use Fortify" OFF)
 option(USE_ASAN "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF)
 option(USE_COVERAGE "Build with Clang source-based code coverage" OFF)
 option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
+option(DPTLIB_ALLOC_COUNT "Send DPTLib's and its dependants' allocation through alloc_counting_*" OFF)
 
 # Referencing CMAKE_TOOLCHAIN_FILE avoids a warning on rebuilds.
 if(NOT ${CMAKE_TOOLCHAIN_FILE} STREQUAL "")
@@ -135,6 +136,7 @@ set(PUBLIC_HEADERS
     include/text/mdtext.h
     include/text/txtfmt.h
     include/text/utf8.h
+    include/utils/alloc-redirect.h
     include/utils/alloc.h
     include/utils/array.h
     include/utils/barith.h
@@ -410,6 +412,7 @@ set(TEXT_SOURCES
 
 set(UTILS_SOURCES
     libraries/utils/alloc/alloc.c
+    libraries/utils/alloc/counting.c
     libraries/utils/array/delelem.c
     libraries/utils/array/delelems.c
     libraries/utils/array/grow.c
@@ -480,6 +483,18 @@ endif()
 if(USE_FORTIFY)
     target_compile_definitions(DPTLib PRIVATE FORTIFY)
     target_link_libraries(DPTLib PUBLIC Fortify)
+endif()
+
+if(DPTLIB_ALLOC_COUNT)
+    if(USE_FORTIFY)
+        message(FATAL_ERROR "DPTLIB_ALLOC_COUNT and USE_FORTIFY both replace malloc")
+    endif()
+    set(DPTLIB_ALLOC_REDIRECT "${CMAKE_CURRENT_SOURCE_DIR}/include/utils/alloc-redirect.h")
+    if(MSVC)
+        target_compile_options(DPTLib PUBLIC "/FI${DPTLIB_ALLOC_REDIRECT}")
+    else()
+        target_compile_options(DPTLib PUBLIC "SHELL:-include ${DPTLIB_ALLOC_REDIRECT}")
+    endif()
 endif()
 
 if(USE_ASAN)

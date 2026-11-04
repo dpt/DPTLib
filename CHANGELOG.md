@@ -8,8 +8,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- `utils/alloc.h`: `alloc_counting`, an allocator which keeps count of its live
-  bytes, reported by `alloc_counting_bytes`.
+- `utils/alloc.h`: `alloc_counting_malloc` and friends, a C library allocator
+  which keeps current, lowest and highest bytes and blocks, reported by
+  `alloc_counting_get_stats`. The `DPTLIB_ALLOC_COUNT` build option sends all
+  allocation by DPTLib and its dependants through it.
 - `framebuf/wu.h`: `wu_make_palette`, a colour quantiser using a variant of
   Wu's greedy orthogonal bipartition.
 - `dither_options_t`'s `linear` now applies to the ordered methods, Knoll and
