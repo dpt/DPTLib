@@ -960,7 +960,7 @@ result_t dither_bitmap(const bitmap_t         *src,
 
   if (src->format != pixelfmt_rgbx8888 && src->format != pixelfmt_rgba8888)
     return result_BAD_ARG;
-  if (opts->method < 0 || opts->method >= dither__LIMIT ||
+  if ((unsigned int) opts->method >= dither__LIMIT ||
       opts->palette == NULL ||
       opts->ncolours < 1 || opts->ncolours > 256 ||
       opts->strength < 0 || opts->strength > 100)
