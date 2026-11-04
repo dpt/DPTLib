@@ -30,7 +30,7 @@ padded with opaque black to the format's full size. The caller frees the
 result's `base`, its `palette` and the bitmap itself.
 
 Alpha is ignored. To build a palette suited to the image, see
-[octree](octree.md).
+[octree](octree.md) or [wu](wu.md).
 
 ## Kernels
 

@@ -89,6 +89,7 @@ set(PUBLIC_HEADERS
     include/framebuf/palettes.h
     include/framebuf/pattern.h
     include/framebuf/tonemap.h
+    include/framebuf/wu.h
     include/framebuf/pixelfmt.h
     include/framebuf/pixelmap.h
     include/framebuf/screen.h
@@ -292,6 +293,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/pattern/pattern.c
     libraries/framebuf/tonemap/plot.c
     libraries/framebuf/tonemap/tonemap.c
+    libraries/framebuf/wu/wu.c
     libraries/framebuf/pixelfmt/channel-step.c
     libraries/framebuf/pixelfmt/log2bpp.c
     libraries/framebuf/pixelfmt/paletted-nentries.c
@@ -648,6 +650,7 @@ if(BUILD_TESTS AND PROJECT_IS_TOP_LEVEL)
         libraries/framebuf/pixelmap/test/pixelmap-test.c
         libraries/framebuf/tonemap/test/tonemap-test.c
         libraries/framebuf/screen/test/screen-test.c
+        libraries/framebuf/wu/test/wu-test.c
         libraries/geom/box/test/box-test.c
         libraries/geom/hull/test/hull-test.c
         libraries/geom/layout/test/layout-test.c

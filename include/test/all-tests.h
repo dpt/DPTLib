@@ -44,7 +44,8 @@ extern testfn_t bitmap_load_test,
                 pattern_test,
                 pixelmap_test,
                 screen_test,
-                tonemap_test;
+                tonemap_test,
+                wu_test;
 
 /* geom */
 extern testfn_t box_test,

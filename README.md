@@ -72,6 +72,7 @@ DPTLib is my platform independent C library. It contains a wide variety of funct
   - [`framebuf/span-rgbx8888.h`](https://github.com/dpt/DPTLib/blob/main/include/framebuf/span-rgbx8888.h) — plotting methods for RGBx8888
   - [`framebuf/span-xbgr8888.h`](https://github.com/dpt/DPTLib/blob/main/include/framebuf/span-xbgr8888.h) — plotting methods for XBGR8888
 - [`framebuf/tonemap.h`](https://github.com/dpt/DPTLib/blob/main/include/framebuf/tonemap.h) — per-channel tone maps
+- [`framebuf/wu.h`](https://github.com/dpt/DPTLib/blob/main/include/framebuf/wu.h) — Wu's colour quantiser {[docs](https://github.com/dpt/DPTLib/blob/main/docs/framebuf/wu.md)}
 
 ### Geometry
 
