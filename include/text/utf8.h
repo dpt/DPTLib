@@ -75,9 +75,10 @@ int utf8_prev(const char *s, int index);
 int utf8_rune_start(const char *s, int len, int index);
 
 /**
- * Find the start of the word before \p index: skip spaces, then non-spaces.
- * Only U+0020 separates words. No continuation byte equals it, so the result
- * is always on a codepoint boundary if \p index is.
+ * Find the start of the word before \p index: skip separators, then
+ * non-separators. Only U+0020 and U+000A separate words. No continuation
+ * byte equals either, so the result is always on a codepoint boundary if \p
+ * index is.
  *
  * \param[in]  s      UTF-8 string.
  * \param[in]  index  Byte index.
@@ -87,8 +88,8 @@ int utf8_rune_start(const char *s, int len, int index);
 int utf8_word_left(const char *s, int index);
 
 /**
- * Find the end of the word after \p index: skip spaces, then non-spaces.
- * Words are separated as for utf8_word_left().
+ * Find the end of the word after \p index: skip separators, then
+ * non-separators. Words are separated as for utf8_word_left().
  *
  * \param[in]  s      UTF-8 string.
  * \param[in]  len    Bytes in \p s.

@@ -110,7 +110,11 @@ result_t utf8_test(const char *resources)
       utf8_word_left("ab", 0) != 0 ||
       utf8_word_right(" \xC2\xA9" "d  ef", 8, 0) != 4 ||
       utf8_word_right(" \xC2\xA9" "d  ef", 8, 4) != 8 ||
-      utf8_word_right("ab", 2, 2) != 2)
+      utf8_word_right("ab", 2, 2) != 2 ||
+      utf8_word_left("ab\n\ncd", 6) != 4 ||
+      utf8_word_left("ab\n\ncd", 4) != 0 ||
+      utf8_word_right("ab\n\ncd", 6, 0) != 2 ||
+      utf8_word_right("ab\n\ncd", 6, 2) != 6)
   {
     fprintf(stderr, "error: utf8_word_left/right\n");
     return result_TEST_FAILED;
