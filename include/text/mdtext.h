@@ -120,6 +120,22 @@ void mdtext_draw(mdtext_t *mdtext,
 int mdtext_caret_pos(mdtext_t *mdtext, int index, point_t *pos);
 
 /**
+ * Find the byte index of the caret nearest to a point, e.g. a mouse click.
+ * The inverse of mdtext_caret_pos: 'index' counts bytes of the text as
+ * shown. A point above or below the text picks the first or last line, and a
+ * point beside a line picks that line's start or end. The caret always stays
+ * on the line picked: where a word was hard-broken, the end of its first
+ * part is one codepoint short of the break, since the break itself draws on
+ * the next line.
+ *
+ * \param[in]  pos   Point relative to mdtext_draw's 'origin'.
+ * \param[out] index Byte index of the caret.
+ *
+ * \return Nonzero on success, zero if the text is not laid out.
+ */
+int mdtext_find_caret(mdtext_t *mdtext, point_t pos, int *index);
+
+/**
  * Free the text and layout. The fonts are left alone. The block may be set
  * again afterwards.
  */

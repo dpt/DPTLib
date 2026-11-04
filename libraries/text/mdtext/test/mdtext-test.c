@@ -35,6 +35,7 @@ result_t mdtext_test(const char *resources)
   static const char plain[] = "one\n\nthree";
   static const char md[]    = "# Head\n\nSome **bold** words that wrap "
                               "over several lines at this width.";
+  static const char unbroken[] = "abcdefghijklmnopqrstuvwxyz";
 
   result_t      rc;
   char          dir[DPTLIB_MAXPATH];
@@ -47,6 +48,8 @@ result_t mdtext_test(const char *resources)
   int           lh;
   point_t       caret;
   point_t       caret2;
+  int           index;
+  int           i;
 
   font   = NULL;
   bold   = NULL;
@@ -87,6 +90,24 @@ result_t mdtext_test(const char *resources)
       !mdtext_caret_pos(&mdtext, 99, &caret2) || caret2.x != caret.x)
     goto exit;
 
+  /* the reverse: line ends, the blank line, points outside the text */
+  if (!mdtext_find_caret(&mdtext, POINT(0, 0), &index) || index != 0 ||
+      !mdtext_find_caret(&mdtext, POINT(W * 2, 0), &index) || index != 3 ||
+      !mdtext_find_caret(&mdtext, POINT(W, lh), &index) || index != 4 ||
+      !mdtext_find_caret(&mdtext, POINT(0, 2 * lh), &index) || index != 5 ||
+      !mdtext_find_caret(&mdtext, POINT(-9, -9), &index) || index != 0 ||
+      !mdtext_find_caret(&mdtext, POINT(W * 2, H * 2), &index) ||
+      index != (int) strlen(plain))
+    goto exit;
+
+  /* a hard-broken word: its first part's end stays on that line */
+  if (mdtext_set(&mdtext, unbroken, (int) strlen(unbroken), 0) != result_OK ||
+      mdtext_layout(&mdtext, 20) != result_OK ||
+      mdtext_nlines(&mdtext) < 2 ||
+      !mdtext_find_caret(&mdtext, POINT(W, 0), &index) ||
+      !mdtext_caret_pos(&mdtext, index, &caret) || caret.y >= lh)
+    goto exit;
+
   /* Markdown: markers stripped, spans found, long lines wrapped */
   if (mdtext_set(&mdtext, md, (int) strlen(md), 1) != result_OK ||
       mdtext_layout(&mdtext, W) != result_OK ||
@@ -94,6 +115,15 @@ result_t mdtext_test(const char *resources)
       strncmp(mdtext.text, "Head", 4) != 0 ||
       mdtext_nlines(&mdtext) < 4)
     goto exit;
+
+  /* every caret position finds a caret drawn there, across runs and wraps;
+   * a caret draws a pixel left of its boundary */
+  for (i = 0; i <= (int) strlen(mdtext.text); i++)
+    if (!mdtext_caret_pos(&mdtext, i, &caret) ||
+        !mdtext_find_caret(&mdtext, POINT(caret.x + 1, caret.y), &index) ||
+        !mdtext_caret_pos(&mdtext, index, &caret2) ||
+        caret2.x != caret.x || caret2.y != caret.y)
+      goto exit;
 
   /* right alignment indents a short line by the space left over */
   mdtext.align = mdtext_ALIGN_RIGHT;

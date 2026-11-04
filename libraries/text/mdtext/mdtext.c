@@ -6,6 +6,7 @@
 
 #include "base/utils.h"
 #include "text/mdtext.h"
+#include "text/utf8.h"
 
 #define MDTEXT_MAX_SPANS 128 /* styled runs are few; overflow is dropped */
 
@@ -377,6 +378,61 @@ int mdtext_caret_pos(mdtext_t *mdtext, int index, point_t *pos)
 
   pos->x = mdtext->dx[i] + x;
   pos->y = i * mdtext_line_height(mdtext) + ascent;
+  return 1;
+}
+
+int mdtext_find_caret(mdtext_t *mdtext, point_t pos, int *index)
+{
+  int             i;
+  const char     *str;
+  int             len;
+  int             off;
+  int             x;
+  int             cursor;
+  const mdspan_t *span;
+  int             run_len;
+  bmfont_t       *font;
+  int             split;
+  bmfont_width_t  width;
+  int             caret;
+
+  if (mdtext->lines == NULL || mdtext->nlines == 0)
+    return 0;
+
+  i   = CLAMP(pos.y / mdtext_line_height(mdtext), 0, mdtext->nlines - 1);
+  str = mdtext->lines[i].str;
+  len = mdtext->lines[i].len;
+  off = (int) (str - mdtext->text);
+  x   = pos.x - mdtext->dx[i];
+
+  /* skip the runs wholly left of x; the last run takes any x beyond it */
+  cursor = 0;
+  while (cursor < len)
+  {
+    span = mdtext_run(mdtext, off + cursor, len - cursor, &run_len);
+    font = mdtext_run_font(mdtext, span);
+    if (bmfont_measure(font, str + cursor, run_len, &mdtext->spacing, INT_MAX,
+                       &split, &width) != result_OK)
+      return 0;
+
+    if (x < width || cursor + run_len == len)
+    {
+      bmfont_find_caret(font, str + cursor, run_len, &mdtext->spacing, x,
+                        &caret, NULL);
+      cursor += caret;
+      break;
+    }
+
+    x      -= width;
+    cursor += run_len;
+  }
+
+  /* a hard break: this index would draw on the next line */
+  if (len > 0 && cursor == len && i + 1 < mdtext->nlines &&
+      mdtext->lines[i + 1].str == str + len)
+    cursor = utf8_prev(str, len);
+
+  *index = off + cursor;
   return 1;
 }
 
