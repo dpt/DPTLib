@@ -43,6 +43,7 @@ result_t octree_test(const char *resources)
   int                 nfound;
   int                 x, y;
   int                 i;
+  unsigned int        seed;
 
   (void) resources;
 
@@ -84,7 +85,22 @@ result_t octree_test(const char *resources)
     }
   }
 
-  /* 3. bad arguments */
+  /* 3. noise keeps reducing and reusing nodes throughout */
+  seed = 1u;
+  for (i = 0; i < W * H; i++)
+  {
+    seed      = seed * 1664525u + 1013904223u;
+    pixels[i] = (seed >> 8) | 0xFF000000u;
+  }
+
+  rc = octree_make_palette(&bm, octree_MAX_COLOURS, palette, &nfound);
+  if (rc != result_OK || nfound < octree_MAX_COLOURS - 7) /* folds overshoot */
+  {
+    printf("octree: noise gave %d colours (rc %d)\n", nfound, rc);
+    return result_TEST_FAILED;
+  }
+
+  /* 4. bad arguments */
   if (octree_make_palette(&bm, 1, palette, &nfound) != result_BAD_ARG ||
       octree_make_palette(&bm, 257, palette, &nfound) != result_BAD_ARG)
   {

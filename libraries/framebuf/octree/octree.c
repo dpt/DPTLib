@@ -1,8 +1,10 @@
 /* framebuf/octree/octree.c -- octree colour quantiser */
 
+#include <assert.h>
 #include <limits.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "base/result.h"
 #include "framebuf/bitmap.h"
@@ -15,6 +17,11 @@
 
 #define OCTREE_DEPTH 8 /* levels 0..7 are internal, level 8 is always a leaf */
 
+/* Every node but the root is on the path to a leaf, and paths have at most
+ * OCTREE_DEPTH nodes. Each pixel's insertion is followed by a reduction to
+ * octree_MAX_COLOURS, so an insertion can see one leaf more than that. */
+#define OCTREE_MAX_NODES (1 + (octree_MAX_COLOURS + 1) * OCTREE_DEPTH)
+
 typedef struct octree_node octree_node_t;
 
 /* Every node on an insertion path accumulates the pixel, so folding a node
@@ -24,12 +31,15 @@ struct octree_node
   unsigned long  r, g, b;
   unsigned long  count;
   octree_node_t *child[8];
-  octree_node_t *next;  /* next reducible node at this level */
+  octree_node_t *next;  /* next reducible node at this level, or free node */
   int            leaf;
 };
 
 typedef struct octree
 {
+  octree_node_t *nodes;     /* block of OCTREE_MAX_NODES nodes */
+  int            nused;     /* nodes taken from the block so far */
+  octree_node_t *free;      /* nodes returned to the block */
   octree_node_t *root;
   octree_node_t *reducible[OCTREE_DEPTH]; /* internal nodes, per level */
   int            leaves;
@@ -42,9 +52,18 @@ static octree_node_t *octree_new_node(octree_t *tree, int level)
 {
   octree_node_t *node;
 
-  node = calloc(1, sizeof(*node));
-  if (node == NULL)
-    return NULL;
+  if (tree->free != NULL)
+  {
+    node       = tree->free;
+    tree->free = node->next;
+  }
+  else
+  {
+    assert(tree->nused < OCTREE_MAX_NODES);
+    node = &tree->nodes[tree->nused++];
+  }
+
+  memset(node, 0, sizeof(*node));
 
   if (level == OCTREE_DEPTH)
   {
@@ -60,22 +79,16 @@ static octree_node_t *octree_new_node(octree_t *tree, int level)
   return node;
 }
 
-static void octree_free_node(octree_node_t *node)
+static void octree_free_node(octree_t *tree, octree_node_t *node)
 {
-  int i;
-
-  if (node == NULL)
-    return;
-
-  for (i = 0; i < 8; i++)
-    octree_free_node(node->child[i]);
-  free(node);
+  node->next = tree->free;
+  tree->free = node;
 }
 
-static result_t octree_insert(octree_t    *tree,
-                              unsigned int r,
-                              unsigned int g,
-                              unsigned int b)
+static void octree_insert(octree_t    *tree,
+                          unsigned int r,
+                          unsigned int g,
+                          unsigned int b)
 {
   octree_node_t *node;
   int            level;
@@ -97,15 +110,9 @@ static result_t octree_insert(octree_t    *tree,
             (((g >> shift) & 1) << 1) |
             ( (b >> shift) & 1);
     if (node->child[idx] == NULL)
-    {
       node->child[idx] = octree_new_node(tree, level + 1);
-      if (node->child[idx] == NULL)
-        return result_OOM;
-    }
     node = node->child[idx];
   }
-
-  return result_OK;
 }
 
 /* Merge leaf child `from` into leaf child `into`, then free `from`. */
@@ -125,7 +132,7 @@ static void octree_merge_children(octree_t      *tree,
   a->b     += b->b;
   a->count += b->count;
 
-  free(b);
+  octree_free_node(tree, b);
   node->child[from] = NULL;
   tree->leaves--;
 }
@@ -197,7 +204,7 @@ static void octree_reduce(octree_t *tree, int target, int partial)
   {
     if (node->child[i])
     {
-      free(node->child[i]);
+      octree_free_node(tree, node->child[i]);
       node->child[i] = NULL;
       tree->leaves--;
     }
@@ -237,8 +244,7 @@ result_t octree_make_palette(const bitmap_t *src,
                              colour_t       *palette,
                              int            *nfound)
 {
-  result_t                   rc;
-  octree_t                   tree = { NULL, { NULL }, 0 };
+  octree_t                   tree;
   const unsigned char       *row;
   const pixelfmt_rgbx8888_t *px;
   int                        x, y;
@@ -254,9 +260,13 @@ result_t octree_make_palette(const bitmap_t *src,
   if ((unsigned long) src->size.w * src->size.h > ULONG_MAX / 255)
     return result_TOO_BIG;
 
-  tree.root = octree_new_node(&tree, 0);
-  if (tree.root == NULL)
+  memset(&tree, 0, sizeof(tree));
+
+  tree.nodes = malloc(OCTREE_MAX_NODES * sizeof(*tree.nodes));
+  if (tree.nodes == NULL)
     return result_OOM;
+
+  tree.root = octree_new_node(&tree, 0);
 
   row = src->base;
   for (y = 0; y < src->size.h; y++)
@@ -264,12 +274,10 @@ result_t octree_make_palette(const bitmap_t *src,
     px = (const pixelfmt_rgbx8888_t *) row;
     for (x = 0; x < src->size.w; x++)
     {
-      rc = octree_insert(&tree,
-                         PIXELFMT_Rxxx8888(px[x]),
-                         PIXELFMT_xGxx8888(px[x]),
-                         PIXELFMT_xxBx8888(px[x]));
-      if (rc != result_OK)
-        goto failure;
+      octree_insert(&tree,
+                    PIXELFMT_Rxxx8888(px[x]),
+                    PIXELFMT_xGxx8888(px[x]),
+                    PIXELFMT_xxBx8888(px[x]));
 
       /* bound the working set; the partial reduction below gets the
        * final count exact */
@@ -284,10 +292,7 @@ result_t octree_make_palette(const bitmap_t *src,
 
   octree_collect(tree.root, palette, nfound);
 
-  rc = result_OK;
+  free(tree.nodes);
 
-failure:
-  octree_free_node(tree.root);
-
-  return rc;
+  return result_OK;
 }
