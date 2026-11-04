@@ -78,8 +78,8 @@ result_t txtfmt_wrap(txtfmt_t *tx, int width)
       if (err)
         return err;
 
-      startofline = NULL;
       p++; /* skip newline character */
+      startofline = p; /* a blank line starts here, with no word to set it */
       curlen      = 0;
 
       continue;

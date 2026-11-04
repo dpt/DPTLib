@@ -22,6 +22,47 @@ static const int widths[] = { 2, 3, 5, 7, 11, 13, 17, 19, 23, 29 };
 
 static const int ndata = NELEMS(data);
 
+/* a blank line's start must point into the string, like any other line's */
+static result_t test_blank_line(void)
+{
+  result_t    err;
+  txtfmt_t   *tx;
+  const char *first;
+  const char *blank;
+  int         length;
+
+  err = txtfmt_create("a\n\nb", &tx);
+  if (err)
+    return err;
+
+  err = txtfmt_wrap(tx, 10);
+  if (err)
+    goto Cleanup;
+
+  if (txtfmt_get_nlines(tx) != 3)
+  {
+    err = result_TEST_FAILED;
+    goto Cleanup;
+  }
+
+  err = txtfmt_get_line(tx, 0, &first, &length);
+  if (err)
+    goto Cleanup;
+
+  err = txtfmt_get_line(tx, 1, &blank, &length);
+  if (err)
+    goto Cleanup;
+
+  if (length != 0 || blank - first != 2)
+    err = result_TEST_FAILED;
+
+Cleanup:
+
+  txtfmt_destroy(tx);
+
+  return err;
+}
+
 result_t txtfmt_test(const char *resources)
 {
   result_t   err;
@@ -78,6 +119,12 @@ result_t txtfmt_test(const char *resources)
         goto Failure;
     }
   }
+
+  printf("test: blank line\n");
+
+  err = test_blank_line();
+  if (err)
+    goto Failure;
 
   printf("test: destroy\n");
 
