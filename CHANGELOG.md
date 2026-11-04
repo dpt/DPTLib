@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `utils/alloc.h`: `alloc_counting`, an allocator which keeps count of its live
+  bytes, reported by `alloc_counting_bytes`.
 - `framebuf/wu.h`: `wu_make_palette`, a colour quantiser using a variant of
   Wu's greedy orthogonal bipartition.
 - `dither_options_t`'s `linear` now applies to the ordered methods, Knoll and

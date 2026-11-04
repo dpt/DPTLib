@@ -34,6 +34,20 @@ alloc_t;
 extern const alloc_t alloc_default;
 
 /**
+ * An allocator which keeps count of the bytes it has live. It sits on the C
+ * library allocator and adds a small header to each block, so only its own
+ * hooks can free what it allocates. The count is shared by all users.
+ */
+extern const alloc_t alloc_counting;
+
+/**
+ * Report how many bytes are allocated through \ref alloc_counting.
+ *
+ * \return Bytes requested and not yet freed, not counting block headers.
+ */
+size_t alloc_counting_bytes(void);
+
+/**
  * Duplicate a NUL-terminated string through an allocator's malloc hook.
  *
  * strdup is POSIX, not C99, so it is not assumed.

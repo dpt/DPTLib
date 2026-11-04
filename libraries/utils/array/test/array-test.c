@@ -312,6 +312,43 @@ result_t array_test(const char *resources)
     goto Failure;
   }
 
+  printf("test: alloc_counting tracks live bytes\n");
+  {
+    size_t base;
+    char  *p, *q;
+
+    base = alloc_counting_bytes();
+
+    p = alloc_counting.malloc(100);
+    q = alloc_counting.realloc(NULL, 50);
+    if (p == NULL || q == NULL || alloc_counting_bytes() != base + 150)
+      goto Failure;
+
+    memset(p, 0x55, 100);
+    p = alloc_counting.realloc(p, 1000); /* grow, keeping the contents */
+    if (p == NULL || p[99] != 0x55 || alloc_counting_bytes() != base + 1050)
+      goto Failure;
+
+    p = alloc_counting.realloc(p, 10); /* shrink */
+    if (p == NULL || p[9] != 0x55 || alloc_counting_bytes() != base + 60)
+      goto Failure;
+
+    alloc_counting.free(p);
+    alloc_counting.free(q);
+    alloc_counting.free(NULL);
+    if (alloc_counting_bytes() != base)
+      goto Failure;
+
+    /* a refused size leaves the block and the count alone */
+    p = alloc_counting.malloc(10);
+    if (p == NULL || alloc_counting.malloc((size_t) -1) != NULL ||
+        alloc_counting.realloc(p, (size_t) -1) != NULL ||
+        alloc_counting_bytes() != base + 10)
+      goto Failure;
+
+    alloc_counting.free(p);
+  }
+
 
   return result_TEST_PASSED;
 
