@@ -463,6 +463,11 @@ endif()
 # Library dependencies
 #
 
+# The library calls cbrt, pow, floorf and so on, so everything linking it needs libm
+if(NOT MSVC)
+    target_link_libraries(DPTLib PUBLIC m)
+endif()
+
 if(TARGET_RISCOS)
     # OSLib (& anything else in GCCSDK)
     target_include_directories(DPTLib PUBLIC $ENV{GCCSDK_INSTALL_ENV}/include)
@@ -689,9 +694,6 @@ if(BUILD_TESTS AND PROJECT_IS_TOP_LEVEL)
     # DPTTest dependencies
     # Of course, DPTLibTest depends on DPTLib.
     target_link_libraries(DPTLibTest DPTLib)
-    if(NOT MSVC)
-        target_link_libraries(DPTLibTest m)
-    endif()
 
     # Some unit tests (e.g. bmfont-test) gate an interactive SDL mode on
     # USE_SDL; BUILD_SDL_TESTS links SDL3 and defines it for the test binary.
