@@ -25,6 +25,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `octree_make_palette` keeps its nodes in one block rather than allocating
   each one separately.
+- `bitmap_load_png` reads row by row, without allocating an array of row
+  pointers.
 
 ### Fixed
 

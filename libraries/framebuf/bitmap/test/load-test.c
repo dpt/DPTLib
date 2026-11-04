@@ -433,6 +433,35 @@ static int test_load_deep(const char *resources)
   return ok;
 }
 
+/* An Adam7 PNG comes out with every pass's pixels in place. */
+static int test_interlaced(const char *resources)
+{
+  bitmap_t      bm;
+  int           ok;
+  int           x, y;
+  unsigned char want[5 * 4];
+
+  if (!load_expect(resources, "interlaced.png", 5, 5, pixelfmt_rgbx8888, &bm))
+    return 0;
+
+  ok = 1;
+  for (y = 0; y < 5; y++)
+  {
+    for (x = 0; x < 5; x++)
+    {
+      want[x * 4 + 0] = (unsigned char) (x * 10);
+      want[x * 4 + 1] = (unsigned char) (y * 10);
+      want[x * 4 + 2] = (unsigned char) (200 + x + y);
+      want[x * 4 + 3] = 0xFF;
+    }
+    ok &= row_is(&bm, "interlaced", y, want, 5 * 4);
+  }
+
+  load_free(&bm);
+
+  return ok;
+}
+
 /* A colour-key tRNS on a truecolour or greyscale PNG makes the keyed colour
  * transparent. */
 static int test_colour_key(const char *resources)
@@ -610,6 +639,7 @@ result_t bitmap_load_test(const char *resources)
   ok &= test_palette_depths(resources);
   ok &= test_deep(resources);
   ok &= test_load_deep(resources);
+  ok &= test_interlaced(resources);
   ok &= test_colour_key(resources);
   ok &= test_errors(resources);
 #ifndef DPTLIB_IMAGES_READ_ONLY

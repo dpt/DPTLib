@@ -50,11 +50,12 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
   png_uint_32    pngwidth, pngheight;
   int            pngbitdepth, pngcolourtype;
   unsigned char *pixels       = NULL;
-  png_bytep     *row_pointers = NULL;
   pixelfmt_t     bm_fmt;
   int            bm_rowbytes;
   colour_t       plte[256];
   colour_t      *bm_palette   = NULL;
+  int            npasses;
+  int            pass;
   png_uint_32    h;
 
   fp = fopen(filename, "rb");
@@ -216,14 +217,10 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
   if (pixels == NULL)
     goto oom;
 
-  row_pointers = malloc(pngheight * sizeof(*row_pointers));
-  if (row_pointers == NULL)
-    goto oom;
-
-  for (h = 0; h < pngheight; h++)
-    row_pointers[h] = pixels + bm_rowbytes * h;
-
-  png_read_image(png_ptr, row_pointers);
+  npasses = png_set_interlace_handling(png_ptr);
+  for (pass = 0; pass < npasses; pass++)
+    for (h = 0; h < pngheight; h++)
+      png_read_row(png_ptr, pixels + bm_rowbytes * h, NULL);
 
   rc = bitmap_init(bm, SIZE2D(pngwidth, pngheight),
                    bm_fmt,
@@ -242,7 +239,6 @@ oom:
   goto cleanup;
 
 cleanup:
-  free(row_pointers);
   free(pixels);
   if (png_ptr)
     png_destroy_read_struct(&png_ptr, NULL, NULL);
