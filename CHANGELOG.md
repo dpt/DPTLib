@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `text/numfmt.h`: `numfmt_grouped` formats a number with comma separated
+  groups of digits.
 - `utils/alloc.h`: `alloc_counting_malloc` and friends, a C library allocator
   which keeps current, lowest and highest bytes and blocks, reported by
   `alloc_counting_get_stats`. The `DPTLIB_ALLOC_COUNT` build option sends all
