@@ -5,6 +5,14 @@
 
 #include <stdio.h>
 
+/* ",##__VA_ARGS__" is the only comma swallow which MSVC's traditional
+ * preprocessor also accepts. clang -pedantic warns about it wherever a macro
+ * below is used with arguments, attributing the warning to the definition. */
+#ifdef __clang__
+#  pragma clang diagnostic push
+#  pragma clang diagnostic ignored "-Wgnu-zero-variadic-macro-arguments"
+#endif
+
 /* Log a message - available in all builds.
  *
  * The format argument is mandatory and named separately from "...": that lets
@@ -28,6 +36,10 @@
 #  define logf_debug(fmt, ...)
 #  define check(err)
 #  define sentinel
+#endif
+
+#ifdef __clang__
+#  pragma clang diagnostic pop
 #endif
 
 #define haltf(...)             do { logf_abort(__VA_ARGS__); abort(); } while (0)
