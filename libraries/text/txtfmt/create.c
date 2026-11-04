@@ -29,7 +29,7 @@ result_t txtfmt_create(const char *s, txtfmt_t **tx)
 
   memcpy(newtx->s, s, length + 1);
 
-  newtx->length = length;
+  newtx->length = (int) length;
 
   newtx->spans = malloc(StartAt * sizeof(*newtx->spans));
   if (newtx->spans == NULL)
@@ -44,7 +44,7 @@ result_t txtfmt_create(const char *s, txtfmt_t **tx)
 
   newtx->width           = 0;
 
-  newtx->wrapped_width   = length;
+  newtx->wrapped_width   = (int) length;
 
   *tx = newtx;
 

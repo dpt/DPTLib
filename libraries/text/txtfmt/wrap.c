@@ -74,7 +74,7 @@ result_t txtfmt_wrap(txtfmt_t *tx, int width)
 
     if (*p == '\n' || *p == '\r')
     {
-      err = emit_line(tx, startofline - tx->s, curlen);
+      err = emit_line(tx, (int) (startofline - tx->s), curlen);
       if (err)
         return err;
 
@@ -87,7 +87,7 @@ result_t txtfmt_wrap(txtfmt_t *tx, int width)
 
     /* count leading spaces */
 
-    spacelen = strspn(p, " ");
+    spacelen = (int) strspn(p, " ");
 
     /* quit if no more words are left */
 
@@ -96,7 +96,7 @@ result_t txtfmt_wrap(txtfmt_t *tx, int width)
 
     /* get length of word */
 
-    wordlen = strcspn(p + spacelen, " \n\r");
+    wordlen = (int) strcspn(p + spacelen, " \n\r");
 
     /* we can't break until we've placed something on the line */
 
@@ -113,7 +113,7 @@ result_t txtfmt_wrap(txtfmt_t *tx, int width)
     {
       /* emit the line */
 
-      err = emit_line(tx, startofline - tx->s, curlen);
+      err = emit_line(tx, (int) (startofline - tx->s), curlen);
       if (err)
         return err;
 
@@ -135,7 +135,7 @@ result_t txtfmt_wrap(txtfmt_t *tx, int width)
 
   if (curlen)
   {
-    err = emit_line(tx, startofline - tx->s, curlen);
+    err = emit_line(tx, (int) (startofline - tx->s), curlen);
     if (err)
       return err;
   }
