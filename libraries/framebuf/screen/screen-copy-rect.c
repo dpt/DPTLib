@@ -36,8 +36,8 @@ static void screen_copy_rect_packed_byte(unsigned char       *drow,
   unsigned int  w, b0, b1;
   unsigned char mask, v;
 
-  ppb       = 8 / bpp_bits;
   xshift    = (bpp_bits == 1) ? 3 : (bpp_bits == 2) ? 2 : 1;
+  ppb       = 1 << xshift;
   xmask     = ppb - 1;
   msb_first = (bpp_bits != 4);
 
@@ -94,16 +94,22 @@ static result_t screen_copy_rect_packed(screen_t    *scr,
   int            xshift, ppb;
   int            first, last, step, byte;
   int            row_first, row_last, row_step;
+  int            aligned, shift_bytes;
   int            row;
 
   base     = scr->base;
   rowbytes = scr->rowbytes;
 
   xshift = (bpp_bits == 1) ? 3 : (bpp_bits == 2) ? 2 : 1;
-  ppb    = 8 / bpp_bits;
+  ppb    = 1 << xshift;
 
   first = d->x0 >> xshift;
   last  = (d->x0 + width - 1) >> xshift;
+
+  /* a byte-aligned shift leaves every whole byte in the middle a straight
+   * copy */
+  aligned     = dx != 0 && (dx & (ppb - 1)) == 0 && last - first >= 2;
+  shift_bytes = dx / ppb;
 
   /* a move right reads from lower bytes than it writes, so go high to low */
   if (dx > 0) { byte = last;  step = -1; }
@@ -116,18 +122,15 @@ static result_t screen_copy_rect_packed(screen_t    *scr,
   {
     unsigned char       *drow;
     const unsigned char *srow;
-    int                  b, shift_bytes;
+    int                  b;
 
     drow = base + (size_t) (d->y0 + row) * rowbytes;
     srow = base + (size_t) (s->y0 + row) * rowbytes;
 
-    if (dx != 0 && dx % ppb == 0 && last - first >= 2)
+    if (aligned)
     {
-      /* byte-aligned shift: every whole byte in the middle is a straight
-       * copy; only the two partial end bytes need the masked path. Order the
-       * ends so neither reads source bytes the middle copy has overwritten */
-      shift_bytes = dx / ppb;
-
+      /* only the two partial end bytes need the masked path. Order the ends
+       * so neither reads source bytes the middle copy has overwritten */
       if (dx > 0)
         screen_copy_rect_packed_byte(drow, srow, rowbytes, last, d->x0,
                                      d->x0 + width, dx, bpp_bits);
