@@ -86,7 +86,7 @@ static int solid_in(const pattern_t *pat, colour_t c)
 
 /* pattern_from_colour's channel weights and spread penalty divisor */
 static const int weight[3] = { 3, 4, 2 };
-#define SPREAD 1024
+#define SPREAD 819
 
 /* pattern_from_colour's error for target 't' shown as a mix of 'b' over 'a'
  * at Bayer 'level': weighted, in linear light, 64x scale, spread penalty
@@ -186,6 +186,7 @@ result_t pattern_test(const char *resources)
 {
   colour_t  bw[2];
   colour_t  bwg[3];
+  colour_t  bgg[3];
   colour_t  rb[2];
   pattern_t pat;
   int       ok;
@@ -231,7 +232,15 @@ result_t pattern_test(const char *resources)
   bwg[2] = colour_rgb(120, 120, 120);
   pat = pattern_from_colour(bwg, 3, colour_rgb(128, 128, 128));
   CHECK(pat.fg.primary == bwg[2].primary || pat.bg.primary == bwg[2].primary);
-  CHECK(mixes_to(&pat, 128, 128, 128, 2));
+  CHECK(mixes_to(&pat, 128, 128, 128, 8));
+
+  /* a slightly warm grey still beats black for a mid grey: a black and light
+   * grey stipple would show as a dark band in a ramp */
+  bgg[0] = bw[0];
+  bgg[1] = colour_rgb(0x5F, 0x57, 0x4F);
+  bgg[2] = colour_rgb(0xC2, 0xC3, 0xC7);
+  pat = pattern_from_colour(bgg, 3, colour_rgb(108, 108, 108));
+  CHECK(pat.fg.primary != bgg[0].primary && pat.bg.primary != bgg[0].primary);
 
   /* chromatic mix: an even red/blue stipple is (188,0,188) to the eye */
   rb[0] = colour_rgb(255, 0, 0);

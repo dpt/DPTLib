@@ -153,7 +153,7 @@ pattern_t pattern_from_mask(const uint8_t mask[8], colour_t colour)
  * entry beats a wide stipple such as black and white for a grey.
  * ponytail: flat guess; tune it if stipples look too coarse or too rare, or
  * weight it by level */
-#define SPREAD 1024
+#define SPREAD 819
 
 /* A palette entry in 12-bit linear light, and its weighted squared distance
  * from the target. */

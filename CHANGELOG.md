@@ -32,6 +32,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- `pattern_from_colour` penalises widely-spaced pairs a little more, so a grey
+  ramp on a palette of tinted greys no longer shows a dark band where a black
+  and light grey stipple won.
 - `octree_make_palette` keeps its nodes in one block rather than allocating
   each one separately.
 - `bitmap_load_png` reads row by row, without allocating an array of row
