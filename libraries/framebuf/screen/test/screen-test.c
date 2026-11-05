@@ -2329,6 +2329,128 @@ static result_t test_copy_bitmap_dithered(void)
   return test_copy_bitmap_dithered_with(screen_DITHER_BLUE_NOISE);
 }
 
+/* Index of the palette entry drawn at (x, y) on a p4 or p8 screen. */
+static int exact_index_at(const unsigned char *base,
+                          int                  rowbytes,
+                          int                  log2bpp,
+                          int                  x,
+                          int                  y)
+{
+  const unsigned char *row;
+
+  row = base + y * rowbytes;
+  if (log2bpp == 3)
+    return row[x];
+
+  return (row[x >> 1] >> ((x & 1) * 4)) & 0xF;
+}
+
+/* A source whose every pixel is exactly a palette entry has nothing to dither:
+ * each pixel must land on that entry whatever its threshold, on p4 and on p8,
+ * from a deep source and from a paletted one. Uses the uneven PICO-8 palette,
+ * where one gap across the palette is too wide for its closest colours. */
+static result_t test_copy_bitmap_dithered_exact(void)
+{
+#define EX_SIZE 64
+  static const unsigned char rgb[16][3] =
+  {
+    { 0x00, 0x00, 0x00 }, { 0x1D, 0x2B, 0x53 }, { 0x7E, 0x25, 0x53 },
+    { 0x00, 0x87, 0x51 }, { 0xAB, 0x52, 0x36 }, { 0x5F, 0x57, 0x4F },
+    { 0xC2, 0xC3, 0xC7 }, { 0xFF, 0xF1, 0xE8 }, { 0xFF, 0x00, 0x4D },
+    { 0xFF, 0xA3, 0x00 }, { 0xFF, 0xEC, 0x27 }, { 0x00, 0xE4, 0x36 },
+    { 0x29, 0xAD, 0xFF }, { 0x83, 0x76, 0x9C }, { 0xFF, 0x77, 0xA8 },
+    { 0xFF, 0xCC, 0xAA }
+  };
+  static const screen_dither_t methods[] =
+  {
+    screen_DITHER_BAYER,
+    screen_DITHER_BLUE_NOISE
+  };
+  static pixelfmt_rgba8888_t deep[EX_SIZE * EX_SIZE];
+  static unsigned char       index8[EX_SIZE * EX_SIZE];
+  static unsigned char       dst[EX_SIZE * EX_SIZE];
+
+  colour_t                   pal[256];
+  bitmap_t                   src;
+  screen_t                   scr;
+  int                        depth;
+  int                        source;
+  int                        m;
+  int                        x, y;
+  int                        i;
+  int                        nused;
+  int                        wrong;
+  int                        failed;
+  colour_t                   got;
+
+  /* a desktop's palette: 16 UI colours, then a 6x6x6 cube */
+  for (i = 0; i < 16; i++)
+    pal[i] = colour_rgb(rgb[i][0], rgb[i][1], rgb[i][2]);
+  for (i = 16; i < 16 + 216; i++)
+    pal[i] = colour_rgb((i - 16) / 36 * 0x33,
+                        (i - 16) / 6 % 6 * 0x33,
+                        (i - 16) % 6 * 0x33);
+  for (i = 16 + 216; i < 256; i++)
+    pal[i] = colour_rgb(0, 0, 0);
+
+  failed = 0;
+
+  for (depth = 2; depth <= 3; depth++) /* log2 bpp: p4, then p8 */
+    for (source = 0; source < 2; source++) /* deep, then paletted */
+      for (m = 0; m < (int) NELEMS(methods); m++)
+      {
+        nused = depth == 2 ? 16 : 16 + 216;
+
+        for (y = 0; y < EX_SIZE; y++)
+          for (x = 0; x < EX_SIZE; x++)
+          {
+            i = (x + y * 5) % nused;
+            deep[y * EX_SIZE + x]   = pal[i].primary;
+            index8[y * EX_SIZE + x] = (unsigned char) i;
+          }
+
+        if (source == 0)
+          bitmap_init(&src, SIZE2D(EX_SIZE, EX_SIZE), pixelfmt_rgba8888,
+                      EX_SIZE * (int) sizeof(deep[0]), NULL, deep);
+        else
+          bitmap_init(&src, SIZE2D(EX_SIZE, EX_SIZE), pixelfmt_p8, EX_SIZE,
+                      pal, index8);
+
+        memset(dst, 0, sizeof(dst));
+        screen_init(&scr, SIZE2D(EX_SIZE, EX_SIZE),
+                    depth == 2 ? pixelfmt_p4 : pixelfmt_p8,
+                    depth == 2 ? EX_SIZE / 2 : EX_SIZE, pal, dst);
+
+        if (screen_copy_bitmap_dithered(&scr, 0, 0, &src, methods[m]) != result_OK)
+        {
+          printf("screen: exact dithered copy failed\n");
+          return result_TEST_FAILED;
+        }
+
+        wrong = 0;
+        for (y = 0; y < EX_SIZE; y++)
+          for (x = 0; x < EX_SIZE; x++)
+          {
+            got = pal[exact_index_at(dst, depth == 2 ? EX_SIZE / 2 : EX_SIZE,
+                                     depth, x, y)];
+            if (got.primary != pal[(x + y * 5) % nused].primary)
+              wrong++;
+          }
+
+        if (wrong != 0)
+        {
+          printf("screen: exact colours dithered: %s, %s source, method %d: "
+                 "%d of %d pixels moved\n",
+                 depth == 2 ? "p4" : "p8", source == 0 ? "deep" : "paletted", m,
+                 wrong, EX_SIZE * EX_SIZE);
+          failed = 1;
+        }
+      }
+
+  return failed ? result_TEST_FAILED : result_TEST_PASSED;
+#undef EX_SIZE
+}
+
 /* ----------------------------------------------------------------------- */
 
 /* Read the "bpp_bits"-deep pixel at column "px" of a byte buffer using the
@@ -2846,6 +2968,7 @@ result_t screen_test(const char *resources)
     test_copy_bitmap_bgr_source,
     test_copy_bitmap_deep_formats,
     test_copy_bitmap_dithered,
+    test_copy_bitmap_dithered_exact,
     test_copy_rect_packed,
     test_copy_rect_packed_random,
     test_fill_span_p4,

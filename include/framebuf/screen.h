@@ -280,8 +280,9 @@ screen_dither_t;
  * As `screen_copy_bitmap`, but on a paletted screen the source colour is
  * dithered per pixel by \p method before the nearest-palette-entry lookup,
  * so a smooth gradient stipples between the available entries instead of
- * banding at each quantisation step. The dither is phased to the source
- * bitmap's top-left, so it stays fixed to the image as it moves.
+ * banding at each quantisation step. A source colour that is exactly the
+ * palette entry it maps to is not dithered. The dither is phased to the
+ * source bitmap's top-left, so it stays fixed to the image as it moves.
  *
  * A 16bpp (rgb565 or rgbx5551) screen is dithered the same way, so a
  * gradient stipples between the 5-bit channel steps instead of banding.

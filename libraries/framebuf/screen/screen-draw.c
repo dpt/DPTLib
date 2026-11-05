@@ -477,6 +477,59 @@ static unsigned int dither_channel(unsigned int    v,
   return (unsigned int) CLAMP((int) v + adj, 0, 255);
 }
 
+/* The palette index a deep-to-paletted pixelmap gives for an RGB colour. */
+static unsigned int paletted_lookup(const pixelmap_t *pm,
+                                    unsigned int      r,
+                                    unsigned int      g,
+                                    unsigned int      b)
+{
+  unsigned int idx;
+  unsigned int log2bpp;
+  unsigned int log2perbyte;
+
+  idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
+      | ((g >> (8 - pm->gbits)) << pm->bbits)
+      | ( b >> (8 - pm->bbits));
+
+  log2bpp     = pm->dest_log2bpp;
+  log2perbyte = 3 - log2bpp;
+
+  return (pm->entries[idx >> log2perbyte]
+          >> ((idx & ((1u << log2perbyte) - 1)) << log2bpp))
+       & ((1u << (1u << log2bpp)) - 1);
+}
+
+/* The palette index to draw for source colour (r, g, b) at sprite-local pixel
+ * (sx, sy), with "bias" NULL for no dither. A colour already on the entry it
+ * maps to has no error to spread, so it stays there: the bias would otherwise
+ * move it to a close neighbour, as one gap suits only part of a lopsided
+ * palette. */
+static unsigned int paletted_pixel(const pixelmap_t *pm,
+                                   const colour_t   *palette,
+                                   const dither_t   *bias,
+                                   int               sx,
+                                   int               sy,
+                                   unsigned int      r,
+                                   unsigned int      g,
+                                   unsigned int      b)
+{
+  unsigned int pxl;
+  unsigned int pr, pg, pb;
+
+  pxl = paletted_lookup(pm, r, g, b);
+  if (bias == NULL)
+    return pxl;
+
+  colour_get_rgb(&palette[pxl], &pr, &pg, &pb);
+  if (pr == r && pg == g && pb == b)
+    return pxl;
+
+  return paletted_lookup(pm,
+                         dither_channel(r, bias, sx, sy),
+                         dither_channel(g, bias, sx, sy),
+                         dither_channel(b, bias, sx, sy));
+}
+
 /* Non-zero if "src" is a direct-colour format src_fetch_rgba can read
  * without a palette lookup: any 32bpp, or rgb565 / rgbx5551. */
 static int src_is_deep(const bitmap_t *src)
@@ -742,7 +795,7 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
     for (xx = 0; xx < clipped_width; xx++)
     {
       colour_t       c;
-      unsigned int   r, g, b, idx;
+      unsigned int   r, g, b;
       int            dstx, srcx;
       unsigned char *scrp;
       int            shift;
@@ -758,16 +811,8 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
       shift = (dstx & 1) * 4;
 
       pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
-      if (do_dither)
-      {
-        r = dither_channel(r, &bias, dstx - x, draw_box->y0 + yy - y);
-        g = dither_channel(g, &bias, dstx - x, draw_box->y0 + yy - y);
-        b = dither_channel(b, &bias, dstx - x, draw_box->y0 + yy - y);
-      }
-      idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
-          | ((g >> (8 - pm->gbits)) << pm->bbits)
-          | ( b >> (8 - pm->bbits));
-      pxl = (pm->entries[idx >> 1] >> ((idx & 1) << 2)) & 0xF;
+      pxl = paletted_pixel(pm, scr->palette, do_dither ? &bias : NULL,
+                           srcx, srcy, r, g, b);
 
       *scrp = (unsigned char) ((*scrp & ~(0xF << shift)) | ((pxl & 0xF) << shift));
     }
@@ -825,7 +870,7 @@ static result_t screen_copy_bitmap_p8(screen_t       *scr,
     for (xx = 0; xx < clipped_width; xx++)
     {
       colour_t     c;
-      unsigned int r, g, b, idx;
+      unsigned int r, g, b;
       int          dstx, srcx;
 
       srcx = draw_box->x0 + xx - x;
@@ -836,17 +881,10 @@ static result_t screen_copy_bitmap_p8(screen_t       *scr,
       dstx = draw_box->x0 + xx;
 
       pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
-      if (do_dither)
-      {
-        r = dither_channel(r, &bias, dstx - x, draw_box->y0 + yy - y);
-        g = dither_channel(g, &bias, dstx - x, draw_box->y0 + yy - y);
-        b = dither_channel(b, &bias, dstx - x, draw_box->y0 + yy - y);
-      }
-      idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
-          | ((g >> (8 - pm->gbits)) << pm->bbits)
-          | ( b >> (8 - pm->bbits));
 
-      rowp[dstx] = pm->entries[idx];
+      rowp[dstx] = (unsigned char) paletted_pixel(pm, scr->palette,
+                                                  do_dither ? &bias : NULL,
+                                                  srcx, srcy, r, g, b);
     }
   }
 
@@ -904,7 +942,7 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
     for (xx = 0; xx < clipped_width; xx++)
     {
       colour_t       c;
-      unsigned int   r, g, b, idx;
+      unsigned int   r, g, b;
       int            dstx, shift, srcx;
       unsigned char *scrp;
       pixelfmt_any_t pxl;
@@ -919,16 +957,8 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
       shift = 7 - (dstx & 7);
 
       pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
-      if (do_dither)
-      {
-        r = dither_channel(r, &bias, dstx - x, draw_box->y0 + yy - y);
-        g = dither_channel(g, &bias, dstx - x, draw_box->y0 + yy - y);
-        b = dither_channel(b, &bias, dstx - x, draw_box->y0 + yy - y);
-      }
-      idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
-          | ((g >> (8 - pm->gbits)) << pm->bbits)
-          | ( b >> (8 - pm->bbits));
-      pxl = (pm->entries[idx >> 3] >> (idx & 7)) & 1;
+      pxl = paletted_pixel(pm, scr->palette, do_dither ? &bias : NULL,
+                           srcx, srcy, r, g, b);
 
       *scrp = (unsigned char) ((*scrp & ~(1 << shift)) | ((pxl & 1) << shift));
     }
@@ -987,7 +1017,7 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
     for (xx = 0; xx < clipped_width; xx++)
     {
       colour_t       c;
-      unsigned int   r, g, b, idx;
+      unsigned int   r, g, b;
       int            dstx, shift, srcx;
       unsigned char *scrp;
       pixelfmt_any_t pxl;
@@ -1002,16 +1032,8 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
       shift = 6 - ((dstx & 3) << 1);
 
       pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
-      if (do_dither)
-      {
-        r = dither_channel(r, &bias, dstx - x, draw_box->y0 + yy - y);
-        g = dither_channel(g, &bias, dstx - x, draw_box->y0 + yy - y);
-        b = dither_channel(b, &bias, dstx - x, draw_box->y0 + yy - y);
-      }
-      idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
-          | ((g >> (8 - pm->gbits)) << pm->bbits)
-          | ( b >> (8 - pm->bbits));
-      pxl = (pm->entries[idx >> 2] >> ((idx & 3) << 1)) & 3;
+      pxl = paletted_pixel(pm, scr->palette, do_dither ? &bias : NULL,
+                           srcx, srcy, r, g, b);
 
       *scrp = (unsigned char) ((*scrp & ~(3 << shift)) | ((pxl & 3) << shift));
     }
