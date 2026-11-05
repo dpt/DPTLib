@@ -285,7 +285,8 @@ screen_dither_t;
  * source bitmap's top-left, so it stays fixed to the image as it moves.
  *
  * A 16bpp (rgb565 or rgbx5551) screen is dithered the same way, so a
- * gradient stipples between the 5-bit channel steps instead of banding.
+ * gradient stipples between the channel steps instead of banding. A colour
+ * the screen can show exactly stays that colour.
  *
  * On a 32bpp screen, and for an RLE-compressed source, this is identical to
  * `screen_copy_bitmap` (a deep screen has no banding to break up; an RLE

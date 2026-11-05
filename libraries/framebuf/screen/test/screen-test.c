@@ -2451,6 +2451,160 @@ static result_t test_copy_bitmap_dithered_exact(void)
 #undef EX_SIZE
 }
 
+/* Expand a "bits"-wide channel value to 8 bits, as a 16bpp source is read. */
+static unsigned int exact16_expand(unsigned int v, int bits)
+{
+  return bits == 5 ? (v << 3) | (v >> 2) : (v << 2) | (v >> 4);
+}
+
+/* As test_copy_bitmap_dithered_exact for 16bpp screens: every colour the
+ * screen can show must survive a dithered copy unchanged, from a source of the
+ * screen's format and from a 32bpp one. A flat colour between two of its steps
+ * must still stipple. */
+static result_t test_copy_bitmap_dithered_exact_16(void)
+{
+#define EX16_SIZE 256
+  static const struct
+  {
+    const char *name;
+    pixelfmt_t  format;
+    int         gbits;
+    int         rshift, gshift, bshift;
+    unsigned    mask;
+  }
+  formats[] =
+  {
+    { "rgb565",   pixelfmt_rgb565,   6, 0, 5, 11, 0xFFFF },
+    { "rgbx5551", pixelfmt_rgbx5551, 5, 0, 5, 10, 0x7FFF }
+  };
+  static const screen_dither_t methods[] =
+  {
+    screen_DITHER_BAYER,
+    screen_DITHER_BLUE_NOISE
+  };
+  static pixelfmt_any16_t    src16[EX16_SIZE * EX16_SIZE];
+  static pixelfmt_rgba8888_t src32[EX16_SIZE * EX16_SIZE];
+  static pixelfmt_any16_t    dst[EX16_SIZE * EX16_SIZE];
+
+  bitmap_t                   src;
+  screen_t                   scr;
+  int                        f;
+  int                        source;
+  int                        m;
+  int                        i;
+  unsigned int               v;
+  int                        wrong;
+  long                       prev;
+  long                       sum;
+  int                        varied;
+  int                        failed;
+
+  failed = 0;
+
+  for (f = 0; f < (int) NELEMS(formats); f++)
+    for (m = 0; m < (int) NELEMS(methods); m++)
+    {
+      for (i = 0; i < EX16_SIZE * EX16_SIZE; i++)
+      {
+        v        = (unsigned int) i & formats[f].mask;
+        src16[i] = (pixelfmt_any16_t) v;
+        src32[i] = colour_rgb(
+                     (int) exact16_expand((v >> formats[f].rshift) & 31, 5),
+                     (int) exact16_expand((v >> formats[f].gshift) &
+                                          ((1u << formats[f].gbits) - 1),
+                                          formats[f].gbits),
+                     (int) exact16_expand((v >> formats[f].bshift) & 31, 5))
+                   .primary;
+      }
+
+      for (source = 0; source < 2; source++) /* 32bpp, then 16bpp */
+      {
+        if (source == 0)
+          bitmap_init(&src, SIZE2D(EX16_SIZE, EX16_SIZE), pixelfmt_rgba8888,
+                      EX16_SIZE * (int) sizeof(src32[0]), NULL, src32);
+        else
+          bitmap_init(&src, SIZE2D(EX16_SIZE, EX16_SIZE), formats[f].format,
+                      EX16_SIZE * (int) sizeof(src16[0]), NULL, src16);
+
+        memset(dst, 0, sizeof(dst));
+        screen_init(&scr, SIZE2D(EX16_SIZE, EX16_SIZE), formats[f].format,
+                    EX16_SIZE * (int) sizeof(dst[0]), NULL, dst);
+
+        if (screen_copy_bitmap_dithered(&scr, 0, 0, &src, methods[m]) != result_OK)
+        {
+          printf("screen: exact 16bpp dithered copy failed\n");
+          return result_TEST_FAILED;
+        }
+
+        wrong = 0;
+        for (i = 0; i < EX16_SIZE * EX16_SIZE; i++)
+          if ((dst[i] & formats[f].mask) != (src16[i] & formats[f].mask))
+            wrong++;
+
+        if (wrong != 0)
+        {
+          printf("screen: exact colours dithered: %s, %s source, method %d: "
+                 "%d of %d pixels moved\n",
+                 formats[f].name, source == 0 ? "32bpp" : "16bpp", m, wrong,
+                 EX16_SIZE * EX16_SIZE);
+          failed = 1;
+        }
+      }
+
+      /* a ramp must not get darker as it gets brighter: each channel's average
+       * level over the threshold map never falls as the source value rises */
+      for (v = 0, prev = 0; v < 256; v++)
+      {
+        for (i = 0; i < 64 * 64; i++)
+          src32[i] = colour_rgb((int) v, (int) v, (int) v).primary;
+
+        bitmap_init(&src, SIZE2D(64, 64), pixelfmt_rgba8888,
+                    64 * (int) sizeof(src32[0]), NULL, src32);
+        screen_init(&scr, SIZE2D(64, 64), formats[f].format,
+                    64 * (int) sizeof(dst[0]), NULL, dst);
+        screen_copy_bitmap_dithered(&scr, 0, 0, &src, methods[m]);
+
+        sum = 0;
+        for (i = 0; i < 64 * 64; i++)
+          sum += (dst[i] >> formats[f].rshift) & 31;
+
+        if (sum < prev)
+        {
+          printf("screen: %s, method %d: ramp falls at value %u, %ld to %ld\n",
+                 formats[f].name, m, v, prev, sum);
+          failed = 1;
+        }
+        prev = sum;
+      }
+
+      /* 0x85 is between two steps of a channel of either width */
+      for (i = 0; i < EX16_SIZE * EX16_SIZE; i++)
+        src32[i] = colour_rgb(0x85, 0x85, 0x85).primary;
+
+      bitmap_init(&src, SIZE2D(EX16_SIZE, EX16_SIZE), pixelfmt_rgba8888,
+                  EX16_SIZE * (int) sizeof(src32[0]), NULL, src32);
+      memset(dst, 0, sizeof(dst));
+      screen_init(&scr, SIZE2D(EX16_SIZE, EX16_SIZE), formats[f].format,
+                  EX16_SIZE * (int) sizeof(dst[0]), NULL, dst);
+      screen_copy_bitmap_dithered(&scr, 0, 0, &src, methods[m]);
+
+      varied = 0;
+      for (i = 1; i < EX16_SIZE * EX16_SIZE; i++)
+        if ((dst[i] & formats[f].mask) != (dst[0] & formats[f].mask))
+          varied = 1;
+
+      if (!varied)
+      {
+        printf("screen: %s, method %d: off-grid colour did not stipple\n",
+               formats[f].name, m);
+        failed = 1;
+      }
+    }
+
+  return failed ? result_TEST_FAILED : result_TEST_PASSED;
+#undef EX16_SIZE
+}
+
 /* ----------------------------------------------------------------------- */
 
 /* Read the "bpp_bits"-deep pixel at column "px" of a byte buffer using the
@@ -2867,8 +3021,8 @@ static result_t test_16bpp_screen(pixelfmt_t fmt)
     }
   }
 
-  /* dithering: a flat grey between two 5-bit steps (132 = 16.5 steps) must
-   * use both neighbouring levels, and average near the true value */
+  /* dithering: a flat grey between two 5-bit levels (136, midway between level
+   * 16's 132 and level 17's 140) must use both of them */
   {
     static const screen_dither_t methods[] =
     {
@@ -2883,7 +3037,7 @@ static result_t test_16bpp_screen(pixelfmt_t fmt)
     int                 m, i, nlo, nhi;
 
     for (i = 0; i < 16 * 16; i++)
-      flat[i] = PIXELFMT_MAKE_RGBA8888(132, 132, 132, 255);
+      flat[i] = PIXELFMT_MAKE_RGBA8888(136, 136, 136, 255);
     bitmap_init(&fsrc, SIZE2D(16, 16), pixelfmt_rgba8888,
                 16 * (int) sizeof(flat[0]), NULL, flat);
     screen_init(&bscr, SIZE2D(16, 16), fmt, 16 * (int) sizeof(big[0]),
@@ -2969,6 +3123,7 @@ result_t screen_test(const char *resources)
     test_copy_bitmap_deep_formats,
     test_copy_bitmap_dithered,
     test_copy_bitmap_dithered_exact,
+    test_copy_bitmap_dithered_exact_16,
     test_copy_rect_packed,
     test_copy_rect_packed_random,
     test_fill_span_p4,

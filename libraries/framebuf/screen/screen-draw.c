@@ -1270,6 +1270,20 @@ static result_t screen_copy_bitmap_32(screen_t       *scr,
   return result_OK;
 }
 
+/* Add ordered-dither offset "off" (0..2^(8-bits)-1) to 8-bit channel value "v",
+ * ready for truncating to "bits" bits. A channel expands to 8 bits with its top
+ * bits repeated in the low ones, so level k shows as (k << (8-bits)) plus
+ * k >> (2*bits-8). Taking that back off first puts each level's own colour on
+ * a multiple of the step: it stays on its level at any offset, and values
+ * between two levels mix them in proportion. Cannot overflow: 255 becomes the
+ * top level's multiple, and the offset stays within the step. */
+static unsigned int dither_channel_16(unsigned int v,
+                                      int          bits,
+                                      unsigned int off)
+{
+  return v - (v >> bits) + off;
+}
+
 /* Like screen_copy_bitmap_32, but for a 16bpp (555x/x555/565) screen. Same
  * restriction: result_NOT_SUPPORTED if "src" is paletted with no
  * paletted->deep conversion table. */
@@ -1288,6 +1302,7 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
   pixelfmt_any16_t *dstrow;
   dither_t          bias;
   int               do_dither;
+  int               gbits;
   fastblit_t        fb;
   int               fast;
   int               clipped_width, clipped_height;
@@ -1301,8 +1316,10 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
     return result_NOT_SUPPORTED;
 
   /* 5 bits is the coarsest channel of either format. colour_to_pixel
-   * truncates, so the bias is lifted by half a step to keep it unbiased. */
+   * truncates, so the bias is lifted to an offset within one step. */
   do_dither = dither_bias_build(&bias, 255 / 31, dither);
+  gbits     = (scr->format == pixelfmt_rgb565 ||
+               scr->format == pixelfmt_bgr565) ? 6 : 5;
 
   fast = fastblit_init(&fb, scr, src, do_dither);
 
@@ -1350,6 +1367,7 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
         {
           colour_t     c;
           unsigned int r, g, b;
+          unsigned int off;
           int          sx;
 
           sx = draw_box->x0 + done + i - x;
@@ -1357,10 +1375,11 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
           if (do_dither)
           {
             colour_get_rgb(&c, &r, &g, &b);
-            r = dither_channel(r + 4, &bias, sx, srcy);
-            g = dither_channel(g + 4, &bias, sx, srcy);
-            b = dither_channel(b + 4, &bias, sx, srcy);
-            c = colour_rgba(r, g, b, colour_get_alpha(&c));
+            off = (unsigned int) (bias.tab[bias.threshold(sx, srcy)] + 4);
+            r   = dither_channel_16(r, 5, off);
+            g   = dither_channel_16(g, gbits, gbits == 6 ? off >> 1 : off);
+            b   = dither_channel_16(b, 5, off);
+            c   = colour_rgba(r, g, b, colour_get_alpha(&c));
           }
           colbuf[i]   = (pixelfmt_any16_t) colour_to_pixel(scr->palette, 0, c, scr->format);
           alphabuf[i] = has_alpha ? colour_get_alpha(&c) : PIXELFMT_OPAQUE;
