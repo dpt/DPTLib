@@ -29,6 +29,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   Yliluoma too: ordered thresholds split pixels in proportion to linear
   light, Knoll carries its error and Yliluoma mixes its plans in linear
   light.
+- `text/mdtext.h`: a Markdown renderer which lays out and draws text using
+  bmfont fonts the caller owns. It caches the layout per width and draws only
+  the lines inside the screen clip. `mdtext_caret_pos` gives the baseline
+  position of a caret before a byte, for `bmfont_draw_caret`, and
+  `mdtext_find_caret` is its inverse, so a click can place a caret.
+- `io/path.h`: `path_user_data` gives the per-user data directory, creating it
+  and its parents: Application Support on macOS, `%APPDATA%` on Windows,
+  `Choices$Write` on RISC OS and the XDG data directory elsewhere.
+  `path_exists` and `path_is_dir` test a path.
+- `resources/bmfonts/BBC-MicroProp`: a proportional BBC Micro font.
+- `DPTLibBench`: a benchmark of span blends, composite rules, `bitmap_resize`,
+  `screen_copy_bitmap` and `dither_bitmap`. It prints a checksum of the
+  outputs, so an optimisation can be shown to be bit-exact.
+- `utils/maths.h`: `div_recip` divides by multiplying by a reciprocal, for
+  targets without a fast hardware divide.
 
 ### Changed
 
@@ -39,6 +54,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   each one separately.
 - `bitmap_load_png` reads row by row, without allocating an array of row
   pointers.
+- `utf8_word_left` and `utf8_word_right` stop at a line feed as well as a
+  space.
+- Span blends are vectorisable: 8888 red and blue blend together, 16bpp is
+  branch-free and blends run in place. A 1920x1080 bgrx8888 blendarray on an
+  M1 Max drops from 3.0 ms to 1.1 ms and rgb565 blendarray is 2.5x faster.
+- `screen_copy_bitmap` copies deep rows in vectorisable loops. On the same
+  machine bgra8888 to bgrx8888 drops from 8.6 ms to 3.5 ms and bgrx8888 to
+  bgrx8888 from 7.6 ms to 0.18 ms.
+- `bitmap_resize` precomputes its column offsets and weights, making bilinear
+  about 1.6x faster.
+- Divisions are gone from per-pixel paths, for targets without a hardware
+  divide: `bitmap_resize`, the bgra8888 blend, span blends, composite,
+  `dither_bitmap`, region polygon edges, `screen_fill_linear_gradient` and
+  packed rectangle copies.
 
 ### Fixed
 
@@ -48,6 +77,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   glyph's own width, dropping the trailing spacing pixel a pixel-design
   font's advance carries, so the loader's added letter spacing no longer
   doubles it.
+- `txtfmt_wrap` no longer gets a wild pointer from `txtfmt_get_line` for a
+  blank line.
+- `bmfont_create` no longer calls `fclose(NULL)` when it cannot open a file.
+  On Windows the debug C runtime's assert hid the real error.
+- The DPTLib target links libm publicly, as `DPTLibBench` failed to link on
+  Linux without it.
+- Compiler warnings: clang's pedantic warning on the logging macros, narrowing
+  in txtfmt and an unsigned enum comparison in dither.
 
 ## [0.7.0] - 2026-10-29
 
