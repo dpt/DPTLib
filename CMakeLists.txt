@@ -14,7 +14,7 @@ endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/)
 
-project(DPTLib VERSION 0.6.0 DESCRIPTION "DPT's C Library" LANGUAGES C)
+project(DPTLib VERSION 0.8.0 DESCRIPTION "DPT's C Library" LANGUAGES C)
 
 # The values set in the toolchain file aren't available until this point.
 if(TARGET_RISCOS)
@@ -48,7 +48,7 @@ endif()
 add_library(DPTLib)
 
 set_target_properties(DPTLib PROPERTIES
-    VERSION 0.6.0
+    VERSION 0.8.0
     DESCRIPTION "DPT's Portable C Library"
     C_STANDARD 99
     PREFIX ""  # remove 'lib' prefix
