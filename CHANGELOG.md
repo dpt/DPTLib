@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `framebuf/dither.h`: `dither_bitmap_into` dithers over an existing bitmap,
+  keeping its working memory in a `dither_scratch_t`, so repeated dithers
+  needn't allocate.
 - `text/numfmt.h`: `numfmt_grouped` formats a number with comma separated
   groups of digits.
 - `utils/alloc.h`: `alloc_counting_malloc` and friends, a C library allocator

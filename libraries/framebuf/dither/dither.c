@@ -15,6 +15,7 @@
 #include "framebuf/pattern.h"
 #include "framebuf/pixelfmt.h"
 #include "framebuf/pixelmap.h"
+#include "utils/array.h"
 #include "utils/maths.h"
 #include "utils/rng.h"
 
@@ -911,20 +912,68 @@ static void dither_riemersma(const bitmap_t         *src,
 
 /* ----------------------------------------------------------------------- */
 
-result_t dither_bitmap(const bitmap_t         *src,
-                       const dither_options_t *opts,
-                       bitmap_t              **dst)
+/* Validate src and opts and work out the output's layout. */
+static result_t dither_layout(const bitmap_t         *src,
+                              const dither_options_t *opts,
+                              int                    *log2bpp,
+                              pixelfmt_t             *fmt,
+                              int                    *rowbytes)
+{
+  if (src->format != pixelfmt_rgbx8888 && src->format != pixelfmt_rgba8888)
+    return result_BAD_ARG;
+  if ((unsigned int) opts->method >= dither__LIMIT ||
+      opts->palette == NULL ||
+      opts->ncolours < 1 || opts->ncolours > 256 ||
+      opts->strength < 0 || opts->strength > 100)
+    return result_BAD_ARG;
+
+  if (opts->ncolours <= 2)
+  {
+    *log2bpp = 0;
+    *fmt     = pixelfmt_p1;
+  }
+  else if (opts->ncolours <= 4)
+  {
+    *log2bpp = 1;
+    *fmt     = pixelfmt_p2;
+  }
+  else if (opts->ncolours <= 16)
+  {
+    *log2bpp = 2;
+    *fmt     = pixelfmt_p4;
+  }
+  else
+  {
+    *log2bpp = 3;
+    *fmt     = pixelfmt_p8;
+  }
+
+  *rowbytes = (((src->size.w << *log2bpp) + 31) >> 5) << 2;
+
+  return result_OK;
+}
+
+void dither_scratch_free(dither_scratch_t *scratch)
+{
+  free(scratch->err);
+  free(scratch->yliluoma);
+  memset(scratch, 0, sizeof(*scratch));
+}
+
+result_t dither_bitmap_into(const bitmap_t         *src,
+                            const dither_options_t *opts,
+                            dither_scratch_t       *scratch,
+                            bitmap_t               *dst)
 {
   result_t                   rc;
-  const dither_kernel_t     *k;
   int                        log2bpp;
   pixelfmt_t                 fmt;
+  int                        rowbytes;
+  const dither_kernel_t     *k;
   const pixelmap_t          *pm;
   colour_t                   palette[256];
-  int                        rowbytes;
-  unsigned char             *base;
-  bitmap_t                  *out;
   int                        stride;
+  int                        nerr;
   int                       *err;
   int                        total;
   unsigned int               rtotal;
@@ -956,38 +1005,15 @@ result_t dither_bitmap(const bitmap_t         *src,
   int                        lim;
   rng_t                      rng;
 
-  *dst = NULL;
+  rc = dither_layout(src, opts, &log2bpp, &fmt, &rowbytes);
+  if (rc != result_OK)
+    return rc;
 
-  if (src->format != pixelfmt_rgbx8888 && src->format != pixelfmt_rgba8888)
-    return result_BAD_ARG;
-  if ((unsigned int) opts->method >= dither__LIMIT ||
-      opts->palette == NULL ||
-      opts->ncolours < 1 || opts->ncolours > 256 ||
-      opts->strength < 0 || opts->strength > 100)
+  if (dst->format != fmt || dst->rowbytes != rowbytes ||
+      dst->size.w != src->size.w || dst->size.h != src->size.h)
     return result_BAD_ARG;
 
   k = &dither_kernels[opts->method];
-
-  if (opts->ncolours <= 2)
-  {
-    log2bpp = 0;
-    fmt     = pixelfmt_p1;
-  }
-  else if (opts->ncolours <= 4)
-  {
-    log2bpp = 1;
-    fmt     = pixelfmt_p2;
-  }
-  else if (opts->ncolours <= 16)
-  {
-    log2bpp = 2;
-    fmt     = pixelfmt_p4;
-  }
-  else
-  {
-    log2bpp = 3;
-    fmt     = pixelfmt_p8;
-  }
 
   pm = pixelmap_get(src->format, fmt, opts->palette, opts->ncolours);
   if (pm == NULL)
@@ -996,29 +1022,34 @@ result_t dither_bitmap(const bitmap_t         *src,
   for (i = 0; i < 256; i++)
     palette[i] = (i < opts->ncolours) ? opts->palette[i] : colour_rgb(0, 0, 0);
 
-  rowbytes = (((src->size.w << log2bpp) + 31) >> 5) << 2;
-
-  base   = NULL;
-  out    = NULL;
-  err    = NULL;
-  yl     = NULL;
   stride = src->size.w + 2 * DITHER_PAD;
+  nerr   = stride * k->h * 3;
 
-  base = calloc((size_t) rowbytes * src->size.h, 1);
-  out  = malloc(sizeof(*out));
-  err  = calloc((size_t) stride * k->h * 3, sizeof(*err));
+  if (array_grow((void **) &scratch->err, sizeof(*scratch->err), 0,
+                 &scratch->allocated, nerr, 1))
+    return result_OOM;
+  err = scratch->err;
+  memset(err, 0, (size_t) nerr * sizeof(*err));
+
+  yl = NULL;
   if (opts->method == dither_YLILUOMA)
-    yl = calloc(1, sizeof(*yl));
-  if (base == NULL || out == NULL || err == NULL ||
-      (opts->method == dither_YLILUOMA && yl == NULL))
   {
-    rc = result_OOM;
-    goto failure;
+    if (scratch->yliluoma == NULL)
+    {
+      scratch->yliluoma = malloc(sizeof(*scratch->yliluoma));
+      if (scratch->yliluoma == NULL)
+        return result_OOM;
+    }
+    yl = scratch->yliluoma;
+    memset(yl->made, 0, sizeof(yl->made)); /* plans are per palette */
   }
 
-  rc = bitmap_init(out, src->size, fmt, rowbytes, palette, base);
+  /* the last step which can fail: dst is untouched until it's done */
+  rc = bitmap_set_palette(dst, palette);
   if (rc != result_OK)
-    goto failure;
+    return rc;
+
+  memset(dst->base, 0, (size_t) rowbytes * src->size.h); /* dither_put ORs */
 
   /* error is stored scaled by divisor * 100 so that strength and the kernel
    * weights need only one division, at read time */
@@ -1065,16 +1096,14 @@ result_t dither_bitmap(const bitmap_t         *src,
   /* Riemersma walks its own curve rather than rows */
   if (opts->method == dither_RIEMERSMA)
   {
-    dither_riemersma(src, opts, pm, palette, dec, max, out);
-    free(err);
-    *dst = out;
+    dither_riemersma(src, opts, pm, palette, dec, max, dst);
     return result_OK;
   }
 
   rng_seed(&rng, 1); /* Zhou-Fang's noise, the same every call */
 
   srcrow = src->base;
-  dstrow = base;
+  dstrow = dst->base;
   for (y = 0; y < src->size.h; y++)
   {
     cur = y % k->h;
@@ -1190,17 +1219,52 @@ result_t dither_bitmap(const bitmap_t         *src,
     dstrow += rowbytes;
   }
 
-  free(yl);
-  free(err);
+  return result_OK;
+}
+
+result_t dither_bitmap(const bitmap_t         *src,
+                       const dither_options_t *opts,
+                       bitmap_t              **dst)
+{
+  result_t         rc;
+  int              log2bpp;
+  pixelfmt_t       fmt;
+  int              rowbytes;
+  unsigned char   *base;
+  bitmap_t        *out;
+  dither_scratch_t scratch;
+
+  *dst = NULL;
+
+  rc = dither_layout(src, opts, &log2bpp, &fmt, &rowbytes);
+  if (rc != result_OK)
+    return rc;
+
+  base = malloc((size_t) rowbytes * src->size.h);
+  out  = malloc(sizeof(*out));
+  if (base == NULL || out == NULL)
+  {
+    free(out);
+    free(base);
+    return result_OOM;
+  }
+
+  rc = bitmap_init(out, src->size, fmt, rowbytes, NULL, base);
+  if (rc == result_OK)
+  {
+    memset(&scratch, 0, sizeof(scratch));
+    rc = dither_bitmap_into(src, opts, &scratch, out);
+    dither_scratch_free(&scratch);
+  }
+  if (rc != result_OK)
+  {
+    free(out->palette);
+    free(out);
+    free(base);
+    return rc;
+  }
+
   *dst = out;
 
   return result_OK;
-
-failure:
-  free(yl);
-  free(err);
-  free(out);
-  free(base);
-
-  return rc;
 }

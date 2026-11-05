@@ -55,6 +55,36 @@ static int same_pixels(const bitmap_t *a, const bitmap_t *b)
   return 1;
 }
 
+/* Does dithering over a spoiled bitmap match dithering to a new one? */
+static int into_matches(const bitmap_t         *src,
+                        const dither_options_t *opts,
+                        dither_scratch_t       *scratch)
+{
+  bitmap_t *ref;
+  bitmap_t *out;
+  size_t    palette_size;
+  int       same;
+
+  ref = NULL;
+  out = NULL;
+  same = 0;
+  if (dither_bitmap(src, opts, &ref) == result_OK &&
+      dither_bitmap(src, opts, &out) == result_OK)
+  {
+    palette_size = pixelfmt_paletted_nentries(out->format) *
+                   sizeof(*out->palette);
+    memset(out->base, 0xFF, (size_t) out->rowbytes * H);
+    memset(out->palette, 0x55, palette_size);
+    same = dither_bitmap_into(src, opts, scratch, out) == result_OK &&
+           same_pixels(ref, out) &&
+           memcmp(ref->palette, out->palette, palette_size) == 0;
+  }
+  free_bitmap(out);
+  free_bitmap(ref);
+
+  return same;
+}
+
 result_t dither_test(const char *resources)
 {
   static const struct
@@ -94,6 +124,9 @@ result_t dither_test(const char *resources)
   int                 mean;
   int                 x, y;
   int                 i;
+  dither_scratch_t    scratch;
+  int                *kept;
+  bitmap_t            narrow;
 
   (void) resources;
 
@@ -293,7 +326,68 @@ result_t dither_test(const char *resources)
   }
   opts.ncolours = 2;
 
-  /* 7. bad arguments */
+  /* 7. dithering into an existing bitmap matches, whatever it held and
+   * whichever dithers shared the scratch before */
+  memset(&scratch, 0, sizeof(scratch));
+  for (method = 0; method < dither__LIMIT; method++)
+  {
+    for (i = 0; i < (int) (sizeof(formats) / sizeof(formats[0])); i++)
+    {
+      opts.method   = (dither_method_t) method;
+      opts.ncolours = formats[i].ncolours;
+      if (!into_matches(&src, &opts, &scratch))
+      {
+        printf("dither: into differs for method %d, %d colours\n",
+               method, opts.ncolours);
+        dither_scratch_free(&scratch);
+        return result_TEST_FAILED;
+      }
+    }
+  }
+
+  /* a scratch big enough is kept */
+  kept = scratch.err;
+  if (!into_matches(&src, &opts, &scratch) || scratch.err != kept)
+  {
+    printf("dither: into did not keep its scratch\n");
+    dither_scratch_free(&scratch);
+    return result_TEST_FAILED;
+  }
+
+  /* an unsuitable bitmap is refused and left alone */
+  opts.method   = dither_FLOYD_STEINBERG;
+  opts.ncolours = 2;
+  rc = dither_bitmap(&src, &opts, &out);
+  if (rc != result_OK)
+  {
+    dither_scratch_free(&scratch);
+    return result_TEST_FAILED;
+  }
+  memset(out->base, 0xAA, (size_t) out->rowbytes * H);
+  narrow = src;
+  narrow.size.w = W - 8; /* needs the same rowbytes at 1bpp */
+  rc = dither_bitmap_into(&narrow, &opts, &scratch, out);
+  if (rc == result_BAD_ARG)
+  {
+    opts.ncolours = 256;
+    rc = dither_bitmap_into(&src, &opts, &scratch, out);
+    opts.ncolours = 2;
+  }
+  x = ((unsigned char *) out->base)[0];
+  free_bitmap(out);
+  dither_scratch_free(&scratch);
+  if (rc != result_BAD_ARG || x != 0xAA)
+  {
+    printf("dither: into accepted an unsuitable bitmap\n");
+    return result_TEST_FAILED;
+  }
+  if (scratch.err != NULL || scratch.allocated != 0)
+  {
+    printf("dither: scratch not left zeroed\n");
+    return result_TEST_FAILED;
+  }
+
+  /* 8. bad arguments */
   opts.strength = 101;
   if (dither_bitmap(&src, &opts, &out) != result_BAD_ARG)
   {

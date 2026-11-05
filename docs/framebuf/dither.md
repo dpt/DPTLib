@@ -29,6 +29,24 @@ to 4, `p4` for up to 16 and `p8` beyond. The output palette is `palette`
 padded with opaque black to the format's full size. The caller frees the
 result's `base`, its `palette` and the bitmap itself.
 
+To dither repeatedly without allocating, for instance while a strength slider
+moves, overwrite an earlier result instead:
+
+```c
+result_t dither_bitmap_into(const bitmap_t         *src,
+                            const dither_options_t *opts,
+                            dither_scratch_t       *scratch,
+                            bitmap_t               *dst);
+
+void dither_scratch_free(dither_scratch_t *scratch);
+```
+
+`dst` must have the size, format and rowbytes which `dither_bitmap` would give
+it, else the call returns `result_BAD_ARG`. On failure `dst` is unchanged.
+`scratch` holds the working memory between calls. Zero it before first use and
+release it with `dither_scratch_free`. Once Yliluoma has used a scratch, it
+holds that method's tables, over a megabyte, until released.
+
 Alpha is ignored. To build a palette suited to the image, see
 [octree](octree.md) or [wu](wu.md).
 

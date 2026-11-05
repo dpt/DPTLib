@@ -155,6 +155,51 @@ result_t dither_bitmap(const bitmap_t         *src,
                        const dither_options_t *opts,
                        bitmap_t              **dst);
 
+/**
+ * Working memory for \ref dither_bitmap_into, kept between calls so that
+ * repeated dithers needn't allocate. Zero it before first use and release it
+ * with \ref dither_scratch_free. It holds nothing between calls which
+ * affects the result, so it may be shared by dithers of any size and method.
+ */
+typedef struct dither_scratch
+{
+  int                    *err;       /**< Error rows. */
+  int                     allocated; /**< Elements in `err`. */
+  struct dither_yliluoma *yliluoma;  /**< Yliluoma's tables, if ever used. */
+}
+dither_scratch_t;
+
+/**
+ * Release a scratch's memory, leaving it zeroed and ready to use again.
+ *
+ * \param[in] scratch Scratch to release.
+ */
+void dither_scratch_free(dither_scratch_t *scratch);
+
+/**
+ * As \ref dither_bitmap, but writing into an existing bitmap and allocating
+ * only when `scratch` must grow. The result is identical. The palette of
+ * `dst` is replaced by `opts->palette`, padded as for \ref dither_bitmap.
+ *
+ * `dst` must be as \ref dither_bitmap would make it for `src` and `opts`:
+ * the same size, format and rowbytes. The result of an earlier dither of
+ * `src` to the same number of colours qualifies.
+ *
+ * On failure `dst` is unchanged.
+ *
+ * \param[in]     src     Source bitmap.
+ * \param[in]     opts    Dithering options.
+ * \param[in,out] scratch Working memory.
+ * \param[in,out] dst     Bitmap to overwrite.
+ * \return \ref result_OK on success, \ref result_BAD_ARG for an unsupported
+ *         format or option or an unsuitable `dst`, \ref result_OOM on
+ *         allocation failure.
+ */
+result_t dither_bitmap_into(const bitmap_t         *src,
+                            const dither_options_t *opts,
+                            dither_scratch_t       *scratch,
+                            bitmap_t               *dst);
+
 /* ----------------------------------------------------------------------- */
 
 #ifdef __cplusplus
