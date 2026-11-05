@@ -25,7 +25,8 @@ Build directories are per-config and already created; there is **no** plain
 
 CMake options: `BUILD_TESTS`, `BUILD_SDL_TESTS`, `USE_ASAN` (ASan + UBSan),
 `USE_COVERAGE`, `USE_FORTIFY` (bundled Fortify), `DPTLIB_IMAGES_READ_ONLY`
-(libpng no write). `BUILD_TESTS` only builds `DPTLibTest` when DPTLib is the
+(libpng no write), `DPTLIB_CRT` (`DPTLibCRT`, a CRT post-effect needing SDL3;
+`CRTTest` with `BUILD_TESTS`, run by hand). `BUILD_TESTS` only builds `DPTLibTest` when DPTLib is the
 top-level project, not when a parent project (Wuss) fetches it.
 
 (Re)configure a dir only if its `CMakeCache.txt` is missing or you are changing

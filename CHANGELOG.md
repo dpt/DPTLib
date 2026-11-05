@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `sdl/crt.h`: `DPTLibCRT`, an optional CRT post-effect for SDL3 windows using
+  Metal, Vulkan or WebGL, enabled by `DPTLIB_CRT` or fetched alone from
+  `libraries/sdl/crt`. It links SDL3 but not DPTLib.
 - `framebuf/dither.h`: `dither_bitmap_into` dithers over an existing bitmap,
   keeping its working memory in a `dither_scratch_t`, so repeated dithers
   needn't allocate.

@@ -32,6 +32,7 @@ option(USE_ASAN "Build with AddressSanitizer and UndefinedBehaviorSanitizer" OFF
 option(USE_COVERAGE "Build with Clang source-based code coverage" OFF)
 option(DPTLIB_IMAGES_READ_ONLY "Remove libpng write support" OFF)
 option(DPTLIB_ALLOC_COUNT "Send DPTLib's and its dependants' allocation through alloc_counting_*" OFF)
+option(DPTLIB_CRT "Build DPTLibCRT, the CRT post-effect for SDL3 windows" OFF)
 
 # Referencing CMAKE_TOOLCHAIN_FILE avoids a warning on rebuilds.
 if(NOT ${CMAKE_TOOLCHAIN_FILE} STREQUAL "")
@@ -39,6 +40,10 @@ if(NOT ${CMAKE_TOOLCHAIN_FILE} STREQUAL "")
 endif()
 
 add_subdirectory(libraries/fortify)
+
+if(DPTLIB_CRT)
+    add_subdirectory(libraries/sdl/crt)
+endif()
 
 add_library(DPTLib)
 
@@ -724,6 +729,13 @@ if(BUILD_TESTS AND PROJECT_IS_TOP_LEVEL)
 
         target_link_libraries(DPTLibTest SDL3::SDL3 SDL3_image::SDL3_image)
         target_compile_definitions(DPTLibTest PRIVATE USE_SDL)
+    endif()
+
+    # Needs a display and a GPU, so it's run by hand
+    if(DPTLIB_CRT)
+        add_executable(CRTTest libraries/sdl/crt/test/crt-test.c)
+        set_target_properties(CRTTest PROPERTIES C_STANDARD 99)
+        target_link_libraries(CRTTest DPTLibCRT)
     endif()
 
     install(TARGETS DPTLibTest RUNTIME
