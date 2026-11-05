@@ -363,6 +363,27 @@ result_t screen_copy_bitmap_tiled(screen_t       *scr,
                                   point_t         origin);
 
 /**
+ * As `screen_copy_bitmap_tiled`, but each tile is drawn as by
+ * `screen_copy_bitmap_dithered`. The dither is phased to each tile's
+ * top-left, so every tile dithers alike and the pattern stays fixed to the
+ * image as \p origin moves.
+ *
+ * \param[in] scr    Screen to draw upon.
+ * \param[in] dst    Rectangle to fill.
+ * \param[in] src    Bitmap to repeat.
+ * \param[in] origin Screen position of the top-left of one tile.
+ * \param[in] method Dithering method.
+ * \return \ref result_OK on success, \ref result_BAD_ARG if \p src has no
+ *         area, or \ref result_NOT_SUPPORTED if the screen's pixel format
+ *         has no blit path.
+ */
+result_t screen_copy_bitmap_tiled_dithered(screen_t       *scr,
+                                           const box_t    *dst,
+                                           const bitmap_t *src,
+                                           point_t         origin,
+                                           screen_dither_t method);
+
+/**
  * Copies a rectangular region of the screen to another position on the same
  * screen (e.g. sliding an already-rendered window's pixels to a new position
  * without asking its owner to redraw). Source and destination may overlap;

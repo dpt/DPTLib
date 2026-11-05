@@ -2148,6 +2148,75 @@ static int p2_pixel_at(const unsigned char *rowbuf, int px)
   return (rowbuf[px >> 2] >> (6 - ((px & 3) << 1))) & 3;
 }
 
+/* screen_copy_bitmap_tiled_dithered on a p2 screen: the same pixels as a grid
+ * of screen_copy_bitmap_dithered copies clipped to the box, and unlike the
+ * plain tiled copy of a flat mid-grey source, which is uniform. */
+static result_t test_tiled_dithered(void)
+{
+#define TD_ROWBYTES (WIDTH / 4)
+  static unsigned char       got[TD_ROWBYTES * HEIGHT];
+  static unsigned char       want[TD_ROWBYTES * HEIGHT];
+  static unsigned char       plain[TD_ROWBYTES * HEIGHT];
+  static pixelfmt_rgba8888_t srcbuf[16 * 8];
+
+  colour_t                   pal[4];
+  int                        x, y;
+  bitmap_t                   src;
+  box_t                      dst = { 5, 6, 50, 40 };
+  point_t                    origin;
+  screen_t                   scr;
+
+  pal[0] = colour_rgb(0x00, 0x00, 0x00);
+  pal[1] = colour_rgb(0x55, 0x55, 0x55);
+  pal[2] = colour_rgb(0xAA, 0xAA, 0xAA);
+  pal[3] = colour_rgb(0xFF, 0xFF, 0xFF);
+
+  /* flat mid-grey (0x80): sits between pal[1] and pal[2] */
+  for (y = 0; y < 8; y++)
+    for (x = 0; x < 16; x++)
+      srcbuf[y * 16 + x] = colour_rgb(0x80, 0x80, 0x80).primary;
+
+  bitmap_init(&src, SIZE2D(16, 8), pixelfmt_rgba8888,
+              16 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
+
+  origin = POINT(-5, -3); /* off-screen, so the phase must wrap */
+
+  memset(got, 0, sizeof(got));
+  screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p2, TD_ROWBYTES, pal, got);
+  if (screen_copy_bitmap_tiled_dithered(&scr, &dst, &src, origin,
+                                        screen_DITHER_BAYER) != result_OK)
+  {
+    printf("screen: tiled_dithered copy failed\n");
+    return result_TEST_FAILED;
+  }
+
+  memset(want, 0, sizeof(want));
+  screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p2, TD_ROWBYTES, pal, want);
+  scr.clip = dst;
+  for (y = origin.y; y < dst.y1; y += src.size.h)
+    for (x = origin.x; x < dst.x1; x += src.size.w)
+      screen_copy_bitmap_dithered(&scr, x, y, &src, screen_DITHER_BAYER);
+
+  if (memcmp(got, want, sizeof(got)) != 0)
+  {
+    printf("screen: tiled_dithered differs from a grid of dithered copies\n");
+    return result_TEST_FAILED;
+  }
+
+  memset(plain, 0, sizeof(plain));
+  screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p2, TD_ROWBYTES, pal, plain);
+  screen_copy_bitmap_tiled(&scr, &dst, &src, origin);
+
+  if (memcmp(got, plain, sizeof(got)) == 0)
+  {
+    printf("screen: tiled_dithered matches the plain tiled copy\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+#undef TD_ROWBYTES
+}
+
 /* screen_copy_bitmap_dithered on a p2 screen: a flat mid-grey source, which
  * screen_copy_bitmap would quantise to one uniform index across the row, must
  * come out as a stipple of at least two indices; the flat black and white
@@ -2751,6 +2820,7 @@ result_t screen_test(const char *resources)
     test_wu_fix8_extreme_coords,
     test_ninepatch,
     test_tiled,
+    test_tiled_dithered,
     test_fill_pattern,
     test_fill_checks,
     test_fill_linear_gradient,

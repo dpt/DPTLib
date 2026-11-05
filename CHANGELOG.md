@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `framebuf/screen.h`: `screen_copy_bitmap_tiled_dithered` fills a box with
+  repeated copies of a bitmap, each dithered as by
+  `screen_copy_bitmap_dithered`.
 - `sdl/crt.h`: `DPTLibCRT`, an optional CRT post-effect for SDL3 windows using
   Metal, Vulkan or WebGL, enabled by `DPTLIB_CRT` or fetched alone from
   `libraries/sdl/crt`. It links SDL3 but not DPTLib.

@@ -29,6 +29,16 @@ result_t screen_copy_bitmap_tiled(screen_t       *scr,
                                   const bitmap_t *src,
                                   point_t         origin)
 {
+  return screen_copy_bitmap_tiled_dithered(scr, dst, src, origin,
+                                           screen_DITHER_NEAREST);
+}
+
+result_t screen_copy_bitmap_tiled_dithered(screen_t       *scr,
+                                           const box_t    *dst,
+                                           const bitmap_t *src,
+                                           point_t         origin,
+                                           screen_dither_t method)
+{
   result_t rc;
   box_t    orig_clip;
   box_t    clip;
@@ -60,7 +70,7 @@ result_t screen_copy_bitmap_tiled(screen_t       *scr,
   y  = tile_start(clip.y0, origin.y, src->size.h);
   for (; y < clip.y1 && rc == result_OK; y += src->size.h)
     for (x = x0; x < clip.x1 && rc == result_OK; x += src->size.w)
-      rc = screen_copy_bitmap(scr, x, y, src);
+      rc = screen_copy_bitmap_dithered(scr, x, y, src, method);
 
   scr->clip = orig_clip;
 
