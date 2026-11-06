@@ -346,7 +346,12 @@ typedef enum bitmap_resample
   bitmap_resample_NEAREST,  /**< Nearest neighbour: blocky. */
   bitmap_resample_BILINEAR, /**< Bilinear: smooth. */
   bitmap_resample_BOX,      /**< Area average: free of ringing. */
+  bitmap_resample_BSPLINE,  /**< Cubic B-spline: softest, no ringing. */
+  bitmap_resample_GAUSSIAN, /**< Gaussian: soft, no ringing. */
+  bitmap_resample_HERMITE,  /**< Hermite: narrow, no ringing. */
+  bitmap_resample_MITCHELL, /**< Mitchell-Netravali: balanced. */
   bitmap_resample_CUBIC,    /**< Catmull-Rom: sharp. */
+  bitmap_resample_LANCZOS2, /**< Lanczos2: sharp, faster than Lanczos3. */
   bitmap_resample_LANCZOS3, /**< Lanczos3: sharpest, best for shrinking. */
   bitmap_resample__LIMIT
 }
@@ -362,16 +367,26 @@ bitmap_resample_t;
  * Alpha and padding lanes are always blended as stored. Nearest neighbour
  * ignores `linear`.
  *
- * When shrinking, \ref bitmap_resample_BILINEAR, \ref bitmap_resample_CUBIC
- * and \ref bitmap_resample_LANCZOS3 widen their kernels by the shrink
- * factor, so all source pixels contribute and the result does not alias.
+ * When shrinking, every method except \ref bitmap_resample_NEAREST and \ref
+ * bitmap_resample_BOX widens its kernel by the shrink factor, so all source
+ * pixels contribute and the result does not alias.
  *
  * \ref bitmap_resample_BOX averages every source pixel under each result
  * pixel. It behaves as bilinear unless the result is narrower or shorter
  * than `bm`.
  *
+ * \ref bitmap_resample_BSPLINE, \ref bitmap_resample_GAUSSIAN and \ref
+ * bitmap_resample_HERMITE have no negative lobes, so they never ring. The
+ * first two blur even when enlarging.
+ *
+ * \ref bitmap_resample_MITCHELL trades sharpness for less ringing than \ref
+ * bitmap_resample_CUBIC.
+ *
  * \ref bitmap_resample_CUBIC is Catmull-Rom bicubic: sharper than bilinear
  * both ways, at the cost of slight ringing at hard edges (clamped to range).
+ *
+ * \ref bitmap_resample_LANCZOS2 has four taps per axis at unit scale, like
+ * bicubic, and shrinks about as sharply.
  *
  * \ref bitmap_resample_LANCZOS3 keeps the most detail when shrinking, at the
  * cost of six taps per axis and ringing (clamped to range) a little wider
@@ -384,9 +399,9 @@ bitmap_resample_t;
  * \param[in]  method Resampling filter.
  * \param[in]  linear Non-zero to blend in linear light.
  * \param[out] out    Resampled bitmap.
- * \return \ref result_OK on success, \ref result_BAD_ARG for an empty size,
- *         \ref result_NOT_SUPPORTED for a non-32bpp or compressed source,
- *         \ref result_OOM on allocation failure.
+ * \return \ref result_OK on success, \ref result_BAD_ARG for an empty size
+ *         or unknown method, \ref result_NOT_SUPPORTED for a non-32bpp or
+ *         compressed source, \ref result_OOM on allocation failure.
  */
 result_t bitmap_resize(const bitmap_t   *bm,
                        size2d_t          size,

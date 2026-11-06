@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `framebuf/bitmap.h`: `bitmap_resample_LANCZOS3` for `bitmap_resize`, the
   sharpest filter when shrinking.
+- `framebuf/bitmap.h`: `bitmap_resample_BSPLINE`, `bitmap_resample_GAUSSIAN`,
+  `bitmap_resample_HERMITE`, `bitmap_resample_MITCHELL` and
+  `bitmap_resample_LANCZOS2` for `bitmap_resize`. `bitmap_resize` now returns
+  `result_BAD_ARG` for an unknown method.
 
 ### Fixed
 

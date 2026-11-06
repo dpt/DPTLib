@@ -137,6 +137,13 @@ static int test_resize(void)
     ok = 0;
   }
 
+  if (bitmap_resize(&src, SIZE2D(1, 1), bitmap_resample__LIMIT, 0, &out) !=
+      result_BAD_ARG)
+  {
+    printf("resize: unknown method accepted\n");
+    ok = 0;
+  }
+
   return ok;
 }
 
@@ -149,7 +156,12 @@ static int test_resize_shrink_aliasing(void)
   {
     bitmap_resample_BILINEAR,
     bitmap_resample_BOX,
+    bitmap_resample_BSPLINE,
+    bitmap_resample_GAUSSIAN,
+    bitmap_resample_HERMITE,
+    bitmap_resample_MITCHELL,
     bitmap_resample_CUBIC,
+    bitmap_resample_LANCZOS2,
     bitmap_resample_LANCZOS3
   };
 

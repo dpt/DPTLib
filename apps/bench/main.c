@@ -232,8 +232,18 @@ static void bench_resize(const bitmap_t *src)
     { bitmap_resample_BOX,      1, "box-l"   },
     { bitmap_resample_CUBIC,    0, "cubic"   },
     { bitmap_resample_CUBIC,    1, "cubic-l" },
-    { bitmap_resample_LANCZOS3, 0, "lanc"    },
-    { bitmap_resample_LANCZOS3, 1, "lanc-l"  },
+    { bitmap_resample_BSPLINE,  0, "bspl"    },
+    { bitmap_resample_BSPLINE,  1, "bspl-l"  },
+    { bitmap_resample_GAUSSIAN, 0, "gauss"   },
+    { bitmap_resample_GAUSSIAN, 1, "gauss-l" },
+    { bitmap_resample_HERMITE,  0, "herm"    },
+    { bitmap_resample_HERMITE,  1, "herm-l"  },
+    { bitmap_resample_MITCHELL, 0, "mitch"   },
+    { bitmap_resample_MITCHELL, 1, "mitch-l" },
+    { bitmap_resample_LANCZOS2, 0, "lanc2"   },
+    { bitmap_resample_LANCZOS2, 1, "lanc2-l" },
+    { bitmap_resample_LANCZOS3, 0, "lanc3"   },
+    { bitmap_resample_LANCZOS3, 1, "lanc3-l" },
   };
 
   result_t  rc;

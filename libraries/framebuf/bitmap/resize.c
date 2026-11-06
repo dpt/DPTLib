@@ -174,8 +174,8 @@ static result_t resize_box(const bitmap_t *src,
 
 #define RESIZE_PI 3.14159265358979323846
 
-/* A filter kernel and the distance from its centre at which it reaches
- * zero, both in source pixels at unit scale. */
+/* A filter kernel and the distance from its centre at which it is cut off,
+ * both in source pixels at unit scale. */
 typedef struct resize_kernel
 {
   double (*fn)(double x);
@@ -190,20 +190,61 @@ static double resize_tent(double x)
   return x < 1.0 ? 1.0 - x : 0.0;
 }
 
-static double resize_catmull_rom(double x)
+static double resize_hermite(double x)
+{
+  x = fabs(x);
+
+  return x < 1.0 ? (2.0 * x - 3.0) * x * x + 1.0 : 0.0;
+}
+
+/* Mitchell-Netravali's family of cubics, parameterised by B and C. */
+static double resize_bicubic(double x, double b, double c)
 {
   x = fabs(x);
   if (x < 1.0)
-    return (1.5 * x - 2.5) * x * x + 1.0;
+    return ((12.0 - 9.0 * b - 6.0 * c) * x * x * x +
+            (-18.0 + 12.0 * b + 6.0 * c) * x * x +
+            (6.0 - 2.0 * b)) / 6.0;
   if (x < 2.0)
-    return ((-0.5 * x + 2.5) * x - 4.0) * x + 2.0;
+    return ((-b - 6.0 * c) * x * x * x +
+            (6.0 * b + 30.0 * c) * x * x +
+            (-12.0 * b - 48.0 * c) * x +
+            (8.0 * b + 24.0 * c)) / 6.0;
 
   return 0.0;
+}
+
+static double resize_bspline(double x)
+{
+  return resize_bicubic(x, 1.0, 0.0);
+}
+
+static double resize_mitchell(double x)
+{
+  return resize_bicubic(x, 1.0 / 3.0, 1.0 / 3.0);
+}
+
+static double resize_catmull_rom(double x)
+{
+  return resize_bicubic(x, 0.0, 0.5);
+}
+
+/* Standard deviation of half a pixel. */
+static double resize_gaussian(double x)
+{
+  return exp(-2.0 * x * x);
 }
 
 static double resize_sinc(double x)
 {
   return x == 0.0 ? 1.0 : sin(RESIZE_PI * x) / (RESIZE_PI * x);
+}
+
+static double resize_lanczos2(double x)
+{
+  x = fabs(x);
+
+  return x < 2.0 ? resize_sinc(x) * resize_sinc(x / 2.0) : 0.0;
 }
 
 static double resize_lanczos3(double x)
@@ -213,11 +254,18 @@ static double resize_lanczos3(double x)
   return x < 3.0 ? resize_sinc(x) * resize_sinc(x / 3.0) : 0.0;
 }
 
-static const resize_kernel_t resize_kernel_tent        = { resize_tent, 1.0 };
-static const resize_kernel_t resize_kernel_catmull_rom = { resize_catmull_rom,
-                                                           2.0 };
-static const resize_kernel_t resize_kernel_lanczos3    = { resize_lanczos3,
-                                                           3.0 };
+/* Methods with no kernel here have their own loops. */
+static const resize_kernel_t resize_kernels[bitmap_resample__LIMIT] =
+{
+  [bitmap_resample_BILINEAR] = { resize_tent,        1.0 },
+  [bitmap_resample_BSPLINE]  = { resize_bspline,     2.0 },
+  [bitmap_resample_GAUSSIAN] = { resize_gaussian,    2.0 },
+  [bitmap_resample_HERMITE]  = { resize_hermite,     1.0 },
+  [bitmap_resample_MITCHELL] = { resize_mitchell,    2.0 },
+  [bitmap_resample_CUBIC]    = { resize_catmull_rom, 2.0 },
+  [bitmap_resample_LANCZOS2] = { resize_lanczos2,    2.0 },
+  [bitmap_resample_LANCZOS3] = { resize_lanczos3,    3.0 }
+};
 
 /* A destination pixel's filter taps along one axis: n weights for the source
  * pixels from first onwards. */
@@ -476,7 +524,8 @@ result_t bitmap_resize(const bitmap_t   *src,
 
   *out = NULL;
 
-  if (size.w <= 0 || size.h <= 0 || src->size.w <= 0 || src->size.h <= 0)
+  if (size.w <= 0 || size.h <= 0 || src->size.w <= 0 || src->size.h <= 0 ||
+      (unsigned int) method >= bitmap_resample__LIMIT)
     return result_BAD_ARG;
 
   if (pixelfmt_is_rle(src->format) || pixelfmt_log2bpp(src->format) != 5)
@@ -509,14 +558,10 @@ result_t bitmap_resize(const bitmap_t   *src,
 
   /* bilinear's two taps would skip source pixels when shrinking, so it gets
    * the widened tent; enlarging keeps the fixed-point loop below */
-  kernel = NULL;
-  if (method == bitmap_resample_CUBIC)
-    kernel = &resize_kernel_catmull_rom;
-  else if (method == bitmap_resample_LANCZOS3)
-    kernel = &resize_kernel_lanczos3;
-  else if (method == bitmap_resample_BILINEAR &&
-           (size.w < src->size.w || size.h < src->size.h))
-    kernel = &resize_kernel_tent;
+  kernel = resize_kernels[method].fn != NULL ? &resize_kernels[method] : NULL;
+  if (method == bitmap_resample_BILINEAR &&
+      size.w >= src->size.w && size.h >= src->size.h)
+    kernel = NULL;
 
   if (kernel != NULL || method == bitmap_resample_BOX)
   {
