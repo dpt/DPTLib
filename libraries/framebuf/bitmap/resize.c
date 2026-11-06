@@ -170,109 +170,252 @@ static result_t resize_box(const bitmap_t *src,
   return result_OK;
 }
 
-/* Catmull-Rom weights for the four taps around a sample at fraction t. */
-static void resize_cubic_weights(double t, double w[4])
-{
-  double t2, t3;
+/* ----- Separable filters, widened when shrinking ----- */
 
-  t2   = t * t;
-  t3   = t2 * t;
-  w[0] = (-t3 + 2 * t2 - t) / 2;
-  w[1] = (3 * t3 - 5 * t2 + 2) / 2;
-  w[2] = (-3 * t3 + 4 * t2 + t) / 2;
-  w[3] = (t3 - t2) / 2;
+#define RESIZE_PI 3.14159265358979323846
+
+/* A filter kernel and the distance from its centre at which it reaches
+ * zero, both in source pixels at unit scale. */
+typedef struct resize_kernel
+{
+  double (*fn)(double x);
+  double   support;
+}
+resize_kernel_t;
+
+static double resize_tent(double x)
+{
+  x = fabs(x);
+
+  return x < 1.0 ? 1.0 - x : 0.0;
 }
 
-/* A destination column's taps for the cubic filter: the source column at
- * or left of its centre and the four weights round it. */
-typedef struct resize_cubic_col
+static double resize_catmull_rom(double x)
 {
-  int    ix;
-  double w[4];
+  x = fabs(x);
+  if (x < 1.0)
+    return (1.5 * x - 2.5) * x * x + 1.0;
+  if (x < 2.0)
+    return ((-0.5 * x + 2.5) * x - 4.0) * x + 2.0;
+
+  return 0.0;
 }
-resize_cubic_col_t;
 
-/* Bicubic (Catmull-Rom) over a 4x4 neighbourhood, clamped at the edges.
- * Sharper than bilinear but can overshoot, so the result is clamped. The
- * column taps are worked out once, not on every row. */
-static result_t resize_cubic(const bitmap_t *src,
-                             uint8_t        *base,
-                             size2d_t        size,
-                             int             linear,
-                             int             other)
+static double resize_sinc(double x)
 {
-  resize_cubic_col_t *cols;
-  int                 x, y, c, i, j;
-  int                 ix, iy, sx, sy;
-  double              fx, fy;
-  const double       *wx;
-  double              wy[4];
-  double              acc[4], row[4];
-  const uint8_t      *sp;
-  uint8_t            *px;
-  int                 v, max;
+  return x == 0.0 ? 1.0 : sin(RESIZE_PI * x) / (RESIZE_PI * x);
+}
 
-  cols = malloc((size_t) size.w * sizeof(*cols));
-  if (cols == NULL)
-    return result_OOM;
+static double resize_lanczos3(double x)
+{
+  x = fabs(x);
 
-  for (x = 0; x < size.w; x++)
+  return x < 3.0 ? resize_sinc(x) * resize_sinc(x / 3.0) : 0.0;
+}
+
+static const resize_kernel_t resize_kernel_tent        = { resize_tent, 1.0 };
+static const resize_kernel_t resize_kernel_catmull_rom = { resize_catmull_rom,
+                                                           2.0 };
+static const resize_kernel_t resize_kernel_lanczos3    = { resize_lanczos3,
+                                                           3.0 };
+
+/* A destination pixel's filter taps along one axis: n weights for the source
+ * pixels from first onwards. */
+typedef struct resize_taps
+{
+  int          first;
+  int          n;
+  const float *w;
+}
+resize_taps_t;
+
+/* Build one entry per destination pixel, in a single block for free(). When
+ * shrinking, the kernel widens by the shrink factor so that every source
+ * pixel contributes. Taps beyond the edges land on the edge pixels. */
+static resize_taps_t *resize_make_taps(int                    srclen,
+                                       int                    dstlen,
+                                       const resize_kernel_t *kernel,
+                                       int                   *pmaxtaps)
+{
+  double         ratio, scale, radius;
+  int            maxtaps;
+  resize_taps_t *taps;
+  float         *weights;
+  int            d, i;
+  double         centre;
+  int            lo, hi, first, last;
+  float         *w;
+  double         total, k;
+
+  ratio   = (double) srclen / dstlen;
+  scale   = MAX(ratio, 1.0);
+  radius  = kernel->support * scale;
+  maxtaps = (int) ceil(2.0 * radius) + 2;
+
+  taps = calloc(1, (size_t) dstlen * sizeof(*taps) +
+                   (size_t) dstlen * maxtaps * sizeof(*weights));
+  if (taps == NULL)
+    return NULL;
+  weights = (float *) (taps + dstlen);
+
+  for (d = 0; d < dstlen; d++)
   {
-    fx         = (x + 0.5) * src->size.w / size.w - 0.5;
-    cols[x].ix = (int) floor(fx);
-    resize_cubic_weights(fx - cols[x].ix, cols[x].w);
+    centre = (d + 0.5) * ratio - 0.5;
+    lo     = (int) ceil(centre - radius);
+    hi     = (int) floor(centre + radius);
+    first  = MAX(lo, 0);
+    last   = MIN(hi, srclen - 1);
+    w      = weights + (size_t) d * maxtaps;
+
+    total = 0.0;
+    for (i = lo; i <= hi; i++)
+    {
+      k = kernel->fn((i - centre) / scale);
+      w[CLAMP(i, first, last) - first] += (float) k;
+      total += k;
+    }
+    for (i = 0; i <= last - first; i++)
+      w[i] = (float) (w[i] / total);
+
+    taps[d].first = first;
+    taps[d].n     = last - first + 1;
+    taps[d].w     = w;
   }
+
+  *pmaxtaps = maxtaps;
+
+  return taps;
+}
+
+/* Filter source row sy along x into row, which has four lanes per pixel. */
+static void resize_filter_row(const bitmap_t      *src,
+                              int                  sy,
+                              const resize_taps_t *taps,
+                              float               *row,
+                              int                  width,
+                              int                  linear,
+                              int                  other)
+{
+  const uint8_t *base;
+  int            x, i, c;
+  const uint8_t *sp;
+  float          acc[4];
+  float          w;
+
+  base = (const uint8_t *) src->base + (size_t) sy * src->rowbytes;
+
+  for (x = 0; x < width; x++, row += 4)
+  {
+    sp     = base + (size_t) taps[x].first * 4;
+    acc[0] = acc[1] = acc[2] = acc[3] = 0.0f;
+    for (i = 0; i < taps[x].n; i++, sp += 4)
+    {
+      w = taps[x].w[i];
+      for (c = 0; c < 4; c++)
+        acc[c] += w * (linear && c != other ? g.decode[sp[c]] : sp[c]);
+    }
+    for (c = 0; c < 4; c++)
+      row[c] = acc[c];
+  }
+}
+
+/* Separable filter: x then y, keeping just the filtered source rows the
+ * current destination row needs. The kernels can overshoot, so the result is
+ * clamped. The weights are worked out once, so the pixel loops do no
+ * division. */
+static result_t resize_filter(const bitmap_t        *src,
+                              uint8_t               *base,
+                              size2d_t               size,
+                              const resize_kernel_t *kernel,
+                              int                    linear,
+                              int                    other)
+{
+  result_t       rc;
+  int            xmax, ymax;
+  resize_taps_t *xtaps, *ytaps;
+  int           *slots;
+  float         *rows;
+  int            nslots;
+  size_t         lanes, l;
+  float         *acc;
+  float          encode_scale;
+  int            y, i, slot, sy, v;
+  float         *row;
+  float          w;
+  uint8_t       *px;
+
+  rc    = result_OOM;
+  slots = NULL;
+  rows  = NULL;
+  xtaps = resize_make_taps(src->size.w, size.w, kernel, &xmax);
+  ytaps = resize_make_taps(src->size.h, size.h, kernel, &ymax);
+  if (xtaps == NULL || ytaps == NULL)
+    goto exit;
+
+  /* a power of two, so masking picks a source row's slot; a destination
+   * row's taps span at most ymax rows, so they never share one */
+  nslots = 1;
+  while (nslots < ymax)
+    nslots <<= 1;
+
+  lanes = (size_t) size.w * 4;
+  slots = malloc((size_t) nslots * sizeof(*slots));
+  rows  = malloc(((size_t) nslots + 1) * lanes * sizeof(*rows));
+  if (slots == NULL || rows == NULL)
+    goto exit;
+
+  for (i = 0; i < nslots; i++)
+    slots[i] = -1;
+
+  acc          = rows + (size_t) nslots * lanes;
+  encode_scale = (float) (ENCODE_SIZE - 1) / LINEAR_MAX;
 
   for (y = 0; y < size.h; y++)
   {
-    fy = (y + 0.5) * src->size.h / size.h - 0.5;
-    iy = (int) floor(fy);
-    resize_cubic_weights(fy - iy, wy);
-    px = base + (size_t) y * size.w * 4;
+    for (l = 0; l < lanes; l++)
+      acc[l] = 0.0f;
 
-    for (x = 0; x < size.w; x++, px += 4)
+    for (i = 0; i < ytaps[y].n; i++)
     {
-      ix = cols[x].ix;
-      wx = cols[x].w;
-
-      acc[0] = acc[1] = acc[2] = acc[3] = 0;
-      for (j = 0; j < 4; j++)
+      sy   = ytaps[y].first + i;
+      slot = sy & (nslots - 1);
+      row  = rows + (size_t) slot * lanes;
+      if (slots[slot] != sy)
       {
-        sy = CLAMP(iy - 1 + j, 0, src->size.h - 1);
-        row[0] = row[1] = row[2] = row[3] = 0;
-        for (i = 0; i < 4; i++)
-        {
-          sx = CLAMP(ix - 1 + i, 0, src->size.w - 1);
-          sp = (const uint8_t *) src->base + (size_t) sy * src->rowbytes +
-               (size_t) sx * 4;
-          for (c = 0; c < 4; c++)
-            row[c] += wx[i] * (linear && c != other ? g.decode[sp[c]]
-                                                    : sp[c]);
-        }
-        for (c = 0; c < 4; c++)
-          acc[c] += wy[j] * row[c];
+        resize_filter_row(src, sy, xtaps, row, size.w, linear, other);
+        slots[slot] = sy;
       }
 
-      for (c = 0; c < 4; c++)
+      w = ytaps[y].w[i];
+      for (l = 0; l < lanes; l++)
+        acc[l] += w * row[l];
+    }
+
+    px = base + (size_t) y * lanes;
+    for (l = 0; l < lanes; l++)
+    {
+      if (linear && (int) (l & 3) != other)
       {
-        if (linear && c != other)
-        {
-          v = (int) (acc[c] * (ENCODE_SIZE - 1) / LINEAR_MAX + 0.5);
-          px[c] = g.encode[CLAMP(v, 0, ENCODE_SIZE - 1)];
-        }
-        else
-        {
-          max   = 255;
-          v     = (int) floor(acc[c] + 0.5);
-          px[c] = (uint8_t) CLAMP(v, 0, max);
-        }
+        v     = (int) (acc[l] * encode_scale + 0.5f);
+        px[l] = g.encode[CLAMP(v, 0, ENCODE_SIZE - 1)];
+      }
+      else
+      {
+        v     = (int) (acc[l] + 0.5f);
+        px[l] = (uint8_t) CLAMP(v, 0, 255);
       }
     }
   }
 
-  free(cols);
+  rc = result_OK;
 
-  return result_OK;
+exit:
+  free(rows);
+  free(slots);
+  free(ytaps);
+  free(xtaps);
+
+  return rc;
 }
 
 /* Source byte offsets of the two pixels either side of a destination column
@@ -316,19 +459,20 @@ result_t bitmap_resize(const bitmap_t   *src,
                        int               linear,
                        bitmap_t        **out)
 {
-  result_t       rc;
-  bitmap_t      *dst;
-  uint8_t       *base;
-  resize_col_t  *cols;
-  int            dstrow;
-  int            x, y, c;
-  int64_t        fy;
-  int            x0, x1, y0, y1;
-  int            wx, wy;
-  const uint8_t *row0, *row1;
-  uint8_t       *px;
-  int            other;
-  int64_t        v;
+  result_t               rc;
+  bitmap_t              *dst;
+  uint8_t               *base;
+  const resize_kernel_t *kernel;
+  resize_col_t          *cols;
+  int                    dstrow;
+  int                    x, y, c;
+  int64_t                fy;
+  int                    x0, x1, y0, y1;
+  int                    wx, wy;
+  const uint8_t         *row0, *row1;
+  uint8_t               *px;
+  int                    other;
+  int64_t                v;
 
   *out = NULL;
 
@@ -363,10 +507,21 @@ result_t bitmap_resize(const bitmap_t   *src,
       size.w >= src->size.w && size.h >= src->size.h)
     method = bitmap_resample_BILINEAR;
 
-  if (method == bitmap_resample_CUBIC || method == bitmap_resample_BOX)
+  /* bilinear's two taps would skip source pixels when shrinking, so it gets
+   * the widened tent; enlarging keeps the fixed-point loop below */
+  kernel = NULL;
+  if (method == bitmap_resample_CUBIC)
+    kernel = &resize_kernel_catmull_rom;
+  else if (method == bitmap_resample_LANCZOS3)
+    kernel = &resize_kernel_lanczos3;
+  else if (method == bitmap_resample_BILINEAR &&
+           (size.w < src->size.w || size.h < src->size.h))
+    kernel = &resize_kernel_tent;
+
+  if (kernel != NULL || method == bitmap_resample_BOX)
   {
-    rc = (method == bitmap_resample_CUBIC)
-         ? resize_cubic(src, base, size, linear, other)
+    rc = (kernel != NULL)
+         ? resize_filter(src, base, size, kernel, linear, other)
          : resize_box(src, base, size, linear, other);
     if (rc != result_OK)
     {

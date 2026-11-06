@@ -232,6 +232,8 @@ static void bench_resize(const bitmap_t *src)
     { bitmap_resample_BOX,      1, "box-l"   },
     { bitmap_resample_CUBIC,    0, "cubic"   },
     { bitmap_resample_CUBIC,    1, "cubic-l" },
+    { bitmap_resample_LANCZOS3, 0, "lanc"    },
+    { bitmap_resample_LANCZOS3, 1, "lanc-l"  },
   };
 
   result_t  rc;

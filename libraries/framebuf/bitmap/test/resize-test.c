@@ -5,6 +5,7 @@
 #include <stdlib.h>
 
 #include "base/result.h"
+#include "base/utils.h"
 
 #include "framebuf/bitmap.h"
 #include "framebuf/pixelfmt.h"
@@ -139,11 +140,103 @@ static int test_resize(void)
   return ok;
 }
 
+/* Shrink 4:1 lines one pixel wide, spaced four apart, along either axis. The
+ * result must be near their mean: filters that skip source pixels when
+ * shrinking miss the lines altogether. */
+static int test_resize_shrink_aliasing(void)
+{
+  static const bitmap_resample_t methods[] =
+  {
+    bitmap_resample_BILINEAR,
+    bitmap_resample_BOX,
+    bitmap_resample_CUBIC,
+    bitmap_resample_LANCZOS3
+  };
+
+  static uint32_t px[64 * 64];
+  bitmap_t        src;
+  bitmap_t       *out;
+  uint8_t        *b;
+  int             ok;
+  int             axis, m;
+  int             x, y;
+
+  ok = 1;
+  bitmap_init(&src, SIZE2D(64, 64), pixelfmt_rgba8888, 64 * 4, NULL, px);
+
+  for (axis = 0; axis < 2; axis++)
+  {
+    for (y = 0; y < 64; y++)
+      for (x = 0; x < 64; x++)
+        px[y * 64 + x] = ((axis == 0 ? x : y) % 4 == 0) ? 0xFFFFFFFFu : 0u;
+
+    for (m = 0; m < (int) NELEMS(methods); m++)
+    {
+      if (bitmap_resize(&src, SIZE2D(16, 16), methods[m], 0, &out) != result_OK)
+        return 0;
+      b = out->base;
+      if (b[8 * out->rowbytes + 8 * 4] < 58 ||
+          b[8 * out->rowbytes + 8 * 4] > 70)
+      {
+        printf("resize: method %d axis %d aliased (%d)\n", (int) methods[m],
+               axis, b[8 * out->rowbytes + 8 * 4]);
+        ok = 0;
+      }
+      resize_free(out);
+    }
+  }
+
+  return ok;
+}
+
+/* Ringing must not disturb a flat image, in either colour space. */
+static int test_resize_lanczos_flat(void)
+{
+  static uint32_t px[32 * 32];
+  bitmap_t        src;
+  bitmap_t       *out;
+  uint8_t        *b;
+  int             ok;
+  int             i, linear;
+
+  ok = 1;
+  bitmap_init(&src, SIZE2D(32, 32), pixelfmt_rgba8888, 32 * 4, NULL, px);
+
+  for (i = 0; i < 32 * 32; i++)
+    px[i] = 0xC8C8C8C8u;
+
+  for (linear = 0; linear < 2; linear++)
+  {
+    if (bitmap_resize(&src, SIZE2D(7, 45), bitmap_resample_LANCZOS3, linear,
+                      &out) != result_OK)
+      return 0;
+    b = out->base;
+    for (i = 0; i < 7 * 45 * 4; i++)
+    {
+      if (b[i] != 0xC8)
+      {
+        printf("resize: lanczos flat wrong (%d at %d)\n", b[i], i);
+        ok = 0;
+        break;
+      }
+    }
+    resize_free(out);
+  }
+
+  return ok;
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t bitmap_resize_test(const char *resources)
 {
+  int ok;
+
   (void) resources;
 
-  return test_resize() ? result_TEST_PASSED : result_TEST_FAILED;
+  ok = test_resize();
+  ok = test_resize_shrink_aliasing() && ok;
+  ok = test_resize_lanczos_flat() && ok;
+
+  return ok ? result_TEST_PASSED : result_TEST_FAILED;
 }

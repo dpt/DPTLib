@@ -345,8 +345,9 @@ typedef enum bitmap_resample
 {
   bitmap_resample_NEAREST,  /**< Nearest neighbour: blocky. */
   bitmap_resample_BILINEAR, /**< Bilinear: smooth. */
-  bitmap_resample_BOX,      /**< Area average: best for shrinking. */
+  bitmap_resample_BOX,      /**< Area average: free of ringing. */
   bitmap_resample_CUBIC,    /**< Catmull-Rom: sharp. */
+  bitmap_resample_LANCZOS3, /**< Lanczos3: sharpest, best for shrinking. */
   bitmap_resample__LIMIT
 }
 bitmap_resample_t;
@@ -356,17 +357,25 @@ bitmap_resample_t;
  * result. Any 32bpp format works; alpha is interpolated without
  * premultiplying.
  *
- * With `linear` set, bilinear blending of the colour lanes is done in linear
- * light, taking the pixels as sRGB, which avoids darkened edges when
- * shrinking. Alpha and padding lanes are always blended as stored. Nearest
- * neighbour ignores `linear`.
+ * With `linear` set, blending of the colour lanes is done in linear light,
+ * taking the pixels as sRGB, which avoids darkened edges when shrinking.
+ * Alpha and padding lanes are always blended as stored. Nearest neighbour
+ * ignores `linear`.
+ *
+ * When shrinking, \ref bitmap_resample_BILINEAR, \ref bitmap_resample_CUBIC
+ * and \ref bitmap_resample_LANCZOS3 widen their kernels by the shrink
+ * factor, so all source pixels contribute and the result does not alias.
  *
  * \ref bitmap_resample_BOX averages every source pixel under each result
- * pixel, so it does not alias on large reductions. It behaves as bilinear
- * unless the result is narrower or shorter than `bm`.
+ * pixel. It behaves as bilinear unless the result is narrower or shorter
+ * than `bm`.
  *
  * \ref bitmap_resample_CUBIC is Catmull-Rom bicubic: sharper than bilinear
  * both ways, at the cost of slight ringing at hard edges (clamped to range).
+ *
+ * \ref bitmap_resample_LANCZOS3 keeps the most detail when shrinking, at the
+ * cost of six taps per axis and ringing (clamped to range) a little wider
+ * than bicubic's.
  *
  * Free the result with `free(out->base)` then `free(out)`.
  *

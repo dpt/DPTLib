@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `framebuf/bitmap.h`: `bitmap_resample_LANCZOS3` for `bitmap_resize`, the
+  sharpest filter when shrinking.
+
+### Fixed
+
+- `framebuf/bitmap.h`: `bitmap_resize` no longer aliases when shrinking with
+  `bitmap_resample_BILINEAR` or `bitmap_resample_CUBIC`: their kernels now
+  widen by the shrink factor, so results are softer but all source pixels
+  contribute.
+
 ## [0.8.0] - 2026-11-05
 
 ### Added
