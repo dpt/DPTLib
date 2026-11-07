@@ -272,6 +272,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/bitmap/flood-fill.c
     libraries/framebuf/bitmap/has-transparency.c
     libraries/framebuf/bitmap/load.c
+    libraries/framebuf/bitmap/load-jpeg.c
     libraries/framebuf/bitmap/resize.c
     libraries/framebuf/bitmap/restore-outside-region.c
     libraries/framebuf/bitmap/rle.h
@@ -522,12 +523,13 @@ endif()
 if(EMSCRIPTEN)
     # Emscripten's bundled libpng port (pulls in its zlib port); provides the
     # headers at compile time and the archive at link time.
-    target_compile_options(DPTLib PUBLIC "-sUSE_LIBPNG=1")
-    target_link_options(DPTLib PUBLIC "-sUSE_LIBPNG=1")
+    target_compile_options(DPTLib PUBLIC "-sUSE_LIBPNG=1" "-sUSE_LIBJPEG=1")
+    target_link_options(DPTLib PUBLIC "-sUSE_LIBPNG=1" "-sUSE_LIBJPEG=1")
 elseif(NOT TARGET_RISCOS)
     set(CMAKE_FIND_FRAMEWORK NEVER)
     find_package(PNG REQUIRED MODULE)
-    target_link_libraries(DPTLib PRIVATE PNG::PNG)
+    find_package(JPEG REQUIRED MODULE)
+    target_link_libraries(DPTLib PRIVATE PNG::PNG JPEG::JPEG)
 else()
     ## On RISC OS we must build libpng & zlib
     include(FetchContent)
@@ -599,6 +601,41 @@ else()
 
     target_include_directories(DPTLib PUBLIC ${libpng_SOURCE_DIR}/ ${libpng_BINARY_DIR}/)
     target_link_libraries(DPTLib PUBLIC zlibstatic png_static)
+
+    # libjpeg-turbo, static and without SIMD (no NASM, no ARM NEON on RISC
+    # OS). Its build refuses add_subdirectory(), so it is built and installed
+    # into a private prefix by ExternalProject with the same toolchain.
+    include(ExternalProject)
+
+    set(JPEG_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/libjpeg-turbo)
+    set(JPEG_LIBRARY_FILE ${JPEG_PREFIX}/lib/libjpeg.a)
+
+    ExternalProject_Add(libjpeg-turbo-ext
+                        GIT_REPOSITORY https://github.com/libjpeg-turbo/libjpeg-turbo.git
+                        GIT_TAG 3.0.4
+                        GIT_SHALLOW ON
+                        PREFIX ${JPEG_PREFIX}
+                        CMAKE_ARGS -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+                                   -DCMAKE_BUILD_TYPE=Release
+                                   -DCMAKE_INSTALL_PREFIX=${JPEG_PREFIX}
+                                   -DCMAKE_INSTALL_LIBDIR=lib
+                                   -DENABLE_SHARED=OFF
+                                   -DENABLE_STATIC=ON
+                                   -DWITH_SIMD=OFF
+                                   -DWITH_TURBOJPEG=OFF
+                        BUILD_BYPRODUCTS ${JPEG_LIBRARY_FILE})
+
+    # an imported target's include directory must exist at configure time
+    file(MAKE_DIRECTORY ${JPEG_PREFIX}/include)
+
+    add_library(jpeg_external STATIC IMPORTED)
+    set_target_properties(jpeg_external PROPERTIES
+                          IMPORTED_LOCATION ${JPEG_LIBRARY_FILE}
+                          INTERFACE_INCLUDE_DIRECTORIES ${JPEG_PREFIX}/include)
+    add_dependencies(jpeg_external libjpeg-turbo-ext)
+
+    add_dependencies(DPTLib libjpeg-turbo-ext)
+    target_link_libraries(DPTLib PUBLIC jpeg_external)
 endif()
 
 # Installation

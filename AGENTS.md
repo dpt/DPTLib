@@ -40,7 +40,7 @@ Build:
 cmake --build build-asan --target DPTLibTest
 ```
 
-Requires libpng (`find_package(PNG)` on non-RISC OS). On RISC OS the build fetches and patches zlib/libpng itself via `FetchContent` (see `cmake/*.patch`).
+Requires libpng and libjpeg (`find_package(PNG)`, `find_package(JPEG)` on non-RISC OS). On RISC OS the build fetches and patches zlib/libpng and builds libjpeg-turbo itself via `FetchContent` (see `cmake/*.patch`).
 
 ## Testing
 
@@ -92,7 +92,7 @@ New source/header files must be added by hand to the relevant `set(..._SOURCES .
 
 **Notable sub-libraries with their own docs** (`docs/<area>/*.md`): `io/stream` (chainable byte-stream sources/transforms, PackBits and move-to-front compression), `framebuf/bmfont` (proportional bitmap fonts loaded from specially-formatted PNGs), `framebuf/colourspace` (sRGB to and from CMYK, HSL, HSV and OKLab), `framebuf/composite` (Porter-Duff compositing on RGBA/BGRA bitmaps), `framebuf/pixelmap` (cached deep-to-paletted colour conversion tables for blit inner loops), `framebuf/dither` (error-diffusion dithering to a palette), `framebuf/octree` (octree colour quantiser for optimised palettes), `framebuf/wu` (Wu's colour quantiser for optimised palettes), `framebuf/drawing`, `framebuf/rle-bitmap`, `datastruct/cache`, `databases/pickle`, `databases/tag-db`, `geom/packer`.
 
-**RISC OS.** `TARGET_RISCOS` (set by an external toolchain file) switches CMake to fetch/build zlib+libpng from source, link OSLib from `$GCCSDK_INSTALL_ENV`, and applies `riscos_set_flags()`. `pngusr-ro.dfa`/`pngusr-rw.dfa` select libpng's build config depending on `DPTLIB_IMAGES_READ_ONLY`.
+**RISC OS.** `TARGET_RISCOS` (set by an external toolchain file) switches CMake to fetch/build zlib+libpng+libjpeg-turbo from source, link OSLib from `$GCCSDK_INSTALL_ENV`, and applies `riscos_set_flags()`. `pngusr-ro.dfa`/`pngusr-rw.dfa` select libpng's build config depending on `DPTLIB_IMAGES_READ_ONLY`.
 
 ## Code style
 

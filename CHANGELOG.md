@@ -8,6 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- `framebuf/bitmap.h`: `bitmap_load_jpeg` reads baseline and progressive
+  JPEGs (greyscale as `p8`, colour as `rgbx8888`) through libjpeg, now a
+  required dependency: the system package on desktop, Emscripten's
+  `USE_LIBJPEG` port, or libjpeg-turbo built from source on RISC OS.
+  `bitmap_load` and `bitmap_load_deep` pick the PNG or JPEG loader by the
+  file's signature.
 - `framebuf/bitmap.h`: `bitmap_resample_LANCZOS3` for `bitmap_resize`, the
   sharpest filter when shrinking.
 - `framebuf/bitmap.h`: `bitmap_resample_BSPLINE`, `bitmap_resample_GAUSSIAN`,

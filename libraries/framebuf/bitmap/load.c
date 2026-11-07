@@ -247,14 +247,35 @@ cleanup:
   return rc;
 }
 
-result_t bitmap_load_png_deep(bitmap_t   *bm,
-                              const char *filename,
-                              pixelfmt_t  fmt)
+/* JPEG files start with an SOI marker then another marker */
+static int file_is_jpeg(const char *filename)
 {
-  result_t  rc;
+  FILE         *fp;
+  unsigned char buf[3];
+  int           is;
+
+  fp = fopen(filename, "rb");
+  if (fp == NULL)
+    return 0;
+
+  is = fread(buf, 1, 3, fp) == 3 &&
+       buf[0] == 0xFF && buf[1] == 0xD8 && buf[2] == 0xFF;
+  fclose(fp);
+
+  return is;
+}
+
+result_t bitmap_load(bitmap_t *bm, const char *filename)
+{
+  return file_is_jpeg(filename) ? bitmap_load_jpeg(bm, filename)
+                                : bitmap_load_png(bm, filename);
+}
+
+/* expand a just-loaded paletted bitmap to fmt; leave a deep one alone */
+static result_t load_deepen(result_t rc, bitmap_t *bm, pixelfmt_t fmt)
+{
   bitmap_t *deep;
 
-  rc = bitmap_load_png(bm, filename);
   if (rc != result_OK)
     return rc;
 
@@ -271,6 +292,18 @@ result_t bitmap_load_png_deep(bitmap_t   *bm,
   free(deep);
 
   return result_OK;
+}
+
+result_t bitmap_load_png_deep(bitmap_t   *bm,
+                              const char *filename,
+                              pixelfmt_t  fmt)
+{
+  return load_deepen(bitmap_load_png(bm, filename), bm, fmt);
+}
+
+result_t bitmap_load_deep(bitmap_t *bm, const char *filename, pixelfmt_t fmt)
+{
+  return load_deepen(bitmap_load(bm, filename), bm, fmt);
 }
 
 /* vim: set ts=8 sts=2 sw=2 et: */

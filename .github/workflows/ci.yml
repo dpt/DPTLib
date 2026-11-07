@@ -13,8 +13,8 @@ jobs:
         build_type: [Debug, Release, MinSizeRel]
         config:
           - { name: "Ubuntu build",  os: "ubuntu-latest",  install: "",                                configure: "" }
-          - { name: "Windows build", os: "windows-latest", install: "vcpkg install libpng pkgconf",    configure: "--toolchain=\"$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake\"" }
-          - { name: "macOS build",   os: "macos-latest",   install: "",                                configure: "" }
+          - { name: "Windows build", os: "windows-latest", install: "vcpkg install libpng libjpeg-turbo pkgconf", configure: "--toolchain=\"$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake\"" }
+          - { name: "macOS build",   os: "macos-latest",   install: "brew install jpeg-turbo",         configure: "" }
     defaults:
       run:
         shell: bash
@@ -33,7 +33,7 @@ jobs:
 
       - name: Install apt packages
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libpng-dev
+        run: sudo apt-get update && sudo apt-get install -y libpng-dev libjpeg-dev
 
       - name: Install dependencies
         run: |

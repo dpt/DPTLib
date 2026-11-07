@@ -538,6 +538,113 @@ static int test_errors(const char *resources)
   return ok;
 }
 
+/* JPEG is lossy: allow a little drift from the encoded colour. */
+static int near(int got, int want)
+{
+  return got >= want - 6 && got <= want + 6;
+}
+
+/* The fixtures are 16x8, solid (200,40,80) for rgb.jpg and progressive.jpg,
+ * solid grey 128 for grey.jpg. bitmap_load picks the loader by signature;
+ * bitmap_load_deep expands the greyscale one. */
+static int test_jpeg(const char *resources)
+{
+  static const char *colour[] = { "rgb.jpg", "progressive.jpg" };
+
+  bitmap_t             bm;
+  result_t             rc;
+  size_t               i;
+  const unsigned char *p;
+  int                  ok;
+
+  ok = 1;
+
+  for (i = 0; i < NELEMS(colour); i++)
+  {
+    rc = bitmap_load(&bm, pathf("%s/resources/test/bitmap/%s",
+                                resources, colour[i]));
+    if (rc != result_OK)
+    {
+      printf("load: %s: rc=&%x\n", colour[i], rc);
+      ok = 0;
+      continue;
+    }
+    p = (const unsigned char *) bm.base + bm.rowbytes * 7 + 15 * 4;
+    if (bm.size.w != 16 || bm.size.h != 8 ||
+        bm.format != pixelfmt_rgbx8888 || bm.palette != NULL ||
+        !near(p[0], 200) || !near(p[1], 40) || !near(p[2], 80) ||
+        p[3] != 0xFF)
+    {
+      printf("load: %s: got %dx%d format %d, pixel %d,%d,%d,%d\n", colour[i],
+             bm.size.w, bm.size.h, (int) bm.format, p[0], p[1], p[2], p[3]);
+      ok = 0;
+    }
+    load_free(&bm);
+  }
+
+  if (load_expect(resources, "rgb.png", 2, 1, pixelfmt_rgbx8888, &bm))
+    load_free(&bm);
+  else
+    ok = 0;
+
+  rc = bitmap_load_jpeg(&bm, pathf("%s/resources/test/bitmap/grey.jpg",
+                                   resources));
+  if (rc == result_OK)
+  {
+    p = bm.base;
+    if (bm.format != pixelfmt_p8 || !near(p[0], 128))
+    {
+      printf("load: grey.jpg: format %d, pixel %d\n", (int) bm.format, p[0]);
+      ok = 0;
+    }
+    ok &= palette_is_grey(&bm, "grey.jpg", 128, 128);
+    load_free(&bm);
+  }
+  else
+  {
+    printf("load: grey.jpg: rc=&%x\n", rc);
+    ok = 0;
+  }
+
+  rc = bitmap_load_deep(&bm, pathf("%s/resources/test/bitmap/grey.jpg",
+                                   resources), pixelfmt_rgbx8888);
+  if (rc == result_OK)
+  {
+    p = bm.base;
+    if (bm.format != pixelfmt_rgbx8888 || bm.palette != NULL ||
+        !near(p[0], 128) || p[0] != p[1] || p[1] != p[2])
+    {
+      printf("load: deep grey.jpg: format %d, pixel %d,%d,%d\n",
+             (int) bm.format, p[0], p[1], p[2]);
+      ok = 0;
+    }
+    load_free(&bm);
+  }
+  else
+  {
+    printf("load: deep grey.jpg: rc=&%x\n", rc);
+    ok = 0;
+  }
+
+  rc = bitmap_load_jpeg(&bm, pathf("%s/resources/test/bitmap/notpng.png",
+                                   resources));
+  if (rc != result_BAD_ARG)
+  {
+    printf("load: notpng.png as JPEG: rc=&%x\n", rc);
+    ok = 0;
+  }
+
+  rc = bitmap_load_jpeg(&bm, pathf("%s/resources/test/bitmap/nonesuch.jpg",
+                                   resources));
+  if (rc != result_FILE_NOT_FOUND)
+  {
+    printf("load: nonesuch.jpg: rc=&%x\n", rc);
+    ok = 0;
+  }
+
+  return ok;
+}
+
 #ifndef DPTLIB_IMAGES_READ_ONLY
 
 /* Saving each deep channel order writes R, G, B (and A) in PNG order, so each
@@ -642,6 +749,7 @@ result_t bitmap_load_test(const char *resources)
   ok &= test_interlaced(resources);
   ok &= test_colour_key(resources);
   ok &= test_errors(resources);
+  ok &= test_jpeg(resources);
 #ifndef DPTLIB_IMAGES_READ_ONLY
   ok &= test_save();
 #endif

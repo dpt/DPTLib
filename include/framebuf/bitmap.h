@@ -168,6 +168,43 @@ result_t bitmap_load_png_deep(bitmap_t   *bm,
                               pixelfmt_t  fmt);
 
 /**
+ * Load a JPEG image into the given bitmap.
+ *
+ * Baseline and progressive JPEGs are read. A greyscale JPEG becomes a \ref
+ * pixelfmt_p8 bitmap with a ramp of greys as `bm->palette`. A colour JPEG
+ * becomes an `rgbx8888` bitmap with no palette. CMYK and YCCK JPEGs return
+ * \ref result_INCOMPATIBLE.
+ *
+ * \param[in] bm       Bitmap to load the image into.
+ * \param[in] filename Filename of the image to load.
+ * \return \ref result_OK on success, or appropriate result code otherwise.
+ */
+result_t bitmap_load_jpeg(bitmap_t *bm, const char *filename);
+
+/**
+ * Load a PNG or JPEG image, chosen by the file's signature, as \ref
+ * bitmap_load_png or \ref bitmap_load_jpeg.
+ *
+ * \param[in] bm       Bitmap to load the image into.
+ * \param[in] filename Filename of the image to load.
+ * \return \ref result_OK on success, or appropriate result code otherwise.
+ */
+result_t bitmap_load(bitmap_t *bm, const char *filename);
+
+/**
+ * Load a PNG or JPEG image as \ref bitmap_load, then expand a paletted
+ * result to the deep format `fmt` as \ref bitmap_load_png_deep does.
+ *
+ * \param[in] bm       Bitmap to load the image into.
+ * \param[in] filename Filename of the image to load.
+ * \param[in] fmt      Deep format to expand a paletted image to.
+ * \return \ref result_OK on success, or appropriate result code otherwise.
+ */
+result_t bitmap_load_deep(bitmap_t   *bm,
+                          const char *filename,
+                          pixelfmt_t  fmt);
+
+/**
  * Save the given bitmap as a PNG image.
  *
  * Supported formats: `bgrx8888` (written as RGB), `bgra8888` (RGBA), and

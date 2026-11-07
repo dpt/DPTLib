@@ -137,7 +137,7 @@ cmake -B build -G Ninja -DBUILD_TESTS=YES
 cmake --build build --target DPTLibTest
 ```
 
-Requires libpng. Useful options:
+Requires libpng and libjpeg. Useful options:
 
 - `BUILD_TESTS` — the core test binary
 - `BUILD_SDL_TESTS` — interactive SDL tests

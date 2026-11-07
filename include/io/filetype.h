@@ -26,6 +26,7 @@ filetype_t;
 
 /** RISC OS filetype numbers of the types in the table. */
 #define filetype_RISCOS_PNG      0xB60
+#define filetype_RISCOS_JPEG     0xC85
 #define filetype_RISCOS_TEXT     0xFFF
 /** Markdown has no allocated RISC OS filetype yet; this is a placeholder in
  *  the user range (&100-&3FF) until RISC OS Open allocates one. */
