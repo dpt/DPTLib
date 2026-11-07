@@ -385,6 +385,62 @@ result_t screen_copy_bitmap_tiled_dithered(screen_t       *scr,
                                            point_t         origin,
                                            screen_dither_t method);
 
+/** Scale factors for `screen_copy_bitmap_scaled`: each axis of the output
+ *  is the input's size times mul, divided by div (as RISC OS sprite scale
+ *  factors). All four must be positive. */
+typedef struct screen_scale
+{
+  int xmul; /**< X multiplier. */
+  int ymul; /**< Y multiplier. */
+  int xdiv; /**< X divisor. */
+  int ydiv; /**< Y divisor. */
+}
+screen_scale_t;
+
+/**
+ * Copies a bitmap onto the screen, scaled by nearest neighbour. The scaled
+ * image has its top-left at the top-left of \p dst and is \p src's size
+ * scaled by \p scale, rounded up to whole pixels. Destination pixel offset
+ * `i` takes source pixel `(i * xdiv) / xmul`, likewise for y, so an integer
+ * scale gives exact blocks.
+ *
+ * Drawing is clipped to \p dst, the scaled image and the screen's clip
+ * region. Pixels of \p dst beyond the scaled image are left untouched.
+ * Pixels are blended exactly as `screen_copy_bitmap` does.
+ *
+ * \param[in] scr   Screen to draw upon.
+ * \param[in] dst   Area to fill.
+ * \param[in] src   Bitmap to copy.
+ * \param[in] scale Scale factors.
+ * \return \ref result_OK on success, \ref result_BAD_ARG if \p src has no
+ *         area or a scale factor is not positive, \ref result_NOT_SUPPORTED
+ *         if \p src is RLE-compressed and \p scale is not 1:1 or the
+ *         screen's pixel format has no blit path, or \ref result_OOM.
+ */
+result_t screen_copy_bitmap_scaled(screen_t             *scr,
+                                   const box_t          *dst,
+                                   const bitmap_t       *src,
+                                   const screen_scale_t *scale);
+
+/**
+ * As `screen_copy_bitmap_scaled`, but dithered as by
+ * `screen_copy_bitmap_dithered`. The dither is phased to source pixels, so
+ * each enlarged pixel is a uniform block and the pattern stays fixed to the
+ * image.
+ *
+ * \param[in] scr    Screen to draw upon.
+ * \param[in] dst    Area to fill.
+ * \param[in] src    Bitmap to copy.
+ * \param[in] scale  Scale factors.
+ * \param[in] method Dithering method.
+ * \return As `screen_copy_bitmap_scaled`.
+ */
+result_t screen_copy_bitmap_scaled_dithered(screen_t             *scr,
+                                            const box_t          *dst,
+                                            const bitmap_t       *src,
+                                            const screen_scale_t *scale,
+                                            screen_dither_t       method);
+
 /**
  * Copies a rectangular region of the screen to another position on the same
  * screen (e.g. sliding an already-rendered window's pixels to a new position

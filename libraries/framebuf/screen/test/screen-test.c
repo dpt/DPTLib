@@ -2329,6 +2329,311 @@ static result_t test_copy_bitmap_dithered(void)
   return test_copy_bitmap_dithered_with(screen_DITHER_BLUE_NOISE);
 }
 
+/* ----------------------------------------------------------------------- */
+
+#define SC_W 7
+#define SC_H 5
+
+typedef struct scaledcase
+{
+  screen_scale_t scale;
+  box_t          dst;
+  box_t          clip; /* empty for none */
+}
+scaledcase_t;
+
+/* screen_copy_bitmap_scaled of "src" for case "sc": every pixel inside the
+ * clip, dst and the scaled image is the 1:1 copy's pixel at the mapped
+ * source position; every other pixel keeps the background. */
+static int scaled_matches(const char         *name,
+                          const bitmap_t     *src,
+                          const scaledcase_t *sc)
+{
+  static testscreen_t ref;
+  static testscreen_t ts;
+
+  box_t               img;
+  box_t               draw;
+  int                 x, y;
+  pixelfmt_bgrx8888_t want;
+
+  testscreen_init(&ref);
+  screen_copy_bitmap(&ref.scr, 0, 0, src);
+
+  testscreen_init(&ts);
+  ts.scr.clip = sc->clip;
+  if (screen_copy_bitmap_scaled(&ts.scr, &sc->dst, src, &sc->scale) != result_OK)
+  {
+    printf("screen: %s: copy_bitmap_scaled failed\n", name);
+    return 0;
+  }
+
+  img.x0 = sc->dst.x0;
+  img.y0 = sc->dst.y0;
+  img.x1 = sc->dst.x0 + (SC_W * sc->scale.xmul + sc->scale.xdiv - 1) / sc->scale.xdiv;
+  img.y1 = sc->dst.y0 + (SC_H * sc->scale.ymul + sc->scale.ydiv - 1) / sc->scale.ydiv;
+  draw.x0 = 0;
+  draw.y0 = 0;
+  draw.x1 = WIDTH;
+  draw.y1 = HEIGHT;
+  if (!box_is_empty(&sc->clip))
+    (void) box_intersection(&draw, &sc->clip, &draw);
+  (void) box_intersection(&draw, &sc->dst, &draw);
+  (void) box_intersection(&draw, &img, &draw);
+
+  for (y = 0; y < HEIGHT; y++)
+    for (x = 0; x < WIDTH; x++)
+    {
+      if (x >= draw.x0 && x < draw.x1 && y >= draw.y0 && y < draw.y1)
+        want = ref.pixels[(y - sc->dst.y0) * sc->scale.ydiv / sc->scale.ymul * WIDTH +
+                          (x - sc->dst.x0) * sc->scale.xdiv / sc->scale.xmul];
+      else
+        want = BACKGROUND;
+
+      if (ts.pixels[y * WIDTH + x] != want)
+      {
+        printf("screen: %s: scaled pixel (%d,%d) is %08x, want %08x\n",
+               name, x, y, (unsigned int) ts.pixels[y * WIDTH + x],
+               (unsigned int) want);
+        return 0;
+      }
+    }
+
+  return 1;
+}
+
+/* screen_copy_bitmap_scaled from deep and p4 sources at integer, fractional,
+ * mixed and 1:1 scales, with dst and clip cutting the image short. */
+static result_t test_copy_bitmap_scaled(void)
+{
+  static const scaledcase_t cases[] =
+  {
+    { { 3,  3, 1, 1 }, {  2,  3, 60, 60 }, { 0,  0,  0,  0 } }, /* 3x */
+    { { 5, 13, 7, 5 }, {  1,  2, 64, 64 }, { 0,  0,  0,  0 } }, /* shrink x, stretch y */
+    { { 2,  2, 2, 2 }, {  4,  4, 64, 64 }, { 0,  0,  0,  0 } }, /* 1:1 */
+    { { 3,  3, 1, 1 }, {  2,  3, 10,  9 }, { 0,  0,  0,  0 } }, /* dst short */
+    { { 3,  2, 1, 1 }, { -4, -5, 40, 40 }, { 0,  0,  0,  0 } }, /* off top-left */
+    { { 4,  4, 1, 1 }, {  0,  0, 64, 64 }, { 10, 10, 30, 25 } }, /* clipped */
+    { { 9,  9, 1, 1 }, {  0,  0, 64, 64 }, { 0,  0,  0,  0 } }  /* past screen */
+  };
+
+  static pixelfmt_rgba8888_t deepbuf[SC_W * SC_H];
+  static unsigned char       p4buf[(SC_W + 1) / 2 * SC_H];
+
+  colour_t                   pal[16];
+  bitmap_t                   deep;
+  bitmap_t                   p4;
+  bitmap_t                   rle;
+  testscreen_t              *ts;
+  screen_scale_t             bad = { 1, 0, 1, 1 };
+  int                        i, x, y;
+  size_t                     ci;
+
+  for (i = 0; i < 16; i++)
+    pal[i] = colour_rgb((unsigned char) (i * 37),
+                        (unsigned char) (255 - i * 13),
+                        (unsigned char) (i * 91));
+
+  memset(p4buf, 0, sizeof(p4buf));
+  for (y = 0; y < SC_H; y++)
+    for (x = 0; x < SC_W; x++)
+    {
+      i = (x * 3 + y * 5) & 15;
+      p4buf[y * ((SC_W + 1) / 2) + (x >> 1)] |= (unsigned char) (i << ((x & 1) * 4));
+      deepbuf[y * SC_W + x] = colour_rgb((unsigned char) (x * 30),
+                                         (unsigned char) (y * 50),
+                                         (unsigned char) (x * y * 7)).primary;
+    }
+
+  bitmap_init(&deep, SIZE2D(SC_W, SC_H), pixelfmt_rgba8888, SC_W * 4, NULL,
+              deepbuf);
+  bitmap_init(&p4, SIZE2D(SC_W, SC_H), pixelfmt_p4, (SC_W + 1) / 2, pal,
+              p4buf);
+
+  for (ci = 0; ci < NELEMS(cases); ci++)
+    if (!scaled_matches("scaled rgba8888", &deep, &cases[ci]) ||
+        !scaled_matches("scaled p4", &p4, &cases[ci]))
+    {
+      printf("screen: copy_bitmap_scaled case %d failed\n", (int) ci);
+      bitmap_set_palette(&p4, NULL);
+      return result_TEST_FAILED;
+    }
+
+  bitmap_set_palette(&p4, NULL);
+
+  ts = malloc(sizeof(*ts));
+  if (ts == NULL)
+    return result_OOM;
+  testscreen_init(ts);
+
+  if (screen_copy_bitmap_scaled(&ts->scr, &cases[0].dst, &deep, &bad) != result_BAD_ARG)
+  {
+    printf("screen: copy_bitmap_scaled accepted a zero factor\n");
+    free(ts);
+    return result_TEST_FAILED;
+  }
+
+  rle = deep;
+  rle.format = (pixelfmt_t) (pixelfmt_rgba8888 | pixelfmt_RLE_FLAG);
+  if (screen_copy_bitmap_scaled(&ts->scr, &cases[0].dst, &rle,
+                                &cases[0].scale) != result_NOT_SUPPORTED)
+  {
+    printf("screen: copy_bitmap_scaled accepted an RLE source\n");
+    free(ts);
+    return result_TEST_FAILED;
+  }
+
+  free(ts);
+
+  return result_TEST_PASSED;
+}
+
+#undef SC_H
+#undef SC_W
+
+/* screen_copy_bitmap_scaled from a p4 source onto a p4 screen, which takes
+ * the nibble remap path, gives the same pixels as from the same image in
+ * rgba8888, opaque and with a transparent entry. */
+static result_t test_copy_bitmap_scaled_p4_to_p4(void)
+{
+#define SP_W 7
+#define SP_H 3
+  static unsigned char       p4buf[(SP_W + 1) / 2 * SP_H];
+  static pixelfmt_rgba8888_t deepbuf[SP_W * SP_H];
+  static unsigned char       want[WIDTH / 2 * HEIGHT];
+  static unsigned char       got[WIDTH / 2 * HEIGHT];
+
+  colour_t                   srcpal[16];
+  colour_t                   scrpal[16];
+  bitmap_t                   p4src;
+  bitmap_t                   deepsrc;
+  box_t                      dst = { 3, 1, 60, 50 };
+  screen_scale_t             scale = { 5, 3, 2, 1 };
+  int                        i, x, y;
+  int                        pass;
+  screen_t                   wantscr;
+  screen_t                   gotscr;
+
+  for (i = 0; i < 16; i++)
+  {
+    srcpal[i] = colour_rgb((unsigned char) (i * 37),
+                           (unsigned char) (255 - i * 13),
+                           (unsigned char) (i * 91));
+    scrpal[i] = colour_rgb((unsigned char) ((i & 1) ? 255 : 0),
+                           (unsigned char) ((i & 2) ? 255 : 0),
+                           (unsigned char) ((i & 4) ? ((i & 8) ? 255 : 128) : 0));
+  }
+  memset(p4buf, 0, sizeof(p4buf));
+  for (y = 0; y < SP_H; y++)
+    for (x = 0; x < SP_W; x++)
+    {
+      i = (x + y * SP_W) & 15;
+      p4buf[y * ((SP_W + 1) / 2) + (x >> 1)] |= (unsigned char) (i << ((x & 1) * 4));
+      deepbuf[y * SP_W + x] = srcpal[i].primary;
+    }
+
+  bitmap_init(&p4src, SIZE2D(SP_W, SP_H), pixelfmt_p4, (SP_W + 1) / 2, srcpal,
+              p4buf);
+  bitmap_init(&deepsrc, SIZE2D(SP_W, SP_H), pixelfmt_rgba8888, SP_W * 4, NULL,
+              deepbuf);
+
+  for (pass = 0; pass < 2; pass++)
+  {
+    if (pass == 1)
+    {
+      srcpal[5] = colour_rgba(0x00, 0xFF, 0x00, 0x00);
+      for (i = 0; i < SP_W * SP_H; i++)
+        if ((i & 15) == 5)
+          deepbuf[i] = srcpal[5].primary;
+      bitmap_set_palette(&p4src, srcpal);
+    }
+
+    memset(want, 0x9A, sizeof(want));
+    memset(got, 0x9A, sizeof(got));
+    screen_init(&wantscr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p4, WIDTH / 2,
+                scrpal, want);
+    screen_init(&gotscr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p4, WIDTH / 2,
+                scrpal, got);
+
+    if (screen_copy_bitmap_scaled(&wantscr, &dst, &deepsrc, &scale) != result_OK ||
+        screen_copy_bitmap_scaled(&gotscr, &dst, &p4src, &scale) != result_OK ||
+        memcmp(want, got, sizeof(want)) != 0)
+    {
+      printf("screen: scaled p4 to p4 differs from rgba8888, pass %d\n", pass);
+      bitmap_set_palette(&p4src, NULL);
+      return result_TEST_FAILED;
+    }
+  }
+
+  bitmap_set_palette(&p4src, NULL);
+
+  return result_TEST_PASSED;
+#undef SP_H
+#undef SP_W
+}
+
+/* screen_copy_bitmap_scaled_dithered of a flat mid-grey onto a p2 screen at
+ * 3x: the dither is phased to source pixels, so every 3x3 block is uniform,
+ * yet the blocks stipple where a plain scaled copy is flat. */
+static result_t test_copy_bitmap_scaled_dithered(void)
+{
+#define SD_ROWBYTES (WIDTH / 4)
+  static unsigned char       got[SD_ROWBYTES * HEIGHT];
+  static unsigned char       plain[SD_ROWBYTES * HEIGHT];
+  static pixelfmt_rgba8888_t srcbuf[16 * 8];
+
+  colour_t                   pal[4];
+  bitmap_t                   src;
+  box_t                      dst = { 0, 0, 48, 24 };
+  screen_scale_t             scale = { 3, 3, 1, 1 };
+  screen_t                   scr;
+  int                        x, y;
+
+  pal[0] = colour_rgb(0x00, 0x00, 0x00);
+  pal[1] = colour_rgb(0x55, 0x55, 0x55);
+  pal[2] = colour_rgb(0xAA, 0xAA, 0xAA);
+  pal[3] = colour_rgb(0xFF, 0xFF, 0xFF);
+
+  for (y = 0; y < 8; y++)
+    for (x = 0; x < 16; x++)
+      srcbuf[y * 16 + x] = colour_rgb(0x80, 0x80, 0x80).primary;
+
+  bitmap_init(&src, SIZE2D(16, 8), pixelfmt_rgba8888,
+              16 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
+
+  memset(got, 0, sizeof(got));
+  screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p2, SD_ROWBYTES, pal, got);
+  if (screen_copy_bitmap_scaled_dithered(&scr, &dst, &src, &scale,
+                                         screen_DITHER_BAYER) != result_OK)
+  {
+    printf("screen: scaled_dithered copy failed\n");
+    return result_TEST_FAILED;
+  }
+
+  for (y = 0; y < 24; y++)
+    for (x = 0; x < 48; x++)
+      if (p2_pixel_at(got + y * SD_ROWBYTES, x) !=
+          p2_pixel_at(got + (y / 3 * 3) * SD_ROWBYTES, x / 3 * 3))
+      {
+        printf("screen: scaled_dithered block at (%d,%d) is not uniform\n",
+               x / 3, y / 3);
+        return result_TEST_FAILED;
+      }
+
+  memset(plain, 0, sizeof(plain));
+  screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p2, SD_ROWBYTES, pal, plain);
+  screen_copy_bitmap_scaled(&scr, &dst, &src, &scale);
+
+  if (memcmp(got, plain, sizeof(got)) == 0)
+  {
+    printf("screen: scaled_dithered matches the plain scaled copy\n");
+    return result_TEST_FAILED;
+  }
+
+  return result_TEST_PASSED;
+#undef SD_ROWBYTES
+}
+
 /* Index of the palette entry drawn at (x, y) on a p4 or p8 screen. */
 static int exact_index_at(const unsigned char *base,
                           int                  rowbytes,
@@ -3124,6 +3429,9 @@ result_t screen_test(const char *resources)
     test_copy_bitmap_dithered,
     test_copy_bitmap_dithered_exact,
     test_copy_bitmap_dithered_exact_16,
+    test_copy_bitmap_scaled,
+    test_copy_bitmap_scaled_p4_to_p4,
+    test_copy_bitmap_scaled_dithered,
     test_copy_rect_packed,
     test_copy_rect_packed_random,
     test_fill_span_p4,

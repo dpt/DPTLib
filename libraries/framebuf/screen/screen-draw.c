@@ -629,6 +629,23 @@ static const pixelmap_t *src_pixelmap_for(const bitmap_t *src)
                       pixelfmt_paletted_nentries(src->format));
 }
 
+/* Source coordinate maps for a scaled blit: "x" and "y" give the source
+ * column and row for each draw box column and row offset. The copy helpers
+ * take NULL in place of a map for a 1:1 blit. */
+typedef struct copy_map
+{
+  const int *x;
+  const int *y;
+}
+copy_map_t;
+
+/* The source column and row for draw box offset "off" of a blit whose
+ * top-left is at "org". */
+#define COPY_SRCX(map, box, org, off) \
+  ((map) ? (map)->x[off] : (box)->x0 + (off) - (org))
+#define COPY_SRCY(map, box, org, off) \
+  ((map) ? (map)->y[off] : (box)->y0 + (off) - (org))
+
 /* Write the p4 pixel "pxl" at "x" in the screen row "drow". */
 static void put_p4(unsigned char *drow, int x, int pxl)
 {
@@ -643,13 +660,15 @@ static void put_p4(unsigned char *drow, int x, int pxl)
 /* screen_copy_bitmap_p4's undithered p4-source case: each of the source's 16
  * palette entries is matched to a screen index once, up front, leaving the
  * inner loop a nibble remap. A source with no transparent entries is copied
- * a whole screen byte, two pixels, per lookup. "pm" is the rgba8888->screen
- * pixelmap and "srcpm" the source's p4->rgba8888 one. */
+ * a whole screen byte, two pixels, per lookup, unless scaled by "map". "pm"
+ * is the rgba8888->screen pixelmap and "srcpm" the source's p4->rgba8888
+ * one. */
 static result_t screen_copy_bitmap_p4_from_p4(screen_t         *scr,
                                               int               x,
                                               int               y,
                                               const bitmap_t   *src,
                                               const box_t      *draw_box,
+                                              const copy_map_t *map,
                                               int               has_alpha,
                                               const pixelmap_t *pm,
                                               const pixelmap_t *srcpm)
@@ -683,7 +702,7 @@ static result_t screen_copy_bitmap_p4_from_p4(screen_t         *scr,
     remap[i] = (pm->entries[idx >> 1] >> ((idx & 1) << 2)) & 0xF;
   }
 
-  if (opaque)
+  if (opaque && map == NULL)
     for (i = 0; i < 256; i++)
       pairs[i] = (unsigned char) (remap[i & 0xF] | (remap[i >> 4] << 4));
 
@@ -693,11 +712,12 @@ static result_t screen_copy_bitmap_p4_from_p4(screen_t         *scr,
     unsigned char       *drow;
     int                  dstx;
 
-    srow = (const unsigned char *) src->base + (yy - y) * src->rowbytes;
+    srow = (const unsigned char *) src->base +
+           COPY_SRCY(map, draw_box, y, yy - draw_box->y0) * src->rowbytes;
     drow = (unsigned char *) scr->base + yy * scr->rowbytes;
     dstx = draw_box->x0;
 
-    if (opaque)
+    if (opaque && map == NULL)
     {
       int srcx;
       int v;
@@ -726,7 +746,7 @@ static result_t screen_copy_bitmap_p4_from_p4(screen_t         *scr,
       int srcx;
       int pxl;
 
-      srcx = dstx - x;
+      srcx = COPY_SRCX(map, draw_box, x, dstx - draw_box->x0);
       pxl  = remap[(srow[srcx >> 1] >> ((srcx & 1) * 4)) & 0xF];
       if (pxl < 0)
         continue; /* fully transparent: leave background alone */
@@ -747,13 +767,14 @@ static result_t screen_copy_bitmap_p4_from_p4(screen_t         *scr,
  * Bayer cell is keyed on the sprite-local pixel so the pattern travels with
  * the sprite. Returns result_NOT_SUPPORTED if there is no deep->paletted (or
  * paletted->deep, for a paletted source) conversion table. */
-static result_t screen_copy_bitmap_p4(screen_t       *scr,
-                                      int             x,
-                                      int             y,
-                                      const bitmap_t *src,
-                                      const box_t    *draw_box,
-                                      int             has_alpha,
-                                      screen_dither_t dither)
+static result_t screen_copy_bitmap_p4(screen_t         *scr,
+                                      int               x,
+                                      int               y,
+                                      const bitmap_t   *src,
+                                      const box_t      *draw_box,
+                                      const copy_map_t *map,
+                                      int               has_alpha,
+                                      screen_dither_t   dither)
 {
   unsigned char    *dstbase;
   const pixelmap_t *pm;
@@ -780,8 +801,8 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
   do_dither = dither_bias_build(&bias, pm->step * 3 / 4, dither);
 
   if (src->format == pixelfmt_p4 && !do_dither)
-    return screen_copy_bitmap_p4_from_p4(scr, x, y, src, draw_box, has_alpha,
-                                         pm, srcpm);
+    return screen_copy_bitmap_p4_from_p4(scr, x, y, src, draw_box, map,
+                                         has_alpha, pm, srcpm);
 
   for (yy = 0; yy < clipped_height; yy++)
   {
@@ -789,7 +810,7 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
     int            srcy;
     int            xx;
 
-    srcy = draw_box->y0 - y + yy;
+    srcy = COPY_SRCY(map, draw_box, y, yy);
     rowp = dstbase + (draw_box->y0 + yy) * scr->rowbytes;
 
     for (xx = 0; xx < clipped_width; xx++)
@@ -801,7 +822,7 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
       int            shift;
       pixelfmt_any_t pxl;
 
-      srcx = draw_box->x0 + xx - x;
+      srcx = COPY_SRCX(map, draw_box, x, xx);
       c    = src_fetch_rgba(src, srcpm, srcx, srcy);
       if (has_alpha && colour_get_alpha(&c) == 0)
         continue; /* fully transparent: leave background alone */
@@ -827,13 +848,14 @@ static result_t screen_copy_bitmap_p4(screen_t       *scr,
  * straight byte accesses with no sub-byte packing. Returns
  * result_NOT_SUPPORTED if there is no deep->paletted conversion table for
  * the screen's format. */
-static result_t screen_copy_bitmap_p8(screen_t       *scr,
-                                      int             x,
-                                      int             y,
-                                      const bitmap_t *src,
-                                      const box_t    *draw_box,
-                                      int             has_alpha,
-                                      screen_dither_t dither)
+static result_t screen_copy_bitmap_p8(screen_t         *scr,
+                                      int               x,
+                                      int               y,
+                                      const bitmap_t   *src,
+                                      const box_t      *draw_box,
+                                      const copy_map_t *map,
+                                      int               has_alpha,
+                                      screen_dither_t   dither)
 {
   unsigned char    *dstbase;
   const pixelmap_t *pm;
@@ -864,7 +886,7 @@ static result_t screen_copy_bitmap_p8(screen_t       *scr,
     int            srcy;
     int            xx;
 
-    srcy = draw_box->y0 - y + yy;
+    srcy = COPY_SRCY(map, draw_box, y, yy);
     rowp = dstbase + (draw_box->y0 + yy) * scr->rowbytes;
 
     for (xx = 0; xx < clipped_width; xx++)
@@ -873,7 +895,7 @@ static result_t screen_copy_bitmap_p8(screen_t       *scr,
       unsigned int r, g, b;
       int          dstx, srcx;
 
-      srcx = draw_box->x0 + xx - x;
+      srcx = COPY_SRCX(map, draw_box, x, xx);
       c    = src_fetch_rgba(src, srcpm, srcx, srcy);
       if (has_alpha && colour_get_alpha(&c) == 0)
         continue; /* fully transparent: leave background alone */
@@ -899,13 +921,14 @@ static result_t screen_copy_bitmap_p8(screen_t       *scr,
  * turns the inner loop into a mask-and-lookup; bit 7 of a byte is the
  * leftmost pixel. Returns result_NOT_SUPPORTED if there is no deep->paletted
  * conversion table for the screen's format. */
-static result_t screen_copy_bitmap_p1(screen_t       *scr,
-                                      int             x,
-                                      int             y,
-                                      const bitmap_t *src,
-                                      const box_t    *draw_box,
-                                      int             has_alpha,
-                                      screen_dither_t dither)
+static result_t screen_copy_bitmap_p1(screen_t         *scr,
+                                      int               x,
+                                      int               y,
+                                      const bitmap_t   *src,
+                                      const box_t      *draw_box,
+                                      const copy_map_t *map,
+                                      int               has_alpha,
+                                      screen_dither_t   dither)
 {
   unsigned char    *dstbase;
   const pixelmap_t *pm;
@@ -936,7 +959,7 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
     int            srcy;
     int            xx;
 
-    srcy = draw_box->y0 - y + yy;
+    srcy = COPY_SRCY(map, draw_box, y, yy);
     rowp = dstbase + (draw_box->y0 + yy) * scr->rowbytes;
 
     for (xx = 0; xx < clipped_width; xx++)
@@ -947,7 +970,7 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
       unsigned char *scrp;
       pixelfmt_any_t pxl;
 
-      srcx = draw_box->x0 + xx - x;
+      srcx = COPY_SRCX(map, draw_box, x, xx);
       c    = src_fetch_rgba(src, srcpm, srcx, srcy);
       if (has_alpha && colour_get_alpha(&c) == 0)
         continue; /* fully transparent: leave background alone */
@@ -974,13 +997,14 @@ static result_t screen_copy_bitmap_p1(screen_t       *scr,
  * packed four entries to the byte. "dither" ordered-dithers the source RGB
  * per pixel first. Returns result_NOT_SUPPORTED if there is no deep->paletted
  * conversion table for the screen's format. */
-static result_t screen_copy_bitmap_p2(screen_t       *scr,
-                                      int             x,
-                                      int             y,
-                                      const bitmap_t *src,
-                                      const box_t    *draw_box,
-                                      int             has_alpha,
-                                      screen_dither_t dither)
+static result_t screen_copy_bitmap_p2(screen_t         *scr,
+                                      int               x,
+                                      int               y,
+                                      const bitmap_t   *src,
+                                      const box_t      *draw_box,
+                                      const copy_map_t *map,
+                                      int               has_alpha,
+                                      screen_dither_t   dither)
 {
   unsigned char    *dstbase;
   const pixelmap_t *pm;
@@ -1011,7 +1035,7 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
     int            srcy;
     int            xx;
 
-    srcy = draw_box->y0 - y + yy;
+    srcy = COPY_SRCY(map, draw_box, y, yy);
     rowp = dstbase + (draw_box->y0 + yy) * scr->rowbytes;
 
     for (xx = 0; xx < clipped_width; xx++)
@@ -1022,7 +1046,7 @@ static result_t screen_copy_bitmap_p2(screen_t       *scr,
       unsigned char *scrp;
       pixelfmt_any_t pxl;
 
-      srcx = draw_box->x0 + xx - x;
+      srcx = COPY_SRCX(map, draw_box, x, xx);
       c    = src_fetch_rgba(src, srcpm, srcx, srcy);
       if (has_alpha && colour_get_alpha(&c) == 0)
         continue; /* fully transparent: leave background alone */
@@ -1173,13 +1197,14 @@ static const pixelfmt_any32_t *fastblit_src(const bitmap_t *src,
  * call itself doesn't care which kind of source it was. Returns
  * result_NOT_SUPPORTED if "src" is paletted and has no paletted->deep
  * conversion table. */
-static result_t screen_copy_bitmap_32(screen_t       *scr,
-                                      int             x,
-                                      int             y,
-                                      const bitmap_t *src,
-                                      const box_t    *draw_box,
-                                      int             has_alpha,
-                                      screen_dither_t dither)
+static result_t screen_copy_bitmap_32(screen_t         *scr,
+                                      int               x,
+                                      int               y,
+                                      const bitmap_t   *src,
+                                      const box_t      *draw_box,
+                                      const copy_map_t *map,
+                                      int               has_alpha,
+                                      screen_dither_t   dither)
 {
   pixelfmt_any32_t  colbuf[BITMAP_BLIT_CHUNK];
   unsigned char     alphabuf[BITMAP_BLIT_CHUNK];
@@ -1199,7 +1224,9 @@ static result_t screen_copy_bitmap_32(screen_t       *scr,
   if (srcpm == NULL && !src_is_deep(src))
     return result_NOT_SUPPORTED;
 
-  fast = fastblit_init(&fb, scr, src, 0);
+  /* ponytail: a scaled blit takes the per-pixel path; gather mapped source
+   * pixels into a chunk for fastblit_row32 if scaled blits need the speed */
+  fast = map == NULL && fastblit_init(&fb, scr, src, 0);
   if (!has_alpha)
     /* as the span blend at full alpha leaves a bgra8888 screen */
     fb.set = (pixelfmt_any32_t) PIXELFMT_OPAQUE << PIXELFMT_xxxA8888_SHIFT;
@@ -1214,7 +1241,7 @@ static result_t screen_copy_bitmap_32(screen_t       *scr,
     int                     srcy;
     int                     remaining, done;
 
-    srcy      = draw_box->y0 - y + yy;
+    srcy      = COPY_SRCY(map, draw_box, y, yy);
     dstpx     = dstrow;
     remaining = clipped_width;
     done      = 0;
@@ -1251,7 +1278,9 @@ static result_t screen_copy_bitmap_32(screen_t       *scr,
         {
           colour_t c;
 
-          c           = src_fetch_rgba(src, srcpm, draw_box->x0 + done + i - x, srcy);
+          c           = src_fetch_rgba(src, srcpm,
+                                       COPY_SRCX(map, draw_box, x, done + i),
+                                       srcy);
           colbuf[i]   = colour_to_pixel(scr->palette, 0, c, scr->format);
           alphabuf[i] = has_alpha ? colour_get_alpha(&c) : PIXELFMT_OPAQUE;
         }
@@ -1287,13 +1316,14 @@ static unsigned int dither_channel_16(unsigned int v,
 /* Like screen_copy_bitmap_32, but for a 16bpp (555x/x555/565) screen. Same
  * restriction: result_NOT_SUPPORTED if "src" is paletted with no
  * paletted->deep conversion table. */
-static result_t screen_copy_bitmap_16(screen_t       *scr,
-                                      int             x,
-                                      int             y,
-                                      const bitmap_t *src,
-                                      const box_t    *draw_box,
-                                      int             has_alpha,
-                                      screen_dither_t dither)
+static result_t screen_copy_bitmap_16(screen_t         *scr,
+                                      int               x,
+                                      int               y,
+                                      const bitmap_t   *src,
+                                      const box_t      *draw_box,
+                                      const copy_map_t *map,
+                                      int               has_alpha,
+                                      screen_dither_t   dither)
 {
   pixelfmt_any16_t  colbuf[BITMAP_BLIT_CHUNK];
   pixelfmt_any32_t  rgbbuf[BITMAP_BLIT_CHUNK];
@@ -1321,7 +1351,7 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
   gbits     = (scr->format == pixelfmt_rgb565 ||
                scr->format == pixelfmt_bgr565) ? 6 : 5;
 
-  fast = fastblit_init(&fb, scr, src, do_dither);
+  fast = map == NULL && fastblit_init(&fb, scr, src, do_dither);
 
   dstrow = scr->base;
   dstrow += draw_box->y0 * scr->rowbytes / (int) sizeof(*dstrow) + draw_box->x0;
@@ -1333,7 +1363,7 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
     int                     srcy;
     int                     remaining, done;
 
-    srcy      = draw_box->y0 - y + yy;
+    srcy      = COPY_SRCY(map, draw_box, y, yy);
     dstpx     = dstrow;
     remaining = clipped_width;
     done      = 0;
@@ -1370,7 +1400,7 @@ static result_t screen_copy_bitmap_16(screen_t       *scr,
           unsigned int off;
           int          sx;
 
-          sx = draw_box->x0 + done + i - x;
+          sx = COPY_SRCX(map, draw_box, x, done + i);
           c  = src_fetch_rgba(src, srcpm, sx, srcy);
           if (do_dither)
           {
@@ -1404,21 +1434,26 @@ typedef result_t (*copy_bitmap_fn_t)(screen_t *,
                                      int,
                                      const bitmap_t *,
                                      const box_t *,
+                                     const copy_map_t *,
                                      int,
                                      screen_dither_t);
 
-/* Shared body for screen_copy_bitmap and screen_copy_bitmap_dithered. With
- * "dither" set the paletted-screen (p1/p2/p4/p8) and 16bpp paths
- * ordered-dither the source RGB before the nearest-match lookup or
- * truncation; the 32bpp path and the RLE path ignore it (a 32bpp screen has the channel depth not to band, and an RLE
- * source is pre-quantised UI art). A paletted source (p1/p2/p4/p8, e.g. a PNG
- * saved with a PLTE chunk) is decoded through its own palette a pixel at a
- * time by src_fetch_rgba rather than unpacked to a scratch buffer up front. */
-static result_t screen_copy_bitmap_i(screen_t       *scr,
-                                     int             x,
-                                     int             y,
-                                     const bitmap_t *src,
-                                     screen_dither_t dither)
+/* Shared body for the screen_copy_bitmap* calls: blit "src" with its
+ * top-left at (x, y) into "draw_box", already clipped, through the source
+ * coordinate maps "map" (NULL for 1:1). With "dither" set the
+ * paletted-screen (p1/p2/p4/p8) and 16bpp paths ordered-dither the source
+ * RGB before the nearest-match lookup or truncation; the 32bpp path ignores
+ * it (a 32bpp screen has the channel depth not to band). A paletted source
+ * (p1/p2/p4/p8, e.g. a PNG saved with a PLTE chunk) is decoded through its
+ * own palette a pixel at a time by src_fetch_rgba rather than unpacked to a
+ * scratch buffer up front. */
+static result_t screen_copy_bitmap_box(screen_t         *scr,
+                                       int               x,
+                                       int               y,
+                                       const bitmap_t   *src,
+                                       const box_t      *draw_box,
+                                       const copy_map_t *map,
+                                       screen_dither_t   dither)
 {
   static const copy_bitmap_fn_t copy_bitmap_fns[] =
   {
@@ -1430,24 +1465,8 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
     screen_copy_bitmap_32,
   };
 
-  box_t clip_box;
-  box_t src_box;
-  box_t draw_box;
-  int   has_alpha;
-  int   log2bpp;
-
-  if (screen_get_clip(scr, &clip_box))
-    return result_OK; /* invalid clipped screen: nothing to draw */
-
-  src_box.x0 = x;
-  src_box.y0 = y;
-  src_box.x1 = x + src->size.w;
-  src_box.y1 = y + src->size.h;
-  if (box_intersection(&clip_box, &src_box, &draw_box))
-    return result_OK; /* nothing visible */
-
-  if (pixelfmt_is_rle(src->format))
-    return screen_copy_bitmap_rle(scr, x, y, src, &draw_box);
+  int has_alpha;
+  int log2bpp;
 
   /* A deep source is read into a colour_t by src_fetch_rgba, R and B swapped
    * back for a bgr(x|a)8888 one. A paletted source's tRNS-derived alpha
@@ -1460,12 +1479,46 @@ static result_t screen_copy_bitmap_i(screen_t       *scr,
   log2bpp = pixelfmt_log2bpp(scr->format);
   assert(log2bpp >= 0 && log2bpp < NELEMS(copy_bitmap_fns));
 
-  return copy_bitmap_fns[log2bpp](scr, x, y, src, &draw_box, has_alpha, dither);
+  return copy_bitmap_fns[log2bpp](scr, x, y, src, draw_box, map, has_alpha,
+                                  dither);
+}
+
+/* Blit "src" 1:1 with its top-left at (x, y), clipped to "limit" (NULL for
+ * no limit) and the screen's clip. An RLE source goes to its own path,
+ * which ignores "dither": an RLE source is pre-quantised UI art. */
+static result_t screen_copy_bitmap_i(screen_t       *scr,
+                                     int             x,
+                                     int             y,
+                                     const bitmap_t *src,
+                                     const box_t    *limit,
+                                     screen_dither_t dither)
+{
+  box_t clip_box;
+  box_t src_box;
+  box_t draw_box;
+
+  if (screen_get_clip(scr, &clip_box))
+    return result_OK; /* invalid clipped screen: nothing to draw */
+
+  if (limit != NULL && box_intersection(&clip_box, limit, &clip_box))
+    return result_OK; /* nothing visible */
+
+  src_box.x0 = x;
+  src_box.y0 = y;
+  src_box.x1 = x + src->size.w;
+  src_box.y1 = y + src->size.h;
+  if (box_intersection(&clip_box, &src_box, &draw_box))
+    return result_OK; /* nothing visible */
+
+  if (pixelfmt_is_rle(src->format))
+    return screen_copy_bitmap_rle(scr, x, y, src, &draw_box);
+
+  return screen_copy_bitmap_box(scr, x, y, src, &draw_box, NULL, dither);
 }
 
 result_t screen_copy_bitmap(screen_t *scr, int x, int y, const bitmap_t *src)
 {
-  return screen_copy_bitmap_i(scr, x, y, src, screen_DITHER_NEAREST);
+  return screen_copy_bitmap_i(scr, x, y, src, NULL, screen_DITHER_NEAREST);
 }
 
 result_t screen_copy_bitmap_dithered(screen_t       *scr,
@@ -1474,7 +1527,104 @@ result_t screen_copy_bitmap_dithered(screen_t       *scr,
                                      const bitmap_t *src,
                                      screen_dither_t method)
 {
-  return screen_copy_bitmap_i(scr, x, y, src, method);
+  return screen_copy_bitmap_i(scr, x, y, src, NULL, method);
+}
+
+/* Fill "map" with the "n" source coordinates for destination offsets "off"
+ * onwards at a scale of "mul" / "div": offset i samples (i * div) / mul. An
+ * integer DDA, so the divides happen once, not per pixel. */
+static void scale_map(int *map, int n, int off, int mul, int div)
+{
+  int v, e;
+  int q, r;
+  int i;
+
+  v = off * div / mul;
+  e = off * div % mul;
+  q = div / mul;
+  r = div % mul;
+
+  for (i = 0; i < n; i++)
+  {
+    map[i] = v;
+    v += q;
+    e += r;
+    if (e >= mul)
+    {
+      e -= mul;
+      v++;
+    }
+  }
+}
+
+result_t screen_copy_bitmap_scaled(screen_t             *scr,
+                                   const box_t          *dst,
+                                   const bitmap_t       *src,
+                                   const screen_scale_t *scale)
+{
+  return screen_copy_bitmap_scaled_dithered(scr, dst, src, scale,
+                                            screen_DITHER_NEAREST);
+}
+
+result_t screen_copy_bitmap_scaled_dithered(screen_t             *scr,
+                                            const box_t          *dst,
+                                            const bitmap_t       *src,
+                                            const screen_scale_t *scale,
+                                            screen_dither_t       method)
+{
+  result_t   rc;
+  box_t      clip_box;
+  box_t      img_box;
+  box_t      draw_box;
+  int        w, h;
+  int       *xmap;
+  copy_map_t map;
+
+  if (src->size.w <= 0 || src->size.h <= 0 ||
+      scale->xmul <= 0 || scale->ymul <= 0 ||
+      scale->xdiv <= 0 || scale->ydiv <= 0)
+    return result_BAD_ARG;
+
+  if (box_is_empty(dst))
+    return result_OK;
+
+  if (scale->xmul == scale->xdiv && scale->ymul == scale->ydiv)
+    return screen_copy_bitmap_i(scr, dst->x0, dst->y0, src, dst, method);
+
+  if (pixelfmt_is_rle(src->format))
+    return result_NOT_SUPPORTED;
+
+  if (screen_get_clip(scr, &clip_box))
+    return result_OK; /* invalid clipped screen: nothing to draw */
+
+  /* the scaled image, rounded up to whole pixels */
+  img_box.x0 = dst->x0;
+  img_box.y0 = dst->y0;
+  img_box.x1 = dst->x0 + (src->size.w * scale->xmul + scale->xdiv - 1) / scale->xdiv;
+  img_box.y1 = dst->y0 + (src->size.h * scale->ymul + scale->ydiv - 1) / scale->ydiv;
+  if (box_intersection(&clip_box, dst, &clip_box) ||
+      box_intersection(&clip_box, &img_box, &draw_box))
+    return result_OK; /* nothing visible */
+
+  w = draw_box.x1 - draw_box.x0;
+  h = draw_box.y1 - draw_box.y0;
+
+  xmap = malloc((size_t) (w + h) * sizeof(*xmap));
+  if (xmap == NULL)
+    return result_OOM;
+
+  scale_map(xmap,     w, draw_box.x0 - dst->x0, scale->xmul, scale->xdiv);
+  scale_map(xmap + w, h, draw_box.y0 - dst->y0, scale->ymul, scale->ydiv);
+
+  map.x = xmap;
+  map.y = xmap + w;
+
+  rc = screen_copy_bitmap_box(scr, dst->x0, dst->y0, src, &draw_box, &map,
+                              method);
+
+  free(xmap);
+
+  return rc;
 }
 
 /* ----------------------------------------------------------------------- */
