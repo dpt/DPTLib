@@ -198,6 +198,23 @@ static int test_blit(const char *resources)
       fprintf(stderr, "rle: warning: no size win on A.png\n");
   }
 
+  {
+    bitmap_t copy;
+
+    /* a clone of a compressed bitmap is expanded */
+    rc = bitmap_clone(&cbm, &copy);
+    if (rc) { fprintf(stderr, "clone rc=&%x\n", rc); ok = 0; goto done; }
+    if (bitmap_is_compressed(&copy) || copy.format != bm.format ||
+        copy.rowbytes != bm.rowbytes ||
+        memcmp(copy.base, rawpix, npix * 4) != 0)
+    {
+      fprintf(stderr, "clone: not an expanded copy\n");
+      free(copy.base);
+      ok = 0; goto done;
+    }
+    free(copy.base);
+  }
+
   rc = bitmap_decompress(&cbm);
   if (rc) { fprintf(stderr, "decompress rc=&%x\n", rc); ok = 0; goto done; }
 

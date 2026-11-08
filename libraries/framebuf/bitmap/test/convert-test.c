@@ -485,6 +485,42 @@ Failure:
   return 0;
 }
 
+static int test_convert_p8_alpha(void)
+{
+  colour_t      pal[256];
+  unsigned char px[4] = { 0, 1, 1, 0 };
+  bitmap_t      src;
+  bitmap_t     *out;
+  unsigned int *pixels;
+
+  printf("test: convert p8 to bgra8888 keeps the palette's alpha\n");
+
+  memset(pal, 0, sizeof(pal));
+  pal[0] = colour_rgba(0x10, 0x20, 0x30, 0x00);
+  pal[1] = colour_rgba(0xFF, 0x80, 0x00, 0xFF);
+  bitmap_init(&src, SIZE2D(4, 1), pixelfmt_p8, 4, pal, px);
+
+  if (bitmap_convert(&src, pixelfmt_bgra8888, &out) != result_OK)
+    FAIL("p8 to bgra8888");
+  pixels = out->base;
+  if (out->format != pixelfmt_bgra8888 ||
+      PIXELFMT_xxxA8888(pixels[0]) != 0x00 ||
+      PIXELFMT_xxxA8888(pixels[1]) != 0xFF ||
+      pixels[1] != PIXELFMT_MAKE_BGRA8888(0xFF, 0x80, 0x00, 0xFF))
+  {
+    free_converted(out);
+    FAIL("p8 to bgra8888 pixels");
+  }
+  free_converted(out);
+
+  bitmap_set_palette(&src, NULL);
+  return 1;
+
+Failure:
+  bitmap_set_palette(&src, NULL);
+  return 0;
+}
+
 static int test_clone(void)
 {
   colour_t     pal[256];
@@ -871,6 +907,7 @@ result_t bitmap_convert_test(const char *resources)
       !test_convert_16bpp() ||
       !test_convert_unsupported() ||
       !test_convert_in_place() ||
+      !test_convert_p8_alpha() ||
       !test_clone() ||
       !test_fill_pattern() ||
       !test_flood_fill() ||

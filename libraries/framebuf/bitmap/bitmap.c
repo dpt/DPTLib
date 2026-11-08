@@ -9,6 +9,8 @@
 #include "framebuf/pixelmap.h"
 #include "framebuf/span-registry.h"
 
+#include "rle.h"
+
 result_t bitmap_init(bitmap_t       *bm,
                      size2d_t        size,
                      pixelfmt_t      fmt,
@@ -229,8 +231,10 @@ static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
 }
 
 /* As bmconv_p4_to_bgrx8888_into but for 8bpp paletted: one index per byte, so
- * the inner loop is a plain byte read and table lookup. */
+ * the inner loop is a plain byte read and table lookup. 'fmt' is
+ * pixelfmt_bgrx8888, or pixelfmt_bgra8888 to keep the palette's alpha. */
 static result_t bmconv_p8_to_bgrx8888_into(const bitmap_t *src,
+                                           pixelfmt_t      fmt,
                                            bitmap_t       *dst)
 {
   const pixelmap_t          *pm;
@@ -242,7 +246,7 @@ static result_t bmconv_p8_to_bgrx8888_into(const bitmap_t *src,
   assert(src);
   assert(src->palette);
 
-  pm = pixelmap_get(pixelfmt_p8, pixelfmt_bgrx8888, src->palette, 256);
+  pm = pixelmap_get(pixelfmt_p8, fmt, src->palette, 256);
   if (pm == NULL)
     return result_NOT_SUPPORTED;
   map = (const pixelfmt_bgrx8888_t *) pm->entries;
@@ -259,7 +263,9 @@ static result_t bmconv_p8_to_bgrx8888_into(const bitmap_t *src,
   return result_OK;
 }
 
-static result_t bmconv_p8_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
+static result_t bmconv_p8_to_bgrx8888(const bitmap_t *src,
+                                      pixelfmt_t      fmt,
+                                      bitmap_t      **pdst)
 {
   result_t             rc;
   bitmap_t            *dst;
@@ -278,7 +284,7 @@ static result_t bmconv_p8_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
 
   rc = bitmap_init(dst,
                    src->size,
-                   pixelfmt_bgrx8888,
+                   fmt,
                    src->size.w * sizeof(pixelfmt_bgrx8888_t),
                    NULL,
                    outpixels);
@@ -289,7 +295,7 @@ static result_t bmconv_p8_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
     return rc;
   }
 
-  rc = bmconv_p8_to_bgrx8888_into(src, dst);
+  rc = bmconv_p8_to_bgrx8888_into(src, fmt, dst);
   if (rc)
   {
     free(outpixels);
@@ -641,7 +647,8 @@ result_t bitmap_convert(const bitmap_t *src,
     switch (newfmt)
     {
     case pixelfmt_bgrx8888:
-      return bmconv_p8_to_bgrx8888(src, dst);
+    case pixelfmt_bgra8888:
+      return bmconv_p8_to_bgrx8888(src, newfmt, dst);
 
     case pixelfmt_rgbx8888:
       return bmconv_p8_to_rgbx8888(src, dst);
@@ -753,7 +760,8 @@ result_t bitmap_convert_into(const bitmap_t *src,
     switch (newfmt)
     {
     case pixelfmt_bgrx8888:
-      return bmconv_p8_to_bgrx8888_into(src, dst);
+    case pixelfmt_bgra8888:
+      return bmconv_p8_to_bgrx8888_into(src, newfmt, dst);
 
     case pixelfmt_rgbx8888:
       return bmconv_p8_to_rgbx8888_into(src, dst);
@@ -839,7 +847,30 @@ result_t bitmap_clone(const bitmap_t *src, bitmap_t *dst)
   void    *pixels;
 
   if (bitmap_is_compressed(src))
-    return result_NOT_SUPPORTED;
+  {
+    bitmap_t raw;
+
+    /* copy the blob, then expand the copy: never paletted, as no paletted
+     * format compresses */
+    n   = bitmap__RLE_HEADER_SIZE +
+          bitmap__rle_get32((const uint8_t *) src->base + 4);
+    raw = *src;
+    raw.palette = NULL;
+    raw.base    = malloc(n);
+    if (raw.base == NULL)
+      return result_OOM;
+
+    memcpy(raw.base, src->base, n);
+    rc = bitmap_decompress(&raw);
+    if (rc != result_OK)
+    {
+      free(raw.base);
+      return rc;
+    }
+
+    return bitmap_init(dst, raw.size, raw.format, raw.rowbytes, NULL,
+                       raw.base);
+  }
 
   n      = (size_t) src->size.h * src->rowbytes;
   pixels = malloc(n);

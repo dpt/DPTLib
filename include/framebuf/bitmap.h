@@ -274,13 +274,14 @@ result_t bitmap_convert_in_place(bitmap_t *bm, pixelfmt_t newfmt);
 
 /**
  * Make `dst` a copy of `src`: same size, format and rowbytes, with its own
- * newly allocated pixels and (for a paletted format) palette. The caller
- * frees `dst->base` and `dst->palette`.
+ * newly allocated pixels and (for a paletted format) palette. A compressed
+ * `src` gives an uncompressed copy, as \ref bitmap_decompress would leave
+ * it, so its format and rowbytes are those of the original pixels. The
+ * caller frees `dst->base` and `dst->palette`.
  *
  * \param[in]  src Bitmap to copy.
  * \param[out] dst Bitmap to initialise as the copy.
- * \return \ref result_OK on success, \ref result_OOM if out of memory, or
- *         \ref result_NOT_SUPPORTED for a compressed `src`.
+ * \return \ref result_OK on success, or \ref result_OOM if out of memory.
  */
 result_t bitmap_clone(const bitmap_t *src, bitmap_t *dst);
 
