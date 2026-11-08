@@ -1,7 +1,9 @@
 /* io/dirlist/dirlist.c -- sorted directory listing */
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 #include "base/result.h"
 #include "base/utils.h"
@@ -46,6 +48,8 @@ static result_t dirlist_add_entry(const char *leaf, void *opaque)
     return result_OOM;
 
   e->is_dir = 0;
+  e->size   = 0;
+  e->mtime  = 0;
 
   /* ponytail: the type comes from the extension only. On RISC OS that misses
    * the filesystem's own filetype (OS_File 23), so every file is &FFD and a
@@ -82,6 +86,36 @@ static result_t dirlist_mark_dir(const char *leaf, void *opaque)
   return result_OK;
 }
 
+/* Third pass: each file's length and every entry's modification time.
+ * ponytail: one stat per entry. dirscan's walk (OS_GBPB 10 on RISC OS,
+ * FindFirstFile on Windows) already has these; thread them out through it
+ * if large directories scan slowly. */
+static void dirlist_stat(dirlist_t *list, const char *dir)
+{
+  char        path[DPTLIB_MAXPATH];
+  struct stat st;
+  int         i;
+
+  for (i = 0; i < list->count; i++)
+  {
+#ifdef __riscos
+    if (snprintf(path, sizeof(path), "%s.%s", dir,
+                 list->entries[i].leaf) >= (int) sizeof(path))
+#else
+    if (snprintf(path, sizeof(path), "%s/%s", dir,
+                 list->entries[i].leaf) >= (int) sizeof(path))
+#endif
+      continue;
+
+    if (stat(path, &st) != 0)
+      continue;
+
+    if (!list->entries[i].is_dir)
+      list->entries[i].size = (long long) st.st_size;
+    list->entries[i].mtime = st.st_mtime;
+  }
+}
+
 static int dirlist_cmp(const void *a, const void *b)
 {
   const dirlist_entry_t *ea = a;
@@ -113,6 +147,8 @@ result_t dirlist_scan(const char *dir, dirlist_t **list)
     dirlist_destroy(l);
     return rc;
   }
+
+  dirlist_stat(l, dir);
 
   if (l->count > 1)
     qsort(l->entries, (size_t) l->count, sizeof(*l->entries), dirlist_cmp);

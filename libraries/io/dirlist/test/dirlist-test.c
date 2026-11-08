@@ -43,6 +43,7 @@ static int touch(const char *dir, const char *leaf)
   fp = fopen(path, "wb");
   if (fp == NULL)
     return 0;
+  fputs(leaf, fp); /* so the file's length is its leaf's */
   fclose(fp);
 
   return 1;
@@ -107,9 +108,13 @@ static result_t test_scan_sorted_and_filtered(void)
   e = dirlist_get(list, 1);
   if (e == NULL || strcmp(e->leaf, "banana.txt") != 0 || e->is_dir)
     goto cleanup;
+  if (e->size != (long long) strlen("banana.txt") || e->mtime == 0)
+    goto cleanup;
 
   e = dirlist_get(list, 2);
   if (e == NULL || strcmp(e->leaf, "zzz") != 0 || !e->is_dir)
+    goto cleanup;
+  if (e->size != 0 || e->mtime == 0)
     goto cleanup;
 
   rc = result_TEST_PASSED;

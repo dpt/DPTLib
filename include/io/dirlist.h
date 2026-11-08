@@ -3,6 +3,8 @@
 #ifndef DPTLIB_DIRLIST_H
 #define DPTLIB_DIRLIST_H
 
+#include <time.h>
+
 #include "base/result.h"
 
 #include "io/filetype.h"
@@ -23,6 +25,8 @@ typedef struct dirlist_entry
   char      *leaf;     /* owned copy of the leafname */
   int        is_dir;   /* non-zero if a subdirectory */
   filetype_t type;     /* filetype_DATA for a directory */
+  long long  size;     /* length in bytes; 0 for a directory or if unknown */
+  time_t     mtime;    /* last modified; 0 if unknown */
 }
 dirlist_entry_t;
 
