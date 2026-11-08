@@ -902,3 +902,44 @@ result_t bitmap_copy_pixels(const bitmap_t *src, bitmap_t *dst)
 
   return result_OK;
 }
+
+result_t bitmap_extract(const bitmap_t *src, const box_t *box, bitmap_t *dst)
+{
+  result_t       rc;
+  int            log2bpp;
+  size2d_t       size;
+  int            rowbytes;
+  unsigned char *pixels;
+  const char    *from;
+  int            y;
+
+  if (bitmap_is_compressed(src))
+    return result_NOT_SUPPORTED;
+
+  if (box->x0 < 0 || box->y0 < 0 ||
+      box->x1 > src->size.w || box->y1 > src->size.h || box_is_empty(box))
+    return result_BAD_ARG;
+
+  /* a sub-byte format must start on a byte: no shifting */
+  log2bpp = pixelfmt_log2bpp(src->format);
+  if (((box->x0 << log2bpp) & 7) != 0)
+    return result_NOT_SUPPORTED;
+
+  size     = SIZE2D(box->x1 - box->x0, box->y1 - box->y0);
+  rowbytes = ((size.w << log2bpp) + 7) >> 3;
+  pixels   = malloc((size_t) size.h * rowbytes);
+  if (pixels == NULL)
+    return result_OOM;
+
+  from = (const char *) src->base + (size_t) box->y0 * src->rowbytes +
+         ((box->x0 << log2bpp) >> 3);
+  for (y = 0; y < size.h; y++)
+    memcpy(pixels + (size_t) y * rowbytes, from + (size_t) y * src->rowbytes,
+           (size_t) rowbytes);
+
+  rc = bitmap_init(dst, size, src->format, rowbytes, src->palette, pixels);
+  if (rc != result_OK)
+    free(pixels);
+
+  return rc;
+}

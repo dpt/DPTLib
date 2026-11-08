@@ -296,6 +296,24 @@ result_t bitmap_clone(const bitmap_t *src, bitmap_t *dst);
  */
 result_t bitmap_copy_pixels(const bitmap_t *src, bitmap_t *dst);
 
+/**
+ * Make `dst` a copy of the area `box` of `src`: same format, with its own
+ * newly allocated pixels and (for a paletted format) palette. Its rows are
+ * packed with no padding. The caller frees `dst->base` and `dst->palette`.
+ *
+ * \param[in]  src Bitmap to copy from.
+ * \param[in]  box Area to copy, wholly within `src` and not empty. For a
+ *                 sub-byte format `box->x0` must fall on a byte boundary.
+ * \param[out] dst Bitmap to initialise as the copy.
+ * \return \ref result_OK on success, \ref result_BAD_ARG for a box outside
+ *         `src` or empty, \ref result_NOT_SUPPORTED for a compressed `src`
+ *         or a sub-byte box not starting on a byte, or \ref result_OOM if
+ *         out of memory.
+ */
+result_t bitmap_extract(const bitmap_t *src,
+                        const box_t    *box,
+                        bitmap_t       *dst);
+
 /** Non-zero if `bm` holds an RLE-compressed (read-only) pixel store. */
 #define bitmap_is_compressed(bm) pixelfmt_is_rle((bm)->format)
 

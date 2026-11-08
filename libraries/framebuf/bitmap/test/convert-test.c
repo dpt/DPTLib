@@ -575,6 +575,79 @@ Failure:
   return 0;
 }
 
+static int test_extract(void)
+{
+  colour_t      pal[256];
+  unsigned int  px[3][5];
+  unsigned char p4[2][3] = { { 0x21, 0x43, 0x65 }, { 0x87, 0xA9, 0xCB } };
+  bitmap_t      src;
+  bitmap_t      dst;
+  int           x, y;
+
+  printf("test: extract\n");
+
+  /* a 3x2 area from the middle of a 5x3 bitmap with a padded stride */
+  for (y = 0; y < 3; y++)
+    for (x = 0; x < 5; x++)
+      px[y][x] = (unsigned int) (y * 10 + x);
+  bitmap_init(&src, SIZE2D(4, 3), pixelfmt_bgra8888, 5 * 4, NULL, px);
+  if (bitmap_extract(&src, &(box_t) { 1, 1, 4, 3 }, &dst) != result_OK)
+    FAIL("extract");
+  for (y = 0; y < 2; y++)
+    for (x = 0; x < 3; x++)
+      if (((unsigned int *) dst.base)[y * 3 + x] !=
+          (unsigned int) ((y + 1) * 10 + x + 1))
+      {
+        free(dst.base);
+        FAIL("extract pixels");
+      }
+  if (dst.size.w != 3 || dst.size.h != 2 || dst.rowbytes != 3 * 4 ||
+      dst.format != pixelfmt_bgra8888)
+  {
+    free(dst.base);
+    FAIL("extract geometry");
+  }
+  free(dst.base);
+
+  /* outside and empty boxes are refused */
+  if (bitmap_extract(&src, &(box_t) { 1, 1, 5, 3 }, &dst) != result_BAD_ARG)
+    FAIL("extract outside");
+  if (bitmap_extract(&src, &(box_t) { 2, 1, 2, 3 }, &dst) != result_BAD_ARG)
+    FAIL("extract empty");
+
+  /* p4: whole bytes copy with the palette, an odd start is refused */
+  mk_palette(pal);
+  bitmap_init(&src, SIZE2D(6, 2), pixelfmt_p4, 3, pal, p4);
+  if (bitmap_extract(&src, &(box_t) { 2, 1, 5, 2 }, &dst) != result_OK)
+    FAIL("extract p4");
+  if (dst.rowbytes != 2 || ((unsigned char *) dst.base)[0] != 0xA9 ||
+      ((unsigned char *) dst.base)[1] != 0xCB ||
+      dst.palette == src.palette ||
+      memcmp(dst.palette, pal, 16 * sizeof(*pal)) != 0)
+  {
+    free(dst.base);
+    free(dst.palette);
+    FAIL("extract p4 pixels");
+  }
+  free(dst.base);
+  free(dst.palette);
+  if (bitmap_extract(&src, &(box_t) { 1, 0, 3, 1 }, &dst) !=
+      result_NOT_SUPPORTED)
+    FAIL("extract p4 odd start");
+
+  src.format = (pixelfmt_t) (pixelfmt_p8 | pixelfmt_RLE_FLAG);
+  if (bitmap_extract(&src, &(box_t) { 0, 0, 1, 1 }, &dst) !=
+      result_NOT_SUPPORTED)
+    FAIL("extract compressed");
+
+  free(src.palette);
+  return 1;
+
+Failure:
+  free(src.palette);
+  return 0;
+}
+
 /* ----------------------------------------------------------------------- */
 
 /* Reads pixel (x,y) of an 8, 16 or 32bpp bitmap. */
@@ -909,6 +982,7 @@ result_t bitmap_convert_test(const char *resources)
       !test_convert_in_place() ||
       !test_convert_p8_alpha() ||
       !test_clone() ||
+      !test_extract() ||
       !test_fill_pattern() ||
       !test_flood_fill() ||
       !test_restore_outside_region() ||
