@@ -3,7 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef TARGET_RISCOS
+/* SharedCLibrary (-mlibscl) has no stat(): read the catalogue with OS_File */
+#include "oslib/osfile.h"
+#else
 #include <sys/stat.h>
+#endif
 
 #include "base/result.h"
 #include "base/utils.h"
@@ -90,6 +96,46 @@ static result_t dirlist_mark_dir(const char *leaf, void *opaque)
  * ponytail: one stat per entry. dirscan's walk (OS_GBPB 10 on RISC OS,
  * FindFirstFile on Windows) already has these; thread them out through it
  * if large directories scan slowly. */
+#ifdef TARGET_RISCOS
+
+/* seconds from the RISC OS epoch (1900) to the Unix one (1970) */
+#define DIRLIST_EPOCH_DELTA 2208988800u
+
+static void dirlist_stat(dirlist_t *list, const char *dir)
+{
+  char                   path[DPTLIB_MAXPATH];
+  int                    i;
+  fileswitch_object_type type;
+  bits                   load;
+  bits                   exec;
+  int                    size;
+  unsigned long long     secs;
+
+  for (i = 0; i < list->count; i++)
+  {
+    if (snprintf(path, sizeof(path), "%s.%s", dir,
+                 list->entries[i].leaf) >= (int) sizeof(path))
+      continue;
+
+    if (xosfile_read_no_path(path, &type, &load, &exec, &size, NULL) != NULL ||
+        type == fileswitch_NOT_FOUND)
+      continue;
+
+    if (!list->entries[i].is_dir)
+      list->entries[i].size = size;
+
+    /* a stamped object holds 5-byte centiseconds since 1900 */
+    if ((load & 0xFFF00000u) == 0xFFF00000u)
+    {
+      secs = (((unsigned long long) (load & 0xFFu) << 32) | exec) / 100;
+      if (secs >= DIRLIST_EPOCH_DELTA)
+        list->entries[i].mtime = (time_t) (secs - DIRLIST_EPOCH_DELTA);
+    }
+  }
+}
+
+#else
+
 static void dirlist_stat(dirlist_t *list, const char *dir)
 {
   char        path[DPTLIB_MAXPATH];
@@ -98,13 +144,8 @@ static void dirlist_stat(dirlist_t *list, const char *dir)
 
   for (i = 0; i < list->count; i++)
   {
-#ifdef __riscos
-    if (snprintf(path, sizeof(path), "%s.%s", dir,
-                 list->entries[i].leaf) >= (int) sizeof(path))
-#else
     if (snprintf(path, sizeof(path), "%s/%s", dir,
                  list->entries[i].leaf) >= (int) sizeof(path))
-#endif
       continue;
 
     if (stat(path, &st) != 0)
@@ -115,6 +156,8 @@ static void dirlist_stat(dirlist_t *list, const char *dir)
     list->entries[i].mtime = st.st_mtime;
   }
 }
+
+#endif
 
 static int dirlist_cmp(const void *a, const void *b)
 {
