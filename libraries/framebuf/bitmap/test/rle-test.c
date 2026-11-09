@@ -521,7 +521,7 @@ static int test_p8_png(void)
   }
 
 done:
-  if (deep != NULL) { free(deep->base); free(deep); }
+  bitmap_destroy(deep);
   free(rt.base);
   return ok;
 #undef P8W

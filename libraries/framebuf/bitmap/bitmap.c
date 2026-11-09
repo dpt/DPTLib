@@ -30,6 +30,16 @@ result_t bitmap_init(bitmap_t       *bm,
   return bitmap_set_palette(bm, palette);
 }
 
+void bitmap_destroy(bitmap_t *bm)
+{
+  if (bm == NULL)
+    return;
+
+  free(bm->base);
+  free(bm->palette);
+  free(bm);
+}
+
 result_t bitmap_set_palette(bitmap_t *bm, const colour_t *palette)
 {
   int       log2bpp;

@@ -14,12 +14,6 @@
 
 /* ----------------------------------------------------------------------- */
 
-static void resize_free(bitmap_t *bm)
-{
-  free(bm->base);
-  free(bm);
-}
-
 /* 2x1 bitmap, black then white (255 in every lane) */
 static int test_resize(void)
 {
@@ -44,7 +38,7 @@ static int test_resize(void)
     printf("resize: nearest wrong\n");
     ok = 0;
   }
-  resize_free(out);
+  bitmap_destroy(out);
 
   /* bilinear doubling: ends clamp, middle blends monotonically */
   if (bitmap_resize(&src, SIZE2D(4, 1), bitmap_resample_BILINEAR, 0, &out) !=
@@ -56,7 +50,7 @@ static int test_resize(void)
     printf("resize: bilinear wrong (%d %d %d %d)\n", b[0], b[4], b[8], b[12]);
     ok = 0;
   }
-  resize_free(out);
+  bitmap_destroy(out);
 
   /* same size bilinear is the identity */
   if (bitmap_resize(&src, SIZE2D(2, 1), bitmap_resample_BILINEAR, 0, &out) !=
@@ -68,7 +62,7 @@ static int test_resize(void)
     printf("resize: identity wrong\n");
     ok = 0;
   }
-  resize_free(out);
+  bitmap_destroy(out);
 
   /* linear light: 0 and 255 averaged is ~188, not 128 */
   if (bitmap_resize(&src, SIZE2D(1, 1), bitmap_resample_BILINEAR, 1, &out) !=
@@ -80,7 +74,7 @@ static int test_resize(void)
     printf("resize: linear wrong (%d, alpha %d)\n", b[0], b[3]);
     ok = 0;
   }
-  resize_free(out);
+  bitmap_destroy(out);
 
   /* box: 2x1 to 1x1 is the exact mean; 4 to 3 weights the middle pixels */
   if (bitmap_resize(&src, SIZE2D(1, 1), bitmap_resample_BOX, 0, &out) !=
@@ -92,7 +86,7 @@ static int test_resize(void)
     printf("resize: box wrong (%d)\n", b[0]);
     ok = 0;
   }
-  resize_free(out);
+  bitmap_destroy(out);
 
   /* box enlarging falls back to bilinear */
   if (bitmap_resize(&src, SIZE2D(4, 1), bitmap_resample_BOX, 0, &out) !=
@@ -104,7 +98,7 @@ static int test_resize(void)
     printf("resize: box enlarge wrong\n");
     ok = 0;
   }
-  resize_free(out);
+  bitmap_destroy(out);
 
   /* cubic: same-size is the identity, and never leaves 0..255 */
   if (bitmap_resize(&src, SIZE2D(2, 1), bitmap_resample_CUBIC, 0, &out) !=
@@ -116,7 +110,7 @@ static int test_resize(void)
     printf("resize: cubic identity wrong (%d %d)\n", b[0], b[4]);
     ok = 0;
   }
-  resize_free(out);
+  bitmap_destroy(out);
 
   if (bitmap_resize(&src, SIZE2D(8, 1), bitmap_resample_CUBIC, 1, &out) !=
       result_OK)
@@ -127,7 +121,7 @@ static int test_resize(void)
     printf("resize: cubic linear wrong (%d %d)\n", b[0], b[28]);
     ok = 0;
   }
-  resize_free(out);
+  bitmap_destroy(out);
 
   /* errors */
   if (bitmap_resize(&src, SIZE2D(0, 1), bitmap_resample_NEAREST, 0, &out) !=
@@ -194,7 +188,7 @@ static int test_resize_shrink_aliasing(void)
                axis, b[8 * out->rowbytes + 8 * 4]);
         ok = 0;
       }
-      resize_free(out);
+      bitmap_destroy(out);
     }
   }
 
@@ -232,7 +226,7 @@ static int test_resize_lanczos_flat(void)
         break;
       }
     }
-    resize_free(out);
+    bitmap_destroy(out);
   }
 
   return ok;

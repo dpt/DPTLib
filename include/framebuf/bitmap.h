@@ -67,6 +67,15 @@ result_t bitmap_init(bitmap_t       *bm,
 result_t bitmap_set_palette(bitmap_t *bm, const colour_t *palette);
 
 /**
+ * Free a heap-allocated bitmap whose pixels and palette are its own, as \ref
+ * bitmap_convert and \ref bitmap_resize return: its pixels, its palette and
+ * the structure itself.
+ *
+ * \param[in] bm Bitmap to free, or NULL for a no-op.
+ */
+void bitmap_destroy(bitmap_t *bm);
+
+/**
  * Clear the given bitmap to the specified colour.
  *
  * \param[in] bm       Bitmap to clear.
@@ -448,7 +457,7 @@ bitmap_resample_t;
  * cost of six taps per axis and ringing (clamped to range) a little wider
  * than bicubic's.
  *
- * Free the result with `free(out->base)` then `free(out)`.
+ * Free the result with \ref bitmap_destroy.
  *
  * \param[in]  bm     Bitmap to resample.
  * \param[in]  size   Width and height of the result, both above zero.
