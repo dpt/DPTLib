@@ -15,8 +15,11 @@
 #define NELEMS(a) ((int) (sizeof(a) / sizeof((a)[0])))
 #endif
 
-/** Return the sign of 'a'. */
+/** Return the sign of 'a': -1 or 1, taking zero as positive. */
 #define SGN(a) ((a) < 0 ? -1 : 1)
+
+/** Return the sign of 'a': -1, 0 or 1. */
+#define SIGN(a) (((a) > 0) - ((a) < 0))
 
 /** Divide with rounding up. */
 #define DIVIDE_ROUNDING_UP(n, m) (((n) + (m) - 1) / (m))
