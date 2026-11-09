@@ -1530,6 +1530,106 @@ result_t screen_copy_bitmap_dithered(screen_t       *scr,
   return screen_copy_bitmap_i(scr, x, y, src, NULL, method);
 }
 
+/* Mix channel "v" "amount" 256ths of the way to "t". A multiply and a shift:
+ * no divide in the per-pixel loop. */
+static unsigned int fade_channel(unsigned int v,
+                                 unsigned int t,
+                                 unsigned int amount)
+{
+  return (v * (256 - amount) + t * amount) >> 8;
+}
+
+/* ponytail: fades a whole-bitmap rgba8888 copy per call, then blits that
+ * through the ordinary path -- one allocation per draw and every pixel faded
+ * even when clipped; thread a fade through the per-format blitters if this
+ * shows in a profile. The copy keeps the source's size so the dither stays
+ * phased to the image whatever the clip. */
+result_t screen_copy_bitmap_faded(screen_t       *scr,
+                                  int             x,
+                                  int             y,
+                                  const bitmap_t *src,
+                                  colour_t        colour,
+                                  int             amount)
+{
+  result_t             rc;
+  const bitmap_t      *in;
+  bitmap_t             raw;
+  const pixelmap_t    *srcpm;
+  pixelfmt_rgba8888_t *pixels;
+  unsigned int         tr, tg, tb;
+  pixelfmt_rgba8888_t *out;
+  int                  sx, sy;
+  colour_t             c;
+  unsigned int         r, g, b;
+  bitmap_t             faded;
+
+  if (amount <= 0)
+    return screen_copy_bitmap(scr, x, y, src);
+  if (amount > 256)
+    amount = 256;
+
+  if (src->size.w <= 0 || src->size.h <= 0)
+    return result_OK;
+
+  /* an RLE source has no random access: decode a raw copy to read from */
+  in = src;
+  if (pixelfmt_is_rle(src->format))
+  {
+    rc = bitmap_clone(src, &raw);
+    if (rc)
+      return rc;
+    in = &raw;
+  }
+
+  srcpm = src_pixelmap_for(in);
+  if (!src_is_deep(in) && srcpm == NULL)
+  {
+    rc = result_NOT_SUPPORTED;
+    goto cleanup;
+  }
+
+  pixels = malloc((size_t) in->size.w * in->size.h * sizeof(*pixels));
+  if (pixels == NULL)
+  {
+    rc = result_OOM;
+    goto cleanup;
+  }
+
+  colour_get_rgb(&colour, &tr, &tg, &tb);
+
+  out = pixels;
+  for (sy = 0; sy < in->size.h; sy++)
+  {
+    for (sx = 0; sx < in->size.w; sx++)
+    {
+      c = src_fetch_rgba(in, srcpm, sx, sy);
+      colour_get_rgb(&c, &r, &g, &b);
+      /* alpha kept as stored, so edges still blend against the screen */
+      *out++ = PIXELFMT_MAKE_RGBA8888(fade_channel(r, tr, amount),
+                                      fade_channel(g, tg, amount),
+                                      fade_channel(b, tb, amount),
+                                      colour_get_alpha(&c));
+    }
+  }
+
+  rc = bitmap_init(&faded, in->size, pixelfmt_rgba8888,
+                   in->size.w * (int) sizeof(*pixels), NULL, pixels);
+  if (rc == result_OK)
+    rc = screen_copy_bitmap_i(scr, x, y, &faded, NULL,
+                              screen_DITHER_BLUE_NOISE);
+
+  free(pixels);
+
+cleanup:
+  if (in == &raw)
+  {
+    free(raw.base);
+    free(raw.palette);
+  }
+
+  return rc;
+}
+
 /* Fill "map" with the "n" source coordinates for destination offsets "off"
  * onwards at a scale of "mul" / "div": offset i samples (i * div) / mul. An
  * integer DDA, so the divides happen once, not per pixel. */

@@ -1862,6 +1862,76 @@ static result_t test_copy_bitmap_bgr_source(void)
   return result_TEST_PASSED;
 }
 
+/* screen_copy_bitmap_faded of a raw and an RLE source, an opaque red pixel
+ * then a transparent one, toward white at 0, 128 and 256: the opaque pixel
+ * mixes by amount/256 and the transparent one leaves the screen alone. */
+static result_t test_copy_bitmap_faded(void)
+{
+  static const int        amounts[] = { 0, 128, 256 };
+  static const int        mixed[]   = { 0, 127, 255 };
+  static pixelfmt_any32_t scrbuf[WIDTH * HEIGHT];
+
+  pixelfmt_rgba8888_t     rawpix[2];
+  pixelfmt_rgba8888_t    *blob;
+  bitmap_t                raw;
+  bitmap_t                comp;
+  colour_t                white;
+  colour_t                bg;
+  screen_t                scr;
+  int                     rle;
+  size_t                  i;
+  colour_t                want;
+
+  rawpix[0] = colour_rgba(0xFF, 0x00, 0x00, 0xFF).primary;
+  rawpix[1] = colour_rgba(0x00, 0x00, 0x00, 0x00).primary; /* as RLE skips */
+  bitmap_init(&raw, SIZE2D(2, 1), pixelfmt_rgba8888,
+              (int) sizeof(rawpix), NULL, rawpix);
+
+  blob = malloc(sizeof(rawpix));
+  if (blob == NULL)
+    return result_OOM;
+  memcpy(blob, rawpix, sizeof(rawpix));
+  bitmap_init(&comp, SIZE2D(2, 1), pixelfmt_rgba8888,
+              (int) sizeof(rawpix), NULL, blob);
+  if (bitmap_compress(&comp) != result_OK)
+  {
+    free(comp.base);
+    return result_TEST_FAILED;
+  }
+
+  white = colour_rgb(0xFF, 0xFF, 0xFF);
+  bg    = colour_rgb(0x00, 0x80, 0x00);
+
+  screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_rgbx8888,
+              WIDTH * (int) sizeof(scrbuf[0]), NULL, scrbuf);
+
+  for (rle = 0; rle < 2; rle++)
+  {
+    for (i = 0; i < NELEMS(amounts); i++)
+    {
+      scrbuf[0] = bg.primary;
+      scrbuf[1] = bg.primary;
+      want      = colour_rgb(0xFF, mixed[i], mixed[i]);
+
+      if (screen_copy_bitmap_faded(&scr, 0, 0, rle ? &comp : &raw, white,
+                                   amounts[i]) != result_OK ||
+          scrbuf[0] != want.primary ||
+          scrbuf[1] != bg.primary)
+      {
+        printf("screen: faded (rle %d, amount %d) got 0x%08X 0x%08X want "
+               "0x%08X 0x%08X\n", rle, amounts[i], scrbuf[0], scrbuf[1],
+               want.primary, bg.primary);
+        free(comp.base);
+        return result_TEST_FAILED;
+      }
+    }
+  }
+
+  free(comp.base);
+
+  return result_TEST_PASSED;
+}
+
 /* screen_copy_bitmap of each deep 32bpp source onto each deep screen, wider
  * than a blit chunk and starting off the screen's left edge: every pixel must
  * be what colour_to_pixel makes of it, or the background where an alpha
@@ -3425,6 +3495,7 @@ result_t screen_test(const char *resources)
     test_copy_bitmap_paletted_source,
     test_copy_bitmap_p4_to_p4,
     test_copy_bitmap_bgr_source,
+    test_copy_bitmap_faded,
     test_copy_bitmap_deep_formats,
     test_copy_bitmap_dithered,
     test_copy_bitmap_dithered_exact,

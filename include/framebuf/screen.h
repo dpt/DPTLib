@@ -307,6 +307,33 @@ result_t screen_copy_bitmap_dithered(screen_t       *scr,
                                      const bitmap_t *src,
                                      screen_dither_t method);
 
+/**
+ * As `screen_copy_bitmap`, but each source pixel's colour is first mixed
+ * `amount` 256ths of the way toward `colour`, e.g. to shade the image of a
+ * disabled control. Source alpha is kept as stored, so transparent pixels
+ * leave the screen untouched. Paletted and 16bpp screens are dithered as by
+ * `screen_copy_bitmap_dithered` with \ref screen_DITHER_BLUE_NOISE, so a
+ * mixed colour between entries stipples rather than snapping. Raw and RLE
+ * sources are both accepted.
+ *
+ * \param[in] scr    Screen to draw upon.
+ * \param[in] x      X coordinate of leftmost point to draw bitmap at.
+ * \param[in] y      Y coordinate of topmost point to draw bitmap at.
+ * \param[in] src    Bitmap to copy.
+ * \param[in] colour Colour to fade toward; its alpha is ignored.
+ * \param[in] amount Fade, 0 (none: as `screen_copy_bitmap`) to 256 (all
+ *                   `colour`). Clamped to that range.
+ * \return \ref result_OK on success, \ref result_OOM if the faded copy could
+ *         not be allocated, \ref result_NOT_SUPPORTED if the source or
+ *         screen pixel format has no blit path.
+ */
+result_t screen_copy_bitmap_faded(screen_t       *scr,
+                                  int             x,
+                                  int             y,
+                                  const bitmap_t *src,
+                                  colour_t        colour,
+                                  int             amount);
+
 /** Flags for `screen_copy_ninepatch`. */
 enum
 {
