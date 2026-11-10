@@ -93,3 +93,32 @@ result_t palettes_load_hex(const char *filename,
 
   return rc;
 }
+
+result_t palettes_save_hex(const char     *filename,
+                           const colour_t *palette,
+                           int             n)
+{
+  FILE        *fp;
+  int          i;
+  unsigned int px;
+  int          bad;
+
+  fp = fopen(filename, "w");
+  if (fp == NULL)
+    return result_FOPEN_FAILED;
+
+  for (i = 0; i < n; i++)
+  {
+    px = palette[i].primary;
+    fprintf(fp, "%02x%02x%02x\n",
+            (unsigned int) PIXELFMT_Rxxx8888(px),
+            (unsigned int) PIXELFMT_xGxx8888(px),
+            (unsigned int) PIXELFMT_xxBx8888(px));
+  }
+
+  bad = ferror(fp);
+  if (fclose(fp) != 0)
+    bad = 1;
+
+  return bad ? result_FOPEN_FAILED : result_OK;
+}

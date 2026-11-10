@@ -79,4 +79,18 @@ result_t palettes_load_hex(const char *filename,
                            int         max,
                            int        *n);
 
+/**
+ * Save a palette as a `.hex` file, one "rrggbb" line per colour, which \ref
+ * palettes_load_hex reads back. Alpha is dropped.
+ *
+ * \param[in] filename Filename to write.
+ * \param[in] palette  Colours to write.
+ * \param[in] n        Number of colours.
+ * \return \ref result_OK on success, or \ref result_FOPEN_FAILED if the file
+ *         cannot be opened or written.
+ */
+result_t palettes_save_hex(const char     *filename,
+                           const colour_t *palette,
+                           int             n);
+
 #endif /* PALETTES_H */

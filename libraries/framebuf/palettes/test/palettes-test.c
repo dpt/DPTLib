@@ -37,12 +37,46 @@ static result_t palettes_test_load(const char *text,
   return rc;
 }
 
+/* Save "palette" to a scratch file and load it back into "back". */
+static result_t palettes_test_round_trip(const colour_t palette[3],
+                                         colour_t       back[4],
+                                         int           *n)
+{
+  result_t rc;
+  char     path[256];
+
+  if (!test_tmppath(path, sizeof(path), "palettes-test-save.hex"))
+    return result_TEST_FAILED;
+
+  rc = palettes_save_hex(path, palette, 3);
+  if (rc == result_OK)
+    rc = palettes_load_hex(path, back, 4, n);
+  remove(path);
+
+  return rc;
+}
+
 result_t palettes_test(const char *resources)
 {
   colour_t palette[4];
   int      n;
+  colour_t saved[3];
+  int      i;
 
   NOT_USED(resources);
+
+  /* a saved palette loads back the same, alpha dropped */
+  saved[0] = colour_rgb(0x12, 0x34, 0x56);
+  saved[1] = colour_rgba(0xAB, 0xCD, 0xEF, 0x80);
+  saved[2] = colour_rgb(0x00, 0x00, 0x00);
+  if (palettes_test_round_trip(saved, palette, &n) != result_OK || n != 3)
+    return result_TEST_FAILED;
+  for (i = 0; i < 3; i++)
+    if (palette[i].primary !=
+        colour_rgb(PIXELFMT_Rxxx8888(saved[i].primary),
+                   PIXELFMT_xGxx8888(saved[i].primary),
+                   PIXELFMT_xxBx8888(saved[i].primary)).primary)
+      return result_TEST_FAILED;
 
   /* CRLF endings, a blank line and short and '#' forms all load */
   n = 0;
