@@ -1,3 +1,15 @@
 # pngusr-rw.dfa
 
 everything = on
+
+# "everything" turns on each SIMD option's API and CHECK forms, which both
+# set the same _OPT value, so options.awk writes ERROR lines into
+# pnglibconf.h. RISC OS has none of these SIMD units, so turn them all off.
+option ARM_NEON_API off
+option ARM_NEON_CHECK off
+option POWERPC_VSX_API off
+option POWERPC_VSX_CHECK off
+option MIPS_MSA_API off
+option MIPS_MSA_CHECK off
+option MIPS_MMI_API off
+option MIPS_MMI_CHECK off
