@@ -279,7 +279,8 @@ static result_t load_deepen(result_t rc, bitmap_t *bm, pixelfmt_t fmt)
   if (rc != result_OK)
     return rc;
 
-  if (bm->format < pixelfmt_p1 || bm->format > pixelfmt_p8)
+  /* the paletted formats come first, from pixelfmt_p1 (== 0) */
+  if (bm->format > pixelfmt_p8)
     return result_OK;
 
   rc = bitmap_convert(bm, fmt, &deep);
