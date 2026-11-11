@@ -384,7 +384,8 @@ static int test_deep(const char *resources)
  * leaves an RGB one as loaded. */
 static int test_load_deep(const char *resources)
 {
-  static const unsigned char red[] = { 255, 0, 0 };
+  static const unsigned char red[]      = { 255, 0, 0 };
+  static const unsigned char redalpha[] = { 255, 0, 0, 0x40 };
   static const unsigned char rgb[] = { 1, 2, 3 };
 
   result_t rc;
@@ -409,6 +410,25 @@ static int test_load_deep(const char *resources)
   else
   {
     printf("load: deep pal2: rc=&%x\n", rc);
+    ok = 0;
+  }
+
+  /* to an alpha format, the palette's tRNS alpha is kept */
+  rc = bitmap_load_png_deep(&bm, pathf("%s/resources/test/bitmap/pal2.png",
+                                       resources), pixelfmt_rgba8888);
+  if (rc == result_OK)
+  {
+    if (bm.format != pixelfmt_rgba8888)
+    {
+      printf("load: deep pal2 rgba: format %d\n", (int) bm.format);
+      ok = 0;
+    }
+    ok &= row_is(&bm, "deep pal2 rgba", 0, redalpha, 4);
+    load_free(&bm);
+  }
+  else
+  {
+    printf("load: deep pal2 rgba: rc=&%x\n", rc);
     ok = 0;
   }
 
