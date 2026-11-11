@@ -2231,9 +2231,10 @@ static result_t test_tiled_dithered(void)
 
   colour_t                   pal[4];
   int                        x, y;
+  point_t                    origin;
+  int                        w;
   bitmap_t                   src;
   box_t                      dst = { 5, 6, 50, 40 };
-  point_t                    origin;
   screen_t                   scr;
 
   pal[0] = colour_rgb(0x00, 0x00, 0x00);
@@ -2246,31 +2247,39 @@ static result_t test_tiled_dithered(void)
     for (x = 0; x < 16; x++)
       srcbuf[y * 16 + x] = colour_rgb(0x80, 0x80, 0x80).primary;
 
-  bitmap_init(&src, SIZE2D(16, 8), pixelfmt_rgba8888,
-              16 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
-
   origin = POINT(-5, -3); /* off-screen, so the phase must wrap */
 
-  memset(got, 0, sizeof(got));
-  screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p2, TD_ROWBYTES, pal, got);
-  if (screen_copy_bitmap_tiled_dithered(&scr, &dst, &src, origin,
-                                        screen_DITHER_BAYER) != result_OK)
+  /* 16x8 is pre-tiled; 12 wide is not a whole number of Bayer periods, so
+   * it is pre-tiled down only */
+  for (w = 16; w >= 12; w -= 4)
   {
-    printf("screen: tiled_dithered copy failed\n");
-    return result_TEST_FAILED;
-  }
+    bitmap_init(&src, SIZE2D(w, 8), pixelfmt_rgba8888,
+                16 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
 
-  memset(want, 0, sizeof(want));
-  screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p2, TD_ROWBYTES, pal, want);
-  scr.clip = dst;
-  for (y = origin.y; y < dst.y1; y += src.size.h)
-    for (x = origin.x; x < dst.x1; x += src.size.w)
-      screen_copy_bitmap_dithered(&scr, x, y, &src, screen_DITHER_BAYER);
+    memset(got, 0, sizeof(got));
+    screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p2, TD_ROWBYTES, pal,
+                got);
+    if (screen_copy_bitmap_tiled_dithered(&scr, &dst, &src, origin,
+                                          screen_DITHER_BAYER) != result_OK)
+    {
+      printf("screen: tiled_dithered copy failed\n");
+      return result_TEST_FAILED;
+    }
 
-  if (memcmp(got, want, sizeof(got)) != 0)
-  {
-    printf("screen: tiled_dithered differs from a grid of dithered copies\n");
-    return result_TEST_FAILED;
+    memset(want, 0, sizeof(want));
+    screen_init(&scr, SIZE2D(WIDTH, HEIGHT), pixelfmt_p2, TD_ROWBYTES, pal,
+                want);
+    scr.clip = dst;
+    for (y = origin.y; y < dst.y1; y += src.size.h)
+      for (x = origin.x; x < dst.x1; x += src.size.w)
+        screen_copy_bitmap_dithered(&scr, x, y, &src, screen_DITHER_BAYER);
+
+    if (memcmp(got, want, sizeof(got)) != 0)
+    {
+      printf("screen: tiled_dithered differs from a grid of dithered copies "
+             "at width %d\n", w);
+      return result_TEST_FAILED;
+    }
   }
 
   memset(plain, 0, sizeof(plain));
