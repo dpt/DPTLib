@@ -1,5 +1,6 @@
 /* framebuf/composite/test/composite-test.c */
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -86,6 +87,126 @@ static int test_over_pixel(void)
          composite_over_pixel(0x800000FFu, 0x80FF0000u, 255) == 0xC0AA0055u;
 }
 
+/* Porter-Duff fractions: how much of each input survives a rule. */
+enum { F_0, F_1, F_A, F_B, F_1_A, F_1_B };
+
+static double fraction(int f, double a, double b)
+{
+  switch (f)
+  {
+  case F_1:
+    return 1.0;
+  case F_A:
+    return a;
+  case F_B:
+    return b;
+  case F_1_A:
+    return 1.0 - a;
+  case F_1_B:
+    return 1.0 - b;
+  default:
+    return 0.0;
+  }
+}
+
+/* Composites every pair of source and destination alphas under every rule
+ * and checks each result is within 1 of the exact Porter-Duff value. A
+ * channel past 255 would spill into its neighbour and fail too. */
+static int test_rules_exact(void)
+{
+  static const unsigned char fractions[composite_RULE__LIMIT][2] =
+  {
+    { F_0,   F_0   }, /* CLEAR    */
+    { F_1,   F_0   }, /* SRC      */
+    { F_0,   F_1   }, /* DST      */
+    { F_1,   F_1_A }, /* SRC_OVER */
+    { F_1_B, F_1   }, /* DST_OVER */
+    { F_B,   F_0   }, /* SRC_IN   */
+    { F_0,   F_A   }, /* DST_IN   */
+    { F_1_B, F_0   }, /* SRC_OUT  */
+    { F_0,   F_1_A }, /* DST_OUT  */
+    { F_B,   F_1_A }, /* SRC_ATOP */
+    { F_1_B, F_A   }, /* DST_ATOP */
+    { F_1_B, F_1_A }  /* XOR      */
+  };
+  static pixelfmt_xxxa8888_t srcpx[SIZE * SIZE];
+  static pixelfmt_xxxa8888_t dstpx[SIZE * SIZE];
+
+  bitmap_t                   src;
+  bitmap_t                   dst;
+  int                        rule;
+  int                        x, y;
+  pixelfmt_xxxa8888_t        s, d, o;
+  double                     a, b, fa, fb, ao, want;
+  int                        shift;
+  int                        nfailures = 0;
+
+  bitmap_init(&src, SIZE2D(SIZE, SIZE), FORMAT, SIZE * 4, NULL, srcpx);
+  bitmap_init(&dst, SIZE2D(SIZE, SIZE), FORMAT, SIZE * 4, NULL, dstpx);
+
+  for (rule = 0; rule < composite_RULE__LIMIT; rule++)
+  {
+    /* source alpha runs across, destination alpha down; the colours vary
+     * so low alphas meet a spread of channel values */
+    for (y = 0; y < SIZE; y++)
+      for (x = 0; x < SIZE; x++)
+      {
+        srcpx[y * SIZE + x] = ((pixelfmt_xxxa8888_t) x << 24) |
+                              (((x * 7 + y * 3) & 0xFFu) << 16) |
+                              (0xFFu << 8) | 0xABu;
+        dstpx[y * SIZE + x] = ((pixelfmt_xxxa8888_t) y << 24) |
+                              (((x * 5 + y * 11) & 0xFFu) << 16) |
+                              (0x00u << 8) | 0x55u;
+      }
+
+    if (composite((composite_rule_t) rule, &src, &dst))
+      return 0;
+
+    for (y = 0; y < SIZE; y++)
+      for (x = 0; x < SIZE; x++)
+      {
+        s  = srcpx[y * SIZE + x];
+        d  = ((pixelfmt_xxxa8888_t) y << 24) |
+             (((x * 5 + y * 11) & 0xFFu) << 16) | 0x55u;
+        o  = dstpx[y * SIZE + x];
+        a  = x / 255.0;
+        b  = y / 255.0;
+        fa = fraction(fractions[rule][0], a, b);
+        fb = fraction(fractions[rule][1], a, b);
+        ao = a * fa + b * fb;
+
+        if (fabs((double) (o >> 24) - ao * 255.0) > 1.0)
+        {
+          if (nfailures++ < 8)
+            printf("rule %d sa=%d da=%d: alpha %u, want %.2f\n",
+                   rule, x, y, (unsigned) (o >> 24), ao * 255.0);
+          continue;
+        }
+
+        if ((o >> 24) == 0)
+          continue; /* colour of a clear pixel is moot */
+
+        for (shift = 0; shift < 24; shift += 8)
+        {
+          want = (((s >> shift) & 0xFF) * a * fa +
+                  ((d >> shift) & 0xFF) * b * fb) / ao;
+          if (fabs((double) ((o >> shift) & 0xFF) - want) > 1.0)
+          {
+            if (nfailures++ < 8)
+              printf("rule %d sa=%d da=%d shift %d: %u, want %.2f\n",
+                     rule, x, y, shift,
+                     (unsigned) ((o >> shift) & 0xFF), want);
+            break;
+          }
+        }
+      }
+  }
+
+  printf("composite rules: %d failure(s)\n", nfailures);
+
+  return nfailures == 0;
+}
+
 /* This creates a large bitmap then draws all twelve composite rule
  * combinations into it, in a 4x3 grid. */
 result_t composite_test(const char *resources)
@@ -100,7 +221,7 @@ result_t composite_test(const char *resources)
   composite_rule_t rule;
   int              x,y;
 
-  if (!test_over_pixel())
+  if (!test_over_pixel() || !test_rules_exact())
   {
     rc = result_TEST_FAILED;
     goto Failure;

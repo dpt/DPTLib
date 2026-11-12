@@ -296,39 +296,6 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* Pre-multiplied interpolation, after Smith (1995) Image Compositing
- * Fundamentals. */
-#define PRELERP(p,q,a) ((p) + (q) - div255((a) * (p)))
-
-/* Reciprocals of the alpha values for div_alpha. They are constant
- * expressions, so building the table costs no division. */
-#define RECIP(d)   DIV_RECIP(d)
-#define RECIP4(d)  RECIP(d), RECIP(d + 1), RECIP(d + 2), RECIP(d + 3)
-#define RECIP16(d) RECIP4(d), RECIP4(d + 4), RECIP4(d + 8), RECIP4(d + 12)
-#define RECIP64(d) RECIP16(d), RECIP16(d + 16), RECIP16(d + 32), RECIP16(d + 48)
-
-static const unsigned int recip_alpha[256] =
-{
-  0, RECIP(1), RECIP(2), RECIP(3),
-  RECIP4(4), RECIP4(8), RECIP4(12),
-  RECIP16(16), RECIP16(32), RECIP16(48),
-  RECIP64(64), RECIP64(128), RECIP64(192)
-};
-
-#undef RECIP64
-#undef RECIP16
-#undef RECIP4
-#undef RECIP
-
-/* n / a for alpha a in 1..255 and n < 2^31. Targets without a hardware
- * divide would otherwise pay for three divisions per pixel. */
-static INLINE unsigned int div_alpha(unsigned int n, unsigned int a)
-{
-  return div_recip(n, a, recip_alpha[a]);
-}
-
-/* ----------------------------------------------------------------------- */
-
 /* Shorthands for pixel macros */
 
 /* These constants are correct for pixelfmt_rgba8888 but the code treats colour
@@ -358,6 +325,45 @@ typedef void (compo_t)(const pixelfmt_xxxa8888_t *src,
 
 /* The type of a pixel component. */
 typedef unsigned int pixelcmp_t;
+
+/* ----------------------------------------------------------------------- */
+
+/* Weighted mean of src's and dst's colours, src weighted by ws and dst by
+ * wd, each an alpha product scaled by 255 * 255, with ws + wd <= 255 * 255.
+ * The result's alpha is (ws + wd) / 255.
+ *
+ * Dividing by the unrounded weight sum, not by the rounded 8-bit alpha,
+ * keeps each channel within 0.5 of exact, and so never above 255. The
+ * single division per pixel is memoised in memo[] (memo[0] zero to start)
+ * so that runs of matching alphas skip it. */
+static INLINE pixelfmt_xxxa8888_t blend_weighted(pixelfmt_xxxa8888_t src,
+                                                 pixelfmt_xxxa8888_t dst,
+                                                 pixelcmp_t          ws,
+                                                 pixelcmp_t          wd,
+                                                 unsigned int        memo[2])
+{
+  pixelcmp_t den;
+  pixelcmp_t newalpha;
+
+  den      = ws + wd;
+  newalpha = div255(den);
+  if (newalpha == 0)
+    return 0;
+
+  if (den != memo[0])
+  {
+    memo[0] = den;
+    memo[1] = DIV_RECIP(den);
+  }
+
+#define BLEND(shift) \
+  ((pixelfmt_xxxa8888_t) div_recip(((src >> shift) & 0xFF) * ws + \
+                                   ((dst >> shift) & 0xFF) * wd + den / 2, \
+                                   den, memo[1]) << shift)
+  return BLEND(RED_SHIFT) | BLEND(GREEN_SHIFT) | BLEND(BLUE_SHIFT) |
+         ((pixelfmt_xxxa8888_t) newalpha << ALPHA_SHIFT);
+#undef BLEND
+}
 
 /* ----------------------------------------------------------------------- */
 
@@ -402,9 +408,8 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_src_over_opaque(pixelfmt_xxxa88
 
   /* alpha part comes first */
 
-  srcalpha = ALPHA(src);
-  srcalpha += srcalpha >> 7; /* 0..255 -> 0..256 */
-  csrcalpha = 256 - srcalpha; /* complement of source alpha */
+  srcalpha  = ALPHA(src);
+  csrcalpha = 255 - srcalpha; /* complement of source alpha */
 
   /* colour part comes second */
 
@@ -416,7 +421,7 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_src_over_opaque(pixelfmt_xxxa88
   dstG = GREEN(dst);
   dstB = BLUE(dst);
 
-#define BLEND(src, dst) (src * srcalpha + dst * csrcalpha) >> 8
+#define BLEND(src, dst) div255(src * srcalpha + dst * csrcalpha)
   newR = BLEND(srcR, dstR);
   newG = BLEND(srcG, dstG);
   newB = BLEND(srcB, dstB);
@@ -428,47 +433,19 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_src_over_opaque(pixelfmt_xxxa88
 
 /* 'Source over/Destination over' general blend case. */
 static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_src_over_general(pixelfmt_xxxa8888_t src,
-                                                                  pixelfmt_xxxa8888_t dst)
+                                                                  pixelfmt_xxxa8888_t dst,
+                                                                  unsigned int        memo[2])
 {
   pixelcmp_t srcalpha;
   pixelcmp_t dstalpha;
-  pixelcmp_t csrcalpha;
-  pixelcmp_t newalpha;
-  pixelcmp_t srcR, srcG, srcB;
-  pixelcmp_t dstR, dstG, dstB;
-  pixelcmp_t newR, newG, newB;
-
-  /* alpha part comes first */
 
   srcalpha = ALPHA(src);
   dstalpha = ALPHA(dst);
 
-  newalpha = PRELERP(srcalpha, dstalpha, dstalpha); /* srcalpha + dstalpha - (srcalpha * dstalpha) / 255 */
-  if (newalpha == 0)
-    return 0; /* alpha was zero */
-
-  srcalpha += srcalpha >> 7; /* 0..255 -> 0..256 */
-  csrcalpha = 256 - srcalpha; /* complement of source alpha */
-
-  dstalpha += dstalpha >> 7; /* 0..255 -> 0..256 */
-
-  /* colour part comes second */
-
-  srcR = RED(src);
-  srcG = GREEN(src);
-  srcB = BLUE(src);
-
-  dstR = RED(dst);
-  dstG = GREEN(dst);
-  dstB = BLUE(dst);
-
-#define BLEND(src, dst) div_alpha(((src * srcalpha + ((dst * dstalpha * csrcalpha) >> 8)) >> 8) * 255, newalpha)
-  newR = BLEND(srcR, dstR);
-  newG = BLEND(srcG, dstG);
-  newB = BLEND(srcB, dstB);
-#undef BLEND
-
-  return FUSE(newR, newG, newB, newalpha);
+  return blend_weighted(src, dst,
+                        srcalpha * 255,
+                        dstalpha * (255 - srcalpha),
+                        memo);
 }
 
 /**
@@ -479,6 +456,10 @@ static void comp_xxxa8888_src_over(const pixelfmt_xxxa8888_t *src,
                                    pixelfmt_xxxa8888_t       *dst,
                                    unsigned int               width)
 {
+  unsigned int memo[2];
+
+  memo[0] = 0;
+
   while (width--)
   {
 #ifdef SPEEDUPS
@@ -494,7 +475,7 @@ static void comp_xxxa8888_src_over(const pixelfmt_xxxa8888_t *src,
         *dst = blend_xxxa8888_src_over_opaque(*src, *dst);
       else
 #endif
-        *dst = blend_xxxa8888_src_over_general(*src, *dst);
+        *dst = blend_xxxa8888_src_over_general(*src, *dst, memo);
 #ifdef SPEEDUPS
     }
 #endif
@@ -520,6 +501,10 @@ static void comp_xxxa8888_dst_over(const pixelfmt_xxxa8888_t *src,
                                    pixelfmt_xxxa8888_t       *dst,
                                    unsigned int               width)
 {
+  unsigned int memo[2];
+
+  memo[0] = 0;
+
   while (width--)
   {
 #ifdef SPEEDUPS
@@ -534,7 +519,7 @@ static void comp_xxxa8888_dst_over(const pixelfmt_xxxa8888_t *src,
       *dst = blend_xxxa8888_src_over_opaque(*dst, *src); /* reversed args */
     else
 #endif
-      *dst = blend_xxxa8888_src_over_general(*dst, *src); /* reversed args */
+      *dst = blend_xxxa8888_src_over_general(*dst, *src, memo); /* reversed args */
 
     src++;
     dst++;
@@ -631,34 +616,18 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_src_out_general(pixelfmt_xxxa88
 {
   pixelcmp_t srcalpha;
   pixelcmp_t dstalpha;
-  pixelcmp_t cdstalpha;
   pixelcmp_t newalpha;
-  pixelcmp_t srcR, srcG, srcB;
-  pixelcmp_t newR, newG, newB;
 
   /* alpha part comes first */
-
   srcalpha = ALPHA(src);
   dstalpha = ALPHA(dst);
-  cdstalpha = 255 - dstalpha;
 
-  newalpha = div255(srcalpha * cdstalpha);
+  newalpha = div255(srcalpha * (255 - dstalpha));
   if (newalpha == 0)
-    return 0; /* alpha was zero */
+    return 0;
 
-  /* colour part comes second */
-
-  srcR = RED(src);
-  srcG = GREEN(src);
-  srcB = BLUE(src);
-
-#define BLEND(src) div_alpha(div255(src * srcalpha * cdstalpha), newalpha)
-  newR = BLEND(srcR);
-  newG = BLEND(srcG);
-  newB = BLEND(srcB);
-#undef BLEND
-
-  return FUSE(newR, newG, newB, newalpha);
+  /* colour part comes second: only src contributes, so its colour is kept */
+  return (src & ~ALPHA_MASK) | (newalpha << ALPHA_SHIFT);
 }
 
 /**
@@ -729,41 +698,26 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_src_atop_general(pixelfmt_xxxa8
                                                                   pixelfmt_xxxa8888_t dst)
 {
   pixelcmp_t srcalpha;
-  pixelcmp_t dstalpha;
   pixelcmp_t csrcalpha;
   pixelcmp_t newalpha;
-  pixelcmp_t srcR, srcG, srcB;
-  pixelcmp_t dstR, dstG, dstB;
   pixelcmp_t newR, newG, newB;
 
   /* alpha part comes first */
 
-  srcalpha = ALPHA(src);
-  dstalpha = ALPHA(dst);
+  srcalpha  = ALPHA(src);
+  csrcalpha = 255 - srcalpha;
 
-  newalpha = dstalpha;
+  newalpha = ALPHA(dst);
   if (newalpha == 0)
     return 0; /* alpha was zero */
 
-  srcalpha += srcalpha >> 7; /* 0..255 -> 0..256 */
-  csrcalpha = 256 - srcalpha; /* complement of source alpha */
+  /* colour part comes second: dst's alpha weights both terms, so it
+   * cancels, leaving a plain lerp by srcalpha */
 
-  dstalpha += dstalpha >> 7; /* 0..255 -> 0..256 */
-
-  /* colour part comes second */
-
-  srcR = RED(src);
-  srcG = GREEN(src);
-  srcB = BLUE(src);
-
-  dstR = RED(dst);
-  dstG = GREEN(dst);
-  dstB = BLUE(dst);
-
-#define BLEND(src, dst) div_alpha(((src * srcalpha * dstalpha + dst * dstalpha * csrcalpha) >> 16) * 255, newalpha)
-  newR = BLEND(srcR, dstR);
-  newG = BLEND(srcG, dstG);
-  newB = BLEND(srcB, dstB);
+#define BLEND(src, dst) div255((src) * srcalpha + (dst) * csrcalpha)
+  newR = BLEND(RED(src), RED(dst));
+  newG = BLEND(GREEN(src), GREEN(dst));
+  newB = BLEND(BLUE(src), BLUE(dst));
 #undef BLEND
 
   return FUSE(newR, newG, newB, newalpha);
@@ -838,39 +792,19 @@ static void comp_xxxa8888_dst_atop(const pixelfmt_xxxa8888_t *src,
 
 /* 'XOR' general blend case. */
 static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_xor_general(pixelfmt_xxxa8888_t src,
-                                                             pixelfmt_xxxa8888_t dst)
+                                                             pixelfmt_xxxa8888_t dst,
+                                                             unsigned int        memo[2])
 {
   pixelcmp_t srcalpha;
   pixelcmp_t dstalpha;
-  pixelcmp_t newalpha;
-  pixelcmp_t srcR, srcG, srcB;
-  pixelcmp_t dstR, dstG, dstB;
-
-  /* alpha part comes first */
 
   srcalpha = ALPHA(src);
   dstalpha = ALPHA(dst);
-  newalpha = div255(srcalpha * (255 - dstalpha) + dstalpha * (255 - srcalpha));
-  if (newalpha == 0)
-    return 0;
 
-  /* colour part comes second */
-
-  srcR = RED(src);
-  srcG = GREEN(src);
-  srcB = BLUE(src);
-
-  dstR = RED(dst);
-  dstG = GREEN(dst);
-  dstB = BLUE(dst);
-
-#define BLEND(src, dst) div_alpha(div255(src * srcalpha * (255 - dstalpha) + dst * dstalpha * (255 - srcalpha)), newalpha)
-  dstR = BLEND(srcR, dstR);
-  dstG = BLEND(srcG, dstG);
-  dstB = BLEND(srcB, dstB);
-#undef BLEND
-
-  return FUSE(dstR, dstG, dstB, newalpha);
+  return blend_weighted(src, dst,
+                        srcalpha * (255 - dstalpha),
+                        dstalpha * (255 - srcalpha),
+                        memo);
 }
 
 /**
@@ -882,6 +816,10 @@ static void comp_xxxa8888_xor(const pixelfmt_xxxa8888_t *src,
                               pixelfmt_xxxa8888_t       *dst,
                               unsigned int               width)
 {
+  unsigned int memo[2];
+
+  memo[0] = 0;
+
   while (width--)
   {
 #ifdef SPEEDUPS
@@ -898,7 +836,7 @@ static void comp_xxxa8888_xor(const pixelfmt_xxxa8888_t *src,
       *dst = (*dst & ~ALPHA_MASK) | ((255 - srcalpha) << ALPHA_SHIFT);
     else
 #endif
-      *dst = blend_xxxa8888_xor_general(*src, *dst);
+      *dst = blend_xxxa8888_xor_general(*src, *dst, memo);
 
     src++;
     dst++;
