@@ -24,6 +24,9 @@
 /** Divide with rounding up. */
 #define DIVIDE_ROUNDING_UP(n, m) (((n) + (m) - 1) / (m))
 
+/** Divide 'n' by positive 'd', rounding towards negative infinity. */
+#define FLOOR_DIV(n, d) ((n) >= 0 ? (n) / (d) : -(((d) - 1 - (n)) / (d)))
+
 /** Return the minimum of (a,b). */
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
 

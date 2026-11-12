@@ -1,5 +1,6 @@
 /* framebuf/screen/screen-fill-checks.c -- fill a box with a checkerboard */
 
+#include "base/utils.h"
 #include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
 #include "geom/box.h"
@@ -7,13 +8,6 @@
 #include "framebuf/screen.h"
 
 /* ----------------------------------------------------------------------- */
-
-/* round towards negative infinity, so squares left of or above the origin
- * index correctly */
-static int floor_div(int a, int b)
-{
-  return (a >= 0) ? a / b : -((-a + b - 1) / b);
-}
 
 void screen_fill_checks(screen_t    *scr,
                         const box_t *box,
@@ -42,10 +36,11 @@ void screen_fill_checks(screen_t    *scr,
   pxl[0] = screen_colour_to_pixel(scr, even);
   pxl[1] = screen_colour_to_pixel(scr, odd);
 
-  col0 = floor_div(draw_box.x0 - origin.x, size);
-  row0 = floor_div(draw_box.y0 - origin.y, size);
-  col1 = floor_div(draw_box.x1 - origin.x + size - 1, size);
-  row1 = floor_div(draw_box.y1 - origin.y + size - 1, size);
+  /* floored, so squares left of or above the origin index correctly */
+  col0 = FLOOR_DIV(draw_box.x0 - origin.x, size);
+  row0 = FLOOR_DIV(draw_box.y0 - origin.y, size);
+  col1 = FLOOR_DIV(draw_box.x1 - origin.x + size - 1, size);
+  row1 = FLOOR_DIV(draw_box.y1 - origin.y + size - 1, size);
 
   /* one rect fill per square, trimmed to the draw box */
   for (row = row0; row < row1; row++)
