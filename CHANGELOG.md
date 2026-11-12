@@ -20,6 +20,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `bitmap_resample_HERMITE`, `bitmap_resample_MITCHELL` and
   `bitmap_resample_LANCZOS2` for `bitmap_resize`. `bitmap_resize` now returns
   `result_BAD_ARG` for an unknown method.
+- `framebuf/bitmap.h`: `bitmap_extract` copies a sub-area of a bitmap into a
+  new one, and `bitmap_destroy` frees a heap bitmap with its palette.
+- `framebuf/bitmap.h`: `bitmap_clone` expands an RLE-compressed source.
+  `bitmap_convert` turns paletted bitmaps into `bgra8888` (from p8) and
+  `rgba8888`, keeping the palette's alpha, so `bitmap_load_png_deep` and
+  `bitmap_load_deep` keep a paletted PNG's transparency.
+- `framebuf/screen.h`: `screen_copy_bitmap_scaled` and
+  `screen_copy_bitmap_scaled_dithered` plot a bitmap at any scale, nearest
+  neighbour, with RISC OS-style scale factors.
+- `framebuf/screen.h`: `screen_copy_bitmap_faded` plots a bitmap mixed part
+  way toward a colour, as for a disabled control.
+- `io/dirlist.h`: `dirlist_scan` reports each entry's size and modification
+  time.
+- `framebuf/palettes.h`: `palettes_save_hex` writes a `.hex` palette.
+- `base/utils.h`: `SIGN`, a three-way sign returning -1, 0 or 1.
+
+### Changed
+
+- `framebuf/bitmap.h`: the numeric values of `bitmap_resample_CUBIC` and
+  `bitmap_resample_LANCZOS3` change, as the new methods sit in softness order.
+- `framebuf/screen.h`: tiled plotting pre-tiles sources under 64 pixels, so
+  small tiles take far fewer blits.
 
 ### Fixed
 
@@ -27,6 +49,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `bitmap_resample_BILINEAR` or `bitmap_resample_CUBIC`: their kernels now
   widen by the shrink factor, so results are softer but all source pixels
   contribute.
+- `framebuf/screen.h`: ordered dithering leaves a colour that is exactly in
+  the palette, or exactly shown by a 16bpp screen, undithered.
+- RISC OS: `dirlist_scan` links, reading entry details with `OS_File`, and
+  libpng's SIMD options no longer clash.
+- A `-Wtype-limits` warning in `bitmap_load_deep`'s format test.
 
 ## [0.8.0] - 2026-11-05
 
