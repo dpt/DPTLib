@@ -203,6 +203,15 @@ result_t bitmap_load_jpeg(bitmap_t *bm, const char *filename);
 result_t bitmap_load(bitmap_t *bm, const char *filename);
 
 /**
+ * Affirm whether \ref bitmap_load reads files of a RISC OS filetype.
+ *
+ * \param[in] riscos RISC OS filetype number, e.g. from \ref
+ *                   filetype_from_ext.
+ * \return Non-zero for PNG and JPEG.
+ */
+int bitmap_loads_filetype(unsigned int riscos);
+
+/**
  * Load a PNG or JPEG image as \ref bitmap_load, then expand a paletted
  * result to the deep format `fmt` as \ref bitmap_load_png_deep does.
  *

@@ -7,6 +7,7 @@
 
 #include "base/result.h"
 #include "framebuf/bitmap.h"
+#include "io/filetype.h"
 
 static int file_is_png(FILE *fp)
 {
@@ -269,6 +270,11 @@ result_t bitmap_load(bitmap_t *bm, const char *filename)
 {
   return file_is_jpeg(filename) ? bitmap_load_jpeg(bm, filename)
                                 : bitmap_load_png(bm, filename);
+}
+
+int bitmap_loads_filetype(unsigned int riscos)
+{
+  return riscos == filetype_RISCOS_PNG || riscos == filetype_RISCOS_JPEG;
 }
 
 /* expand a just-loaded paletted bitmap to fmt; leave a deep one alone */

@@ -11,6 +11,7 @@
 #include "framebuf/colour.h"
 #include "framebuf/pattern.h"
 #include "framebuf/pixelfmt.h"
+#include "io/filetype.h"
 
 #include "test/all-tests.h"
 
@@ -1021,6 +1022,22 @@ Failure:
   return 0;
 }
 
+static int test_loads_filetype(void)
+{
+  printf("test: loads_filetype\n");
+
+  if (!bitmap_loads_filetype(filetype_from_ext("PNG").riscos) ||
+      !bitmap_loads_filetype(filetype_from_ext("jpeg").riscos) ||
+      bitmap_loads_filetype(filetype_RISCOS_TEXT) ||
+      bitmap_loads_filetype(filetype_DATA.riscos))
+    FAIL("loads_filetype");
+
+  return 1;
+
+Failure:
+  return 0;
+}
+
 static int test_clear_transparent(void)
 {
   unsigned int px[3];
@@ -1081,6 +1098,7 @@ result_t bitmap_convert_test(const char *resources)
       !test_restore_outside_region() ||
       !test_has_transparency() ||
       !test_content_bounds() ||
+      !test_loads_filetype() ||
       !test_clear_transparent())
     return result_TEST_FAILED;
 
