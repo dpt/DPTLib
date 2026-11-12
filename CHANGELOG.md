@@ -34,7 +34,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `io/dirlist.h`: `dirlist_scan` reports each entry's size and modification
   time.
 - `framebuf/palettes.h`: `palettes_save_hex` writes a `.hex` palette.
-- `base/utils.h`: `SIGN`, a three-way sign returning -1, 0 or 1.
+- `base/utils.h`: `SIGN`, a three-way sign returning -1, 0 or 1, and
+  `FLOOR_DIV`, division rounding towards negative infinity.
+- `geom/orient.h`: `orient_t` names the flips and quarter turns, with
+  `orient_size` and `orient_source` to map an area through one.
+  `bitmap_orient` copies a bitmap flipped or turned, and `region_orient`
+  does the same for a region.
+- `framebuf/composite.h`: `composite_over_pixel` composites one
+  straight-alpha pixel over another with an opacity.
+- `framebuf/bitmap.h`: `bitmap_content_bounds` bounds the pixels unlike a
+  blank value, and `bitmap_loads_filetype` says whether `bitmap_load` reads
+  a RISC OS filetype.
 
 ### Changed
 
