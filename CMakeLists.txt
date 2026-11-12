@@ -117,6 +117,7 @@ set(PUBLIC_HEADERS
     include/geom/inset.h
     include/geom/layout.h
     include/geom/line.h
+    include/geom/orient.h
     include/geom/packer.h
     include/geom/point.h
     include/geom/region.h

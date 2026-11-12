@@ -11,6 +11,7 @@
 #include "framebuf/pixelfmt.h"
 #include "framebuf/span.h"
 #include "geom/box.h"
+#include "geom/orient.h"
 #include "geom/point.h"
 #include "geom/region.h"
 #include "geom/size.h"
@@ -323,6 +324,21 @@ result_t bitmap_copy_pixels(const bitmap_t *src, bitmap_t *dst);
 result_t bitmap_extract(const bitmap_t *src,
                         const box_t    *box,
                         bitmap_t       *dst);
+
+/**
+ * Make `dst` a copy of `src` flipped or turned by `orient`: same format,
+ * with its own newly allocated pixels and (for a paletted format) palette.
+ * Its rows are packed with no padding. The caller frees `dst->base` and
+ * `dst->palette`.
+ *
+ * \param[in]  src    Bitmap to copy from, of 8, 16 or 32 bpp.
+ * \param[in]  orient Flip or turn.
+ * \param[out] dst    Bitmap to initialise as the copy.
+ * \return \ref result_OK on success, \ref result_NOT_SUPPORTED for a
+ *         compressed or sub-byte `src`, \ref result_BAD_ARG for an unknown
+ *         `orient`, or \ref result_OOM if out of memory.
+ */
+result_t bitmap_orient(const bitmap_t *src, orient_t orient, bitmap_t *dst);
 
 /** Non-zero if `bm` holds an RLE-compressed (read-only) pixel store. */
 #define bitmap_is_compressed(bm) pixelfmt_is_rle((bm)->format)

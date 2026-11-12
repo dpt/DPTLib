@@ -963,3 +963,51 @@ result_t bitmap_extract(const bitmap_t *src, const box_t *box, bitmap_t *dst)
 
   return rc;
 }
+
+result_t bitmap_orient(const bitmap_t *src, orient_t orient, bitmap_t *dst)
+{
+  result_t       rc;
+  int            log2bpp;
+  size_t         bpp;
+  size2d_t       size;
+  int            rowbytes;
+  unsigned char *pixels;
+  const char    *from;
+  int            y;
+  int            x;
+  int            sx;
+  int            sy;
+
+  if (bitmap_is_compressed(src))
+    return result_NOT_SUPPORTED;
+
+  if ((unsigned) orient >= orient__LIMIT)
+    return result_BAD_ARG;
+
+  log2bpp = pixelfmt_log2bpp(src->format);
+  if (log2bpp < 3)
+    return result_NOT_SUPPORTED;
+
+  bpp      = (size_t) 1 << (log2bpp - 3);
+  size     = orient_size(orient, src->size);
+  rowbytes = (int) (size.w * bpp);
+  pixels   = malloc((size_t) size.h * rowbytes);
+  if (pixels == NULL)
+    return result_OOM;
+
+  from = src->base;
+  for (y = 0; y < size.h; y++)
+    for (x = 0; x < size.w; x++)
+    {
+      orient_source(orient, src->size.w, src->size.h, x, y, &sx, &sy);
+      memcpy(pixels + (size_t) y * rowbytes + x * bpp,
+             from + (size_t) sy * src->rowbytes + sx * bpp,
+             bpp);
+    }
+
+  rc = bitmap_init(dst, size, src->format, rowbytes, src->palette, pixels);
+  if (rc != result_OK)
+    free(pixels);
+
+  return rc;
+}

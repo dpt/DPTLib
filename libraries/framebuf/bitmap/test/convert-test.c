@@ -648,6 +648,55 @@ Failure:
   return 0;
 }
 
+static int test_orient(void)
+{
+  static const unsigned int want[orient__LIMIT][6] =
+  {
+    {  2,  1,  0, 12, 11, 10 }, /* flip h */
+    { 10, 11, 12,  0,  1,  2 }, /* flip v */
+    { 10,  0, 11,  1, 12,  2 }, /* rotate cw */
+    {  2, 12,  1, 11,  0, 10 }, /* rotate ccw */
+    { 12, 11, 10,  2,  1,  0 }  /* rotate 180 */
+  };
+
+  unsigned int  px[2][3] = { { 0, 1, 2 }, { 10, 11, 12 } };
+  unsigned char p4[2]    = { 0x21, 0x43 };
+  bitmap_t      src;
+  bitmap_t      dst;
+  int           o;
+  size2d_t      size;
+
+  printf("test: orient\n");
+
+  bitmap_init(&src, SIZE2D(3, 2), pixelfmt_bgra8888, 3 * 4, NULL, px);
+  for (o = 0; o < orient__LIMIT; o++)
+  {
+    if (bitmap_orient(&src, (orient_t) o, &dst) != result_OK)
+      FAIL("orient");
+    size = orient_size((orient_t) o, src.size);
+    if (dst.size.w != size.w || dst.size.h != size.h ||
+        dst.rowbytes != size.w * 4 ||
+        memcmp(dst.base, want[o], sizeof(want[o])) != 0)
+    {
+      free(dst.base);
+      FAIL("orient pixels");
+    }
+    free(dst.base);
+  }
+
+  if (bitmap_orient(&src, orient__LIMIT, &dst) != result_BAD_ARG)
+    FAIL("orient unknown");
+
+  bitmap_init(&src, SIZE2D(2, 2), pixelfmt_p4, 1, NULL, p4);
+  if (bitmap_orient(&src, orient_FLIP_H, &dst) != result_NOT_SUPPORTED)
+    FAIL("orient p4");
+
+  return 1;
+
+Failure:
+  return 0;
+}
+
 /* ----------------------------------------------------------------------- */
 
 /* Reads pixel (x,y) of an 8, 16 or 32bpp bitmap. */
@@ -983,6 +1032,7 @@ result_t bitmap_convert_test(const char *resources)
       !test_convert_p8_alpha() ||
       !test_clone() ||
       !test_extract() ||
+      !test_orient() ||
       !test_fill_pattern() ||
       !test_flood_fill() ||
       !test_restore_outside_region() ||
