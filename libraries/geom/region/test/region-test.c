@@ -433,6 +433,52 @@ static result_t test_translate(void)
   return ok ? result_TEST_PASSED : result_TEST_FAILED;
 }
 
+static result_t test_orient(void)
+{
+  static const box_t    top  = { 1, 1, 4, 2 };
+  static const box_t    side = { 1, 2, 2, 4 };
+  static const size2d_t area_size = { 5, 4 };
+
+  region_t *a, *b, *r, *t;
+  int       ok;
+  int       o;
+  size2d_t  size;
+  int       x, y;
+  int       sx, sy;
+
+  /* an L, off the area's edges so the bounds move */
+  a = b = r = NULL;
+  ok = region_from_box(&top, &a) == result_OK &&
+       region_from_box(&side, &b) == result_OK &&
+       region_union(a, b, &r) == result_OK;
+  region_destroy(a);
+  region_destroy(b);
+
+  for (o = 0; ok && o < orient__LIMIT; o++)
+  {
+    t  = NULL;
+    ok = region_orient(r, (orient_t) o, area_size, &t) == result_OK &&
+         area(t) == area(r);
+    size = orient_size((orient_t) o, area_size);
+    for (y = 0; ok && y < size.h; y++)
+      for (x = 0; ok && x < size.w; x++)
+      {
+        orient_source((orient_t) o, area_size.w, area_size.h, x, y, &sx, &sy);
+        ok = !region_contains(t, x, y) == !region_contains(r, sx, sy);
+      }
+    region_destroy(t);
+  }
+
+  t  = (region_t *) 1;
+  ok = ok && region_orient(NULL, orient_FLIP_H, area_size, &t) == result_OK &&
+       t == NULL;
+  ok = ok && region_orient(r, orient__LIMIT, area_size, &t) == result_BAD_ARG;
+
+  region_destroy(r);
+
+  return ok ? result_TEST_PASSED : result_TEST_FAILED;
+}
+
 result_t region_test(const char *resources)
 {
   typedef result_t (*regiontestfn)(void);
@@ -448,7 +494,8 @@ result_t region_test(const char *resources)
     test_flood,
     test_combine,
     test_invert,
-    test_translate
+    test_translate,
+    test_orient
   };
 
   size_t i;

@@ -371,6 +371,7 @@ set(GEOM_SOURCES
     libraries/geom/region/combine.c
     libraries/geom/region/flood.c
     libraries/geom/region/invert.c
+    libraries/geom/region/orient.c
     libraries/geom/region/outline.c
     libraries/geom/region/polygon.c
     libraries/geom/region/region.c

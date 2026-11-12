@@ -11,7 +11,9 @@ extern "C"
 #include "base/result.h"
 
 #include "geom/box.h"
+#include "geom/orient.h"
 #include "geom/point.h"
+#include "geom/size.h"
 
 /**
  * \file region.h
@@ -137,6 +139,22 @@ result_t region_translate(const region_t *region,
                           int             dy,
                           const box_t    *clip,
                           region_t      **out);
+
+/**
+ * Creates a copy of a region flipped or turned within a (0,0)-based area, as
+ * `bitmap_orient` turns a bitmap of that size. Pixels outside the area are
+ * dropped.
+ *
+ * \param[in]  region The region to turn (may be NULL).
+ * \param[in]  orient Flip or turn.
+ * \param[in]  area   Size of the area before.
+ * \param[out] out    The new region, or NULL if it is empty.
+ * \return result_OK, result_BAD_ARG for an unknown `orient`, or result_OOM.
+ */
+result_t region_orient(const region_t *region,
+                       orient_t        orient,
+                       size2d_t        area,
+                       region_t      **out);
 
 /** Frees a region. */
 void region_destroy(region_t *region);
