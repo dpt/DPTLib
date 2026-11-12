@@ -45,6 +45,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `framebuf/bitmap.h`: `bitmap_content_bounds` bounds the pixels unlike a
   blank value, and `bitmap_loads_filetype` says whether `bitmap_load` reads
   a RISC OS filetype.
+- `utils/maths.h`: `div255`, a rounded divide by 255 with no division,
+  exact for any product of two 8-bit values.
 
 ### Changed
 
@@ -52,6 +54,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `bitmap_resample_LANCZOS3` change, as the new methods sit in softness order.
 - `framebuf/screen.h`: tiled plotting pre-tiles sources under 64 pixels, so
   small tiles take far fewer blits.
+- `framebuf/composite.h` and the paletted spans divide by 255 with
+  `div255`, so the paletted spans round rather than truncate.
 
 ### Fixed
 
@@ -63,7 +67,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   the palette, or exactly shown by a 16bpp screen, undithered.
 - RISC OS: `dirlist_scan` links, reading entry details with `OS_File`, and
   libpng's SIMD options no longer clash.
-- A `-Wtype-limits` warning in `bitmap_load_deep`'s format test.
+- `framebuf/composite.h`: the over, out, atop and xor rules no longer go
+  wrong at low alpha, where results could be off by up to 255 and spill
+  into the next channel. Every channel now lands within 0.5 of exact.
+- `-Wtype-limits` warnings in `bitmap_load_deep`'s format test and the
+  pattern preset check.
 
 ## [0.8.0] - 2026-11-05
 
