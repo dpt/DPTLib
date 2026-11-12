@@ -334,8 +334,8 @@ typedef unsigned int pixelcmp_t;
  *
  * Dividing by the unrounded weight sum, not by the rounded 8-bit alpha,
  * keeps each channel within 0.5 of exact, and so never above 255. The
- * single division per pixel is memoised in memo[] (memo[0] zero to start)
- * so that runs of matching alphas skip it. */
+ * single division per pixel is memoised in memo[] (both zero to start) so
+ * that runs of matching alphas skip it. */
 static INLINE pixelfmt_xxxa8888_t blend_weighted(pixelfmt_xxxa8888_t src,
                                                  pixelfmt_xxxa8888_t dst,
                                                  pixelcmp_t          ws,
@@ -459,6 +459,7 @@ static void comp_xxxa8888_src_over(const pixelfmt_xxxa8888_t *src,
   unsigned int memo[2];
 
   memo[0] = 0;
+  memo[1] = 0; /* never read before set; quietens -Wmaybe-uninitialized */
 
   while (width--)
   {
@@ -504,6 +505,7 @@ static void comp_xxxa8888_dst_over(const pixelfmt_xxxa8888_t *src,
   unsigned int memo[2];
 
   memo[0] = 0;
+  memo[1] = 0; /* never read before set; quietens -Wmaybe-uninitialized */
 
   while (width--)
   {
@@ -819,6 +821,7 @@ static void comp_xxxa8888_xor(const pixelfmt_xxxa8888_t *src,
   unsigned int memo[2];
 
   memo[0] = 0;
+  memo[1] = 0; /* never read before set; quietens -Wmaybe-uninitialized */
 
   while (width--)
   {
