@@ -377,6 +377,24 @@ result_t bitmap_restore_outside_region(bitmap_t       *dst,
 int bitmap_has_transparency(const bitmap_t *bm);
 
 /**
+ * The bounds of the pixels of `bm` which are not blank: a pixel is blank
+ * when its bits under `mask` equal those of `blank`. So a mask of all ones
+ * with the top-left pixel as `blank` bounds what differs from the
+ * background, and a mask of a 32bpp format's alpha byte with a `blank` of
+ * zero bounds what is not wholly transparent.
+ *
+ * \param[in] bm    Bitmap to examine, of 8, 16 or 32 bpp. Others, and
+ *                  compressed bitmaps, give the whole bitmap.
+ * \param[in] blank Pixel value taken as blank.
+ * \param[in] mask  Bits of each pixel to compare.
+ * \return The bounds (x1,y1 exclusive), or an empty box (\ref BOX_INIT) if
+ *         every pixel is blank.
+ */
+box_t bitmap_content_bounds(const bitmap_t *bm,
+                            unsigned int    blank,
+                            unsigned int    mask);
+
+/**
  * Zero every fully transparent pixel of `bm`, colour bits included.
  *
  * A colour-keyed image can load with its key colour kept under alpha 0;

@@ -978,6 +978,49 @@ Failure:
   return 0;
 }
 
+static int test_content_bounds(void)
+{
+  unsigned int  px[3][5];
+  unsigned char p8[2][4] = { { 7, 7, 7, 7 }, { 7, 7, 7, 7 } };
+  bitmap_t      bm;
+  box_t         b;
+
+  printf("test: content_bounds\n");
+
+  /* all blank, with junk in the row padding */
+  memset(px, 0, sizeof(px));
+  bitmap_init(&bm, SIZE2D(4, 3), pixelfmt_bgra8888, 5 * 4, NULL, px);
+  px[1][4] = 0xFF000000u;
+  b = bitmap_content_bounds(&bm, 0, 0xFF000000u);
+  if (!box_is_empty(&b))
+    FAIL("content_bounds blank");
+
+  /* by alpha: colour in transparent pixels does not count */
+  px[0][0] = 0x00FFFFFFu;
+  px[1][1] = 0x01000000u;
+  px[2][2] = 0x80000000u;
+  b = bitmap_content_bounds(&bm, 0, 0xFF000000u);
+  if (b.x0 != 1 || b.y0 != 1 || b.x1 != 3 || b.y1 != 3)
+    FAIL("content_bounds alpha");
+
+  /* by whole pixel, against the corner */
+  b = bitmap_content_bounds(&bm, px[0][0], 0xFFFFFFFFu);
+  if (b.x0 != 0 || b.y0 != 0 || b.x1 != 4 || b.y1 != 3)
+    FAIL("content_bounds corner");
+
+  /* 8bpp */
+  p8[1][2] = 3;
+  bitmap_init(&bm, SIZE2D(4, 2), pixelfmt_p8, 4, NULL, p8);
+  b = bitmap_content_bounds(&bm, 7, 0xFF);
+  if (b.x0 != 2 || b.y0 != 1 || b.x1 != 3 || b.y1 != 2)
+    FAIL("content_bounds p8");
+
+  return 1;
+
+Failure:
+  return 0;
+}
+
 static int test_clear_transparent(void)
 {
   unsigned int px[3];
@@ -1037,6 +1080,7 @@ result_t bitmap_convert_test(const char *resources)
       !test_flood_fill() ||
       !test_restore_outside_region() ||
       !test_has_transparency() ||
+      !test_content_bounds() ||
       !test_clear_transparent())
     return result_TEST_FAILED;
 

@@ -269,6 +269,7 @@ set(DATASTRUCT_SOURCES
 set(FRAMEBUF_SOURCES
     libraries/framebuf/bitmap/bitmap.c
     libraries/framebuf/bitmap/compress.c
+    libraries/framebuf/bitmap/content-bounds.c
     libraries/framebuf/bitmap/fill-pattern.c
     libraries/framebuf/bitmap/flood-fill.c
     libraries/framebuf/bitmap/has-transparency.c
