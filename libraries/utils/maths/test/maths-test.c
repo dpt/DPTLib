@@ -76,6 +76,16 @@ result_t maths_test(const char *resources)
     }
   }
 
+  printf("test: div255, every numerator in range\n");
+
+  for (n = 0; n <= 65662; n++)
+    if (div255(n) != (n + 127) / 255)
+    {
+      printf("div255(%u) failed!\n", n);
+      nfailures++;
+      break;
+    }
+
   printf("maths: %d failure(s)\n", nfailures);
 
   return (nfailures > 0) ? result_TEST_FAILED : result_TEST_PASSED;

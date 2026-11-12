@@ -2,6 +2,8 @@
 
 #include <stddef.h>
 
+#include "utils/maths.h"
+
 #include "framebuf/colour.h"
 #include "framebuf/pixelfmt.h"
 
@@ -55,9 +57,9 @@ static void span_p2_blendconst(void       *vdst,
     new_g      = PIXELFMT_xGxx8888(newpx);
     new_b      = PIXELFMT_xxBx8888(newpx);
 
-    blend_r = (new_r * alpha + old_r * (255 - alpha)) / 255;
-    blend_g = (new_g * alpha + old_g * (255 - alpha)) / 255;
-    blend_b = (new_b * alpha + old_b * (255 - alpha)) / 255;
+    blend_r = div255(new_r * alpha + old_r * (255 - alpha));
+    blend_g = div255(new_g * alpha + old_g * (255 - alpha));
+    blend_b = div255(new_b * alpha + old_b * (255 - alpha));
 
     blended = colour_rgb(blend_r, blend_g, blend_b);
     *pdst   = (unsigned char) colour_to_pixel(palette, SPAN_P2_NENTRIES,

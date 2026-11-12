@@ -60,7 +60,7 @@ static pixelfmt_bgra8888_t blend_pix(pixelfmt_bgra8888_t src1,
     memo[1] = DIV_RECIP(d);
   }
 
-  out = ((d + 127) / 255) << 24;
+  out = div255(d) << 24;
   for (shift = 0; shift < 24; shift += 8)
     out |= div_recip(((src1 >> shift) & 0xFF) * w1 +
                      ((src2 >> shift) & 0xFF) * w2 + d / 2, d, memo[1])

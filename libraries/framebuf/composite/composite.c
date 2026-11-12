@@ -296,29 +296,9 @@
 
 /* ----------------------------------------------------------------------- */
 
-/* Divide by 255 with rounding to nearest.
- *
- * This works for values up to and including 65789, so it's safe for dividing
- * the product of two 8-bit values. It becomes inaccurate for higher values
- * though.
- *
- * See Blinn (1995) Dirty Pixels: Chapter 19: Three Wrongs Make A Right.
- */
-#define DIV_255(x,t) ((t) = (x) + 0x80, ((((t) >> 8) + (t)) >> 8))
-//#define DIV_255(x,t) (((x) + 0x7F) / 255) // for testing
-
-
-/* Macros taken from Smith (1995) Image Compositing Fundamentals. */
-
-/* Approximation to (a * b) / 255, using temporary variable 't'.
- * A variation on DIV_255 above. */
-#define MULT(a,b,t) ((t) = (a) * (b) + 0x80, ((((t) >> 8) + (t)) >> 8))
-
-/* Linearly interpolate from 'p' to 'q' by 'a', using temporary 't'. */
-#define LERP(p,q,a,t) ((p) + MULT(a, (q) - (p), t))
-
-/* Like LERP, but takes pre-multiplied values. */
-#define PRELERP(p,q,a,t) ((p) + (q) - MULT(a, p, t))
+/* Pre-multiplied interpolation, after Smith (1995) Image Compositing
+ * Fundamentals. */
+#define PRELERP(p,q,a) ((p) + (q) - div255((a) * (p)))
 
 /* Reciprocals of the alpha values for div_alpha. They are constant
  * expressions, so building the table costs no division. */
@@ -453,7 +433,6 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_src_over_general(pixelfmt_xxxa8
   pixelcmp_t srcalpha;
   pixelcmp_t dstalpha;
   pixelcmp_t csrcalpha;
-  pixelcmp_t tmp;
   pixelcmp_t newalpha;
   pixelcmp_t srcR, srcG, srcB;
   pixelcmp_t dstR, dstG, dstB;
@@ -464,7 +443,7 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_src_over_general(pixelfmt_xxxa8
   srcalpha = ALPHA(src);
   dstalpha = ALPHA(dst);
 
-  newalpha = PRELERP(srcalpha, dstalpha, dstalpha, tmp); /* srcalpha + dstalpha - (srcalpha * dstalpha) / 255 */
+  newalpha = PRELERP(srcalpha, dstalpha, dstalpha); /* srcalpha + dstalpha - (srcalpha * dstalpha) / 255 */
   if (newalpha == 0)
     return 0; /* alpha was zero */
 
@@ -571,13 +550,12 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_src_in_general(pixelfmt_xxxa888
   pixelcmp_t srcalpha;
   pixelcmp_t dstalpha;
   pixelcmp_t newalpha;
-  pixelcmp_t tmp;
 
   /* alpha part comes first */
   srcalpha = ALPHA(src);
   dstalpha = ALPHA(dst);
 
-  newalpha = DIV_255(srcalpha * dstalpha, tmp);
+  newalpha = div255(srcalpha * dstalpha);
   if (newalpha == 0)
     return 0;
 
@@ -653,7 +631,6 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_src_out_general(pixelfmt_xxxa88
 {
   pixelcmp_t srcalpha;
   pixelcmp_t dstalpha;
-  pixelcmp_t tmp;
   pixelcmp_t cdstalpha;
   pixelcmp_t newalpha;
   pixelcmp_t srcR, srcG, srcB;
@@ -665,7 +642,7 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_src_out_general(pixelfmt_xxxa88
   dstalpha = ALPHA(dst);
   cdstalpha = 255 - dstalpha;
 
-  newalpha = DIV_255(srcalpha * cdstalpha, tmp);
+  newalpha = div255(srcalpha * cdstalpha);
   if (newalpha == 0)
     return 0; /* alpha was zero */
 
@@ -675,7 +652,7 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_src_out_general(pixelfmt_xxxa88
   srcG = GREEN(src);
   srcB = BLUE(src);
 
-#define BLEND(src) div_alpha(DIV_255(src * srcalpha * cdstalpha, tmp), newalpha)
+#define BLEND(src) div_alpha(div255(src * srcalpha * cdstalpha), newalpha)
   newR = BLEND(srcR);
   newG = BLEND(srcG);
   newB = BLEND(srcB);
@@ -866,7 +843,6 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_xor_general(pixelfmt_xxxa8888_t
   pixelcmp_t srcalpha;
   pixelcmp_t dstalpha;
   pixelcmp_t newalpha;
-  pixelcmp_t tmp;
   pixelcmp_t srcR, srcG, srcB;
   pixelcmp_t dstR, dstG, dstB;
 
@@ -874,7 +850,7 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_xor_general(pixelfmt_xxxa8888_t
 
   srcalpha = ALPHA(src);
   dstalpha = ALPHA(dst);
-  newalpha = DIV_255(srcalpha * (255 - dstalpha) + dstalpha * (255 - srcalpha), tmp);
+  newalpha = div255(srcalpha * (255 - dstalpha) + dstalpha * (255 - srcalpha));
   if (newalpha == 0)
     return 0;
 
@@ -888,7 +864,7 @@ static INLINE pixelfmt_xxxa8888_t blend_xxxa8888_xor_general(pixelfmt_xxxa8888_t
   dstG = GREEN(dst);
   dstB = BLUE(dst);
 
-#define BLEND(src, dst) div_alpha(DIV_255(src * srcalpha * (255 - dstalpha) + dst * dstalpha * (255 - srcalpha), tmp), newalpha)
+#define BLEND(src, dst) div_alpha(div255(src * srcalpha * (255 - dstalpha) + dst * dstalpha * (255 - srcalpha)), newalpha)
   dstR = BLEND(srcR, dstR);
   dstG = BLEND(srcG, dstG);
   dstB = BLEND(srcB, dstB);
@@ -1016,9 +992,6 @@ result_t composite(composite_rule_t rule,
 
 /* ----------------------------------------------------------------------- */
 
-/* x / 255 rounded, for x up to 255 * 255 */
-#define DIV255(x) (((x) + 128 + (((x) + 128) >> 8)) >> 8)
-
 pixelfmt_xxxa8888_t composite_over_pixel(pixelfmt_xxxa8888_t dst,
                                          pixelfmt_xxxa8888_t src,
                                          unsigned int        opacity)
@@ -1028,14 +1001,14 @@ pixelfmt_xxxa8888_t composite_over_pixel(pixelfmt_xxxa8888_t dst,
   unsigned int        i;
   unsigned int        c;
 
-  sa = DIV255((src >> 24) * opacity);
+  sa = div255((src >> 24) * opacity);
   da = dst >> 24;
   if (sa == 0)
     return dst;
   if (sa == 255 || da == 0)
     return (src & 0xFFFFFFu) | (sa << 24);
 
-  da  = DIV255(da * (255 - sa)); /* what shows of dst */
+  da  = div255(da * (255 - sa)); /* what shows of dst */
   oa  = sa + da;
   out = oa << 24;
   for (i = 0; i < 24; i += 8)
@@ -1043,7 +1016,7 @@ pixelfmt_xxxa8888_t composite_over_pixel(pixelfmt_xxxa8888_t dst,
     c = ((src >> i) & 0xFF) * sa + ((dst >> i) & 0xFF) * da;
     /* a divide per channel only where dst is partly transparent: opaque
      * below, the common case, takes the shift */
-    c = oa == 255 ? DIV255(c) : (c + oa / 2) / oa;
+    c = oa == 255 ? div255(c) : (c + oa / 2) / oa;
     out |= c << i;
   }
 

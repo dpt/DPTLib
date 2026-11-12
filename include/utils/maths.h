@@ -38,6 +38,16 @@ static INLINE unsigned int div_recip(unsigned int n,
   return q;
 }
 
+/* x / 255, rounded to nearest, for x <= 65662 (covers any product of two
+ * 8-bit values). Shifts and adds only, no division.
+ *
+ * See Blinn (1995) Dirty Pixels: Chapter 19: Three Wrongs Make A Right. */
+static INLINE unsigned int div255(unsigned int x)
+{
+  x += 0x80;
+  return (x + (x >> 8)) >> 8;
+}
+
 #ifdef __cplusplus
 }
 #endif
