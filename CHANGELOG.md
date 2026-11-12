@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `tools/release.py`: checks, cuts, merges, tags, pushes and starts releases of DPTLib and Wuss.
+
 ## [0.9.0] - 2026-11-12
 
 ### Added

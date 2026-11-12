@@ -128,3 +128,15 @@ When the user says "commit": stage the relevant files and `git commit` with the
 message passed via repeated `-m` flags (subject, then body). Do **not** write a
 `COMMIT_MSG` / `COMMIT_MSG_TMP` file. Never `git push` unless explicitly asked —
 pushing prompts for an SSH key passphrase and will hang.
+
+## Releases
+
+`tools/release.py` runs the release, one step per command, from the repo root. Wuss uses the same script (`../DPTLib/tools/release.py`).
+
+1. `release.py check`: read-only preflight. Needs a clean `develop` level with `origin`, a non-empty `[Unreleased]` CHANGELOG section, matching versions in README and CMake and an unused tag.
+2. `release.py cut --test`: runs the tests, dates the CHANGELOG section and commits `chore(release): cut X.Y.Z`.
+3. `release.py merge`: fast-forwards `main` to `develop`, makes the signed tag and returns to `develop`.
+4. `release.py push`: pushes `develop`, `main` and the tag. Only when the user asks.
+5. `release.py start [X.Y.Z]`: sets the next version (default: next minor) and commits `chore: start X.Y.Z`.
+
+The version comes from `CMakeLists.txt`; `start` sets it, so a cut never changes it. Add `-n` to print the steps without running them, and `--trailer "Co-Authored-By: ..."` to append the attribution trailer.
