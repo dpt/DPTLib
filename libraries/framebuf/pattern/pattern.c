@@ -117,7 +117,7 @@ pattern_t pattern_from_preset(screen_pattern_t preset,
 {
   pattern_t pat;
 
-  assert(preset >= 0 && preset < screen_PATTERN__LIMIT);
+  assert((unsigned) preset < screen_PATTERN__LIMIT);
 
   memset(&pat, 0, sizeof pat);
   memcpy(pat.bits, patterns[preset], sizeof pat.bits);
