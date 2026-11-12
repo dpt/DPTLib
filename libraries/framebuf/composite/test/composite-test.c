@@ -76,6 +76,16 @@ static result_t load_test_png(bitmap_t   *bm,
 
 /* ----------------------------------------------------------------------- */
 
+/* Checks composite_over_pixel's shortcuts and its general case. */
+static int test_over_pixel(void)
+{
+  return composite_over_pixel(0xFF123456u, 0xFFFF0000u, 0) == 0xFF123456u &&
+         composite_over_pixel(0xFF123456u, 0xFFFF0000u, 255) == 0xFFFF0000u &&
+         composite_over_pixel(0x00000000u, 0xFF00FF00u, 128) == 0x8000FF00u &&
+         composite_over_pixel(0xFF000000u, 0x80FFFFFFu, 255) == 0xFF808080u &&
+         composite_over_pixel(0x800000FFu, 0x80FF0000u, 255) == 0xC0AA0055u;
+}
+
 /* This creates a large bitmap then draws all twelve composite rule
  * combinations into it, in a 4x3 grid. */
 result_t composite_test(const char *resources)
@@ -89,6 +99,12 @@ result_t composite_test(const char *resources)
   bitmap_t         bmtmp;
   composite_rule_t rule;
   int              x,y;
+
+  if (!test_over_pixel())
+  {
+    rc = result_TEST_FAILED;
+    goto Failure;
+  }
 
   bigpixels = malloc(scr_rowbytes * HEIGHT);
   if (bigpixels == NULL)

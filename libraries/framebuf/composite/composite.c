@@ -1013,3 +1013,39 @@ result_t composite(composite_rule_t rule,
 
   return result_OK;
 }
+
+/* ----------------------------------------------------------------------- */
+
+/* x / 255 rounded, for x up to 255 * 255 */
+#define DIV255(x) (((x) + 128 + (((x) + 128) >> 8)) >> 8)
+
+pixelfmt_xxxa8888_t composite_over_pixel(pixelfmt_xxxa8888_t dst,
+                                         pixelfmt_xxxa8888_t src,
+                                         unsigned int        opacity)
+{
+  unsigned int        sa, da, oa;
+  pixelfmt_xxxa8888_t out;
+  unsigned int        i;
+  unsigned int        c;
+
+  sa = DIV255((src >> 24) * opacity);
+  da = dst >> 24;
+  if (sa == 0)
+    return dst;
+  if (sa == 255 || da == 0)
+    return (src & 0xFFFFFFu) | (sa << 24);
+
+  da  = DIV255(da * (255 - sa)); /* what shows of dst */
+  oa  = sa + da;
+  out = oa << 24;
+  for (i = 0; i < 24; i += 8)
+  {
+    c = ((src >> i) & 0xFF) * sa + ((dst >> i) & 0xFF) * da;
+    /* a divide per channel only where dst is partly transparent: opaque
+     * below, the common case, takes the shift */
+    c = oa == 255 ? DIV255(c) : (c + oa / 2) / oa;
+    out |= c << i;
+  }
+
+  return out;
+}
