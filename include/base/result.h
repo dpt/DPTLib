@@ -25,6 +25,7 @@ typedef int result_t;
 #define result_BASE_WUSS                        0x0B00
 #define result_BASE_STACK                       0x0C00
 #define result_BASE_BMFONT                      0x0D00
+#define result_BASE_NODEGRAPH                   0x0E00
 
 /* Non-DPTLib bases */
 #define result_BASE_MMPLAYER                    0x4000

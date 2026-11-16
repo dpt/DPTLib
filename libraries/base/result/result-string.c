@@ -8,6 +8,7 @@
 #include "datastruct/atom.h"
 #include "datastruct/bitfifo.h"
 #include "datastruct/hash.h"
+#include "datastruct/nodegraph.h"
 #include "framebuf/bmfont.h"
 #include "geom/layout.h"
 #include "geom/packer.h"
@@ -76,6 +77,8 @@ const char *result_string(result_t err)
   case result_BITFIFO_INSUFFICIENT:      return "BitFIFO: insufficient bits";
 
   case result_BMFONT_BAD_MAP:            return "Bmfont: bad cmap sidecar";
+
+  case result_NODEGRAPH_CYCLE:           return "Nodegraph: link would form a cycle";
 
   default:                               return "Unknown error";
   }

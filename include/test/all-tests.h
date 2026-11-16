@@ -19,6 +19,7 @@ extern testfn_t atom_test,
                 cache_test,
                 hash_test,
                 list_test,
+                nodegraph_test,
                 ntree_test,
                 vector_test;
 

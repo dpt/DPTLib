@@ -78,6 +78,7 @@ set(PUBLIC_HEADERS
     include/datastruct/hash.h
     include/datastruct/hlist.h
     include/datastruct/list.h
+    include/datastruct/nodegraph.h
     include/datastruct/ntree.h
     include/datastruct/vector.h
     include/framebuf/bitmap-set.h
@@ -230,6 +231,7 @@ set(DATASTRUCT_SOURCES
     libraries/datastruct/list/init.c
     libraries/datastruct/list/remove.c
     libraries/datastruct/list/walk.c
+    libraries/datastruct/nodegraph/nodegraph.c
     libraries/datastruct/ntree/append.c
     libraries/datastruct/ntree/copy.c
     libraries/datastruct/ntree/delete.c
@@ -691,6 +693,7 @@ if(BUILD_TESTS AND PROJECT_IS_TOP_LEVEL)
         libraries/datastruct/cache/test/cache-test.c
         libraries/datastruct/hash/test/hash-test.c
         libraries/datastruct/list/test/list-test.c
+        libraries/datastruct/nodegraph/test/nodegraph-test.c
         libraries/datastruct/ntree/test/ntree-test.c
         libraries/framebuf/bitmap/test/load-test.c
         libraries/framebuf/bitmap/test/resize-test.c

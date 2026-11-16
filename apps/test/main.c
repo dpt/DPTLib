@@ -44,6 +44,7 @@ static const test_t tests[] =
   { "cache",      cache_test      },
   { "hash",       hash_test       },
   { "list",       list_test       },
+  { "nodegraph",  nodegraph_test  },
   { "ntree",      ntree_test      },
   { "bmtext",     bmtext_test     },
   { "mdspans",    mdspans_test    },

@@ -9,6 +9,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - `tools/release.py`: checks, cuts, merges, tags, pushes and starts releases of DPTLib and Wuss.
+- `datastruct/nodegraph.h`: a dataflow graph of client-defined nodes joined
+  by typed links. Refuses cycles, caches each node's output and re-evaluates
+  only nodes downstream of a change.
 
 ## [0.9.0] - 2026-11-12
 
