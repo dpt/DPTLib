@@ -206,7 +206,8 @@ result_t nodegraph_link(nodegraph_t     *graph,
     return result_NOT_FOUND;
   if (input < 0 || input >= dst->cls->ninputs)
     return result_BAD_ARG;
-  if (src->cls->output_type != dst->cls->input_types[input])
+  if (src->cls->output_type == nodegraph_NO_OUTPUT ||
+      src->cls->output_type != dst->cls->input_types[input])
     return result_INCOMPATIBLE;
   if (nodegraph_upstream(graph, from, to))
     return result_NODEGRAPH_CYCLE;

@@ -57,6 +57,11 @@ static const nodegraph_class_t other_class =
   "Other", 2, { TYPE_OTHER, TYPE_OTHER }, TYPE_OTHER, num_evaluate, NULL
 };
 
+static const nodegraph_class_t sink_class =
+{
+  "Sink", 1, { nodegraph_NO_OUTPUT }, nodegraph_NO_OUTPUT, num_evaluate, NULL
+};
+
 #define CHECK(cond)                                         \
   do                                                        \
   {                                                         \
@@ -162,6 +167,10 @@ result_t nodegraph_test(const char *resources)
   CHECK(nodegraph_set_pos(g, d, 8, 9) == result_OK);
   CHECK(nodegraph_get_pos(g, d, &x, &y) == result_OK && x == 8 && y == 9);
   CHECK(nodegraph_state(g, d) == &nums[3]);
+
+  /* nothing links from a sink, even into a port typed as its output */
+  CHECK(nodegraph_add(g, &sink_class, &nums[4], 0, 0, &o) == result_OK);
+  CHECK(nodegraph_link(g, o, o, 0) == result_INCOMPATIBLE);
 
   nodegraph_destroy(g);
   g = NULL;

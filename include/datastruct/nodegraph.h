@@ -61,6 +61,12 @@ typedef int nodegraph_node_t;
 #define nodegraph_MAX_INPUTS 4
 
 /**
+ * The output_type of a sink: a class with no output port, which nothing can
+ * link from. Client port types must not use this value.
+ */
+#define nodegraph_NO_OUTPUT (-1)
+
+/**
  * Evaluate a node.
  *
  * \param state  The node's client state.
@@ -85,7 +91,7 @@ typedef void (nodegraph_destroy_t)(void *state);
 /**
  * A node class, defined by the client. Port types are client-chosen ids; a
  * link joins only equal types. ninputs is at most nodegraph_MAX_INPUTS.
- * destroy may be NULL.
+ * output_type is nodegraph_NO_OUTPUT for a sink. destroy may be NULL.
  */
 typedef struct nodegraph_class
 {
@@ -158,8 +164,8 @@ result_t nodegraph_remove(T *graph, nodegraph_node_t node);
  * \param input Destination input port.
  *
  * \return result_NOT_FOUND for an unknown node, result_BAD_ARG for a bad
- *         port, result_INCOMPATIBLE when the types differ or
- *         result_NODEGRAPH_CYCLE when the link would form a cycle.
+ *         port, result_INCOMPATIBLE when the types differ (or from is a
+ *         sink) or result_NODEGRAPH_CYCLE when the link would form a cycle.
  */
 result_t nodegraph_link(T               *graph,
                         nodegraph_node_t from,
