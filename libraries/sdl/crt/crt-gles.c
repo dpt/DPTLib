@@ -27,6 +27,7 @@ struct crt
   GLint         knobs;   /* location of the k uniform */
   int           width;   /* size texture was made at */
   int           height;
+  float         border[3]; /* clear colour, RGB */
 };
 
 /* Must match the k[] names below field-for-field. */
@@ -279,7 +280,6 @@ static bool crt_make_objects(crt_t *crt)
   glDisable(GL_SCISSOR_TEST);
   glDisableVertexAttribArray(1);
   glDisableVertexAttribArray(2);
-  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
   return true;
 }
@@ -358,6 +358,7 @@ void crt_render(crt_t              *crt,
   glUniform1fv(crt->knobs, sizeof(uniforms) / sizeof(float),
                (const GLfloat *) &uniforms);
 
+  glClearColor(crt->border[0], crt->border[1], crt->border[2], 1.0f);
   glClear(GL_COLOR_BUFFER_BIT);
 
   /* the canvas may be denser than the window on high-DPI displays, and GL's
@@ -372,6 +373,13 @@ void crt_render(crt_t              *crt,
   glDrawArrays(GL_TRIANGLES, 0, 3);
 
   SDL_GL_SwapWindow(window);
+}
+
+void crt_set_border(crt_t *crt, float red, float green, float blue)
+{
+  crt->border[0] = red;
+  crt->border[1] = green;
+  crt->border[2] = blue;
 }
 
 void crt_destroy(crt_t *crt, SDL_Window *window)

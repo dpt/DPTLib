@@ -91,6 +91,17 @@ void crt_render(crt_t              *crt,
                 const crt_params_t *params);
 
 /**
+ * Set the colour that fills the window around the viewport, as an emulated
+ * machine's border would. Black until set.
+ *
+ * \param[in] crt   Effect from crt_create.
+ * \param[in] red   Components, 0.0 to 1.0.
+ * \param[in] green
+ * \param[in] blue
+ */
+void crt_set_border(crt_t *crt, float red, float green, float blue);
+
+/**
  * Release everything crt_create made and hand the window back.
  *
  * \param[in] crt    Effect from crt_create. May be NULL.

@@ -20,6 +20,7 @@ struct crt
   int                      height;
   SDL_GPUSampler          *sampler;
   SDL_GPUGraphicsPipeline *pipeline;
+  float                    border[3]; /* clear colour, RGB */
 };
 
 /* Must match the MSL and SPIR-V Params structs field-for-field: plain floats,
@@ -393,6 +394,9 @@ void crt_render(crt_t              *crt,
     target.texture       = swapchain;
     target.load_op       = SDL_GPU_LOADOP_CLEAR;
     target.store_op      = SDL_GPU_STOREOP_STORE;
+    target.clear_color.r = crt->border[0];
+    target.clear_color.g = crt->border[1];
+    target.clear_color.b = crt->border[2];
     target.clear_color.a = 1.0f;
 
     render_pass = SDL_BeginGPURenderPass(cmdbuf, &target, 1, NULL);
@@ -418,6 +422,13 @@ void crt_render(crt_t              *crt,
   }
 
   SDL_SubmitGPUCommandBuffer(cmdbuf);
+}
+
+void crt_set_border(crt_t *crt, float red, float green, float blue)
+{
+  crt->border[0] = red;
+  crt->border[1] = green;
+  crt->border[2] = blue;
 }
 
 void crt_destroy(crt_t *crt, SDL_Window *window)
