@@ -235,6 +235,41 @@ static result_t test_user_data(void)
 #endif
 }
 
+static result_t test_scrap(void)
+{
+#if defined(__riscos) || defined(_WIN32)
+  return result_TEST_PASSED;
+#else
+  char        saved[DPTLIB_MAXPATH];
+  const char *env;
+  char        out[DPTLIB_MAXPATH];
+  int         ok;
+
+  env = getenv("TMPDIR");
+  snprintf(saved, sizeof(saved), "%s", env ? env : "");
+
+  unsetenv("TMPDIR");
+  ok = path_scrap("dptlib-scrap-test", "Scrap.png", out, sizeof(out)) &&
+       strcmp(out, "/tmp/dptlib-scrap-test/Scrap.png") == 0 &&
+       path_is_dir("/tmp/dptlib-scrap-test");
+
+  /* a trailing separator on TMPDIR is not doubled */
+  setenv("TMPDIR", "/tmp/", 1);
+  ok = ok && path_scrap("dptlib-scrap-test", "Scrap", out, sizeof(out)) &&
+       strcmp(out, "/tmp/dptlib-scrap-test/Scrap") == 0 &&
+       !path_scrap("dptlib-scrap-test", "Scrap", out, 24);
+
+  (void) remove("/tmp/dptlib-scrap-test");
+
+  if (saved[0] != '\0')
+    setenv("TMPDIR", saved, 1);
+  else
+    unsetenv("TMPDIR");
+
+  return ok ? result_TEST_PASSED : result_TEST_FAILED;
+#endif
+}
+
 result_t path_test(const char *resources)
 {
   static result_t (*const tests[])(void) =
@@ -248,7 +283,8 @@ result_t path_test(const char *resources)
     test_leaf,
     test_is_full,
     test_parent,
-    test_user_data
+    test_user_data,
+    test_scrap
   };
 
   result_t rc;

@@ -346,3 +346,42 @@ int path_user_data(const char *app, char *out, size_t cap)
 
   return path_mkdir(out) && path_is_dir(out);
 }
+
+int path_scrap(const char *app, const char *leaf, char *out, size_t cap)
+{
+#ifndef __riscos
+  const char *base;
+#endif
+  char sep;
+  int  n;
+  int  m;
+
+  assert(app);
+  assert(leaf);
+  assert(out);
+
+#if defined(__riscos)
+  sep = '.';
+  n   = snprintf(out, cap, "<Wimp$ScrapDir>.%s", app);
+#elif defined(_WIN32)
+  base = getenv("TEMP");
+  if (base == NULL || base[0] == '\0')
+    base = getenv("TMP");
+  if (base == NULL || base[0] == '\0')
+    base = ".";
+  sep = '\\';
+  n   = snprintf(out, cap, "%s\\%s", base, app);
+#else
+  base = getenv("TMPDIR");
+  if (base == NULL || base[0] == '\0')
+    base = "/tmp";
+  sep = '/';
+  n   = snprintf(out, cap, "%s%s%s", base,
+                 base[strlen(base) - 1] == '/' ? "" : "/", app);
+#endif
+  if (n < 0 || (size_t) n >= cap || !path_mkdir(out))
+    return 0;
+
+  m = snprintf(out + n, cap - (size_t) n, "%c%s", sep, leaf);
+  return m >= 0 && (size_t) m < cap - (size_t) n;
+}

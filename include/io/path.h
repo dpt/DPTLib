@@ -122,4 +122,17 @@ int path_is_dir(const char *path);
  */
 int path_user_data(const char *app, char *out, size_t cap);
 
+/**
+ * Writes the path of scrap file 'leaf' for application 'app' into 'out'
+ * (capacity 'cap'), creating the application's scrap directory: a place for
+ * short-lived files, such as one handed between programs. That is
+ * `<Wimp$ScrapDir>.<app>.<leaf>` on RISC OS and `%TEMP%\<app>\<leaf>` (or
+ * `%TMP%`) on Windows. Elsewhere it is `$TMPDIR/<app>/<leaf>`, or
+ * `/tmp/<app>/<leaf>` when that is unset. The file itself is not created.
+ *
+ * \return Nonzero on success, zero if the path does not fit 'cap' or the
+ *         directory cannot be made.
+ */
+int path_scrap(const char *app, const char *leaf, char *out, size_t cap);
+
 #endif /* DPTLIB_PATH */
