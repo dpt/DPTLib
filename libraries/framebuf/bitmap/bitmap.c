@@ -605,6 +605,37 @@ static result_t bmconv_packed_to_rgbx8888(const bitmap_t *src,
   return rc;
 }
 
+/* Deep to deep: a copy, put through bitmap_convert_in_place, which refuses
+ * anything but the 32bpp formats. */
+static result_t bmconv_deep(const bitmap_t *src,
+                            pixelfmt_t      newfmt,
+                            bitmap_t      **pdst)
+{
+  result_t  rc;
+  bitmap_t *dst;
+
+  dst = malloc(sizeof(*dst));
+  if (dst == NULL)
+    return result_OOM;
+
+  rc = bitmap_clone(src, dst);
+  if (rc != result_OK)
+  {
+    free(dst);
+    return rc;
+  }
+
+  rc = bitmap_convert_in_place(dst, newfmt);
+  if (rc != result_OK)
+  {
+    bitmap_destroy(dst);
+    return rc;
+  }
+
+  *pdst = dst;
+  return result_OK;
+}
+
 result_t bitmap_convert(const bitmap_t *src,
                         pixelfmt_t      newfmt,
                         bitmap_t      **dst)
@@ -678,7 +709,7 @@ result_t bitmap_convert(const bitmap_t *src,
     break;
 
   default:
-    return result_NOT_SUPPORTED;
+    return bmconv_deep(src, newfmt, dst);
   }
 }
 

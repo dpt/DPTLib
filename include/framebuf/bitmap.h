@@ -241,7 +241,12 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename);
 
 /**
  * Convert the given bitmap into a different pixel format, allocating a new
- * bitmap structure for the result.
+ * bitmap structure for the result; free it with \ref bitmap_destroy.
+ *
+ * Supported: a paletted source to `bgrx8888`, `rgbx8888` or `rgba8888` (and
+ * `bgra8888` from `p8`), and any pair of the 32bpp formats as \ref
+ * bitmap_convert_in_place, including a format to itself (a copy). Compressed
+ * sources are refused.
  *
  * \param[in] bm       Bitmap to convert.
  * \param[in] newfmt   New pixel format.

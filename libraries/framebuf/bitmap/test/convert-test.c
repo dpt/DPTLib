@@ -389,12 +389,19 @@ static int test_convert_unsupported(void)
   bitmap_t     dst;
   bitmap_t    *out;
 
-  printf("test: compressed and deep sources are refused\n");
+  printf("test: compressed and deep sources are refused, but 32bpp to "
+         "32bpp copies\n");
 
   bitmap_init(&dst, SIZE2D(1, 1), pixelfmt_bgrx8888, 4, NULL, px);
 
+  px[0] = 0x00112233u;
   bitmap_init(&src, SIZE2D(1, 1), pixelfmt_rgbx8888, 4, NULL, px);
-  if (bitmap_convert(&src, pixelfmt_bgrx8888, &out) != result_NOT_SUPPORTED ||
+  if (bitmap_convert(&src, pixelfmt_bgra8888, &out) != result_OK ||
+      out == NULL || out->base == px || out->format != pixelfmt_bgra8888 ||
+      *(const unsigned int *) out->base != 0xFF332211u)
+    FAIL("convert 32bpp");
+  bitmap_destroy(out);
+  if (bitmap_convert(&src, pixelfmt_rgb565, &out) != result_NOT_SUPPORTED ||
       out != NULL)
     FAIL("convert deep");
   if (bitmap_convert_into(&src, pixelfmt_bgrx8888, &dst) !=
