@@ -8,10 +8,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- `tools/release.py`: checks, cuts, merges, tags, pushes and starts releases of DPTLib and Wuss.
+- `tools/release.py`: checks, cuts, merges, tags, pushes and starts releases
+  of DPTLib and Wuss.
 - `datastruct/nodegraph.h`: a dataflow graph of client-defined nodes joined
   by typed links. Refuses cycles, caches each node's output and re-evaluates
-  only nodes downstream of a change.
+  only nodes downstream of a change. A class with `nodegraph_NO_OUTPUT` is a
+  sink: links from it are refused with `result_INCOMPATIBLE`.
+- `io/path.h`: `path_scrap` builds the path of a scrap file for passing data
+  between programs, creating the application's scrap directory.
+- `sdl/crt.h`: `crt_set_border` sets the colour that fills the window around
+  the viewport, as an emulated machine's border would.
+
+### Changed
+
+- `framebuf/bitmap.h`: `bitmap_convert` converts between any pair of 32bpp
+  formats, including a format to itself as a copy, where it returned
+  `result_NOT_SUPPORTED` before.
+
+### Fixed
+
+- `framebuf/composite.h`: no `-Wmaybe-uninitialized` warning from older GCC
+  (GCCSDK).
 
 ## [0.9.0] - 2026-11-12
 

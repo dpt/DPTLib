@@ -38,6 +38,7 @@ DPTLib is my platform independent C library. It contains a wide variety of funct
 - [`datastruct/hash.h`](https://github.com/dpt/DPTLib/blob/main/include/datastruct/hash.h) — associative arrays
 - [`datastruct/hlist.h`](https://github.com/dpt/DPTLib/blob/main/include/datastruct/hlist.h) — "Hanson" linked list library - from the book [C Interfaces and Implementations](https://github.com/drh/cii/)
 - [`datastruct/list.h`](https://github.com/dpt/DPTLib/blob/main/include/datastruct/list.h) — linked lists
+- [`datastruct/nodegraph.h`](https://github.com/dpt/DPTLib/blob/main/include/datastruct/nodegraph.h) — dataflow graphs of typed nodes
 - [`datastruct/ntree.h`](https://github.com/dpt/DPTLib/blob/main/include/datastruct/ntree.h) — n-ary trees
 - [`datastruct/vector.h`](https://github.com/dpt/DPTLib/blob/main/include/datastruct/vector.h) — flexible arrays
 
