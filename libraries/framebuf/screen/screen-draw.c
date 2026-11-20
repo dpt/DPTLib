@@ -1761,7 +1761,11 @@ void screen_draw_line(screen_t *scr,
 
   /* Reject only: the clipped-back endpoints are discarded, since feeding
    * them into the stepping maths below would make the pixels chosen depend
-   * on which clip rectangle we happened to be called with. */
+   * on which clip rectangle we happened to be called with. The test is made
+   * against the clip grown by a pixel: line_clip rounds, and a line grazing
+   * a corner can be rejected though a stepped pixel lands inside, leaving a
+   * gap when the line is redrawn piecewise. screen_set_pixel clips exactly. */
+  box_grow(&clip_box, 1);
   rx0 = x0;
   ry0 = y0;
   rx1 = x1;
@@ -1926,6 +1930,8 @@ void screen_draw_dashed_line(screen_t *scr,
   if (screen_get_clip(scr, &clip_box))
     return; /* invalid clipped screen */
 
+  /* reject only, against the grown clip: see screen_draw_line() */
+  box_grow(&clip_box, 1);
   rx0 = x0;
   ry0 = y0;
   rx1 = x1;
@@ -2006,11 +2012,13 @@ void screen_draw_line_wu_fix8(screen_t *scr,
   if (screen_get_clip(scr, &clip_box_f8))
     return; /* invalid clipped screen */
 
-  /* scale up screen clip box to match the coordinate type */
+  /* scale up screen clip box to match the coordinate type, grown by the two
+   * pixels an antialiased step can reach */
+  box_grow(&clip_box_f8, 2);
   box_scalelog2(&clip_box_f8, FIX8_SHIFT);
 
   /* Reject only: see screen_draw_line() for why the clipped-back endpoints
-   * are discarded rather than used. */
+   * are discarded rather than used and the clip grown. */
   rx0_f8 = x0_f8;
   ry0_f8 = y0_f8;
   rx1_f8 = x1_f8;
@@ -2145,7 +2153,10 @@ void screen_draw_line_wu_float(screen_t *scr,
     return; /* invalid clipped screen */
 
   /* This discards the fractional part of the coordinates so for now just use it
-   * to discard lines. screen_set_pixel() will be doing clipping too later. */
+   * to discard lines. screen_set_pixel() will be doing clipping too later.
+   * Grown by the two pixels an antialiased step can reach: see
+   * screen_draw_line(). */
+  box_grow(&clip_box, 2);
   x0 = fx0;
   y0 = fy0;
   x1 = fx1;

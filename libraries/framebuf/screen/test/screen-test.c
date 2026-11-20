@@ -167,6 +167,54 @@ static result_t test_clip_invariance(void)
   return result_TEST_PASSED;
 }
 
+/* As test_clip_invariance, with the canvas cut into small tiles, so that
+ * lines graze tile corners: a line whose rounded clip misses a tile must not
+ * skip the pixel it steps into there. */
+static result_t test_clip_invariance_tiles(void)
+{
+  static testscreen_t reference;
+  static testscreen_t pieced;
+
+  colour_t            colour;
+  size_t              k;
+  int                 i;
+  linetest_t          line;
+  int                 x, y;
+
+  colour = colour_rgb(255, 255, 255);
+
+  for (k = 0; k < 3; k++)
+    for (i = 0; i < 64; i++)
+    {
+      /* a fan of lines at assorted angles and lengths */
+      line.x0 = 3 + (i * 7) % 11;
+      line.y0 = 5 + (i * 5) % 13;
+      line.x1 = 60 - (i * 13) % 37;
+      line.y1 = 58 - (i * 11) % 41;
+
+      testscreen_init(&reference);
+      draw(&reference.scr, (linekind_t) k, &line, colour);
+
+      testscreen_init(&pieced);
+      for (y = 0; y < HEIGHT; y += 3)
+        for (x = 0; x < WIDTH; x += 3)
+        {
+          pieced.scr.clip = (box_t) { x, y, MIN(x + 3, WIDTH),
+                                      MIN(y + 3, HEIGHT) };
+          draw(&pieced.scr, (linekind_t) k, &line, colour);
+        }
+
+      if (memcmp(reference.pixels, pieced.pixels, sizeof(reference.pixels)))
+      {
+        printf("screen: tiled clip invariance failed for line %d, "
+               "rasterizer %zu\n", i, k);
+        return result_TEST_FAILED;
+      }
+    }
+
+  return result_TEST_PASSED;
+}
+
 /* Guard against the test above passing vacuously because clipping stopped
  * happening at all: pixels outside the clip box must stay untouched. */
 static result_t test_clipping_still_happens(void)
@@ -3476,6 +3524,7 @@ result_t screen_test(const char *resources)
   static const screentestfn tests[] =
   {
     test_clip_invariance,
+    test_clip_invariance_tiles,
     test_clipping_still_happens,
     test_wu_fix8_extreme_coords,
     test_ninepatch,
