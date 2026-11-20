@@ -172,6 +172,60 @@ static INLINE int rng_noise1d(uint32_t seed, int s, int period)
   return v0 + (v1 - v0) * t / 256;
 }
 
+/**
+ * Smooth two-dimensional value noise that tiles.
+ *
+ * The tile is 2^log2size pixels square. A lattice of 2^log2nx by 2^log2ny
+ * cells covers it, with a random knot at each cell corner. The lattice
+ * wraps, so the noise repeats every tile in both directions. Between knots
+ * the value is eased with a smoothstep curve and blended bilinearly.
+ *
+ * Integer only, with no division.
+ *
+ * \param[in] seed     Seed value.
+ * \param[in] x        Pixel column (>= 0).
+ * \param[in] y        Pixel row (>= 0).
+ * \param[in] log2size log2 of the tile size in pixels.
+ * \param[in] log2nx   log2 of the cells across (<= log2size).
+ * \param[in] log2ny   log2 of the cells down (<= log2size).
+ * \return A value in [0, 256).
+ */
+static INLINE int rng_noise2d(uint32_t seed,
+                              int      x,
+                              int      y,
+                              int      log2size,
+                              int      log2nx,
+                              int      log2ny)
+{
+  int log2cx, log2cy, maskx, masky, cx, cy, fx, fy, k0, k1, a, b, c, d, top,
+      bot;
+
+  log2cx = log2size - log2nx; /* log2 of the cell size in pixels */
+  log2cy = log2size - log2ny;
+  maskx  = (1 << log2nx) - 1;
+  masky  = (1 << log2ny) - 1;
+  cx     = x >> log2cx;
+  cy     = y >> log2cy;
+
+  /* 0..256 fractions across the cell, smoothstepped */
+  fx = ((x & ((1 << log2cx) - 1)) << 8) >> log2cx;
+  fy = ((y & ((1 << log2cy) - 1)) << 8) >> log2cy;
+  fx = fx * fx * (768 - 2 * fx) >> 16;
+  fy = fy * fy * (768 - 2 * fy) >> 16;
+
+  k0 = (cy & masky) << log2nx;
+  k1 = ((cy + 1) & masky) << log2nx;
+  a  = (int) (rng_hash32(seed, k0 | (cx & maskx)) & 255);
+  b  = (int) (rng_hash32(seed, k0 | ((cx + 1) & maskx)) & 255);
+  c  = (int) (rng_hash32(seed, k1 | (cx & maskx)) & 255);
+  d  = (int) (rng_hash32(seed, k1 | ((cx + 1) & maskx)) & 255);
+
+  top = a + ((b - a) * fx >> 8);
+  bot = c + ((d - c) * fx >> 8);
+
+  return top + ((bot - top) * fy >> 8);
+}
+
 /* ----------------------------------------------------------------------- */
 
 #ifdef __cplusplus

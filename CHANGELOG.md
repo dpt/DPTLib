@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- `utils/rng.h`: `rng_noise2d` gives smooth 2-D value noise that tiles, on a
+  power-of-two lattice.
+
 ## [0.10.0] - 2026-11-19
 
 ### Added

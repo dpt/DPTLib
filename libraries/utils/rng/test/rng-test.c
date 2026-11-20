@@ -15,6 +15,8 @@ result_t rng_test(const char *resources)
   int s;
   int v;
   int prev;
+  int y;
+  int x;
 
   NOT_USED(resources);
 
@@ -41,6 +43,22 @@ result_t rng_test(const char *resources)
     }
     prev = v;
   }
+
+  /* 2-D noise on a 64-pixel tile of 8 x 4 cells: in range, hits each knot
+   * exactly at a cell corner and repeats every tile */
+  for (y = 0; y < 64; y++)
+    for (x = 0; x < 64; x++)
+    {
+      v = rng_noise2d(7, x, y, 6, 3, 2);
+      if (v < 0 || v >= 256 ||
+          v != rng_noise2d(7, x + 64, y + 128, 6, 3, 2) ||
+          (x % 8 == 0 && y % 16 == 0 &&
+           v != (int) (rng_hash32(7, (y / 16) << 3 | x / 8) & 255)))
+      {
+        printf("rng_noise2d: bad value %d at %d,%d\n", v, x, y);
+        return result_TEST_FAILED;
+      }
+    }
 
   return result_TEST_PASSED;
 }
