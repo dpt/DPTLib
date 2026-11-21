@@ -652,9 +652,11 @@ static result_t test_fill_linear_gradient(void)
 
   const int back = (int) (pixelfmt_bgrx8888_t) BACKGROUND;
 
-  box_t     box = { 4, 4, 24, 6 };
-  colour_t  red, blue;
-  int       lo, mid, hi;
+  box_t         box = { 4, 4, 24, 6 };
+  colour_t      red, blue;
+  int           lo, mid, hi;
+  colour_stop_t stops[3];
+  colour_t      ramp[256];
 
   red  = colour_rgb(255, 0, 0);
   blue = colour_rgb(0, 0, 255);
@@ -700,6 +702,25 @@ static result_t test_fill_linear_gradient(void)
   if (np_at(&ts, 8, 4) != back)
   {
     printf("screen: fill_linear_gradient drew with a == b\n");
+    return result_TEST_FAILED;
+  }
+
+  /* a ramp of red, green and blue: green at its middle step, x = 12 */
+  stops[0].pos    = 0;
+  stops[0].colour = red;
+  stops[1].pos    = 128;
+  stops[1].colour = colour_rgb(0, 255, 0);
+  stops[2].pos    = 255;
+  stops[2].colour = blue;
+  colour_ramp(stops, 3, ramp, 256);
+  testscreen_init(&ts);
+  screen_fill_linear_gradient_ramp(&ts.scr, &box, POINT(8, 0), POINT(16, 0),
+                                   ramp);
+  if (np_at(&ts, 8, 4)  != lo                                ||
+      np_at(&ts, 12, 4) != (int) np_encode(&enc, 0, 255, 0) ||
+      np_at(&ts, 16, 4) != hi)
+  {
+    printf("screen: fill_linear_gradient_ramp wrong colours\n");
     return result_TEST_FAILED;
   }
 

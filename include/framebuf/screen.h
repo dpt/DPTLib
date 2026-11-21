@@ -242,6 +242,24 @@ void screen_fill_linear_gradient(screen_t    *scr,
                                  colour_t     c1);
 
 /**
+ * As `screen_fill_linear_gradient`, but the gradient's 256 steps take their
+ * colours from `ramp`, from `ramp[0]` at `a` to `ramp[255]` at `b`, so it
+ * may run through any number of colours. `colour_ramp` builds such a table
+ * from stops.
+ *
+ * \param[in] scr  Screen to draw upon.
+ * \param[in] box  Box to fill, inclusive-exclusive.
+ * \param[in] a    Screen coordinate where the gradient is `ramp[0]`.
+ * \param[in] b    Screen coordinate where the gradient is `ramp[255]`.
+ * \param[in] ramp 256 colours, one per step.
+ */
+void screen_fill_linear_gradient_ramp(screen_t       *scr,
+                                      const box_t    *box,
+                                      point_t         a,
+                                      point_t         b,
+                                      const colour_t *ramp);
+
+/**
  * Copies a bitmap onto the screen, alpha-blending it against the screen
  * where the bitmap has an alpha channel. On paletted screens, which have no
  * linear channel bits to blend, this falls back to alpha-tested transparency

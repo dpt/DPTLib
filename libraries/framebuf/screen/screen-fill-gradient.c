@@ -26,6 +26,21 @@ void screen_fill_linear_gradient(screen_t    *scr,
                                  colour_t     c0,
                                  colour_t     c1)
 {
+  colour_t ramp[256];
+  int      i;
+
+  for (i = 0; i < 256; i++)
+    ramp[i] = colour_mix_rgba(c0, c1, i, 255);
+
+  screen_fill_linear_gradient_ramp(scr, box, a, b, ramp);
+}
+
+void screen_fill_linear_gradient_ramp(screen_t       *scr,
+                                      const box_t    *box,
+                                      point_t         a,
+                                      point_t         b,
+                                      const colour_t *ramp)
+{
   double         dx, dy, len2;
   box_t          clip_box;
   box_t          draw_box;
@@ -51,7 +66,7 @@ void screen_fill_linear_gradient(screen_t    *scr,
     return; /* nothing visible */
 
   for (i = 0; i < 256; i++)
-    lut[i] = screen_colour_to_pixel(scr, colour_mix_rgba(c0, c1, i, 255));
+    lut[i] = screen_colour_to_pixel(scr, ramp[i]);
 
   /* The step never falls as n rises, so first[k], the least n reaching step
    * k, bounds each step: a pixel takes step k exactly when
