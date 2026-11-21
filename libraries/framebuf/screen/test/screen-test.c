@@ -658,12 +658,16 @@ static result_t test_fill_linear_gradient(void)
   int           lo, mid, hi;
   colour_stop_t stops[3];
   colour_t      ramp[256];
+  int           green;
+  int           i;
+  int           ok;
 
-  red  = colour_rgb(255, 0, 0);
-  blue = colour_rgb(0, 0, 255);
-  lo   = (int) np_encode(&enc, 255, 0, 0);
-  mid  = (int) np_encode(&enc, 127, 0, 128);
-  hi   = (int) np_encode(&enc, 0, 0, 255);
+  red   = colour_rgb(255, 0, 0);
+  blue  = colour_rgb(0, 0, 255);
+  lo    = (int) np_encode(&enc, 255, 0, 0);
+  mid   = (int) np_encode(&enc, 127, 0, 128);
+  hi    = (int) np_encode(&enc, 0, 0, 255);
+  green = (int) np_encode(&enc, 0, 255, 0);
 
   /* red up to x = 8, blue from x = 16, step 128 of 255 at x = 12 */
   testscreen_init(&ts);
@@ -739,6 +743,33 @@ static result_t test_fill_linear_gradient(void)
   {
     printf("screen: fill_radial_gradient_ramp wrong colours\n");
     return result_TEST_FAILED;
+  }
+
+  /* the other shapes, about the same centre: halfway out is green */
+  for (i = 0; i < screen_GRADIENT__COUNT; i++)
+  {
+    testscreen_init(&ts);
+    screen_fill_gradient_ramp(&ts.scr, &box, POINT(14, 4), POINT(22, 4),
+                              (screen_gradient_t) i, ramp);
+    switch (i)
+    {
+    case screen_GRADIENT_CONIC: /* red towards b, green opposite */
+      ok = np_at(&ts, 18, 4) == lo && np_at(&ts, 10, 4) == green;
+      break;
+
+    case screen_GRADIENT_SQUARE: /* off the axis, as far out */
+      ok = np_at(&ts, 18, 4) == green && np_at(&ts, 18, 5) == green;
+      break;
+
+    default:
+      ok = np_at(&ts, 14, 4) == lo && np_at(&ts, 18, 4) != lo;
+      break;
+    }
+    if (!ok)
+    {
+      printf("screen: fill_gradient_ramp shape %d wrong colours\n", i);
+      return result_TEST_FAILED;
+    }
   }
 
   return result_TEST_PASSED;

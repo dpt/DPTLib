@@ -212,4 +212,103 @@ void screen_fill_radial_gradient_ramp(screen_t       *scr,
   }
 }
 
+/* ----------------------------------------------------------------------- */
+
+/* The step, 0..255, of a pixel u along and v across a gradient of shape,
+ * each in lengths of a to b. */
+static int shape_step(screen_gradient_t shape, double u, double v)
+{
+  double t;
+
+  switch (shape)
+  {
+  case screen_GRADIENT_CONIC:
+    t = atan2(v, u) / (8 * atan(1.0)); /* in turns */
+    if (t < 0)
+      t += 1;
+    break;
+
+  default:
+    t = MAX(fabs(u), fabs(v));
+    break;
+  }
+
+  return CLAMP((int) (t * 255 + 0.5), 0, 255);
+}
+
+void screen_fill_gradient_ramp(screen_t         *scr,
+                               const box_t      *box,
+                               point_t           a,
+                               point_t           b,
+                               screen_gradient_t shape,
+                               const colour_t   *ramp)
+{
+  double         dx, dy;
+  double         inv;
+  box_t          clip_box;
+  box_t          draw_box;
+  pixelfmt_any_t lut[256];
+  int            i;
+  int            y;
+  int            x0;
+  int            step;
+  double         py;
+  int            x;
+  double         px;
+
+  if (shape == screen_GRADIENT_LINEAR)
+  {
+    screen_fill_linear_gradient_ramp(scr, box, a, b, ramp);
+    return;
+  }
+  if (shape == screen_GRADIENT_RADIAL)
+  {
+    screen_fill_radial_gradient_ramp(scr, box, a, b, ramp);
+    return;
+  }
+
+  dx = b.x - a.x;
+  dy = b.y - a.y;
+  if (dx == 0 && dy == 0)
+    return;
+  inv = 1 / (dx * dx + dy * dy);
+
+  if (screen_get_clip(scr, &clip_box))
+    return; /* invalid clipped screen */
+
+  if (box_intersection(box, &clip_box, &draw_box))
+    return; /* nothing visible */
+
+  for (i = 0; i < 256; i++)
+    lut[i] = screen_colour_to_pixel(scr, ramp[i]);
+
+  /* ponytail: a step per pixel, with atan2 for the conic shape. fine for a
+   * one-off fill; bound the steps as the linear fill does if it is ever
+   * drawn per frame */
+  for (y = draw_box.y0; y < draw_box.y1; y++)
+  {
+    x0   = draw_box.x0;
+    step = -1;
+    py   = y - a.y;
+    for (x = draw_box.x0; x <= draw_box.x1; x++)
+    {
+      i = -1;
+      if (x < draw_box.x1)
+      {
+        px = x - a.x;
+        i  = shape_step(shape, (px * dx + py * dy) * inv,
+                        (py * dx - px * dy) * inv);
+        if (i == step)
+          continue;
+      }
+
+      if (step >= 0)
+        screen_fill_rect_value(scr, x0, y, SIZE2D(x - x0, 1), lut[step]);
+
+      x0   = x;
+      step = i;
+    }
+  }
+}
+
 /* vim: set ts=8 sts=2 sw=2 et: */

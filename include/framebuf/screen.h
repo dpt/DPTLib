@@ -280,6 +280,44 @@ void screen_fill_radial_gradient_ramp(screen_t       *scr,
                                       point_t         b,
                                       const colour_t *ramp);
 
+/** Gradient shapes for `screen_fill_gradient_ramp`. Each runs from `a` to
+ *  `b`, measuring along the line from `a` to `b` and across it. */
+typedef enum
+{
+  screen_GRADIENT_LINEAR,    /**< Bands across the line, as
+                              *   `screen_fill_linear_gradient_ramp`. */
+  screen_GRADIENT_RADIAL,    /**< Circles about `a`, as
+                              *   `screen_fill_radial_gradient_ramp`. */
+  screen_GRADIENT_CONIC,     /**< A sweep once round `a`, starting towards
+                              *   `b`, as CSS's conic-gradient. */
+  screen_GRADIENT_SQUARE,    /**< Squares about `a`, an edge's middle at
+                              *   `b`. A diagonal `a` to `b` gives
+                              *   diamonds. */
+  screen_GRADIENT__COUNT
+}
+screen_gradient_t;
+
+/**
+ * Fill a box with a gradient of the given shape, alpha included, through
+ * `ramp`'s 256 colours: `ramp[0]` at `a`, `ramp[255]` at `b` and beyond.
+ *
+ * Pixels are written, not blended. Clipped to the screen's clip region.
+ * Draws nothing if `a` equals `b`.
+ *
+ * \param[in] scr   Screen to draw upon.
+ * \param[in] box   Box to fill, inclusive-exclusive.
+ * \param[in] a     Screen coordinate where the gradient is `ramp[0]`.
+ * \param[in] b     Screen coordinate where the gradient is `ramp[255]`.
+ * \param[in] shape The gradient's shape.
+ * \param[in] ramp  256 colours, one per step.
+ */
+void screen_fill_gradient_ramp(screen_t         *scr,
+                               const box_t      *box,
+                               point_t           a,
+                               point_t           b,
+                               screen_gradient_t shape,
+                               const colour_t   *ramp);
+
 /**
  * Copies a bitmap onto the screen, alpha-blending it against the screen
  * where the bitmap has an alpha channel. On paletted screens, which have no
