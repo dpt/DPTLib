@@ -1,5 +1,6 @@
 /* framebuf/screen/test/screen-test.c -- test screen drawing */
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -724,6 +725,22 @@ static result_t test_fill_linear_gradient(void)
     return result_TEST_FAILED;
   }
 
+  /* the same ramp, radial about x = 14 out to x = 22: green four pixels
+   * either side of the centre, blue from the edge outwards */
+  testscreen_init(&ts);
+  screen_fill_radial_gradient_ramp(&ts.scr, &box, POINT(14, 4), POINT(22, 4),
+                                   ramp);
+  if (np_at(&ts, 14, 4) != lo                                ||
+      np_at(&ts, 10, 4) != (int) np_encode(&enc, 0, 255, 0) ||
+      np_at(&ts, 18, 4) != (int) np_encode(&enc, 0, 255, 0) ||
+      np_at(&ts, 4, 4)  != hi                                ||
+      np_at(&ts, 22, 5) != hi                                ||
+      np_at(&ts, 3, 4)  != back)
+  {
+    printf("screen: fill_radial_gradient_ramp wrong colours\n");
+    return result_TEST_FAILED;
+  }
+
   return result_TEST_PASSED;
 }
 
@@ -742,10 +759,13 @@ static result_t test_fill_linear_gradient_steps(void)
   double       dx, dy, len2;
   int          x, y;
   int          i;
+  colour_t     ramp[256];
 
   red  = colour_rgb(255, 0, 0);
   blue = colour_rgb(0, 0, 255);
   seed = 12345;
+  for (i = 0; i < 256; i++)
+    ramp[i] = colour_mix_rgba(red, blue, i, 255);
 
   for (n = 0; n < 300; n++)
   {
@@ -780,6 +800,25 @@ static result_t test_fill_linear_gradient_steps(void)
         {
           printf("screen: fill_linear_gradient (%d,%d)-(%d,%d) wrong step at "
                  "%d,%d\n", a.x, a.y, b.x, b.y, x, y);
+          return result_TEST_FAILED;
+        }
+      }
+
+    /* and radially, the step that the distance from a over the distance
+     * from a to b gives */
+    testscreen_init(&ts);
+    screen_fill_radial_gradient_ramp(&ts.scr, &whole, a, b, ramp);
+
+    for (y = 0; y < HEIGHT; y++)
+      for (x = 0; x < WIDTH; x++)
+      {
+        i = CLAMP((int) (sqrt(((double) (x - a.x) * (x - a.x) +
+                               (double) (y - a.y) * (y - a.y)) / len2) *
+                         255 + 0.5), 0, 255);
+        if (np_at(&ts, x, y) != (int) screen_colour_to_pixel(&ts.scr, ramp[i]))
+        {
+          printf("screen: fill_radial_gradient_ramp (%d,%d)-(%d,%d) wrong "
+                 "step at %d,%d\n", a.x, a.y, b.x, b.y, x, y);
           return result_TEST_FAILED;
         }
       }

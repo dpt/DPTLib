@@ -260,6 +260,27 @@ void screen_fill_linear_gradient_ramp(screen_t       *scr,
                                       const colour_t *ramp);
 
 /**
+ * Fill a box with a radial gradient, alpha included, centred on `a`: from
+ * `ramp[0]` at `a` out to `ramp[255]` at the circle through `b`. Pixels
+ * beyond the circle take `ramp[255]`. The gradient is quantised to 256
+ * steps.
+ *
+ * Pixels are written, not blended. Clipped to the screen's clip region.
+ * Draws nothing if `a` equals `b`.
+ *
+ * \param[in] scr  Screen to draw upon.
+ * \param[in] box  Box to fill, inclusive-exclusive.
+ * \param[in] a    Screen coordinate of the centre, where it is `ramp[0]`.
+ * \param[in] b    Screen coordinate on the edge, where it is `ramp[255]`.
+ * \param[in] ramp 256 colours, one per step.
+ */
+void screen_fill_radial_gradient_ramp(screen_t       *scr,
+                                      const box_t    *box,
+                                      point_t         a,
+                                      point_t         b,
+                                      const colour_t *ramp);
+
+/**
  * Copies a bitmap onto the screen, alpha-blending it against the screen
  * where the bitmap has an alpha channel. On paletted screens, which have no
  * linear channel bits to blend, this falls back to alpha-tested transparency
