@@ -100,6 +100,38 @@ colour_t colour_mix_rgba(colour_t     a,
                      (aa * (den - num) + ba * num + half) / den);
 }
 
+void colour_ramp(const colour_stop_t *stops,
+                 int                  nstops,
+                 colour_t            *out,
+                 int                  n)
+{
+  unsigned int scale;
+  int          s;
+  int          i;
+  unsigned int p;
+  unsigned int lo;
+  unsigned int hi;
+
+  /* Compare positions in units of 1 / (n - 1), which needs no division */
+  scale = (n > 1) ? (unsigned int) (n - 1) : 1;
+  s = 0;
+  for (i = 0; i < n; i++)
+  {
+    p = (unsigned int) i * 255;
+    while (s < nstops - 1 && stops[s + 1].pos * scale <= p)
+      s++;
+    lo = stops[s].pos * scale;
+    if (p <= lo || s == nstops - 1)
+    {
+      out[i] = stops[s].colour;
+      continue;
+    }
+    hi = stops[s + 1].pos * scale;
+    out[i] = colour_mix_rgba(stops[s].colour, stops[s + 1].colour,
+                             p - lo, hi - lo);
+  }
+}
+
 static unsigned int closest_palette_entry(const colour_t *palette,
                                           int             nentries,
                                           colour_t        required)

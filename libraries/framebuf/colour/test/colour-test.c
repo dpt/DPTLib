@@ -37,10 +37,16 @@ result_t colour_test(const char *resources)
   {
     { 0xFF000000u }, { 0xFF0000FFu }, { 0xFFFFFFFFu }
   };
+  static const colour_stop_t stops[4] =
+  {
+    { 64,  { 0xFF000000u } }, { 128, { 0xFFFFFFFFu } },
+    { 128, { 0xFF0000FFu } }, { 192, { 0x00FF0000u } }
+  };
 
   colour_t     c;
   unsigned int r, g, b;
   colour_t     mid;
+  colour_t     ramp[256];
   rng_t        rng1;
   rng_t        rng2;
   int          i;
@@ -74,6 +80,23 @@ result_t colour_test(const char *resources)
                         colour_rgba(255, 100, 10, 255), 1, 2);
   if (mid.primary != colour_rgba(128, 150, 25, 128).primary)
     FAIL("mix_rgba halfway");
+
+  printf("test: ramp\n");
+
+  colour_ramp(stops, 4, ramp, 256);
+  if (ramp[0].primary != 0xFF000000u || ramp[64].primary != 0xFF000000u)
+    FAIL("ramp holds the first stop before it");
+  if (ramp[96].primary != colour_rgb(128, 128, 128).primary)
+    FAIL("ramp blends between stops");
+  if (ramp[127].primary == 0xFF0000FFu || ramp[128].primary != 0xFF0000FFu)
+    FAIL("ramp steps at a shared position");
+  if (ramp[160].primary != colour_rgba(128, 0, 128, 128).primary)
+    FAIL("ramp blends alpha");
+  if (ramp[192].primary != 0x00FF0000u || ramp[255].primary != 0x00FF0000u)
+    FAIL("ramp holds the last stop after it");
+  colour_ramp(stops, 1, ramp, 1);
+  if (ramp[0].primary != 0xFF000000u)
+    FAIL("ramp of one");
 
   printf("test: colour to pixel\n");
 
