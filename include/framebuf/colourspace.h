@@ -198,6 +198,55 @@ const uint16_t *colourspace_srgb_decode(void);
  */
 const uint8_t *colourspace_srgb_encode(void);
 
+/* ----------------------------------------------------------------------- */
+
+/** The model a blend runs through. */
+typedef enum colourspace_blend
+{
+  colourspace_BLEND_RGB,    /**< sRGB, per channel, as colour_mix_rgba. */
+  colourspace_BLEND_LINEAR, /**< Linear-light sRGB, per channel. */
+  colourspace_BLEND_HSV,    /**< HSV, hue round the shorter arc. */
+  colourspace_BLEND_HSL,    /**< HSL, hue round the shorter arc. */
+  colourspace_BLEND_OKLAB,  /**< OKLab, per channel. */
+  colourspace_BLEND__COUNT
+}
+colourspace_blend_t;
+
+/**
+ * Blend two colours through a colour model. Alpha blends straight, as
+ * colour_mix_rgba blends it. A grey has no hue, so an HSV or HSL blend that
+ * has a grey at one end keeps the other end's hue throughout. Colours that
+ * fall outside sRGB are clamped.
+ *
+ * \param[in] a     Colour returned when num is 0.
+ * \param[in] b     Colour returned when num equals den.
+ * \param[in] num   Numerator of the blend fraction, at most den.
+ * \param[in] den   Denominator of the blend fraction, non-zero.
+ * \param[in] blend Model to blend through.
+ * \return Colour num/den of the way from a to b.
+ */
+colour_t colourspace_mix(colour_t            a,
+                         colour_t            b,
+                         unsigned int        num,
+                         unsigned int        den,
+                         colourspace_blend_t blend);
+
+/**
+ * Fill an array with a colour ramp, as colour_ramp, but blend between stops
+ * with colourspace_mix through \p blend.
+ *
+ * \param[in]  stops  Stops, in order of position. At least one.
+ * \param[in]  nstops Number of stops.
+ * \param[out] out    Array to fill.
+ * \param[in]  n      Number of entries in out, at least one.
+ * \param[in]  blend  Model to blend through.
+ */
+void colourspace_ramp(const colour_stop_t *stops,
+                      int                  nstops,
+                      colour_t            *out,
+                      int                  n,
+                      colourspace_blend_t  blend);
+
 #ifdef __cplusplus
 }
 #endif

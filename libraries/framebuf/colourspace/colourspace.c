@@ -352,3 +352,150 @@ void colourspace_oklab_to_rgb(const colourspace_oklab_t *oklab,
   rgb->g = colourspace_from_linear(g);
   rgb->b = colourspace_from_linear(b);
 }
+
+/* ----------------------------------------------------------------------- */
+
+static double colourspace_lerp(double a, double b, double t)
+{
+  return a + (b - a) * t;
+}
+
+/* Hue "t" of the way from "ha" to "hb" round the shorter arc, 0..360. A
+ * grey ("sa" or "sb" 0) has no hue of its own, so it takes the other's: a
+ * blend to grey then keeps its hue rather than swinging round to red. */
+static double colourspace_lerp_hue(double ha,
+                                   double sa,
+                                   double hb,
+                                   double sb,
+                                   double t)
+{
+  double d;
+  double h;
+
+  if (sa == 0.0)
+    ha = hb;
+  if (sb == 0.0)
+    hb = ha;
+
+  d = hb - ha;
+  if (d > 180.0)
+    d -= 360.0;
+  else if (d < -180.0)
+    d += 360.0;
+
+  h = ha + d * t;
+  if (h < 0.0)
+    h += 360.0;
+  else if (h >= 360.0)
+    h -= 360.0;
+
+  return h;
+}
+
+colour_t colourspace_mix(colour_t            a,
+                         colour_t            b,
+                         unsigned int        num,
+                         unsigned int        den,
+                         colourspace_blend_t blend)
+{
+  colour_t            mixed;
+  colourspace_rgb_t   ra, rb;
+  double              t;
+  colourspace_rgb_t   r;
+  colourspace_hsv_t   va, vb, v;
+  colourspace_hsl_t   la, lb, l;
+  colourspace_oklab_t oa, ob, o;
+  colour_t            blended;
+  unsigned int        cr, cg, cb;
+
+  mixed = colour_mix_rgba(a, b, num, den);
+  if (blend == colourspace_BLEND_RGB)
+    return mixed;
+
+  colourspace_from_colour(a, &ra);
+  colourspace_from_colour(b, &rb);
+  t = (double) num / den;
+
+  switch (blend)
+  {
+  case colourspace_BLEND_LINEAR:
+    r.r = colourspace_from_linear(colourspace_lerp(colourspace_to_linear(ra.r),
+                                                   colourspace_to_linear(rb.r),
+                                                   t));
+    r.g = colourspace_from_linear(colourspace_lerp(colourspace_to_linear(ra.g),
+                                                   colourspace_to_linear(rb.g),
+                                                   t));
+    r.b = colourspace_from_linear(colourspace_lerp(colourspace_to_linear(ra.b),
+                                                   colourspace_to_linear(rb.b),
+                                                   t));
+    break;
+
+  case colourspace_BLEND_HSV:
+    colourspace_rgb_to_hsv(&ra, &va);
+    colourspace_rgb_to_hsv(&rb, &vb);
+    v.h = colourspace_lerp_hue(va.h, va.s, vb.h, vb.s, t);
+    v.s = colourspace_lerp(va.s, vb.s, t);
+    v.v = colourspace_lerp(va.v, vb.v, t);
+    colourspace_hsv_to_rgb(&v, &r);
+    break;
+
+  case colourspace_BLEND_HSL:
+    colourspace_rgb_to_hsl(&ra, &la);
+    colourspace_rgb_to_hsl(&rb, &lb);
+    l.h = colourspace_lerp_hue(la.h, la.s, lb.h, lb.s, t);
+    l.s = colourspace_lerp(la.s, lb.s, t);
+    l.l = colourspace_lerp(la.l, lb.l, t);
+    colourspace_hsl_to_rgb(&l, &r);
+    break;
+
+  case colourspace_BLEND_OKLAB:
+    colourspace_rgb_to_oklab(&ra, &oa);
+    colourspace_rgb_to_oklab(&rb, &ob);
+    o.l = colourspace_lerp(oa.l, ob.l, t);
+    o.a = colourspace_lerp(oa.a, ob.a, t);
+    o.b = colourspace_lerp(oa.b, ob.b, t);
+    colourspace_oklab_to_rgb(&o, &r);
+    break;
+
+  default:
+    return mixed;
+  }
+
+  /* the model blends the colour; alpha blends straight, as RGB's does */
+  blended = colourspace_to_colour(&r);
+  colour_get_rgb(&blended, &cr, &cg, &cb);
+  return colour_rgba(cr, cg, cb, colour_get_alpha(&mixed));
+}
+
+void colourspace_ramp(const colour_stop_t *stops,
+                      int                  nstops,
+                      colour_t            *out,
+                      int                  n,
+                      colourspace_blend_t  blend)
+{
+  unsigned int scale;
+  int          s;
+  int          i;
+  unsigned int p;
+  unsigned int lo;
+  unsigned int hi;
+
+  /* as colour_ramp: compare positions in units of 1 / (n - 1) */
+  scale = (n > 1) ? (unsigned int) (n - 1) : 1;
+  s = 0;
+  for (i = 0; i < n; i++)
+  {
+    p = (unsigned int) i * 255;
+    while (s < nstops - 1 && stops[s + 1].pos * scale <= p)
+      s++;
+    lo = stops[s].pos * scale;
+    if (p <= lo || s == nstops - 1)
+    {
+      out[i] = stops[s].colour;
+      continue;
+    }
+    hi = stops[s + 1].pos * scale;
+    out[i] = colourspace_mix(stops[s].colour, stops[s + 1].colour,
+                             p - lo, hi - lo, blend);
+  }
+}

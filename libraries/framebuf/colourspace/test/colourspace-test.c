@@ -270,6 +270,81 @@ static int colourspace_test_tables(void)
   return 1;
 }
 
+/* Every blend hits both ends exactly and blends alpha straight. Red to blue
+ * goes through magenta in HSV, not through RGB's dull purple, and red to
+ * grey keeps red's hue. Linear light's midpoint of black and white is
+ * brighter than sRGB's. */
+static int colourspace_test_blends(void)
+{
+  colour_t      red, blue, grey, black, white;
+  int           m;
+  colour_t      c;
+  unsigned int  r, g, b;
+  colour_stop_t stops[2];
+  colour_t      ramp[3];
+
+  red   = colour_rgba(255, 0, 0, 0);
+  blue  = colour_rgba(0, 0, 255, 255);
+  grey  = colour_rgb(128, 128, 128);
+  black = colour_rgb(0, 0, 0);
+  white = colour_rgb(255, 255, 255);
+
+  for (m = 0; m < colourspace_BLEND__COUNT; m++)
+  {
+    if (colourspace_mix(red, blue, 0, 4, m).primary != red.primary ||
+        colourspace_mix(red, blue, 4, 4, m).primary != blue.primary)
+    {
+      printf("colourspace: blend %d misses an end\n", m);
+      return 0;
+    }
+    c = colourspace_mix(red, blue, 2, 4, m);
+    if (colour_get_alpha(&c) != 128)
+    {
+      printf("colourspace: blend %d alpha %u\n", m, colour_get_alpha(&c));
+      return 0;
+    }
+  }
+
+  c = colourspace_mix(red, blue, 1, 2, colourspace_BLEND_HSV);
+  colour_get_rgb(&c, &r, &g, &b);
+  if (r != 255 || g != 0 || b != 255)
+  {
+    printf("colourspace: HSV red-blue midpoint %u,%u,%u\n", r, g, b);
+    return 0;
+  }
+
+  c = colourspace_mix(red, grey, 1, 2, colourspace_BLEND_HSL);
+  colour_get_rgb(&c, &r, &g, &b);
+  if (!(r > g && g == b))
+  {
+    printf("colourspace: HSL red-grey midpoint %u,%u,%u lost its hue\n",
+           r, g, b);
+    return 0;
+  }
+
+  c = colourspace_mix(black, white, 1, 2, colourspace_BLEND_LINEAR);
+  colour_get_rgb(&c, &r, &g, &b);
+  if (r != 188)
+  {
+    printf("colourspace: linear black-white midpoint %u\n", r);
+    return 0;
+  }
+
+  stops[0].pos    = 0;
+  stops[0].colour = black;
+  stops[1].pos    = 255;
+  stops[1].colour = white;
+  colourspace_ramp(stops, 2, ramp, 3, colourspace_BLEND_LINEAR);
+  if (ramp[0].primary != black.primary || ramp[1].primary != c.primary ||
+      ramp[2].primary != white.primary)
+  {
+    printf("colourspace: linear ramp wrong\n");
+    return 0;
+  }
+
+  return 1;
+}
+
 result_t colourspace_test(const char *resources)
 {
   (void) resources;
@@ -278,7 +353,8 @@ result_t colourspace_test(const char *resources)
       !colourspace_test_references() ||
       !colourspace_test_gamut() ||
       !colourspace_test_tables() ||
-      !colourspace_test_hex())
+      !colourspace_test_hex() ||
+      !colourspace_test_blends())
     return result_TEST_FAILED;
 
   return result_TEST_PASSED;
