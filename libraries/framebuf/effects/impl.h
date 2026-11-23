@@ -26,6 +26,12 @@ effects_layout_t;
 /** Colour channel mask for a layout (everything but the alpha byte). */
 #define EFFECTS_ALPHA_MASK(l) (0xFFu << (l)->a)
 
+/** Luma of 8-bit r, g and b, by libjpeg's weights in 16.16 fixed point:
+ *  0.299 (rounded down), 0.587 (rounded up) and 0.114 (rounded down). They
+ *  sum to 65536, so a grey keeps its level. */
+#define EFFECTS_LUMA(r, g, b) \
+  (((r) * 19595u + (g) * 38470u + (b) * 7471u) >> 16)
+
 /**
  * Describe the byte order of a 32bpp format.
  *

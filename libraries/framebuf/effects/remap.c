@@ -1,9 +1,11 @@
 /* framebuf/effects/remap.c -- per-channel lookup remapping and histograms */
 
 #include <stdint.h>
+#include <string.h>
 
 #include "base/result.h"
 #include "framebuf/bitmap.h"
+#include "framebuf/effects.h"
 
 #include "impl.h"
 
@@ -76,4 +78,40 @@ void effects__histogram(const bitmap_t         *src,
       hist[2][(sp[x] >> layout->b) & 0xFF]++;
     }
   }
+}
+
+result_t effects_histogram(const bitmap_t *src, effects_histogram_t hist)
+{
+  result_t         rc;
+  effects_layout_t layout;
+  int              x, y;
+
+  rc = effects__check_one(src, &layout);
+  if (rc != result_OK)
+    return rc;
+
+  memset(hist, 0, sizeof(effects_histogram_t));
+
+  for (y = 0; y < src->size.h; y++)
+  {
+    const uint32_t *sp;
+
+    sp = EFFECTS_ROW(src, y);
+
+    for (x = 0; x < src->size.w; x++)
+    {
+      unsigned int r, g, b;
+
+      r = (sp[x] >> layout.r) & 0xFF;
+      g = (sp[x] >> layout.g) & 0xFF;
+      b = (sp[x] >> layout.b) & 0xFF;
+
+      hist[effects_histogram_RED][r]++;
+      hist[effects_histogram_GREEN][g]++;
+      hist[effects_histogram_BLUE][b]++;
+      hist[effects_histogram_LUMA][EFFECTS_LUMA(r, g, b)]++;
+    }
+  }
+
+  return result_OK;
 }

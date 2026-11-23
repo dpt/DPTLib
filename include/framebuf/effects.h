@@ -126,6 +126,31 @@ result_t effects_clear_apply(const bitmap_t *src,
                              bitmap_t       *dst,
                              colour_t        colour);
 
+/** The rows of effects_histogram's counts. */
+enum
+{
+  effects_histogram_RED,
+  effects_histogram_GREEN,
+  effects_histogram_BLUE,
+  effects_histogram_LUMA, /**< as effects_grey_apply's grey */
+  effects_histogram__LIMIT
+};
+
+/**
+ * Pixel counts: a row per effects_histogram_ component, indexed by level.
+ */
+typedef unsigned int effects_histogram_t[effects_histogram__LIMIT][256];
+
+/**
+ * Count the pixels at each level of each colour channel and of luma.
+ *
+ * \param[in]  src  Source bitmap.
+ * \param[out] hist Counts.
+ * \return \ref result_OK on success, \ref result_BAD_ARG for an unsuitable
+ *         bitmap.
+ */
+result_t effects_histogram(const bitmap_t *src, effects_histogram_t hist);
+
 /**
  * Equalise the histogram of each colour channel.
  *

@@ -256,6 +256,40 @@ static result_t test_levels(void)
   return result_TEST_PASSED;
 }
 
+static result_t test_histogram(void)
+{
+  bitmap_t            src;
+  unsigned int        a[STRIDE * H];
+  effects_histogram_t hist;
+
+  if (make(&src, a, pixelfmt_rgba8888) != result_OK)
+    FAIL("bad bitmap");
+
+  /* every pixel (10,20,30), then one grey 200; padding is not counted */
+  fill(a, PIXELFMT_MAKE_RGBA8888(10, 20, 30, 255));
+  a[0] = PIXELFMT_MAKE_RGBA8888(200, 200, 200, 255);
+
+  if (effects_histogram(&src, hist) != result_OK)
+    FAIL("histogram failed");
+
+  if (hist[effects_histogram_RED][10] != W * H - 1 ||
+      hist[effects_histogram_RED][200] != 1 ||
+      hist[effects_histogram_GREEN][20] != W * H - 1 ||
+      hist[effects_histogram_BLUE][30] != W * H - 1 ||
+      hist[effects_histogram_RED][0] != 0)
+    FAIL("histogram counts wrong: %u %u %u %u",
+         hist[effects_histogram_RED][10], hist[effects_histogram_RED][200],
+         hist[effects_histogram_GREEN][20], hist[effects_histogram_BLUE][30]);
+
+  /* luma of (10,20,30) is 18; a grey keeps its level */
+  if (hist[effects_histogram_LUMA][18] != W * H - 1 ||
+      hist[effects_histogram_LUMA][200] != 1)
+    FAIL("histogram luma wrong: %u %u", hist[effects_histogram_LUMA][18],
+         hist[effects_histogram_LUMA][200]);
+
+  return result_TEST_PASSED;
+}
+
 static result_t test_tonemap(void)
 {
   bitmap_t               src, dst;
@@ -439,6 +473,7 @@ result_t effects_test(const char *resources)
       test_blend() != result_TEST_PASSED ||
       test_grey_clear() != result_TEST_PASSED ||
       test_levels() != result_TEST_PASSED ||
+      test_histogram() != result_TEST_PASSED ||
       test_tonemap() != result_TEST_PASSED ||
       test_bad_args() != result_TEST_PASSED ||
       test_layouts() != result_TEST_PASSED ||

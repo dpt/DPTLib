@@ -13,11 +13,6 @@
 
 result_t effects_grey_apply(const bitmap_t *src, bitmap_t *dst)
 {
-  /* libjpeg's weights */
-  const int red_weight   = 19595; /* 0.29900 * 65536 (rounded down) */
-  const int green_weight = 38470; /* 0.58700 * 65536 (rounded up)   */
-  const int blue_weight  =  7471; /* 0.11400 * 65536 (rounded down) */
-
   result_t         rc;
   effects_layout_t layout;
   unsigned int     amask;
@@ -39,9 +34,9 @@ result_t effects_grey_apply(const bitmap_t *src, bitmap_t *dst)
 
     for (x = 0; x < src->size.w; x++)
     {
-      uint32_t px;
-      int      r, g, b;
-      uint32_t gr;
+      uint32_t     px;
+      unsigned int r, g, b;
+      uint32_t     gr;
 
       px = sp[x];
 
@@ -50,10 +45,9 @@ result_t effects_grey_apply(const bitmap_t *src, bitmap_t *dst)
       b = (px >> layout.b) & 0xFF;
 
       if (r == g && g == b)
-        gr = (uint32_t) r;
+        gr = r;
       else
-        gr = (uint32_t) ((r * red_weight + g * green_weight +
-                          b * blue_weight) >> 16);
+        gr = EFFECTS_LUMA(r, g, b);
 
       dp[x] = (gr << layout.r) | (gr << layout.g) | (gr << layout.b) |
               (px & amask);
