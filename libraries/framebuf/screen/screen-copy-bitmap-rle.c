@@ -3,9 +3,9 @@
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
 
 #include "base/result.h"
+#include "base/utils.h"
 
 #include "geom/box.h"
 
@@ -19,6 +19,31 @@
 #include "../bitmap/rle.h"
 
 #include "screen-copy-bitmap-rle.h"
+
+/* Pixels of a row decoded per pass. Bounds the stack scratch buffers, as
+ * BITMAP_BLIT_CHUNK does in screen-draw.c, so no blit allocates. */
+#define RLE_CHUNK 256
+
+/* Decode "n" pixels of the RLE row at "row", starting "skip" pixels in, into
+ * "scratch". Pixels in skip runs or past the row's end read as 0, so
+ * transparent. Returns the cursor at the next row.
+ *
+ * ponytail: a row wider than RLE_CHUNK is walked from its start once per
+ * chunk; carry the cursor across chunks if wide RLE art shows in a profile. */
+static const uint8_t *rle__decode_chunk(const uint8_t       *row,
+                                        const uint8_t       *end,
+                                        int                  log2bpp,
+                                        pixelfmt_rgba8888_t *scratch,
+                                        int                  skip,
+                                        int                  n)
+{
+  int i;
+
+  for (i = 0; i < n; i++)
+    scratch[i] = 0;
+
+  return bitmap__rle_decode_row(row, end, log2bpp, scratch, skip, n, 1);
+}
 
 /* Map a 32bpp 8888 format to its no-alpha ("x") sibling: bgra->bgrx,
  * rgba->rgbx, etc. The RLE blit writes whole 4-byte pixels and honours skip
@@ -39,10 +64,10 @@ static pixelfmt_t rle__dealpha(pixelfmt_t f)
 
 /* Blit a 32bpp RLE source onto a 4bpp paletted screen. The row codec only
  * emits whole 4-byte pixels, so each visible row is decoded (skip runs
- * zero-filled) into a scratch buffer, then converted pixel-by-pixel to the
- * nearest palette index -- matching screen_copy_bitmap_p4's alpha-tested
- * transfer. Zero-alpha pixels (skip runs, and genuinely transparent source
- * pixels) leave the background alone.
+ * zero-filled) a chunk at a time into a scratch buffer, then converted
+ * pixel-by-pixel to the nearest palette index -- matching
+ * screen_copy_bitmap_p4's alpha-tested transfer. Zero-alpha pixels (skip
+ * runs, and genuinely transparent source pixels) leave the background alone.
  *
  * ponytail: an opaque source with a 0x00000000 pixel (only possible for the
  * no-alpha *x8888 bases) loses that pixel, same trade-off as the raw p4
@@ -53,18 +78,18 @@ static result_t screen_copy_bitmap_rle_p4(screen_t       *scr,
                                           const bitmap_t *src,
                                           const box_t    *draw_box)
 {
-  pixelfmt_t           base;
-  int                  log2bpp;
-  const uint8_t       *blob;
-  const uint8_t       *p;
-  const uint8_t       *end;
-  uint8_t             *dstbase;
-  pixelfmt_rgba8888_t *scratch;
-  const pixelmap_t    *pm;
-  int                  firstrow;
-  int                  skip, plot;
-  int                  rows;
-  int                  i;
+  pixelfmt_t          base;
+  int                 log2bpp;
+  const uint8_t      *blob;
+  const uint8_t      *p;
+  const uint8_t      *end;
+  uint8_t            *dstbase;
+  pixelfmt_rgba8888_t scratch[RLE_CHUNK];
+  const pixelmap_t   *pm;
+  int                 firstrow;
+  int                 skip, plot;
+  int                 rows;
+  int                 i;
 
   base    = pixelfmt_base(src->format);
   log2bpp = pixelfmt_log2bpp(base);
@@ -90,51 +115,50 @@ static result_t screen_copy_bitmap_rle_p4(screen_t       *scr,
   if (pm == NULL)
     return result_NOT_SUPPORTED;
 
-  scratch = malloc((size_t) plot * sizeof(*scratch));
-  if (scratch == NULL)
-    return result_OOM;
-
   dstbase = scr->base;
   for (i = 0; i < rows; i++)
   {
-    uint8_t *rowp;
-    int      xx;
+    const uint8_t *row;
+    uint8_t       *rowp;
+    int            done, n;
+    int            xx;
 
-    for (xx = 0; xx < plot; xx++)
-      scratch[xx] = 0; /* zero_skip below only fills covered skip runs */
-
-    p = bitmap__rle_decode_row(p, end, log2bpp, scratch, skip, plot, 1);
-
+    row  = p;
     rowp = dstbase + (size_t) (draw_box->y0 + i) * scr->rowbytes;
 
-    for (xx = 0; xx < plot; xx++)
+    for (done = 0; done < plot; done += n)
     {
-      colour_t       c;
-      unsigned int   r, g, b, idx;
-      int            dstx;
-      uint8_t       *scrp;
-      int            shift;
-      pixelfmt_any_t pxl;
+      n = MIN(plot - done, RLE_CHUNK);
+      p = rle__decode_chunk(row, end, log2bpp, scratch, skip + done, n);
 
-      c.primary = scratch[xx];
-      if (colour_get_alpha(&c) == 0)
-        continue;
+      for (xx = 0; xx < n; xx++)
+      {
+        colour_t       c;
+        unsigned int   r, g, b, idx;
+        int            dstx;
+        uint8_t       *scrp;
+        int            shift;
+        pixelfmt_any_t pxl;
 
-      dstx  = draw_box->x0 + xx;
-      scrp  = rowp + (dstx >> 1);
-      shift = (dstx & 1) * 4;
+        c.primary = scratch[xx];
+        if (colour_get_alpha(&c) == 0)
+          continue;
 
-      pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
-      idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
-          | ((g >> (8 - pm->gbits)) << pm->bbits)
-          | ( b >> (8 - pm->bbits));
-      pxl = (pm->entries[idx >> 1] >> ((idx & 1) << 2)) & 0xF;
+        dstx  = draw_box->x0 + done + xx;
+        scrp  = rowp + (dstx >> 1);
+        shift = (dstx & 1) * 4;
 
-      *scrp = (uint8_t) ((*scrp & ~(0xF << shift)) | ((pxl & 0xF) << shift));
+        pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
+        idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
+            | ((g >> (8 - pm->gbits)) << pm->bbits)
+            | ( b >> (8 - pm->bbits));
+        pxl = (pm->entries[idx >> 1] >> ((idx & 1) << 2)) & 0xF;
+
+        *scrp = (uint8_t) ((*scrp & ~(0xF << shift)) |
+                           ((pxl & 0xF) << shift));
+      }
     }
   }
-
-  free(scratch);
 
   return result_OK;
 }
@@ -148,18 +172,18 @@ static result_t screen_copy_bitmap_rle_p8(screen_t       *scr,
                                           const bitmap_t *src,
                                           const box_t    *draw_box)
 {
-  pixelfmt_t           base;
-  int                  log2bpp;
-  const uint8_t       *blob;
-  const uint8_t       *p;
-  const uint8_t       *end;
-  uint8_t             *dstbase;
-  pixelfmt_rgba8888_t *scratch;
-  const pixelmap_t    *pm;
-  int                  firstrow;
-  int                  skip, plot;
-  int                  rows;
-  int                  i;
+  pixelfmt_t          base;
+  int                 log2bpp;
+  const uint8_t      *blob;
+  const uint8_t      *p;
+  const uint8_t      *end;
+  uint8_t            *dstbase;
+  pixelfmt_rgba8888_t scratch[RLE_CHUNK];
+  const pixelmap_t   *pm;
+  int                 firstrow;
+  int                 skip, plot;
+  int                 rows;
+  int                 i;
 
   base    = pixelfmt_base(src->format);
   log2bpp = pixelfmt_log2bpp(base);
@@ -183,45 +207,43 @@ static result_t screen_copy_bitmap_rle_p8(screen_t       *scr,
   if (pm == NULL)
     return result_NOT_SUPPORTED;
 
-  scratch = malloc((size_t) plot * sizeof(*scratch));
-  if (scratch == NULL)
-    return result_OOM;
-
   dstbase = scr->base;
   for (i = 0; i < rows; i++)
   {
-    uint8_t *rowp;
-    int      xx;
+    const uint8_t *row;
+    uint8_t       *rowp;
+    int            done, n;
+    int            xx;
 
-    for (xx = 0; xx < plot; xx++)
-      scratch[xx] = 0; /* zero_skip below only fills covered skip runs */
-
-    p = bitmap__rle_decode_row(p, end, log2bpp, scratch, skip, plot, 1);
-
+    row  = p;
     rowp = dstbase + (size_t) (draw_box->y0 + i) * scr->rowbytes;
 
-    for (xx = 0; xx < plot; xx++)
+    for (done = 0; done < plot; done += n)
     {
-      colour_t     c;
-      unsigned int r, g, b, idx;
-      int          dstx;
+      n = MIN(plot - done, RLE_CHUNK);
+      p = rle__decode_chunk(row, end, log2bpp, scratch, skip + done, n);
 
-      c.primary = scratch[xx];
-      if (colour_get_alpha(&c) == 0)
-        continue;
+      for (xx = 0; xx < n; xx++)
+      {
+        colour_t     c;
+        unsigned int r, g, b, idx;
+        int          dstx;
 
-      dstx = draw_box->x0 + xx;
+        c.primary = scratch[xx];
+        if (colour_get_alpha(&c) == 0)
+          continue;
 
-      pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
-      idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
-          | ((g >> (8 - pm->gbits)) << pm->bbits)
-          | ( b >> (8 - pm->bbits));
+        dstx = draw_box->x0 + done + xx;
 
-      rowp[dstx] = pm->entries[idx];
+        pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
+        idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
+            | ((g >> (8 - pm->gbits)) << pm->bbits)
+            | ( b >> (8 - pm->bbits));
+
+        rowp[dstx] = pm->entries[idx];
+      }
     }
   }
-
-  free(scratch);
 
   return result_OK;
 }
@@ -237,19 +259,19 @@ static result_t screen_copy_bitmap_rle_p1p2(screen_t       *scr,
                                             const box_t    *draw_box,
                                             int             dst_log2bpp)
 {
-  pixelfmt_t           base;
-  int                  log2bpp;
-  const uint8_t       *blob;
-  const uint8_t       *p;
-  const uint8_t       *end;
-  uint8_t             *dstbase;
-  pixelfmt_rgba8888_t *scratch;
-  const pixelmap_t    *pm;
-  int                  bits, pixmask, pixsperbyte;
-  int                  firstrow;
-  int                  skip, plot;
-  int                  rows;
-  int                  i;
+  pixelfmt_t          base;
+  int                 log2bpp;
+  const uint8_t      *blob;
+  const uint8_t      *p;
+  const uint8_t      *end;
+  uint8_t            *dstbase;
+  pixelfmt_rgba8888_t scratch[RLE_CHUNK];
+  const pixelmap_t   *pm;
+  int                 bits, pixmask, pixsperbyte;
+  int                 firstrow;
+  int                 skip, plot;
+  int                 rows;
+  int                 i;
 
   base    = pixelfmt_base(src->format);
   log2bpp = pixelfmt_log2bpp(base);
@@ -277,52 +299,50 @@ static result_t screen_copy_bitmap_rle_p1p2(screen_t       *scr,
   if (pm == NULL)
     return result_NOT_SUPPORTED;
 
-  scratch = malloc((size_t) plot * sizeof(*scratch));
-  if (scratch == NULL)
-    return result_OOM;
-
   dstbase = scr->base;
   for (i = 0; i < rows; i++)
   {
-    uint8_t *rowp;
-    int      xx;
+    const uint8_t *row;
+    uint8_t       *rowp;
+    int            done, n;
+    int            xx;
 
-    for (xx = 0; xx < plot; xx++)
-      scratch[xx] = 0; /* zero_skip below only fills covered skip runs */
-
-    p = bitmap__rle_decode_row(p, end, log2bpp, scratch, skip, plot, 1);
-
+    row  = p;
     rowp = dstbase + (size_t) (draw_box->y0 + i) * scr->rowbytes;
 
-    for (xx = 0; xx < plot; xx++)
+    for (done = 0; done < plot; done += n)
     {
-      colour_t       c;
-      unsigned int   r, g, b, idx;
-      int            dstx;
-      uint8_t       *scrp;
-      int            shift;
-      pixelfmt_any_t pxl;
+      n = MIN(plot - done, RLE_CHUNK);
+      p = rle__decode_chunk(row, end, log2bpp, scratch, skip + done, n);
 
-      c.primary = scratch[xx];
-      if (colour_get_alpha(&c) == 0)
-        continue;
+      for (xx = 0; xx < n; xx++)
+      {
+        colour_t       c;
+        unsigned int   r, g, b, idx;
+        int            dstx;
+        uint8_t       *scrp;
+        int            shift;
+        pixelfmt_any_t pxl;
 
-      dstx  = draw_box->x0 + xx;
-      scrp  = rowp + (dstx >> (3 - dst_log2bpp));
-      shift = 8 - bits - ((dstx & (pixsperbyte - 1)) << dst_log2bpp);
+        c.primary = scratch[xx];
+        if (colour_get_alpha(&c) == 0)
+          continue;
 
-      pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
-      idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
-          | ((g >> (8 - pm->gbits)) << pm->bbits)
-          | ( b >> (8 - pm->bbits));
-      pxl = (pm->entries[idx >> (3 - dst_log2bpp)]
-             >> ((idx & (pixsperbyte - 1)) << dst_log2bpp)) & pixmask;
+        dstx  = draw_box->x0 + done + xx;
+        scrp  = rowp + (dstx >> (3 - dst_log2bpp));
+        shift = 8 - bits - ((dstx & (pixsperbyte - 1)) << dst_log2bpp);
 
-      *scrp = (uint8_t) ((*scrp & ~(pixmask << shift)) | (pxl << shift));
+        pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
+        idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))
+            | ((g >> (8 - pm->gbits)) << pm->bbits)
+            | ( b >> (8 - pm->bbits));
+        pxl = (pm->entries[idx >> (3 - dst_log2bpp)]
+               >> ((idx & (pixsperbyte - 1)) << dst_log2bpp)) & pixmask;
+
+        *scrp = (uint8_t) ((*scrp & ~(pixmask << shift)) | (pxl << shift));
+      }
     }
   }
-
-  free(scratch);
 
   return result_OK;
 }
@@ -338,19 +358,19 @@ static result_t screen_copy_bitmap_rle_16(screen_t       *scr,
                                           const bitmap_t *src,
                                           const box_t    *draw_box)
 {
-  pixelfmt_t           base;
-  int                  log2bpp;
-  const uint8_t       *blob;
-  const uint8_t       *p;
-  const uint8_t       *end;
-  uint8_t             *dstbase;
-  pixelfmt_rgba8888_t *scratch;
-  pixelfmt_any16_t    *colbuf;
-  unsigned char       *alphabuf;
-  int                  firstrow;
-  int                  skip, plot;
-  int                  rows;
-  int                  i;
+  pixelfmt_t          base;
+  int                 log2bpp;
+  const uint8_t      *blob;
+  const uint8_t      *p;
+  const uint8_t      *end;
+  uint8_t            *dstbase;
+  pixelfmt_rgba8888_t scratch[RLE_CHUNK];
+  pixelfmt_any16_t    colbuf[RLE_CHUNK];
+  unsigned char       alphabuf[RLE_CHUNK];
+  int                 firstrow;
+  int                 skip, plot;
+  int                 rows;
+  int                 i;
 
   base    = pixelfmt_base(src->format);
   log2bpp = pixelfmt_log2bpp(base);
@@ -370,48 +390,37 @@ static result_t screen_copy_bitmap_rle_16(screen_t       *scr,
   plot = draw_box->x1 - draw_box->x0;
   rows = draw_box->y1 - draw_box->y0;
 
-  scratch  = malloc((size_t) plot * sizeof(*scratch));
-  colbuf   = malloc((size_t) plot * sizeof(*colbuf));
-  alphabuf = malloc((size_t) plot * sizeof(*alphabuf));
-  if (scratch == NULL || colbuf == NULL || alphabuf == NULL)
-  {
-    free(scratch);
-    free(colbuf);
-    free(alphabuf);
-    return result_OOM;
-  }
-
   dstbase = scr->base;
   for (i = 0; i < rows; i++)
   {
+    const uint8_t    *row;
     pixelfmt_any16_t *rowp;
+    int               done, n;
     int               xx;
 
-    for (xx = 0; xx < plot; xx++)
-      scratch[xx] = 0; /* zero_skip below only fills covered skip runs */
-
-    p = bitmap__rle_decode_row(p, end, log2bpp, scratch, skip, plot, 1);
-
+    row  = p;
     rowp = (pixelfmt_any16_t *)
              (dstbase + (size_t) (draw_box->y0 + i) * scr->rowbytes)
          + draw_box->x0;
 
-    for (xx = 0; xx < plot; xx++)
+    for (done = 0; done < plot; done += n)
     {
-      colour_t c;
+      n = MIN(plot - done, RLE_CHUNK);
+      p = rle__decode_chunk(row, end, log2bpp, scratch, skip + done, n);
 
-      c.primary   = scratch[xx];
-      colbuf[xx]  = (pixelfmt_any16_t)
-                      colour_to_pixel(scr->palette, 0, c, scr->format);
-      alphabuf[xx] = colour_get_alpha(&c);
+      for (xx = 0; xx < n; xx++)
+      {
+        colour_t c;
+
+        c.primary    = scratch[xx];
+        colbuf[xx]   = (pixelfmt_any16_t)
+                         colour_to_pixel(scr->palette, 0, c, scr->format);
+        alphabuf[xx] = colour_get_alpha(&c);
+      }
+
+      scr->span->blendarray(rowp + done, rowp + done, colbuf, n, alphabuf);
     }
-
-    scr->span->blendarray(rowp, rowp, colbuf, plot, alphabuf);
   }
-
-  free(scratch);
-  free(colbuf);
-  free(alphabuf);
 
   return result_OK;
 }

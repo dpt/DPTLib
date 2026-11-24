@@ -1718,6 +1718,94 @@ static int rle_blit_matches_raw(const char *name,
   return 0;
 }
 
+#define RLE_WIDE_W 600
+#define RLE_WIDE_H 2
+#define RLE_WIDE_SCREEN_W 640
+
+/* As rle_blit_matches_raw, but for a source wider than the RLE blit's 256
+ * pixel decode chunk, so rows split into several chunks. The offsets clip
+ * the left edge (a non-zero skip into every chunk) and the right edge. A
+ * transparent band straddles the first chunk boundary and a translucent one
+ * the second. Returns 0 on success. */
+static int rle_wide_blit_matches_raw(const char *name,
+                                     pixelfmt_t  fmt,
+                                     colour_t   *pal)
+{
+  static const int           offsets[] = { 0, -5, 37 };
+  static pixelfmt_rgba8888_t rawpix[RLE_WIDE_W * RLE_WIDE_H];
+  static unsigned char       ref[RLE_WIDE_SCREEN_W * RLE_WIDE_H * 2];
+  static unsigned char       rle[RLE_WIDE_SCREEN_W * RLE_WIDE_H * 2];
+
+  int                        rowbytes;
+  screen_t                   sref, srle;
+  bitmap_t                   raw, comp;
+  void                      *blob;
+  int                        x, y;
+  size_t                     o;
+
+  rowbytes = (RLE_WIDE_SCREEN_W << pixelfmt_log2bpp(fmt)) >> 3;
+
+  for (y = 0; y < RLE_WIDE_H; y++)
+  {
+    for (x = 0; x < RLE_WIDE_W; x++)
+    {
+      int alpha;
+
+      if (x >= 250 && x <= 262)
+        alpha = 0;
+      else if (x >= 505 && x <= 520)
+        alpha = 0x80;
+      else
+        alpha = 0xFF;
+      rawpix[y * RLE_WIDE_W + x] = colour_rgba(((x / 3) * 37 + y * 91) & 0xFF,
+                                               ((x / 3) * 53) & 0xFF,
+                                               ((x / 3) * 11) & 0xFF,
+                                               alpha).primary;
+    }
+  }
+
+  bitmap_init(&raw, SIZE2D(RLE_WIDE_W, RLE_WIDE_H), pixelfmt_rgba8888,
+              RLE_WIDE_W * (int) sizeof(rawpix[0]), NULL, rawpix);
+
+  blob = malloc(sizeof(rawpix));
+  if (blob == NULL)
+    return 1;
+  memcpy(blob, rawpix, sizeof(rawpix));
+  bitmap_init(&comp, SIZE2D(RLE_WIDE_W, RLE_WIDE_H), pixelfmt_rgba8888,
+              RLE_WIDE_W * (int) sizeof(rawpix[0]), NULL, blob);
+  if (bitmap_compress(&comp) != result_OK || !bitmap_is_compressed(&comp))
+  {
+    printf("screen: rle wide %s: compress failed\n", name);
+    free(comp.base);
+    return 1;
+  }
+
+  screen_init(&sref, SIZE2D(RLE_WIDE_SCREEN_W, RLE_WIDE_H), fmt, rowbytes,
+              pal, ref);
+  screen_init(&srle, SIZE2D(RLE_WIDE_SCREEN_W, RLE_WIDE_H), fmt, rowbytes,
+              pal, rle);
+
+  for (o = 0; o < NELEMS(offsets); o++)
+  {
+    memset(ref, 0xA5, sizeof(ref));
+    memset(rle, 0xA5, sizeof(rle));
+
+    if (screen_copy_bitmap(&sref, offsets[o], 0, &raw) != result_OK ||
+        screen_copy_bitmap(&srle, offsets[o], 0, &comp) != result_OK ||
+        memcmp(ref, rle, sizeof(ref)) != 0)
+    {
+      printf("screen: rle wide %s: blit at x=%d differs from raw\n",
+             name, offsets[o]);
+      free(comp.base);
+      return 1;
+    }
+  }
+
+  free(comp.base);
+
+  return 0;
+}
+
 /* RLE source onto 1bpp screens: black on white, then inverted, so index 0
  * is the light colour. */
 static result_t test_copy_bitmap_rle_p1(void)
@@ -1753,6 +1841,7 @@ static result_t test_copy_bitmap_rle_p2(void)
   pal[2] = colour_rgb(0x00, 0x00, 0xFF);
   pal[3] = colour_rgb(0xFF, 0xFF, 0x00);
   bad   |= rle_blit_matches_raw("p2 colour", pixelfmt_p2, pal);
+  bad   |= rle_wide_blit_matches_raw("p2 colour", pixelfmt_p2, pal);
 
   return bad == 0 ? result_TEST_PASSED : result_TEST_FAILED;
 }
@@ -1766,7 +1855,8 @@ static result_t test_copy_bitmap_rle_p4(void)
   for (i = 0; i < 16; i++)
     pal[i] = colour_rgb(i * 17, i * 17, i * 17);
 
-  return rle_blit_matches_raw("p4", pixelfmt_p4, pal) == 0
+  return rle_blit_matches_raw("p4", pixelfmt_p4, pal) == 0 &&
+         rle_wide_blit_matches_raw("p4", pixelfmt_p4, pal) == 0
          ? result_TEST_PASSED : result_TEST_FAILED;
 }
 
@@ -1781,7 +1871,8 @@ static result_t test_copy_bitmap_rle_p8(void)
                         ((i >> 2) & 7) * 255 / 7,
                         (i & 3) * 255 / 3);
 
-  return rle_blit_matches_raw("p8", pixelfmt_p8, pal) == 0
+  return rle_blit_matches_raw("p8", pixelfmt_p8, pal) == 0 &&
+         rle_wide_blit_matches_raw("p8", pixelfmt_p8, pal) == 0
          ? result_TEST_PASSED : result_TEST_FAILED;
 }
 
@@ -1793,6 +1884,7 @@ static result_t test_copy_bitmap_rle_16(void)
 
   bad  = rle_blit_matches_raw("rgb565", pixelfmt_rgb565, NULL);
   bad |= rle_blit_matches_raw("rgbx5551", pixelfmt_rgbx5551, NULL);
+  bad |= rle_wide_blit_matches_raw("rgb565", pixelfmt_rgb565, NULL);
 
   return bad == 0 ? result_TEST_PASSED : result_TEST_FAILED;
 }
