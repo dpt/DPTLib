@@ -156,6 +156,20 @@ bmfontfamily_destroy(family);
 
 `bmfont_enumerate()` walks every family under a directory and reports each face as a `Family Style` label (e.g. `GrongyUI Bold`), which `bmfontfamily_label_path()` turns back into a path.
 
+## Editing
+
+A font editor changes a loaded font in place. Each call costs about the same however big the font is, so a font that other code draws with can show each edit at once.
+
+- `bmfont_create_blank()` makes a font with no ink. Every glyph advances by the cell width.
+- `bmfont_get_ink()` and `bmfont_set_ink()` read and change one pixel of a glyph.
+- `bmfont_get_advance()` and `bmfont_set_advance()` read and change a glyph's advance width as stored: the count of value-2 pixels, without the letter-spacing pixel added at use.
+- `bmfont_set_ascent()` moves the baseline. The cell bottom stays where it is.
+- `bmfont_add_rows()` adds rows of 32 blank cells. An implicit cmap grows to reach them. A cmap from a `.map` sidecar does not change.
+- `bmfont_get_codepoints()` lists the codepoints that map to a glyph.
+- `bmfont_save_png()` writes the font back as a PNG. It writes no `.map` sidecar.
+
+The writer puts the advance-width pixels at the left of each strip and draws the grid where `ttf2bmfont.py` does. So saving a loaded font keeps its glyphs and metrics, but moves any cosmetic pixels a hand-drawn font has elsewhere. A font loaded without baseline rows is saved without a grid, so it loads back with the same metrics. A font cannot be saved if every glyph in one row of 32 cells has a zero advance width, because the loader finds the cell height from those pixels.
+
 ## Limitations
 
 - There's no font fallback chain yet, so a missing glyph draws .notdef rather than coming from another font.

@@ -2025,6 +2025,203 @@ Failure:
 
 /* ----------------------------------------------------------------------- */
 
+#define SAVE_TEST_PNG_A DPTLIB_TMPPREFIX "bmfont-save-a.png"
+#define SAVE_TEST_PNG_B DPTLIB_TMPPREFIX "bmfont-save-b.png"
+
+/* Non-zero if two fonts have the same cells, metrics, advances and ink. */
+static int fonts_match(bmfont_t *a, bmfont_t *b)
+{
+  int w[2], h[2], asc[2], desc[2];
+  int gid;
+  int x, y;
+
+  bmfont_get_info(a, &w[0], &h[0], &asc[0], &desc[0]);
+  bmfont_get_info(b, &w[1], &h[1], &asc[1], &desc[1]);
+  if (w[0] != w[1] || h[0] != h[1] || asc[0] != asc[1] ||
+      desc[0] != desc[1] || bmfont_get_count(a) != bmfont_get_count(b))
+    return 0;
+
+  for (gid = 0; gid < bmfont_get_count(a); gid++)
+  {
+    if (bmfont_get_advance(a, gid) != bmfont_get_advance(b, gid))
+      return 0;
+
+    for (y = 0; y < h[0]; y++)
+      for (x = 0; x < w[0]; x++)
+        if (bmfont_get_ink(a, gid, x, y) != bmfont_get_ink(b, gid, x, y))
+          return 0;
+  }
+
+  return 1;
+}
+
+/* Non-zero if two files hold the same bytes. */
+static int files_match(const char *a, const char *b)
+{
+  FILE *fa;
+  FILE *fb;
+  int   ca;
+  int   cb;
+
+  fa = fopen(a, "rb");
+  fb = fopen(b, "rb");
+  ca = cb = 0;
+  if (fa && fb)
+    do
+    {
+      ca = getc(fa);
+      cb = getc(fb);
+    }
+    while (ca == cb && ca != EOF);
+
+  if (fa)
+    fclose(fa);
+  if (fb)
+    fclose(fb);
+  return fa && fb && ca == cb;
+}
+
+/* Save a font, load it back and check nothing that matters changed, then
+ * save the copy and check the writer is stable. */
+static result_t bmfont_round_trip_cb(const char *name,
+                                     const char *path,
+                                     void       *opaque)
+{
+  bmfont_t *a = NULL;
+  bmfont_t *b = NULL;
+  int       ok;
+
+  NOT_USED(opaque);
+
+  ok = bmfont_create(path, &a) == result_OK &&
+       bmfont_save_png(a, SAVE_TEST_PNG_A) == result_OK &&
+       bmfont_create(SAVE_TEST_PNG_A, &b) == result_OK &&
+       fonts_match(a, b) &&
+       bmfont_save_png(b, SAVE_TEST_PNG_B) == result_OK &&
+       files_match(SAVE_TEST_PNG_A, SAVE_TEST_PNG_B);
+
+  bmfont_destroy(b);
+  bmfont_destroy(a);
+
+  if (!ok)
+  {
+    fprintf(stderr, "error: %s does not survive a save\n", name);
+    return result_TEST_FAILED;
+  }
+
+  return result_OK;
+}
+
+/* Every shipped font survives a save. Then a blank font is built, edited,
+ * saved and loaded back. */
+static result_t bmfont_edit_test(const char *resources)
+{
+  result_t      rc;
+  char          dir[512];
+  bmfont_t     *a = NULL;
+  bmfont_t     *b = NULL;
+  int           gid;
+  unsigned long cps[2];
+  int           ascent;
+  int           descent;
+
+  snprintf(dir, sizeof(dir), "%s", pathf("%s/resources/bmfonts", resources));
+  rc = bmfont_enumerate(dir, bmfont_round_trip_cb, NULL);
+  if (rc)
+    goto Failure;
+
+  /* out-of-range blanks */
+  if (bmfont_create_blank(2, 8, 4, 1, &a) != result_BAD_ARG ||
+      bmfont_create_blank(33, 8, 4, 1, &a) != result_BAD_ARG ||
+      bmfont_create_blank(3, 9, 4, 1, &a) != result_BAD_ARG || /* too tall */
+      bmfont_create_blank(8, 8, 7, 1, &a) != result_BAD_ARG || /* ascent */
+      bmfont_create_blank(8, 8, 4, 0, &a) != result_BAD_ARG)
+  {
+    fprintf(stderr, "error: bmfont_create_blank took a bad argument\n");
+    goto Failure;
+  }
+
+  rc = bmfont_create_blank(8, 10, 7, 2, &a);
+  if (rc)
+    goto Failure;
+
+  /* implicit cmap over every cell; 'A' is glyph 33 */
+  if (bmfont_get_count(a) != 64 || bmfont_lookup(a, 'A') != 33 ||
+      bmfont_get_codepoints(a, 33, cps, 2) != 1 || cps[0] != 'A' ||
+      bmfont_get_advance(a, 33) != 7 || bmfont_get_ink(a, 33, 3, 3))
+  {
+    fprintf(stderr, "error: blank font is wrong\n");
+    goto Failure;
+  }
+
+  bmfont_set_ink(a, 33, 0, 0, 1);
+  bmfont_set_ink(a, 33, 7, 9, 1);
+  bmfont_set_ink(a, 33, 7, 9, 0);
+  bmfont_set_ink(a, 33, 6, 9, 1);
+  bmfont_set_advance(a, 33, 0);
+  bmfont_set_advance(a, 34, 8);
+
+  rc = bmfont_add_rows(a, 1);
+  if (rc)
+    goto Failure;
+
+  bmfont_set_ink(a, 63, 4, 5, 1);
+
+  rc = bmfont_set_ascent(a, 5);
+  if (rc)
+    goto Failure;
+
+  bmfont_get_info(a, NULL, NULL, &ascent, &descent);
+  if (bmfont_get_count(a) != 96 || bmfont_lookup(a, ' ' + 95) != 95 ||
+      ascent != 5 || descent != 4 ||
+      bmfont_set_ascent(a, 9) != result_BAD_ARG ||
+      !bmfont_get_ink(a, 33, 0, 0) || bmfont_get_ink(a, 33, 7, 9) ||
+      !bmfont_get_ink(a, 33, 6, 9) || bmfont_get_advance(a, 33) != 0)
+  {
+    fprintf(stderr, "error: edits are wrong\n");
+    goto Failure;
+  }
+
+  rc = bmfont_save_png(a, SAVE_TEST_PNG_A);
+  if (rc)
+    goto Failure;
+
+  rc = bmfont_create(SAVE_TEST_PNG_A, &b);
+  if (rc)
+    goto Failure;
+
+  if (!fonts_match(a, b))
+  {
+    fprintf(stderr, "error: edited font did not load back the same\n");
+    goto Failure;
+  }
+
+  /* a row with no advance widths cannot be saved */
+  for (gid = 0; gid < 32; gid++)
+    bmfont_set_advance(a, gid, 0);
+  if (bmfont_save_png(a, SAVE_TEST_PNG_B) != result_BMFONT_NO_ADVANCE)
+  {
+    fprintf(stderr, "error: saved a row with no advance widths\n");
+    goto Failure;
+  }
+
+  bmfont_destroy(b);
+  bmfont_destroy(a);
+  remove(SAVE_TEST_PNG_A);
+  remove(SAVE_TEST_PNG_B);
+  return result_TEST_PASSED;
+
+
+Failure:
+  bmfont_destroy(b);
+  bmfont_destroy(a);
+  remove(SAVE_TEST_PNG_A);
+  remove(SAVE_TEST_PNG_B);
+  return result_TEST_FAILED;
+}
+
+/* ----------------------------------------------------------------------- */
+
 result_t bmfont_test(const char *resources)
 {
   static const struct
@@ -2081,6 +2278,10 @@ result_t bmfont_test(const char *resources)
     return rc;
 
   rc = bmfont_p8_test(resources);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  rc = bmfont_edit_test(resources);
   if (rc != result_TEST_PASSED)
     return rc;
 

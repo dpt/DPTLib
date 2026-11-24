@@ -12,6 +12,10 @@
 /** A font's .map sidecar was malformed, out of order or out of range. */
 #define result_BMFONT_BAD_MAP (result_BASE_BMFONT + 0)
 
+/** A font could not be saved: every glyph in one row of 32 cells has a zero
+ *  advance width, which the PNG format cannot record. */
+#define result_BMFONT_NO_ADVANCE (result_BASE_BMFONT + 1)
+
 /* ----------------------------------------------------------------------- */
 
 /** A bitmap font handle. */
@@ -142,6 +146,130 @@ int bmfont_get_count(bmfont_t *bmfont);
  * \return Glyph ID (cell index in reading order), or -1 if unmapped.
  */
 int bmfont_lookup(bmfont_t *bmfont, unsigned long codepoint);
+
+/**
+ * List the codepoints that the font's cmap maps to a glyph: the reverse of
+ * bmfont_lookup().
+ *
+ * \param[in]  bmfont      Bitmap font to query.
+ * \param[in]  gid         Glyph ID, 0 to bmfont_get_count() - 1.
+ * \param[out] codepoints  Array to receive the codepoints, in ascending
+ *                         order. May be NULL if \p max is zero.
+ * \param[in]  max         Number of elements in \p codepoints.
+ * \return The number of codepoints that map to \p gid. This can be more than
+ *         \p max, in which case only the first \p max were written.
+ */
+int bmfont_get_codepoints(const bmfont_t *bmfont,
+                          int             gid,
+                          unsigned long  *codepoints,
+                          int             max);
+
+/* ----------------------------------------------------------------------- */
+
+/* Editing. These change a font in place, for a font editor. A font that
+ * other code draws with sees each change at once. */
+
+/**
+ * Create a new, blank bitmap font. Every glyph has no ink and an advance
+ * width of \p width - 1. The font has the implicit cmap from U+0020.
+ *
+ * \param[in]  width    Cell width in pixels, 3 to 32.
+ * \param[in]  height   Cell height in pixels, 2 or more. The height plus one
+ *                      (for the advance-width row) must be no more than
+ *                      three times \p width, or the font cannot be loaded
+ *                      back.
+ * \param[in]  ascent   Baseline offset from the top of a cell, 1 to \p
+ *                      height - 2. The cell bottom is the last row.
+ * \param[in]  rows     Number of rows of 32 glyphs, 1 or more.
+ * \param[out] bmfont   Newly allocated bitmap font.
+ * \return \ref result_OK on success, \ref result_BAD_ARG if an argument is
+ *         out of range, or \ref result_OOM.
+ */
+result_t bmfont_create_blank(int        width,
+                             int        height,
+                             int        ascent,
+                             int        rows,
+                             bmfont_t **bmfont);
+
+/**
+ * Read one ink pixel of a glyph.
+ *
+ * \param[in] bmfont  Bitmap font to query.
+ * \param[in] gid     Glyph ID, 0 to bmfont_get_count() - 1.
+ * \param[in] x       Column, 0 to the cell width - 1.
+ * \param[in] y       Row, 0 to the cell height - 1.
+ * \return Non-zero if the pixel is ink.
+ */
+int bmfont_get_ink(const bmfont_t *bmfont, int gid, int x, int y);
+
+/**
+ * Set or clear one ink pixel of a glyph.
+ *
+ * \param[in] bmfont  Bitmap font to modify.
+ * \param[in] gid     Glyph ID, 0 to bmfont_get_count() - 1.
+ * \param[in] x       Column, 0 to the cell width - 1.
+ * \param[in] y       Row, 0 to the cell height - 1.
+ * \param[in] ink     Non-zero to set the pixel, zero to clear it.
+ */
+void bmfont_set_ink(bmfont_t *bmfont, int gid, int x, int y, int ink);
+
+/**
+ * Read a glyph's advance width as the font stores it. bmfont adds one pixel
+ * of letter spacing to this when it measures or draws.
+ *
+ * \param[in] bmfont  Bitmap font to query.
+ * \param[in] gid     Glyph ID, 0 to bmfont_get_count() - 1.
+ * \return The stored advance width in pixels, 0 to the cell width.
+ */
+bmfont_width_t bmfont_get_advance(const bmfont_t *bmfont, int gid);
+
+/**
+ * Set a glyph's stored advance width. See bmfont_get_advance().
+ *
+ * \param[in] bmfont   Bitmap font to modify.
+ * \param[in] gid      Glyph ID, 0 to bmfont_get_count() - 1.
+ * \param[in] advance  Stored advance width in pixels, 0 to the cell width.
+ */
+void bmfont_set_advance(bmfont_t *bmfont, int gid, bmfont_width_t advance);
+
+/**
+ * Move the baseline. The cell bottom stays where it is, so the descent
+ * changes too. Ink does not move.
+ *
+ * \param[in] bmfont  Bitmap font to modify.
+ * \param[in] ascent  New baseline offset from the top of a cell. It must be
+ *                    at least 1 and above the cell bottom.
+ * \return \ref result_OK on success, or \ref result_BAD_ARG if \p ascent is
+ *         out of range.
+ */
+result_t bmfont_set_ascent(bmfont_t *bmfont, int ascent);
+
+/**
+ * Add blank rows of 32 glyphs to the end of a font. Each new glyph has no
+ * ink and an advance width of the cell width - 1. If the font has the
+ * implicit cmap, the cmap grows to reach the new glyphs.
+ *
+ * \param[in] bmfont  Bitmap font to modify.
+ * \param[in] rows    Number of rows to add, 1 or more.
+ * \return \ref result_OK on success, \ref result_BAD_ARG if \p rows is less
+ *         than 1, or \ref result_OOM. On failure the font is unchanged.
+ */
+result_t bmfont_add_rows(bmfont_t *bmfont, int rows);
+
+/**
+ * Save a font as a 2bpp paletted PNG that bmfont_create() can load. The
+ * writer draws the advance-width strips left-justified, and the grid (left
+ * sidebearing, baseline and cell bottom) in its standard places. So saving a
+ * loaded font keeps its glyphs and metrics but can move cosmetic pixels. The
+ * .map sidecar is not written.
+ *
+ * \param[in] bmfont  Bitmap font to save.
+ * \param[in] png     Filename to write.
+ * \return \ref result_OK on success, \ref result_BMFONT_NO_ADVANCE if a row
+ *         of glyphs has no advance widths, \ref result_FOPEN_FAILED, \ref
+ *         result_OOM, or \ref result_BAD_ARG if the write fails.
+ */
+result_t bmfont_save_png(const bmfont_t *bmfont, const char *png);
 
 /**
  * Measure the width of a string drawn with the specified font.

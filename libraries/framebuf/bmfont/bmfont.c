@@ -90,6 +90,9 @@ struct bmfont
   int                  ascii[128]; /* the cmap's answer for each ASCII
                                     * codepoint, saving a bsearch per glyph
                                     * on the common case */
+  int                  implicit_cmap; /* no .map sidecar: the cmap runs from
+                                       * U+0020 to the last glyph with an
+                                       * advance width */
 
   bmfont_flags_t  flags;
 };
@@ -796,6 +799,29 @@ static result_t read_cmap(bmfont_t *bmfont, FILE *fp)
   return result_OK;
 }
 
+/** Replace the cmap with the implicit mapping: U+0020 onwards to glyph 0
+ *  onwards, ending at the last cell with an advance width. */
+static result_t set_implicit_cmap(bmfont_t *bmfont)
+{
+  int                 i;
+  bmfont_cmap_group_t group;
+
+  bmfont->cmap_used     = 0;
+  bmfont->implicit_cmap = 1;
+
+  for (i = bmfont->totalchars - 1; i >= 0; i--)
+    if (bmfont->adw[i] > 0)
+      break;
+
+  if (i < 0)
+    return result_OK; /* no glyphs at all */
+
+  group.first = ' ';
+  group.last  = ' ' + (unsigned long) i;
+  group.glyph = 0;
+  return add_cmap_group(bmfont, &group);
+}
+
 /**
  * Load the cmap for the font at \p png from its .map sidecar (the path with
  * its trailing "png" swapped for "map", or on RISC OS an extensionless path
@@ -804,13 +830,11 @@ static result_t read_cmap(bmfont_t *bmfont, FILE *fp)
  */
 static result_t load_cmap(bmfont_t *bmfont, const char *png)
 {
-  result_t            rc;
-  FILE               *fp;
-  size_t              len;
-  const char         *ext;
-  char               *mappath;
-  int                 i;
-  bmfont_cmap_group_t group;
+  result_t    rc;
+  FILE       *fp;
+  size_t      len;
+  const char *ext;
+  char       *mappath;
 
   fp = NULL;
 
@@ -849,18 +873,7 @@ static result_t load_cmap(bmfont_t *bmfont, const char *png)
     return rc;
   }
 
-  /* implicit mapping */
-  for (i = bmfont->totalchars - 1; i >= 0; i--)
-    if (bmfont->adw[i] > 0)
-      break;
-
-  if (i < 0)
-    return result_OK; /* no glyphs at all */
-
-  group.first = ' ';
-  group.last  = ' ' + (unsigned long) i;
-  group.glyph = 0;
-  return add_cmap_group(bmfont, &group);
+  return set_implicit_cmap(bmfont);
 }
 
 /** bsearch() comparator: is the codepoint \p key within \p elem's range? */
@@ -906,6 +919,47 @@ int bmfont_lookup(bmfont_t *bmfont, unsigned long codepoint)
     return bmfont->ascii[codepoint];
 
   return cmap_lookup(bmfont, codepoint);
+}
+
+/** Rebuild the ASCII lookup table and the notdef glyph from the cmap. */
+static void refresh_lookups(bmfont_t *bmfont)
+{
+  int i;
+
+  for (i = 0; i < (int) NELEMS(bmfont->ascii); i++)
+    bmfont->ascii[i] = cmap_lookup(bmfont, (unsigned long) i);
+
+  bmfont->notdef = bmfont_lookup(bmfont, utf8_REPLACEMENT);
+  if (bmfont->notdef < 0)
+    bmfont->notdef = bmfont->totalchars; /* the box */
+}
+
+int bmfont_get_codepoints(const bmfont_t *bmfont,
+                          int             gid,
+                          unsigned long  *codepoints,
+                          int             max)
+{
+  int                        n;
+  int                        i;
+  const bmfont_cmap_group_t *group;
+
+  assert(bmfont);
+  assert(gid >= 0 && gid < bmfont->totalchars);
+
+  n = 0;
+  for (i = 0; i < bmfont->cmap_used; i++)
+  {
+    group = &bmfont->cmap[i];
+    if (gid < group->glyph ||
+        (unsigned long) (gid - group->glyph) > group->last - group->first)
+      continue;
+
+    if (n < max)
+      codepoints[n] = group->first + (unsigned long) (gid - group->glyph);
+    n++;
+  }
+
+  return n;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1011,7 +1065,6 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
     int    gridwidth   = pngwidth / CHARS_PER_ROW;
     int    gridheight  = detect_gridheight(pixels, pngrowbytes,
                                            pngwidth, pngheight);
-    int    i;
 
     if (gridheight == 0)
     {
@@ -1076,12 +1129,7 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
     if (rc)
       goto cleanup;
 
-    for (i = 0; i < (int) NELEMS(bmfont->ascii); i++)
-      bmfont->ascii[i] = cmap_lookup(bmfont, (unsigned long) i);
-
-    bmfont->notdef = bmfont_lookup(bmfont, utf8_REPLACEMENT);
-    if (bmfont->notdef < 0)
-      bmfont->notdef = bmfont->totalchars; /* the box */
+    refresh_lookups(bmfont);
   }
 
   *pbmfont = bmfont;
@@ -1143,6 +1191,428 @@ void bmfont_get_info(bmfont_t *bmfont,
 int bmfont_get_count(bmfont_t *bmfont)
 {
   return bmfont->totalchars;
+}
+
+/* -------------------------------------------------------------------------- */
+
+/* Editing */
+
+/** The bytes of one stored glyph. */
+static size_t glyph_bytes(const bmfont_t *bmfont)
+{
+  return (size_t) bmfont->glyphrowbytes * bmfont->charheight;
+}
+
+/** The address of row \p y of glyph \p gid. */
+static unsigned char *glyph_row_ptr(const bmfont_t *bmfont, int gid, int y)
+{
+  return (unsigned char *) bmfont->glyphs +
+         (size_t) gid * glyph_bytes(bmfont) +
+         (size_t) y * bmfont->glyphrowbytes;
+}
+
+/** Row \p y of glyph \p gid. Bit (charwidth - 1 - x) holds column x. */
+static unsigned int glyph_row_get(const bmfont_t *bmfont, int gid, int y)
+{
+  const unsigned char *p;
+
+  p = glyph_row_ptr(bmfont, gid, y);
+  if (bmfont->glyphrowbytes == 1)
+    return *p;
+  else if (bmfont->glyphrowbytes == 2)
+    return *(const unsigned short *) p;
+  else
+    return *(const unsigned int *) p;
+}
+
+static void glyph_row_set(bmfont_t *bmfont, int gid, int y, unsigned int row)
+{
+  unsigned char *p;
+
+  p = glyph_row_ptr(bmfont, gid, y);
+  if (bmfont->glyphrowbytes == 1)
+    *p = (unsigned char) row;
+  else if (bmfont->glyphrowbytes == 2)
+    *(unsigned short *) p = (unsigned short) row;
+  else
+    *(unsigned int *) p = row;
+}
+
+/** The body row of the cell bottom: the second grid row. A font loaded
+ *  without grid rows (ascent == charheight) gets the last row. */
+static int cell_bottom(const bmfont_t *bmfont)
+{
+  if (bmfont->ascent < (int) bmfont->charheight)
+    return bmfont->ascent + bmfont->descent;
+  else
+    return (int) bmfont->charheight - 1;
+}
+
+/** Recompute the widest advance width over the cells, not the box. */
+static void refresh_maxadw(bmfont_t *bmfont)
+{
+  int i;
+
+  bmfont->maxadw = 0;
+  for (i = 0; i < bmfont->totalchars; i++)
+    if (bmfont->adw[i] > bmfont->maxadw)
+      bmfont->maxadw = bmfont->adw[i];
+}
+
+result_t bmfont_create_blank(int        width,
+                             int        height,
+                             int        ascent,
+                             int        rows,
+                             bmfont_t **pbmfont)
+{
+  result_t  rc;
+  bmfont_t *bmfont;
+  int       i;
+
+  *pbmfont = NULL;
+
+  if (width < 3 || width > 32 || height < 2 || height + 1 > width * 3 ||
+      ascent < 1 || ascent > height - 2 || rows < 1)
+    return result_BAD_ARG;
+
+  bmfont = calloc(1, sizeof(*bmfont));
+  if (bmfont == NULL)
+    return result_OOM;
+
+  bmfont->gridwidth     = (png_uint_32) width;
+  bmfont->gridheight    = (png_uint_32) height + 1;
+  bmfont->charwidth     = (png_uint_32) width;
+  bmfont->charheight    = (png_uint_32) height;
+  bmfont->ascent        = ascent;
+  bmfont->descent       = height - 1 - ascent;
+  bmfont->totalchars    = CHARS_PER_ROW * rows;
+  bmfont->glyphrowbytes = width <=  8 ? 1 :
+                          width <= 16 ? 2 :
+                                        4;
+
+  bmfont->glyphs = calloc((size_t) bmfont->totalchars + 1,
+                          glyph_bytes(bmfont)); /* +1 for the box */
+  if (bmfont->glyphs == NULL)
+    goto oom;
+
+  if (array_grow((void **) &bmfont->adw,
+                            sizeof(*bmfont->adw),
+                            0,
+                            &bmfont->adw_allocated,
+                            bmfont->totalchars + 1,
+                            8))
+    goto oom;
+
+  for (i = 0; i < bmfont->totalchars; i++)
+    bmfont->adw[i] = (bmfont_width_t) (width - 1);
+  bmfont->adw_used = bmfont->totalchars;
+  bmfont->maxadw   = (bmfont_width_t) (width - 1);
+
+  rc = make_box_glyph(bmfont);
+  if (rc)
+    goto failure;
+
+  rc = set_implicit_cmap(bmfont);
+  if (rc)
+    goto failure;
+
+  refresh_lookups(bmfont);
+
+  *pbmfont = bmfont;
+  return result_OK;
+
+
+oom:
+  rc = result_OOM;
+
+failure:
+  bmfont_destroy(bmfont);
+  return rc;
+}
+
+int bmfont_get_ink(const bmfont_t *bmfont, int gid, int x, int y)
+{
+  assert(bmfont);
+  assert(gid >= 0 && gid < bmfont->totalchars);
+  assert(x >= 0 && x < (int) bmfont->charwidth);
+  assert(y >= 0 && y < (int) bmfont->charheight);
+
+  return (glyph_row_get(bmfont, gid, y) >> (bmfont->charwidth - 1 - x)) & 1;
+}
+
+void bmfont_set_ink(bmfont_t *bmfont, int gid, int x, int y, int ink)
+{
+  unsigned int row;
+  unsigned int bit;
+
+  assert(bmfont);
+  assert(gid >= 0 && gid < bmfont->totalchars);
+  assert(x >= 0 && x < (int) bmfont->charwidth);
+  assert(y >= 0 && y < (int) bmfont->charheight);
+
+  row = glyph_row_get(bmfont, gid, y);
+  bit = 1u << (bmfont->charwidth - 1 - x);
+  glyph_row_set(bmfont, gid, y, ink ? (row | bit) : (row & ~bit));
+}
+
+bmfont_width_t bmfont_get_advance(const bmfont_t *bmfont, int gid)
+{
+  assert(bmfont);
+  assert(gid >= 0 && gid < bmfont->totalchars);
+
+  return bmfont->adw[gid];
+}
+
+void bmfont_set_advance(bmfont_t *bmfont, int gid, bmfont_width_t advance)
+{
+  bmfont_width_t old;
+
+  assert(bmfont);
+  assert(gid >= 0 && gid < bmfont->totalchars);
+  assert(advance >= 0 && advance <= (bmfont_width_t) bmfont->charwidth);
+
+  old = bmfont->adw[gid];
+  bmfont->adw[gid] = advance;
+
+  if (advance > bmfont->maxadw)
+    bmfont->maxadw = advance;
+  else if (old == bmfont->maxadw && advance < old)
+    refresh_maxadw(bmfont); /* the widest glyph shrank */
+}
+
+result_t bmfont_set_ascent(bmfont_t *bmfont, int ascent)
+{
+  int bottom;
+
+  assert(bmfont);
+
+  bottom = cell_bottom(bmfont);
+  if (ascent < 1 || ascent >= bottom)
+    return result_BAD_ARG;
+
+  bmfont->ascent  = ascent;
+  bmfont->descent = bottom - ascent;
+
+  /* the box is drawn as tall as the ascent: draw it again. Its advance
+   * width slot is already allocated, so this cannot fail */
+  bmfont->adw_used = bmfont->totalchars;
+  return make_box_glyph(bmfont);
+}
+
+result_t bmfont_add_rows(bmfont_t *bmfont, int rows)
+{
+  result_t       rc;
+  int            newtotal;
+  unsigned char *glyphs;
+  int            i;
+
+  assert(bmfont);
+
+  if (rows < 1)
+    return result_BAD_ARG;
+
+  newtotal = bmfont->totalchars + CHARS_PER_ROW * rows;
+
+  glyphs = realloc(bmfont->glyphs,
+                   ((size_t) newtotal + 1) * glyph_bytes(bmfont));
+  if (glyphs == NULL)
+    return result_OOM;
+
+  bmfont->glyphs = glyphs;
+
+  /* one more than the new cells, for the box */
+  if (array_grow((void **) &bmfont->adw,
+                            sizeof(*bmfont->adw),
+                            bmfont->adw_used,
+                            &bmfont->adw_allocated,
+                            newtotal + 1 - bmfont->adw_used,
+                            8))
+    return result_OOM;
+
+  /* the new cells start where the box was */
+  memset(glyphs + (size_t) bmfont->totalchars * glyph_bytes(bmfont),
+         0,
+         (size_t) (newtotal - bmfont->totalchars) * glyph_bytes(bmfont));
+
+  for (i = bmfont->totalchars; i < newtotal; i++)
+    bmfont->adw[i] = (bmfont_width_t) (bmfont->charwidth - 1);
+
+  bmfont->totalchars = newtotal;
+  bmfont->adw_used   = newtotal;
+  if ((bmfont_width_t) (bmfont->charwidth - 1) > bmfont->maxadw)
+    bmfont->maxadw = (bmfont_width_t) (bmfont->charwidth - 1);
+
+  rc = make_box_glyph(bmfont);
+  if (rc)
+    return rc;
+
+  if (bmfont->implicit_cmap)
+  {
+    rc = set_implicit_cmap(bmfont);
+    if (rc)
+      return rc;
+  }
+
+  refresh_lookups(bmfont);
+  return result_OK;
+}
+
+/** Put the 2bpp pixel \p value at column \p x of a PNG row. */
+static void put_pixel(unsigned char *row, int x, int value)
+{
+  row[x >> 2] |= (unsigned char) (value << (6 - 2 * (x & 3)));
+}
+
+/** Fill one PNG row: row \p cy of cell row \p r. Row 0 of a cell is the
+ *  advance-width strip; the rest are the glyph rows. */
+static void fill_png_row(const bmfont_t *bmfont,
+                         unsigned char  *row,
+                         size_t          rowbytes,
+                         int             r,
+                         int             cy,
+                         int             gridded,
+                         int             bottom)
+{
+  int          cw;
+  int          c;
+  int          gid;
+  int          x0;
+  int          x;
+  int          y;
+  unsigned int bits;
+
+  memset(row, 0, rowbytes);
+
+  cw = (int) bmfont->charwidth;
+  for (c = 0; c < CHARS_PER_ROW; c++)
+  {
+    gid = r * CHARS_PER_ROW + c;
+    x0  = c * cw;
+
+    if (cy == 0)
+    {
+      for (x = 0; x < bmfont->adw[gid]; x++)
+        put_pixel(row, x0 + x, PIXEL_WIDTH_IDX);
+      continue;
+    }
+
+    y    = cy - 1;
+    bits = glyph_row_get(bmfont, gid, y);
+    for (x = 0; x < cw; x++)
+    {
+      if ((bits >> (cw - 1 - x)) & 1)
+        put_pixel(row, x0 + x, PIXEL_FG_IDX);
+      else if (gridded && (x == 0 || y == bmfont->ascent || y == bottom))
+        put_pixel(row, x0 + x, PIXEL_GRID_IDX);
+    }
+  }
+}
+
+result_t bmfont_save_png(const bmfont_t *bmfont, const char *png)
+{
+  static const png_color palette[4] =
+  {
+    { 255, 255, 255 }, /* PIXEL_BG_IDX */
+    {   0,   0,   0 }, /* PIXEL_FG_IDX */
+    {   0,   0, 255 }, /* PIXEL_WIDTH_IDX */
+    { 192, 192, 192 }  /* PIXEL_GRID_IDX */
+  };
+
+  result_t       rc;
+  int            nrows;
+  int            r;
+  int            c;
+  int            gridded;
+  int            bottom;
+  png_uint_32    width;
+  png_uint_32    height;
+  size_t         rowbytes;
+  unsigned char *row      = NULL;
+  FILE          *fp       = NULL;
+  png_structp    png_ptr  = NULL;
+  png_infop      info_ptr = NULL;
+  int            cy;
+
+  assert(bmfont);
+  assert(png);
+
+  /* the loader finds the cell height from rows with advance-width pixels,
+   * so each row of cells needs one */
+  nrows = bmfont->totalchars / CHARS_PER_ROW;
+  for (r = 0; r < nrows; r++)
+  {
+    for (c = 0; c < CHARS_PER_ROW; c++)
+      if (bmfont->adw[r * CHARS_PER_ROW + c] > 0)
+        break;
+
+    if (c == CHARS_PER_ROW)
+      return result_BMFONT_NO_ADVANCE;
+  }
+
+  /* a font loaded without grid rows keeps none, so it loads back the same */
+  gridded = bmfont->ascent < (int) bmfont->charheight;
+  bottom  = cell_bottom(bmfont);
+
+  width    = CHARS_PER_ROW * bmfont->charwidth;
+  height   = (png_uint_32) nrows * bmfont->gridheight;
+  rowbytes = (width * 2 + 7) / 8;
+
+  row = malloc(rowbytes);
+  if (row == NULL)
+    return result_OOM;
+
+  fp = fopen(png, "wb");
+  if (fp == NULL)
+  {
+    rc = result_FOPEN_FAILED;
+    goto cleanup;
+  }
+
+  png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+  if (png_ptr == NULL)
+  {
+    rc = result_OOM;
+    goto cleanup;
+  }
+
+  info_ptr = png_create_info_struct(png_ptr);
+  if (info_ptr == NULL)
+  {
+    rc = result_OOM;
+    goto cleanup;
+  }
+
+  if (setjmp(png_jmpbuf(png_ptr)))
+  {
+    rc = result_BAD_ARG; /* libpng failed, as in bitmap_save_png */
+    goto cleanup;
+  }
+
+  png_init_io(png_ptr, fp);
+  png_set_IHDR(png_ptr, info_ptr, width, height, 2, PNG_COLOR_TYPE_PALETTE,
+               PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT,
+               PNG_FILTER_TYPE_DEFAULT);
+  png_set_PLTE(png_ptr, info_ptr, palette, NELEMS(palette));
+  png_write_info(png_ptr, info_ptr);
+
+  for (r = 0; r < nrows; r++)
+    for (cy = 0; cy < (int) bmfont->gridheight; cy++)
+    {
+      fill_png_row(bmfont, row, rowbytes, r, cy, gridded, bottom);
+      png_write_row(png_ptr, row);
+    }
+
+  png_write_end(png_ptr, NULL);
+
+  rc = result_OK;
+
+cleanup:
+  if (png_ptr)
+    png_destroy_write_struct(&png_ptr, info_ptr ? &info_ptr : NULL);
+  if (fp && fclose(fp) != 0 && rc == result_OK)
+    rc = result_BAD_ARG; /* the write did not reach the disc */
+  free(row);
+  return rc;
 }
 
 /* -------------------------------------------------------------------------- */

@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - `utils/rng.h`: `rng_noise2d` gives smooth 2-D value noise that tiles, on a
   power-of-two lattice.
+- `framebuf/bmfont.h`: fonts can be edited in place and saved, for a font
+  editor. `bmfont_create_blank` makes a blank font. `bmfont_get_ink` /
+  `bmfont_set_ink` and `bmfont_get_advance` / `bmfont_set_advance` change one
+  glyph. `bmfont_set_ascent` moves the baseline. `bmfont_add_rows` adds
+  cells. `bmfont_save_png` writes the PNG format back. `bmfont_get_codepoints`
+  lists the codepoints that reach a glyph.
 
 ## [0.10.0] - 2026-11-19
 
