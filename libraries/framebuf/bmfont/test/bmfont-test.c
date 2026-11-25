@@ -2290,6 +2290,41 @@ Failure:
   return result_TEST_FAILED;
 }
 
+/* Checks bmfont_wrap on a blank face, where 28 pixels fit three glyphs: it
+ * breaks at spaces, at newlines and, for a long word, between characters */
+static result_t bmfont_wrap_test(const char *resources)
+{
+  static const char text[] = "aa bb\ncc dddddd";
+  static const int  lines[] = { 2, 2, 2, 3, 3 };
+
+  result_t  rc;
+  bmfont_t *font;
+  int       len;
+  int       at;
+  int       i;
+
+  NOT_USED(resources);
+
+  rc = bmfont_create_blank(NULL, 8, 10, 7, 1, &font);
+  if (rc)
+    return rc;
+
+  len = (int) strlen(text);
+  at  = 0;
+  for (i = 0; i < (int) NELEMS(lines); i++)
+  {
+    if (bmfont_wrap(font, text, len, &at, 28) != lines[i])
+    {
+      fprintf(stderr, "error: bmfont_wrap line %d is wrong\n", i);
+      bmfont_destroy(font);
+      return result_TEST_FAILED;
+    }
+  }
+
+  bmfont_destroy(font);
+  return at == len ? result_TEST_PASSED : result_TEST_FAILED;
+}
+
 /* ----------------------------------------------------------------------- */
 
 result_t bmfont_test(const char *resources)
@@ -2352,6 +2387,10 @@ result_t bmfont_test(const char *resources)
     return rc;
 
   rc = bmfont_edit_test(resources);
+  if (rc != result_TEST_PASSED)
+    return rc;
+
+  rc = bmfont_wrap_test(resources);
   if (rc != result_TEST_PASSED)
     return rc;
 

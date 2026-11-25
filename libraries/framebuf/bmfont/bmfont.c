@@ -1868,6 +1868,50 @@ result_t bmfont_measure(bmfont_t               *bmfont,
   return result_OK;
 }
 
+int bmfont_wrap(bmfont_t      *bmfont,
+                const char    *text,
+                int            len,
+                int           *at,
+                bmfont_width_t width)
+{
+  int            start;
+  const char    *nl;
+  int            end;
+  int            split;
+  bmfont_width_t actual;
+  int            n;
+  unsigned long  cp;
+
+  assert(bmfont);
+  assert(text);
+  assert(at && *at >= 0 && *at <= len);
+
+  start = *at;
+  nl    = memchr(text + start, '\n', (size_t) (len - start));
+  end   = nl != NULL ? (int) (nl - text) : len;
+
+  split = 0;
+  (void) bmfont_measure(bmfont, text + start, end - start, NULL, width, &split,
+                        &actual);
+  if (split >= end - start)
+  {
+    *at = end < len ? end + 1 : len;
+    return end - start;
+  }
+
+  n = split;
+  while (n > 0 && text[start + n] != ' ')
+    n--;
+  if (n == 0)
+    n = split > 0 ? split : utf8_decode(text + start, end - start, &cp);
+
+  *at = start + n;
+  if (*at < len && text[*at] == ' ')
+    (*at)++;
+
+  return n;
+}
+
 /* -------------------------------------------------------------------------- */
 
 /* Whether the len bytes at text are the start of a multibyte sequence which

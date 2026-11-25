@@ -331,6 +331,27 @@ result_t bmfont_measure(bmfont_t               *bmfont,
                         bmfont_width_t         *actual_width);
 
 /**
+ * Take the next line of a string word-wrapped to a width. The line ends at a
+ * newline, else at the last space that lets it fit, else between characters.
+ * It always takes at least one character, so a call with \p *at below \p len
+ * always makes progress.
+ *
+ * \param[in]     bmfont  Bitmap font to measure with.
+ * \param[in]     text    UTF-8 string to wrap.
+ * \param[in]     len     Length of the string in bytes.
+ * \param[in,out] at      Byte offset of the line's start. Moved past the
+ *                        line and the space or newline that ends it.
+ * \param[in]     width   Width to wrap to in pixels.
+ * \return Length of the line in bytes, not counting the space or newline
+ *         that ends it.
+ */
+int bmfont_wrap(bmfont_t      *bmfont,
+                const char    *text,
+                int            len,
+                int           *at,
+                bmfont_width_t width);
+
+/**
  * Find where a caret should go for a pointer position within a string, e.g.
  * a mouse click in a text field. The caret snaps to the nearest character
  * boundary: a click in the left half of a glyph places it before that glyph,
