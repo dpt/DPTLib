@@ -13,15 +13,20 @@ void region_destroy(region_t *region)
   if (region == NULL)
     return;
 
-  free(region->start);
-  free(region->runs);
-  free(region);
+  region->alloc->free(region->start);
+  region->alloc->free(region->runs);
+  region->alloc->free(region);
 }
 
-result_t region_from_box(const box_t *box, region_t **out)
+result_t region_from_box(const alloc_t *alloc,
+                         const box_t   *box,
+                         region_t     **out)
 {
   region_t *r;
   int       h, i;
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   *out = NULL;
 
@@ -29,13 +34,14 @@ result_t region_from_box(const box_t *box, region_t **out)
     return result_OK;
 
   h = box->y1 - box->y0;
-  r = malloc(sizeof(*r));
+  r = alloc->malloc(sizeof(*r));
   if (r == NULL)
     return result_OOM;
 
+  r->alloc  = alloc;
   r->bounds = *box;
-  r->start  = malloc((size_t) (h + 1) * sizeof(*r->start));
-  r->runs   = malloc((size_t) h * 2 * sizeof(*r->runs));
+  r->start  = alloc->malloc((size_t) (h + 1) * sizeof(*r->start));
+  r->runs   = alloc->malloc((size_t) h * 2 * sizeof(*r->runs));
   if (r->start == NULL || r->runs == NULL)
   {
     region_destroy(r);

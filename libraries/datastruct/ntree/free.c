@@ -24,6 +24,6 @@ void ntree_free(ntree_t *t)
     if (t->children)
       ntree_free(t->children);
 
-    free(t);
+    t->alloc->free(t);
   }
 }

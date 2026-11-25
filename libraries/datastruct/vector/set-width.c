@@ -35,7 +35,7 @@ result_t vector_set_width(vector_t *v, size_t width)
   /* Avoid calling realloc for the same size block. */
   if (currsz != newsz)
   {
-    newbase = realloc(v->base, newsz);
+    newbase = v->alloc->realloc(v->base, newsz);
     if (newbase == NULL)
       return result_OOM;
   }

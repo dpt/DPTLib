@@ -1549,6 +1549,7 @@ result_t screen_copy_bitmap_faded(screen_t       *scr,
                                   int             amount)
 {
   result_t             rc;
+  const alloc_t       *alloc;
   const bitmap_t      *in;
   bitmap_t             raw;
   const colour_t      *srcpal;
@@ -1568,11 +1569,13 @@ result_t screen_copy_bitmap_faded(screen_t       *scr,
   if (src->size.w <= 0 || src->size.h <= 0)
     return result_OK;
 
+  alloc = scr->alloc ? scr->alloc : &alloc_default;
+
   /* an RLE source has no random access: decode a raw copy to read from */
   in = src;
   if (pixelfmt_is_rle(src->format))
   {
-    rc = bitmap_clone(src, &raw);
+    rc = bitmap_clone(alloc, src, &raw);
     if (rc)
       return rc;
     in = &raw;
@@ -1585,7 +1588,7 @@ result_t screen_copy_bitmap_faded(screen_t       *scr,
     goto cleanup;
   }
 
-  pixels = malloc((size_t) in->size.w * in->size.h * sizeof(*pixels));
+  pixels = alloc->malloc((size_t) in->size.w * in->size.h * sizeof(*pixels));
   if (pixels == NULL)
   {
     rc = result_OOM;
@@ -1609,19 +1612,19 @@ result_t screen_copy_bitmap_faded(screen_t       *scr,
     }
   }
 
-  rc = bitmap_init(&faded, in->size, pixelfmt_rgba8888,
+  rc = bitmap_init(alloc, &faded, in->size, pixelfmt_rgba8888,
                    in->size.w * (int) sizeof(*pixels), NULL, pixels);
   if (rc == result_OK)
     rc = screen_copy_bitmap_i(scr, x, y, &faded, NULL,
                               screen_DITHER_BLUE_NOISE);
 
-  free(pixels);
+  alloc->free(pixels);
 
 cleanup:
   if (in == &raw)
   {
-    free(raw.base);
-    free(raw.palette);
+    alloc->free(raw.base);
+    alloc->free(raw.palette);
   }
 
   return rc;
@@ -1669,13 +1672,14 @@ result_t screen_copy_bitmap_scaled_dithered(screen_t             *scr,
                                             const screen_scale_t *scale,
                                             screen_dither_t       method)
 {
-  result_t   rc;
-  box_t      clip_box;
-  box_t      img_box;
-  box_t      draw_box;
-  int        w, h;
-  int       *xmap;
-  copy_map_t map;
+  result_t       rc;
+  const alloc_t *alloc;
+  box_t          clip_box;
+  box_t          img_box;
+  box_t          draw_box;
+  int            w, h;
+  int           *xmap;
+  copy_map_t     map;
 
   if (src->size.w <= 0 || src->size.h <= 0 ||
       scale->xmul <= 0 || scale->ymul <= 0 ||
@@ -1706,7 +1710,9 @@ result_t screen_copy_bitmap_scaled_dithered(screen_t             *scr,
   w = draw_box.x1 - draw_box.x0;
   h = draw_box.y1 - draw_box.y0;
 
-  xmap = malloc((size_t) (w + h) * sizeof(*xmap));
+  alloc = scr->alloc ? scr->alloc : &alloc_default;
+
+  xmap = alloc->malloc((size_t) (w + h) * sizeof(*xmap));
   if (xmap == NULL)
     return result_OOM;
 
@@ -1719,7 +1725,7 @@ result_t screen_copy_bitmap_scaled_dithered(screen_t             *scr,
   rc = screen_copy_bitmap_box(scr, dst->x0, dst->y0, src, &draw_box, &map,
                               method);
 
-  free(xmap);
+  alloc->free(xmap);
 
   return rc;
 }

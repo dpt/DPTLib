@@ -15,6 +15,7 @@
 #include "geom/point.h"
 #include "geom/region.h"
 #include "geom/size.h"
+#include "utils/alloc.h"
 
 /** Common bitmap structure members (used for screens too). */
 #define bitmap_COMMON_MEMBERS \
@@ -36,9 +37,17 @@ typedef struct bitmap
 }
 bitmap_t;
 
+/*
+ * Every function here which allocates takes an allocator, `alloc`, first.
+ * NULL means \ref alloc_default. A bitmap does not record its allocator, so
+ * the caller passes the same one to every function which frees or resizes
+ * the bitmap's own blocks, or frees them itself through that allocator.
+ */
+
 /**
  * Initialise a previously allocated bitmap structure.
  *
+ * \param[in] alloc    Allocator for the palette copy, or NULL.
  * \param[in] bm       Bitmap to initialise.
  * \param[in] size     Width and height of the bitmap in pixels.
  * \param[in] fmt      Pixel format of the bitmap.
@@ -47,7 +56,8 @@ bitmap_t;
  * \param[in] base     Base address of the bitmap.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
-result_t bitmap_init(bitmap_t       *bm,
+result_t bitmap_init(const alloc_t  *alloc,
+                     bitmap_t       *bm,
                      size2d_t        size,
                      pixelfmt_t      fmt,
                      int             rowbytes,
@@ -59,22 +69,26 @@ result_t bitmap_init(bitmap_t       *bm,
  * is already allocated and it is large enough. A no-op returning \ref
  * result_OK for formats with no palette (log2bpp > 3).
  *
+ * \param[in] alloc   Allocator of the palette, or NULL.
  * \param[in] bm      Bitmap to repalette.
  * \param[in] palette New palette, copied in, or NULL to drop the bitmap's
  *                    palette entirely.
  * \return \ref result_OK on success, \ref result_OOM if a palette buffer
  *         could not be allocated (the bitmap keeps its old palette).
  */
-result_t bitmap_set_palette(bitmap_t *bm, const colour_t *palette);
+result_t bitmap_set_palette(const alloc_t  *alloc,
+                            bitmap_t       *bm,
+                            const colour_t *palette);
 
 /**
  * Free a heap-allocated bitmap whose pixels and palette are its own, as \ref
  * bitmap_convert and \ref bitmap_resize return: its pixels, its palette and
  * the structure itself.
  *
- * \param[in] bm Bitmap to free, or NULL for a no-op.
+ * \param[in] alloc Allocator the bitmap came from, or NULL.
+ * \param[in] bm    Bitmap to free, or NULL for a no-op.
  */
-void bitmap_destroy(bitmap_t *bm);
+void bitmap_destroy(const alloc_t *alloc, bitmap_t *bm);
 
 /**
  * Clear the given bitmap to the specified colour.
@@ -130,6 +144,7 @@ result_t bitmap_fill_pattern(bitmap_t        *bm,
  * Supported for unpaletted 32bpp formats only; other formats return \ref
  * result_NOT_SUPPORTED.
  *
+ * \param[in]  alloc  Allocator for the fill's work stack, or NULL.
  * \param[in]  bm     Bitmap to fill.
  * \param[in]  seed   Pixel to start from.
  * \param[in]  colour Colour to fill with.
@@ -139,10 +154,11 @@ result_t bitmap_fill_pattern(bitmap_t        *bm,
  *         memory part way (`dirty` still bounds what was filled) or \ref
  *         result_NOT_SUPPORTED for an unsupported pixel format.
  */
-result_t bitmap_flood_fill(bitmap_t *bm,
-                           point_t   seed,
-                           colour_t  colour,
-                           box_t    *dirty);
+result_t bitmap_flood_fill(const alloc_t *alloc,
+                           bitmap_t      *bm,
+                           point_t        seed,
+                           colour_t       colour,
+                           box_t         *dirty);
 
 /**
  * Load a PNG image into the given bitmap.
@@ -154,11 +170,16 @@ result_t bitmap_flood_fill(bitmap_t *bm,
  * ramp of greys as `bm->palette`. RGB PNGs are expanded to a 32bpp
  * `rgbx8888` / `rgba8888` bitmap with no palette.
  *
+ * libpng's own working memory comes from `alloc` too.
+ *
+ * \param[in] alloc    Allocator for the pixels and palette, or NULL.
  * \param[in] bm       Bitmap to load the image into.
  * \param[in] filename Filename of the image to load.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
-result_t bitmap_load_png(bitmap_t *bm, const char *filename);
+result_t bitmap_load_png(const alloc_t *alloc,
+                         bitmap_t      *bm,
+                         const char    *filename);
 
 /**
  * Load a PNG image as \ref bitmap_load_png, then expand a paletted result
@@ -167,6 +188,7 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename);
  * alpha channel. RGB PNGs are left as `rgbx8888` / `rgba8888`. On failure
  * nothing is left allocated.
  *
+ * \param[in] alloc    Allocator for the pixels and palette, or NULL.
  * \param[in] bm       Bitmap to load the image into.
  * \param[in] filename Filename of the image to load.
  * \param[in] fmt      Deep format to expand a paletted image to, one that
@@ -174,9 +196,10 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename);
  *                     (e.g. `rgbx8888`, `rgba8888` or `bgrx8888`).
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
-result_t bitmap_load_png_deep(bitmap_t   *bm,
-                              const char *filename,
-                              pixelfmt_t  fmt);
+result_t bitmap_load_png_deep(const alloc_t *alloc,
+                              bitmap_t      *bm,
+                              const char    *filename,
+                              pixelfmt_t     fmt);
 
 /**
  * Load a JPEG image into the given bitmap.
@@ -186,21 +209,29 @@ result_t bitmap_load_png_deep(bitmap_t   *bm,
  * becomes an `rgbx8888` bitmap with no palette. CMYK and YCCK JPEGs return
  * \ref result_INCOMPATIBLE.
  *
+ * libjpeg's own working memory does not come from `alloc`.
+ *
+ * \param[in] alloc    Allocator for the pixels and palette, or NULL.
  * \param[in] bm       Bitmap to load the image into.
  * \param[in] filename Filename of the image to load.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
-result_t bitmap_load_jpeg(bitmap_t *bm, const char *filename);
+result_t bitmap_load_jpeg(const alloc_t *alloc,
+                          bitmap_t      *bm,
+                          const char    *filename);
 
 /**
  * Load a PNG or JPEG image, chosen by the file's signature, as \ref
  * bitmap_load_png or \ref bitmap_load_jpeg.
  *
+ * \param[in] alloc    Allocator for the pixels and palette, or NULL.
  * \param[in] bm       Bitmap to load the image into.
  * \param[in] filename Filename of the image to load.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
-result_t bitmap_load(bitmap_t *bm, const char *filename);
+result_t bitmap_load(const alloc_t *alloc,
+                     bitmap_t      *bm,
+                     const char    *filename);
 
 /**
  * Affirm whether \ref bitmap_load reads files of a RISC OS filetype.
@@ -215,14 +246,16 @@ int bitmap_loads_filetype(unsigned int riscos);
  * Load a PNG or JPEG image as \ref bitmap_load, then expand a paletted
  * result to the deep format `fmt` as \ref bitmap_load_png_deep does.
  *
+ * \param[in] alloc    Allocator for the pixels and palette, or NULL.
  * \param[in] bm       Bitmap to load the image into.
  * \param[in] filename Filename of the image to load.
  * \param[in] fmt      Deep format to expand a paletted image to.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
-result_t bitmap_load_deep(bitmap_t   *bm,
-                          const char *filename,
-                          pixelfmt_t  fmt);
+result_t bitmap_load_deep(const alloc_t *alloc,
+                          bitmap_t      *bm,
+                          const char    *filename,
+                          pixelfmt_t     fmt);
 
 /**
  * Save the given bitmap as a PNG image.
@@ -233,11 +266,15 @@ result_t bitmap_load_deep(bitmap_t   *bm,
  * Other formats return \ref result_NOT_SUPPORTED, as does a \ref pixelfmt_p8
  * bitmap with no palette.
  *
+ * \param[in] alloc    Allocator for a row buffer and libpng's working
+ *                     memory, or NULL.
  * \param[in] bm       Bitmap to save.
  * \param[in] filename Filename to save the image to.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
-result_t bitmap_save_png(const bitmap_t *bm, const char *filename);
+result_t bitmap_save_png(const alloc_t  *alloc,
+                         const bitmap_t *bm,
+                         const char     *filename);
 
 /**
  * Convert the given bitmap into a different pixel format, allocating a new
@@ -248,12 +285,14 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename);
  * bitmap_convert_in_place, including a format to itself (a copy). Compressed
  * sources are refused.
  *
+ * \param[in] alloc    Allocator for the result, or NULL.
  * \param[in] bm       Bitmap to convert.
  * \param[in] newfmt   New pixel format.
  * \param[out] newbm   Converted bitmap.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
-result_t bitmap_convert(const bitmap_t *bm,
+result_t bitmap_convert(const alloc_t  *alloc,
+                        const bitmap_t *bm,
                         pixelfmt_t      newfmt,
                         bitmap_t      **newbm);
 
@@ -304,11 +343,14 @@ result_t bitmap_convert_in_place(bitmap_t *bm, pixelfmt_t newfmt);
  * it, so its format and rowbytes are those of the original pixels. The
  * caller frees `dst->base` and `dst->palette`.
  *
- * \param[in]  src Bitmap to copy.
- * \param[out] dst Bitmap to initialise as the copy.
+ * \param[in]  alloc Allocator for the copy, or NULL.
+ * \param[in]  src   Bitmap to copy.
+ * \param[out] dst   Bitmap to initialise as the copy.
  * \return \ref result_OK on success, or \ref result_OOM if out of memory.
  */
-result_t bitmap_clone(const bitmap_t *src, bitmap_t *dst);
+result_t bitmap_clone(const alloc_t  *alloc,
+                      const bitmap_t *src,
+                      bitmap_t       *dst);
 
 /**
  * Copy the pixels of `src` over those of `dst`, which must match it in size,
@@ -326,16 +368,18 @@ result_t bitmap_copy_pixels(const bitmap_t *src, bitmap_t *dst);
  * newly allocated pixels and (for a paletted format) palette. Its rows are
  * packed with no padding. The caller frees `dst->base` and `dst->palette`.
  *
- * \param[in]  src Bitmap to copy from.
- * \param[in]  box Area to copy, wholly within `src` and not empty. For a
- *                 sub-byte format `box->x0` must fall on a byte boundary.
- * \param[out] dst Bitmap to initialise as the copy.
+ * \param[in]  alloc Allocator for the copy, or NULL.
+ * \param[in]  src   Bitmap to copy from.
+ * \param[in]  box   Area to copy, wholly within `src` and not empty. For a
+ *                   sub-byte format `box->x0` must fall on a byte boundary.
+ * \param[out] dst   Bitmap to initialise as the copy.
  * \return \ref result_OK on success, \ref result_BAD_ARG for a box outside
  *         `src` or empty, \ref result_NOT_SUPPORTED for a compressed `src`
  *         or a sub-byte box not starting on a byte, or \ref result_OOM if
  *         out of memory.
  */
-result_t bitmap_extract(const bitmap_t *src,
+result_t bitmap_extract(const alloc_t  *alloc,
+                        const bitmap_t *src,
                         const box_t    *box,
                         bitmap_t       *dst);
 
@@ -345,6 +389,7 @@ result_t bitmap_extract(const bitmap_t *src,
  * Its rows are packed with no padding. The caller frees `dst->base` and
  * `dst->palette`.
  *
+ * \param[in]  alloc  Allocator for the copy, or NULL.
  * \param[in]  src    Bitmap to copy from, of 8, 16 or 32 bpp.
  * \param[in]  orient Flip or turn.
  * \param[out] dst    Bitmap to initialise as the copy.
@@ -352,7 +397,10 @@ result_t bitmap_extract(const bitmap_t *src,
  *         compressed or sub-byte `src`, \ref result_BAD_ARG for an unknown
  *         `orient`, or \ref result_OOM if out of memory.
  */
-result_t bitmap_orient(const bitmap_t *src, orient_t orient, bitmap_t *dst);
+result_t bitmap_orient(const alloc_t  *alloc,
+                       const bitmap_t *src,
+                       orient_t        orient,
+                       bitmap_t       *dst);
 
 /** Non-zero if `bm` holds an RLE-compressed (read-only) pixel store. */
 #define bitmap_is_compressed(bm) pixelfmt_is_rle((bm)->format)
@@ -437,11 +485,12 @@ void bitmap_clear_transparent(bitmap_t *bm);
  * (`bgra`/`rgba`/`abgr`/`argb`). Transparent-run compression applies to
  * `bgra8888`/`rgba8888` only.
  *
- * \param[in] bm Bitmap to compress in place.
+ * \param[in] alloc Allocator the pixels came from, or NULL.
+ * \param[in] bm    Bitmap to compress in place.
  * \return \ref result_OK on success, \ref result_NOT_SUPPORTED for an
  *         unsupported format, \ref result_OOM on allocation failure.
  */
-result_t bitmap_compress(bitmap_t *bm);
+result_t bitmap_compress(const alloc_t *alloc, bitmap_t *bm);
 
 /**
  * Reverse \ref bitmap_compress, restoring a raw `rowbytes`-strided pixel
@@ -449,10 +498,11 @@ result_t bitmap_compress(bitmap_t *bm);
  * `bm->rowbytes` is restored. A no-op returning \ref result_OK if `bm` is
  * not compressed.
  *
- * \param[in] bm Bitmap to decompress in place.
+ * \param[in] alloc Allocator the pixels came from, or NULL.
+ * \param[in] bm    Bitmap to decompress in place.
  * \return \ref result_OK on success, \ref result_OOM on allocation failure.
  */
-result_t bitmap_decompress(bitmap_t *bm);
+result_t bitmap_decompress(const alloc_t *alloc, bitmap_t *bm);
 
 /** Resampling filter for \ref bitmap_resize. */
 typedef enum bitmap_resample
@@ -508,6 +558,7 @@ bitmap_resample_t;
  *
  * Free the result with \ref bitmap_destroy.
  *
+ * \param[in]  alloc  Allocator for the result and work buffers, or NULL.
  * \param[in]  bm     Bitmap to resample.
  * \param[in]  size   Width and height of the result, both above zero.
  * \param[in]  method Resampling filter.
@@ -517,7 +568,8 @@ bitmap_resample_t;
  *         or unknown method, \ref result_NOT_SUPPORTED for a non-32bpp or
  *         compressed source, \ref result_OOM on allocation failure.
  */
-result_t bitmap_resize(const bitmap_t   *bm,
+result_t bitmap_resize(const alloc_t    *alloc,
+                       const bitmap_t   *bm,
                        size2d_t          size,
                        bitmap_resample_t method,
                        int               linear,

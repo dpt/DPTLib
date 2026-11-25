@@ -14,8 +14,8 @@ void txtfmt_destroy(txtfmt_t *tx)
 {
   if (tx)
   {
-    free(tx->spans);
-    free(tx->s);
-    free(tx);
+    tx->alloc->free(tx->spans);
+    tx->alloc->free(tx->s);
+    tx->alloc->free(tx);
   }
 }

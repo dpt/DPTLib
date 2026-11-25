@@ -4,7 +4,8 @@
 
 #include "impl.h"
 
-result_t region_invert(const region_t *region,
+result_t region_invert(const alloc_t  *alloc,
+                       const region_t *region,
                        const box_t    *within,
                        region_t      **out)
 {
@@ -18,7 +19,7 @@ result_t region_invert(const region_t *region,
   if (box_is_empty(within))
     return result_OK;
 
-  rc = region__builder_init(&b, within->y0, within->y1 - within->y0);
+  rc = region__builder_init(&b, alloc, within->y0, within->y1 - within->y0);
   if (rc != result_OK)
     return rc;
 

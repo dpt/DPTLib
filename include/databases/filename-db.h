@@ -23,6 +23,7 @@ extern "C"
 
 #include "base/result.h"
 #include "databases/pickle.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -48,7 +49,8 @@ void filenamedb_fin(void);
 
 typedef struct filenamedb T;
 
-result_t filenamedb_open(const char *filename, T **db);
+/* 'alloc' may be NULL for the default. The database keeps it. */
+result_t filenamedb_open(const alloc_t *alloc, const char *filename, T **db);
 void filenamedb_close(T *db);
 
 /**

@@ -90,6 +90,8 @@ void tagdb_fin(void)
 
 struct tagdb
 {
+  const alloc_t          *alloc;
+
   char                   *filename;
 
   atom_set_t             *tags; /* tag names */
@@ -175,7 +177,7 @@ static result_t unformat_value(const char *inbuf,
   if (t < 1)
     return result_TAGDB_SYNTAX_ERROR; /* no tokens found */
 
-  v = bitvec_create(1);
+  v = bitvec_create(db->alloc, 1);
   if (v == NULL)
     return result_OOM;
 
@@ -212,7 +214,9 @@ static void destroy_hash_value(void *value)
   bitvec_destroy(value);
 }
 
-result_t tagdb_open(const char *filename, tagdb_t **pdb)
+result_t tagdb_open(const alloc_t *alloc,
+                    const char    *filename,
+                    tagdb_t      **pdb)
 {
   result_t    err;
   char       *filenamecopy = NULL;
@@ -223,21 +227,25 @@ result_t tagdb_open(const char *filename, tagdb_t **pdb)
   assert(filename);
   assert(pdb);
 
-  filenamecopy = strdup(filename); // FIXME was str_dup
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  filenamecopy = alloc_strdup(alloc, filename);
   if (filenamecopy == NULL)
   {
     err = result_OOM;
     goto Failure;
   }
 
-  tags = atom_create_tuned(ATOMBUFSZ / ESTATOMLEN, ATOMBUFSZ);
+  tags = atom_create_tuned(alloc, ATOMBUFSZ / ESTATOMLEN, ATOMBUFSZ);
   if (tags == NULL)
   {
     err = result_OOM;
     goto Failure;
   }
 
-  err = hash_create(NULL,
+  err = hash_create(alloc,
+                    NULL,
                     HASHSIZE,
                     digestdb_hash,
                     digestdb_compare,
@@ -247,13 +255,14 @@ result_t tagdb_open(const char *filename, tagdb_t **pdb)
   if (err)
     goto Failure;
 
-  db = malloc(sizeof(*db));
+  db = alloc->malloc(sizeof(*db));
   if (db == NULL)
   {
     err = result_OOM;
     goto Failure;
   }
 
+  db->alloc       = alloc;
   db->filename    = filenamecopy;
   db->tags        = tags;
   db->counts      = NULL;
@@ -277,10 +286,10 @@ result_t tagdb_open(const char *filename, tagdb_t **pdb)
 
 Failure:
 
-  free(db);
+  alloc->free(db);
   hash_destroy(hash);
   atom_destroy(tags);
-  free(filenamecopy);
+  alloc->free(filenamecopy);
 
   return err;
 }
@@ -293,12 +302,12 @@ void tagdb_close(tagdb_t *db)
   tagdb_commit(db);
 
   hash_destroy(db->hash);
-  free(db->counts);
+  db->alloc->free(db->counts);
   atom_destroy(db->tags);
 
-  free(db->filename);
+  db->alloc->free(db->filename);
 
-  free(db);
+  db->alloc->free(db);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -469,7 +478,7 @@ result_t tagdb_add(tagdb_t *db, const unsigned char *name, tagdb_tag_t *ptag)
       n = power2gt(db->c_allocated);
       n = MAX(n, 8);
 
-      newarr = realloc(db->counts, n * sizeof(*db->counts));
+      newarr = db->alloc->realloc(db->counts, n * sizeof(*db->counts));
       if (newarr == NULL)
       {
         err = result_OOM;
@@ -685,7 +694,7 @@ result_t tagdb_tagid(tagdb_t *db, const unsigned char *id, tagdb_tag_t tag)
 
     key = digestdb_get(kindex);
 
-    val = bitvec_create(1);
+    val = bitvec_create(db->alloc, 1);
     if (val == NULL)
       return result_OOM;
 
@@ -950,7 +959,7 @@ result_t tagdb_enumerate_ids_by_tags(tagdb_t           *db,
 
   /* form a bitvec of the required tags */
 
-  want = bitvec_create(ntags);
+  want = bitvec_create(NULL, ntags);
   if (want == NULL)
   {
     err = result_OOM;

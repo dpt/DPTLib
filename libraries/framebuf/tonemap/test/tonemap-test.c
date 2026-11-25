@@ -31,7 +31,7 @@ result_t tonemap_test(const char *resources)
 
   (void) resources;
 
-  map = tonemap_create();
+  map = tonemap_create(NULL);
   if (map == NULL)
     return result_TEST_FAILED;
 
@@ -114,7 +114,7 @@ result_t tonemap_test(const char *resources)
 
   /* 6. plotting the neutral map draws a diagonal on white */
   tonemap_reset(map);
-  if (bitmap_init(&bm, SIZE2D(PLOT_SIZE, PLOT_SIZE), pixelfmt_rgbx8888,
+  if (bitmap_init(NULL, &bm, SIZE2D(PLOT_SIZE, PLOT_SIZE), pixelfmt_rgbx8888,
                   PLOT_SIZE * 4, NULL, pixels) != result_OK)
   {
     printf("tonemap: cannot make plot bitmap\n");

@@ -11,7 +11,8 @@
 
 #include "rle.h"
 
-result_t bitmap_init(bitmap_t       *bm,
+result_t bitmap_init(const alloc_t  *alloc,
+                     bitmap_t       *bm,
                      size2d_t        size,
                      pixelfmt_t      fmt,
                      int             rowbytes,
@@ -27,20 +28,25 @@ result_t bitmap_init(bitmap_t       *bm,
   bm->span     = spanregistry_get(fmt);
   bm->base     = base;
 
-  return bitmap_set_palette(bm, palette);
+  return bitmap_set_palette(alloc, bm, palette);
 }
 
-void bitmap_destroy(bitmap_t *bm)
+void bitmap_destroy(const alloc_t *alloc, bitmap_t *bm)
 {
   if (bm == NULL)
     return;
 
-  free(bm->base);
-  free(bm->palette);
-  free(bm);
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  alloc->free(bm->base);
+  alloc->free(bm->palette);
+  alloc->free(bm);
 }
 
-result_t bitmap_set_palette(bitmap_t *bm, const colour_t *palette)
+result_t bitmap_set_palette(const alloc_t  *alloc,
+                            bitmap_t       *bm,
+                            const colour_t *palette)
 {
   int       log2bpp;
   int       nentries;
@@ -48,13 +54,16 @@ result_t bitmap_set_palette(bitmap_t *bm, const colour_t *palette)
 
   assert(bm);
 
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
   log2bpp = pixelfmt_log2bpp(bm->format);
   if (log2bpp > 3)
     return result_OK; /* no palette for this format */
 
   if (palette == NULL)
   {
-    free(bm->palette);
+    alloc->free(bm->palette);
     bm->palette = NULL;
     return result_OK;
   }
@@ -66,7 +75,7 @@ result_t bitmap_set_palette(bitmap_t *bm, const colour_t *palette)
   pal = bm->palette;
   if (pal == NULL)
   {
-    pal = malloc(nentries * sizeof(*pal));
+    pal = alloc->malloc(nentries * sizeof(*pal));
     if (pal == NULL)
       return result_OOM;
   }
@@ -197,24 +206,27 @@ static result_t bmconv_p4_to_bgrx8888_into(const bitmap_t *src,
   return result_OK;
 }
 
-static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
+static result_t bmconv_p4_to_bgrx8888(const alloc_t  *alloc,
+                                      const bitmap_t *src,
+                                      bitmap_t      **pdst)
 {
   result_t             rc;
   bitmap_t            *dst;
   pixelfmt_bgrx8888_t *outpixels;
 
-  outpixels = malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) * src->size.h); // rowbytes rounding needed?
+  outpixels = alloc->malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) * src->size.h); // rowbytes rounding needed?
   if (outpixels == NULL)
     return result_OOM;
 
-  dst = malloc(sizeof(*dst));
+  dst = alloc->malloc(sizeof(*dst));
   if (dst == NULL)
   {
-    free(outpixels);
+    alloc->free(outpixels);
     return result_OOM;
   }
 
-  rc = bitmap_init(dst,
+  rc = bitmap_init(alloc,
+                   dst,
                    src->size,
                    pixelfmt_bgrx8888,
                    src->size.w * sizeof(pixelfmt_bgrx8888_t),
@@ -222,16 +234,16 @@ static result_t bmconv_p4_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
                    outpixels);
   if (rc)
   {
-    free(outpixels);
-    free(dst);
+    alloc->free(outpixels);
+    alloc->free(dst);
     return rc;
   }
 
   rc = bmconv_p4_to_bgrx8888_into(src, dst);
   if (rc)
   {
-    free(outpixels);
-    free(dst);
+    alloc->free(outpixels);
+    alloc->free(dst);
     return rc;
   }
 
@@ -273,7 +285,8 @@ static result_t bmconv_p8_to_bgrx8888_into(const bitmap_t *src,
   return result_OK;
 }
 
-static result_t bmconv_p8_to_bgrx8888(const bitmap_t *src,
+static result_t bmconv_p8_to_bgrx8888(const alloc_t  *alloc,
+                                      const bitmap_t *src,
                                       pixelfmt_t      fmt,
                                       bitmap_t      **pdst)
 {
@@ -281,18 +294,20 @@ static result_t bmconv_p8_to_bgrx8888(const bitmap_t *src,
   bitmap_t            *dst;
   pixelfmt_bgrx8888_t *outpixels;
 
-  outpixels = malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) * src->size.h);
+  outpixels = alloc->malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) *
+                            src->size.h);
   if (outpixels == NULL)
     return result_OOM;
 
-  dst = malloc(sizeof(*dst));
+  dst = alloc->malloc(sizeof(*dst));
   if (dst == NULL)
   {
-    free(outpixels);
+    alloc->free(outpixels);
     return result_OOM;
   }
 
-  rc = bitmap_init(dst,
+  rc = bitmap_init(alloc,
+                   dst,
                    src->size,
                    fmt,
                    src->size.w * sizeof(pixelfmt_bgrx8888_t),
@@ -300,16 +315,16 @@ static result_t bmconv_p8_to_bgrx8888(const bitmap_t *src,
                    outpixels);
   if (rc)
   {
-    free(outpixels);
-    free(dst);
+    alloc->free(outpixels);
+    alloc->free(dst);
     return rc;
   }
 
   rc = bmconv_p8_to_bgrx8888_into(src, fmt, dst);
   if (rc)
   {
-    free(outpixels);
-    free(dst);
+    alloc->free(outpixels);
+    alloc->free(dst);
     return rc;
   }
 
@@ -352,7 +367,8 @@ static result_t bmconv_p8_to_rgbx8888_into(const bitmap_t *src,
   return result_OK;
 }
 
-static result_t bmconv_p8_to_rgbx8888(const bitmap_t *src,
+static result_t bmconv_p8_to_rgbx8888(const alloc_t  *alloc,
+                                      const bitmap_t *src,
                                       pixelfmt_t      fmt,
                                       bitmap_t      **pdst)
 {
@@ -360,18 +376,20 @@ static result_t bmconv_p8_to_rgbx8888(const bitmap_t *src,
   bitmap_t            *dst;
   pixelfmt_rgbx8888_t *outpixels;
 
-  outpixels = malloc(src->size.w * sizeof(pixelfmt_rgbx8888_t) * src->size.h);
+  outpixels = alloc->malloc(src->size.w * sizeof(pixelfmt_rgbx8888_t) *
+                            src->size.h);
   if (outpixels == NULL)
     return result_OOM;
 
-  dst = malloc(sizeof(*dst));
+  dst = alloc->malloc(sizeof(*dst));
   if (dst == NULL)
   {
-    free(outpixels);
+    alloc->free(outpixels);
     return result_OOM;
   }
 
-  rc = bitmap_init(dst,
+  rc = bitmap_init(alloc,
+                   dst,
                    src->size,
                    fmt,
                    src->size.w * sizeof(pixelfmt_rgbx8888_t),
@@ -379,16 +397,16 @@ static result_t bmconv_p8_to_rgbx8888(const bitmap_t *src,
                    outpixels);
   if (rc)
   {
-    free(outpixels);
-    free(dst);
+    alloc->free(outpixels);
+    alloc->free(dst);
     return rc;
   }
 
   rc = bmconv_p8_to_rgbx8888_into(src, fmt, dst);
   if (rc)
   {
-    free(outpixels);
-    free(dst);
+    alloc->free(outpixels);
+    alloc->free(dst);
     return rc;
   }
 
@@ -428,24 +446,28 @@ static result_t bmconv_p1_to_bgrx8888_into(const bitmap_t *src,
   return result_OK;
 }
 
-static result_t bmconv_p1_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
+static result_t bmconv_p1_to_bgrx8888(const alloc_t  *alloc,
+                                      const bitmap_t *src,
+                                      bitmap_t      **pdst)
 {
   result_t             rc;
   bitmap_t            *dst;
   pixelfmt_bgrx8888_t *outpixels;
 
-  outpixels = malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) * src->size.h);
+  outpixels = alloc->malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) *
+                            src->size.h);
   if (outpixels == NULL)
     return result_OOM;
 
-  dst = malloc(sizeof(*dst));
+  dst = alloc->malloc(sizeof(*dst));
   if (dst == NULL)
   {
-    free(outpixels);
+    alloc->free(outpixels);
     return result_OOM;
   }
 
-  rc = bitmap_init(dst,
+  rc = bitmap_init(alloc,
+                   dst,
                    src->size,
                    pixelfmt_bgrx8888,
                    src->size.w * sizeof(pixelfmt_bgrx8888_t),
@@ -453,16 +475,16 @@ static result_t bmconv_p1_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
                    outpixels);
   if (rc)
   {
-    free(outpixels);
-    free(dst);
+    alloc->free(outpixels);
+    alloc->free(dst);
     return rc;
   }
 
   rc = bmconv_p1_to_bgrx8888_into(src, dst);
   if (rc)
   {
-    free(outpixels);
-    free(dst);
+    alloc->free(outpixels);
+    alloc->free(dst);
     return rc;
   }
 
@@ -502,24 +524,28 @@ static result_t bmconv_p2_to_bgrx8888_into(const bitmap_t *src,
   return result_OK;
 }
 
-static result_t bmconv_p2_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
+static result_t bmconv_p2_to_bgrx8888(const alloc_t  *alloc,
+                                      const bitmap_t *src,
+                                      bitmap_t      **pdst)
 {
   result_t             rc;
   bitmap_t            *dst;
   pixelfmt_bgrx8888_t *outpixels;
 
-  outpixels = malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) * src->size.h);
+  outpixels = alloc->malloc(src->size.w * sizeof(pixelfmt_bgrx8888_t) *
+                            src->size.h);
   if (outpixels == NULL)
     return result_OOM;
 
-  dst = malloc(sizeof(*dst));
+  dst = alloc->malloc(sizeof(*dst));
   if (dst == NULL)
   {
-    free(outpixels);
+    alloc->free(outpixels);
     return result_OOM;
   }
 
-  rc = bitmap_init(dst,
+  rc = bitmap_init(alloc,
+                   dst,
                    src->size,
                    pixelfmt_bgrx8888,
                    src->size.w * sizeof(pixelfmt_bgrx8888_t),
@@ -527,16 +553,16 @@ static result_t bmconv_p2_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
                    outpixels);
   if (rc)
   {
-    free(outpixels);
-    free(dst);
+    alloc->free(outpixels);
+    alloc->free(dst);
     return rc;
   }
 
   rc = bmconv_p2_to_bgrx8888_into(src, dst);
   if (rc)
   {
-    free(outpixels);
-    free(dst);
+    alloc->free(outpixels);
+    alloc->free(dst);
     return rc;
   }
 
@@ -549,7 +575,8 @@ static result_t bmconv_p2_to_bgrx8888(const bitmap_t *src, bitmap_t **pdst)
  * the three narrow formats share bmconv_p8_to_rgbx8888 rather than each
  * needing a converter of their own. p1 and p2 pack the leftmost pixel in the
  * high bits; p4 is low nibble first. 'fmt' is as for bmconv_p8_to_rgbx8888. */
-static result_t bmconv_packed_to_rgbx8888(const bitmap_t *src,
+static result_t bmconv_packed_to_rgbx8888(const alloc_t  *alloc,
+                                          const bitmap_t *src,
                                           pixelfmt_t      fmt,
                                           bitmap_t      **pdst)
 {
@@ -564,7 +591,7 @@ static result_t bmconv_packed_to_rgbx8888(const bitmap_t *src,
 
   log2bpp = pixelfmt_log2bpp(src->format);
 
-  idx = malloc((size_t) src->size.w * src->size.h);
+  idx = alloc->malloc((size_t) src->size.w * src->size.h);
   if (idx == NULL)
     return result_OOM;
 
@@ -594,41 +621,43 @@ static result_t bmconv_packed_to_rgbx8888(const bitmap_t *src,
   memset(pal, 0, sizeof(pal));
   memcpy(pal, src->palette, sizeof(pal[0]) << (1 << log2bpp));
 
-  rc = bitmap_init(&tmp, src->size, pixelfmt_p8, src->size.w, pal, idx);
+  rc = bitmap_init(alloc, &tmp, src->size, pixelfmt_p8, src->size.w, pal,
+                   idx);
   if (rc == result_OK)
   {
-    rc = bmconv_p8_to_rgbx8888(&tmp, fmt, pdst);
-    free(tmp.palette);
+    rc = bmconv_p8_to_rgbx8888(alloc, &tmp, fmt, pdst);
+    alloc->free(tmp.palette);
   }
-  free(idx);
+  alloc->free(idx);
 
   return rc;
 }
 
 /* Deep to deep: a copy, put through bitmap_convert_in_place, which refuses
  * anything but the 32bpp formats. */
-static result_t bmconv_deep(const bitmap_t *src,
+static result_t bmconv_deep(const alloc_t  *alloc,
+                            const bitmap_t *src,
                             pixelfmt_t      newfmt,
                             bitmap_t      **pdst)
 {
   result_t  rc;
   bitmap_t *dst;
 
-  dst = malloc(sizeof(*dst));
+  dst = alloc->malloc(sizeof(*dst));
   if (dst == NULL)
     return result_OOM;
 
-  rc = bitmap_clone(src, dst);
+  rc = bitmap_clone(alloc, src, dst);
   if (rc != result_OK)
   {
-    free(dst);
+    alloc->free(dst);
     return rc;
   }
 
   rc = bitmap_convert_in_place(dst, newfmt);
   if (rc != result_OK)
   {
-    bitmap_destroy(dst);
+    bitmap_destroy(alloc, dst);
     return rc;
   }
 
@@ -636,11 +665,15 @@ static result_t bmconv_deep(const bitmap_t *src,
   return result_OK;
 }
 
-result_t bitmap_convert(const bitmap_t *src,
+result_t bitmap_convert(const alloc_t  *alloc,
+                        const bitmap_t *src,
                         pixelfmt_t      newfmt,
                         bitmap_t      **dst)
 {
   *dst = NULL;
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   if (pixelfmt_is_rle(src->format))
     return result_NOT_SUPPORTED;
@@ -651,11 +684,11 @@ result_t bitmap_convert(const bitmap_t *src,
     switch (newfmt)
     {
     case pixelfmt_bgrx8888:
-      return bmconv_p1_to_bgrx8888(src, dst);
+      return bmconv_p1_to_bgrx8888(alloc, src, dst);
 
     case pixelfmt_rgbx8888:
     case pixelfmt_rgba8888:
-      return bmconv_packed_to_rgbx8888(src, newfmt, dst);
+      return bmconv_packed_to_rgbx8888(alloc, src, newfmt, dst);
 
     default:
       return result_NOT_SUPPORTED;
@@ -666,11 +699,11 @@ result_t bitmap_convert(const bitmap_t *src,
     switch (newfmt)
     {
     case pixelfmt_bgrx8888:
-      return bmconv_p2_to_bgrx8888(src, dst);
+      return bmconv_p2_to_bgrx8888(alloc, src, dst);
 
     case pixelfmt_rgbx8888:
     case pixelfmt_rgba8888:
-      return bmconv_packed_to_rgbx8888(src, newfmt, dst);
+      return bmconv_packed_to_rgbx8888(alloc, src, newfmt, dst);
 
     default:
       return result_NOT_SUPPORTED;
@@ -681,11 +714,11 @@ result_t bitmap_convert(const bitmap_t *src,
     switch (newfmt)
     {
     case pixelfmt_bgrx8888:
-      return bmconv_p4_to_bgrx8888(src, dst);
+      return bmconv_p4_to_bgrx8888(alloc, src, dst);
 
     case pixelfmt_rgbx8888:
     case pixelfmt_rgba8888:
-      return bmconv_packed_to_rgbx8888(src, newfmt, dst);
+      return bmconv_packed_to_rgbx8888(alloc, src, newfmt, dst);
 
     default:
       return result_NOT_SUPPORTED;
@@ -697,11 +730,11 @@ result_t bitmap_convert(const bitmap_t *src,
     {
     case pixelfmt_bgrx8888:
     case pixelfmt_bgra8888:
-      return bmconv_p8_to_bgrx8888(src, newfmt, dst);
+      return bmconv_p8_to_bgrx8888(alloc, src, newfmt, dst);
 
     case pixelfmt_rgbx8888:
     case pixelfmt_rgba8888:
-      return bmconv_p8_to_rgbx8888(src, newfmt, dst);
+      return bmconv_p8_to_rgbx8888(alloc, src, newfmt, dst);
 
     default:
       return result_NOT_SUPPORTED;
@@ -709,7 +742,7 @@ result_t bitmap_convert(const bitmap_t *src,
     break;
 
   default:
-    return bmconv_deep(src, newfmt, dst);
+    return bmconv_deep(alloc, src, newfmt, dst);
   }
 }
 
@@ -891,11 +924,16 @@ result_t bitmap_convert_in_place(bitmap_t *bm, pixelfmt_t newfmt)
   return result_OK;
 }
 
-result_t bitmap_clone(const bitmap_t *src, bitmap_t *dst)
+result_t bitmap_clone(const alloc_t  *alloc,
+                      const bitmap_t *src,
+                      bitmap_t       *dst)
 {
   result_t rc;
   size_t   n;
   void    *pixels;
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   if (bitmap_is_compressed(src))
   {
@@ -907,33 +945,33 @@ result_t bitmap_clone(const bitmap_t *src, bitmap_t *dst)
           bitmap__rle_get32((const uint8_t *) src->base + 4);
     raw = *src;
     raw.palette = NULL;
-    raw.base    = malloc(n);
+    raw.base    = alloc->malloc(n);
     if (raw.base == NULL)
       return result_OOM;
 
     memcpy(raw.base, src->base, n);
-    rc = bitmap_decompress(&raw);
+    rc = bitmap_decompress(alloc, &raw);
     if (rc != result_OK)
     {
-      free(raw.base);
+      alloc->free(raw.base);
       return rc;
     }
 
-    return bitmap_init(dst, raw.size, raw.format, raw.rowbytes, NULL,
+    return bitmap_init(alloc, dst, raw.size, raw.format, raw.rowbytes, NULL,
                        raw.base);
   }
 
   n      = (size_t) src->size.h * src->rowbytes;
-  pixels = malloc(n);
+  pixels = alloc->malloc(n);
   if (pixels == NULL)
     return result_OOM;
 
   memcpy(pixels, src->base, n);
 
-  rc = bitmap_init(dst, src->size, src->format, src->rowbytes, src->palette,
-                   pixels);
+  rc = bitmap_init(alloc, dst, src->size, src->format, src->rowbytes,
+                   src->palette, pixels);
   if (rc != result_OK)
-    free(pixels);
+    alloc->free(pixels);
 
   return rc;
 }
@@ -954,7 +992,10 @@ result_t bitmap_copy_pixels(const bitmap_t *src, bitmap_t *dst)
   return result_OK;
 }
 
-result_t bitmap_extract(const bitmap_t *src, const box_t *box, bitmap_t *dst)
+result_t bitmap_extract(const alloc_t  *alloc,
+                        const bitmap_t *src,
+                        const box_t    *box,
+                        bitmap_t       *dst)
 {
   result_t       rc;
   int            log2bpp;
@@ -963,6 +1004,9 @@ result_t bitmap_extract(const bitmap_t *src, const box_t *box, bitmap_t *dst)
   unsigned char *pixels;
   const char    *from;
   int            y;
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   if (bitmap_is_compressed(src))
     return result_NOT_SUPPORTED;
@@ -978,7 +1022,7 @@ result_t bitmap_extract(const bitmap_t *src, const box_t *box, bitmap_t *dst)
 
   size     = SIZE2D(box->x1 - box->x0, box->y1 - box->y0);
   rowbytes = ((size.w << log2bpp) + 7) >> 3;
-  pixels   = malloc((size_t) size.h * rowbytes);
+  pixels   = alloc->malloc((size_t) size.h * rowbytes);
   if (pixels == NULL)
     return result_OOM;
 
@@ -988,14 +1032,18 @@ result_t bitmap_extract(const bitmap_t *src, const box_t *box, bitmap_t *dst)
     memcpy(pixels + (size_t) y * rowbytes, from + (size_t) y * src->rowbytes,
            (size_t) rowbytes);
 
-  rc = bitmap_init(dst, size, src->format, rowbytes, src->palette, pixels);
+  rc = bitmap_init(alloc, dst, size, src->format, rowbytes, src->palette,
+                   pixels);
   if (rc != result_OK)
-    free(pixels);
+    alloc->free(pixels);
 
   return rc;
 }
 
-result_t bitmap_orient(const bitmap_t *src, orient_t orient, bitmap_t *dst)
+result_t bitmap_orient(const alloc_t  *alloc,
+                       const bitmap_t *src,
+                       orient_t        orient,
+                       bitmap_t       *dst)
 {
   result_t       rc;
   int            log2bpp;
@@ -1008,6 +1056,9 @@ result_t bitmap_orient(const bitmap_t *src, orient_t orient, bitmap_t *dst)
   int            x;
   int            sx;
   int            sy;
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   if (bitmap_is_compressed(src))
     return result_NOT_SUPPORTED;
@@ -1022,7 +1073,7 @@ result_t bitmap_orient(const bitmap_t *src, orient_t orient, bitmap_t *dst)
   bpp      = (size_t) 1 << (log2bpp - 3);
   size     = orient_size(orient, src->size);
   rowbytes = (int) (size.w * bpp);
-  pixels   = malloc((size_t) size.h * rowbytes);
+  pixels   = alloc->malloc((size_t) size.h * rowbytes);
   if (pixels == NULL)
     return result_OOM;
 
@@ -1036,9 +1087,10 @@ result_t bitmap_orient(const bitmap_t *src, orient_t orient, bitmap_t *dst)
              bpp);
     }
 
-  rc = bitmap_init(dst, size, src->format, rowbytes, src->palette, pixels);
+  rc = bitmap_init(alloc, dst, size, src->format, rowbytes, src->palette,
+                   pixels);
   if (rc != result_OK)
-    free(pixels);
+    alloc->free(pixels);
 
   return rc;
 }

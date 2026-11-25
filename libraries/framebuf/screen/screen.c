@@ -30,6 +30,7 @@ void screen_init(screen_t  *scr,
   scr->span     = spanregistry_get(fmt);
   scr->base     = base;
   box_reset(&scr->clip);
+  scr->alloc    = NULL;
 }
 
 void screen_for_bitmap(screen_t *scr, const bitmap_t *bm)
@@ -38,8 +39,9 @@ void screen_for_bitmap(screen_t *scr, const bitmap_t *bm)
   assert(bm);
 
   memcpy(scr, bm, sizeof(bitmap_t)); /* copy common members */
-  scr->base = bm->base;
+  scr->base  = bm->base;
   box_reset(&scr->clip);
+  scr->alloc = NULL;
 }
 
 int screen_get_clip(const screen_t *scr, box_t *clip)

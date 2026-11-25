@@ -18,6 +18,7 @@ extern "C"
 #endif
 
 #include "base/result.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -65,6 +66,11 @@ hash_destroy_value_t hash_no_destroy_value;
 /**
  * Create a hash.
  *
+ * The allocator holds the hash and its nodes only. Keys and values belong to
+ * the caller and are released by the destroy functions.
+ *
+ * \param      alloc         Allocator for the hash, or NULL. The hash keeps
+ *                           it.
  * \param      default_value Value to return for failed lookups.
  * \param      nbins         Suggested number of hash bins to allocate.
  * \param      fn            Function to hash keys.
@@ -75,7 +81,8 @@ hash_destroy_value_t hash_no_destroy_value;
  *
  * \return Error indication.
  */
-result_t hash_create(const void           *default_value,
+result_t hash_create(const alloc_t        *alloc,
+                     const void           *default_value,
                      int                   nbins,
                      hash_fn_t            *fn,
                      hash_compare_t       *compare,

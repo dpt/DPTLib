@@ -1,6 +1,7 @@
 /* geom/region/flood.c -- region of the pixels connected to a seed */
 
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -22,7 +23,8 @@
 /* an untaken pixel the caller wants */
 #define OPEN(x, y) (!SEEN(x, y) && inside(opaque, x, y))
 
-result_t region_from_flood(point_t             seed,
+result_t region_from_flood(const alloc_t      *alloc,
+                           point_t             seed,
                            const box_t        *within,
                            region_inside_fn_t *inside,
                            void               *opaque,
@@ -37,6 +39,9 @@ result_t region_from_flood(point_t             seed,
   int               x, x0, x1, y, dy, in_span;
   region__builder_t b;
 
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
   *out = NULL;
 
   if (seed.x < within->x0 || seed.x >= within->x1 ||
@@ -46,15 +51,17 @@ result_t region_from_flood(point_t             seed,
 
   w    = within->x1 - within->x0;
   h    = within->y1 - within->y0;
-  seen = calloc((size_t) w * (size_t) h, 1);
+  seen = alloc->malloc((size_t) w * (size_t) h);
   if (seen == NULL)
     return result_OOM;
+  memset(seen, 0, (size_t) w * (size_t) h);
 
   rc        = result_OK;
   stack     = NULL;
   n         = 0;
   allocated = 0;
-  if (array_grow((void **) &stack, sizeof(*stack), n, &allocated, 1, 256))
+  if (array_grow_alloc(alloc, (void **) &stack, sizeof(*stack), n,
+                       &allocated, 1, 256))
   {
     rc = result_OOM;
     goto exit;
@@ -107,8 +114,8 @@ result_t region_from_flood(point_t             seed,
 
         in_span = 1;
 
-        if (array_grow((void **) &stack, sizeof(*stack), n, &allocated, 1,
-                       256))
+        if (array_grow_alloc(alloc, (void **) &stack, sizeof(*stack), n,
+                             &allocated, 1, 256))
         {
           rc = result_OOM;
           goto exit;
@@ -119,7 +126,7 @@ result_t region_from_flood(point_t             seed,
     }
   }
 
-  rc = region__builder_init(&b, extent.y0, extent.y1 - extent.y0);
+  rc = region__builder_init(&b, alloc, extent.y0, extent.y1 - extent.y0);
   if (rc != result_OK)
     goto exit;
 
@@ -145,8 +152,8 @@ result_t region_from_flood(point_t             seed,
     region__builder_abort(&b);
 
 exit:
-  free(stack);
-  free(seen);
+  alloc->free(stack);
+  alloc->free(seen);
 
   return rc;
 }

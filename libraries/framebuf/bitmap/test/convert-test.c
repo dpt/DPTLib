@@ -127,22 +127,24 @@ static int test_set_palette(void)
 
   mk_palette(pal);
 
-  if (bitmap_init(&bm, SIZE2D(1, 1), pixelfmt_p4, 1, pal, NULL) != result_OK)
+  if (bitmap_init(NULL, &bm, SIZE2D(1, 1), pixelfmt_p4, 1, pal, NULL) !=
+      result_OK)
     return 0;
   first = bm.palette;
   if (first == NULL || first == pal || memcmp(first, pal, 16 * sizeof(*pal)))
     return 0;
 
   /* a second palette goes into the same buffer */
-  if (bitmap_set_palette(&bm, pal + 16) != result_OK || bm.palette != first ||
+  if (bitmap_set_palette(NULL, &bm, pal + 16) != result_OK ||
+      bm.palette != first ||
       memcmp(bm.palette, pal + 16, 16 * sizeof(*pal)))
     return 0;
 
-  if (bitmap_set_palette(&bm, NULL) != result_OK || bm.palette != NULL)
+  if (bitmap_set_palette(NULL, &bm, NULL) != result_OK || bm.palette != NULL)
     return 0;
 
   /* deep formats have no palette to set */
-  if (bitmap_init(&bm, SIZE2D(1, 1), pixelfmt_bgrx8888, 4, pal, NULL) !=
+  if (bitmap_init(NULL, &bm, SIZE2D(1, 1), pixelfmt_bgrx8888, 4, pal, NULL) !=
       result_OK || bm.palette != NULL)
     return 0;
 
@@ -180,12 +182,12 @@ static int test_clear(void)
 
   for (i = 0; i < (int) NELEMS(packed); i++)
   {
-    if (bitmap_init(&bm, SIZE2D(8, 4), packed[i].fmt, 8, pal, buf) !=
+    if (bitmap_init(NULL, &bm, SIZE2D(8, 4), packed[i].fmt, 8, pal, buf) !=
         result_OK)
       return 0;
     memset(buf, 0, sizeof(buf));
     bitmap_clear(&bm, pal[packed[i].index]);
-    bitmap_set_palette(&bm, NULL);
+    bitmap_set_palette(NULL, &bm, NULL);
     if (buf[0] != packed[i].byte || buf[31] != packed[i].byte || buf[32] != 0)
     {
       printf("  failed: packed format %d\n", packed[i].fmt);
@@ -194,7 +196,7 @@ static int test_clear(void)
   }
 
   /* 16bpp, with a padding pixel per row left alone */
-  bitmap_init(&bm, SIZE2D(3, 2), pixelfmt_rgb565, 8, NULL, px16);
+  bitmap_init(NULL, &bm, SIZE2D(3, 2), pixelfmt_rgb565, 8, NULL, px16);
   memset(px16, 0, sizeof(px16));
   bitmap_clear(&bm, colour_rgb(255, 0, 0));
   if (px16[0] != 0x1F || px16[2] != 0x1F || px16[3] != 0 ||
@@ -202,7 +204,7 @@ static int test_clear(void)
     FAIL("rgb565");
 
   /* 32bpp: opaque white is all 0xFF bytes, so takes a memset... */
-  bitmap_init(&bm, SIZE2D(3, 2), pixelfmt_rgbx8888, 16, NULL, px32);
+  bitmap_init(NULL, &bm, SIZE2D(3, 2), pixelfmt_rgbx8888, 16, NULL, px32);
   memset(px32, 0, sizeof(px32));
   bitmap_clear(&bm, colour_rgb(255, 255, 255));
   if (px32[0] != 0xFFFFFFFFu || px32[6] != 0xFFFFFFFFu)
@@ -261,14 +263,14 @@ static int test_convert_paletted(void)
     rowbytes = ((13 << fmts[i].log2bpp) + 7) / 8 + PAD;
 
     memset(buf, 0, sizeof(buf));
-    if (bitmap_init(&src, SIZE2D(13, 3), fmts[i].fmt, rowbytes, pal, buf) !=
-        result_OK)
+    if (bitmap_init(NULL, &src, SIZE2D(13, 3), fmts[i].fmt, rowbytes, pal,
+                    buf) != result_OK)
       return 0;
     for (y = 0; y < 3; y++)
       for (x = 0; x < 13; x++)
         put_index(&src, x, y, index_at(x, y, n));
 
-    if (bitmap_convert(&src, pixelfmt_bgrx8888, &out) != result_OK ||
+    if (bitmap_convert(NULL, &src, pixelfmt_bgrx8888, &out) != result_OK ||
         out->format != pixelfmt_bgrx8888 || !check_converted(&src, out, n, 0))
     {
       printf("  failed: format %d to bgrx8888\n", fmts[i].fmt);
@@ -277,7 +279,7 @@ static int test_convert_paletted(void)
     }
     free_converted(out);
 
-    if (bitmap_convert(&src, pixelfmt_rgbx8888, &out) != result_OK ||
+    if (bitmap_convert(NULL, &src, pixelfmt_rgbx8888, &out) != result_OK ||
         out->format != pixelfmt_rgbx8888 || !check_converted(&src, out, n, 1))
     {
       printf("  failed: format %d to rgbx8888\n", fmts[i].fmt);
@@ -286,14 +288,15 @@ static int test_convert_paletted(void)
     }
     free_converted(out);
 
-    if (bitmap_convert(&src, pixelfmt_rgb565, &out) != result_NOT_SUPPORTED ||
-        out != NULL)
+    if (bitmap_convert(NULL, &src, pixelfmt_rgb565, &out) !=
+        result_NOT_SUPPORTED || out != NULL)
     {
       printf("  failed: format %d to rgb565 accepted\n", fmts[i].fmt);
       goto Failure;
     }
 
-    bitmap_init(&dst, SIZE2D(13, 3), pixelfmt_bgrx8888, 13 * 4, NULL, into);
+    bitmap_init(NULL, &dst, SIZE2D(13, 3), pixelfmt_bgrx8888, 13 * 4, NULL,
+                into);
     if (bitmap_convert_into(&src, pixelfmt_bgrx8888, &dst) != result_OK ||
         !check_converted(&src, &dst, n, 0))
     {
@@ -304,7 +307,8 @@ static int test_convert_paletted(void)
     /* only p8 converts into rgbx8888 */
     if (fmts[i].fmt == pixelfmt_p8)
     {
-      bitmap_init(&dst, SIZE2D(13, 3), pixelfmt_rgbx8888, 13 * 4, NULL, into);
+      bitmap_init(NULL, &dst, SIZE2D(13, 3), pixelfmt_rgbx8888, 13 * 4, NULL,
+                  into);
       if (bitmap_convert_into(&src, pixelfmt_rgbx8888, &dst) != result_OK ||
           !check_converted(&src, &dst, n, 1))
         FAIL("p8 into rgbx8888");
@@ -323,13 +327,13 @@ static int test_convert_paletted(void)
       goto Failure;
     }
 
-    bitmap_set_palette(&src, NULL);
+    bitmap_set_palette(NULL, &src, NULL);
   }
 
   return 1;
 
 Failure:
-  bitmap_set_palette(&src, NULL);
+  bitmap_set_palette(NULL, &src, NULL);
   return 0;
 }
 
@@ -352,8 +356,8 @@ static int test_convert_16bpp(void)
   px[4] = (unsigned short) PIXELFMT_MAKE_RGB565(16, 32, 16);
   px[5] = 0xDEAD;
 
-  bitmap_init(&src, SIZE2D(2, 2), pixelfmt_rgb565, 6, NULL, px);
-  bitmap_init(&dst, SIZE2D(2, 2), pixelfmt_bgrx8888, 8, NULL, out);
+  bitmap_init(NULL, &src, SIZE2D(2, 2), pixelfmt_rgb565, 6, NULL, px);
+  bitmap_init(NULL, &dst, SIZE2D(2, 2), pixelfmt_bgrx8888, 8, NULL, out);
   if (bitmap_convert_into(&src, pixelfmt_bgrx8888, &dst) != result_OK)
     FAIL("rgb565");
   if ((out[0] & RGB_MASK) != 0xFF0000 || (out[1] & RGB_MASK) != 0x00FF00 ||
@@ -363,8 +367,8 @@ static int test_convert_16bpp(void)
   /* rgbx5551: white, and five-bit 16 in every channel */
   px[0] = (unsigned short) PIXELFMT_MAKE_RGBX5551(31, 31, 31);
   px[1] = (unsigned short) PIXELFMT_MAKE_RGBX5551(16, 16, 16);
-  bitmap_init(&src, SIZE2D(2, 1), pixelfmt_rgbx5551, 6, NULL, px);
-  bitmap_init(&dst, SIZE2D(2, 1), pixelfmt_bgrx8888, 8, NULL, out);
+  bitmap_init(NULL, &src, SIZE2D(2, 1), pixelfmt_rgbx5551, 6, NULL, px);
+  bitmap_init(NULL, &dst, SIZE2D(2, 1), pixelfmt_bgrx8888, 8, NULL, out);
   if (bitmap_convert_into(&src, pixelfmt_bgrx8888, &dst) != result_OK)
     FAIL("rgbx5551");
   if ((out[0] & RGB_MASK) != 0xFFFFFF || (out[1] & RGB_MASK) != 0x848484)
@@ -392,17 +396,17 @@ static int test_convert_unsupported(void)
   printf("test: compressed and deep sources are refused, but 32bpp to "
          "32bpp copies\n");
 
-  bitmap_init(&dst, SIZE2D(1, 1), pixelfmt_bgrx8888, 4, NULL, px);
+  bitmap_init(NULL, &dst, SIZE2D(1, 1), pixelfmt_bgrx8888, 4, NULL, px);
 
   px[0] = 0x00112233u;
-  bitmap_init(&src, SIZE2D(1, 1), pixelfmt_rgbx8888, 4, NULL, px);
-  if (bitmap_convert(&src, pixelfmt_bgra8888, &out) != result_OK ||
+  bitmap_init(NULL, &src, SIZE2D(1, 1), pixelfmt_rgbx8888, 4, NULL, px);
+  if (bitmap_convert(NULL, &src, pixelfmt_bgra8888, &out) != result_OK ||
       out == NULL || out->base == px || out->format != pixelfmt_bgra8888 ||
       *(const unsigned int *) out->base != 0xFF332211u)
     FAIL("convert 32bpp");
-  bitmap_destroy(out);
-  if (bitmap_convert(&src, pixelfmt_rgb565, &out) != result_NOT_SUPPORTED ||
-      out != NULL)
+  bitmap_destroy(NULL, out);
+  if (bitmap_convert(NULL, &src, pixelfmt_rgb565, &out) !=
+      result_NOT_SUPPORTED || out != NULL)
     FAIL("convert deep");
   if (bitmap_convert_into(&src, pixelfmt_bgrx8888, &dst) !=
       result_NOT_SUPPORTED)
@@ -410,8 +414,8 @@ static int test_convert_unsupported(void)
 
   /* only the format is looked at, so no real RLE data is needed */
   src.format = (pixelfmt_t) (pixelfmt_p8 | pixelfmt_RLE_FLAG);
-  if (bitmap_convert(&src, pixelfmt_bgrx8888, &out) != result_NOT_SUPPORTED ||
-      out != NULL)
+  if (bitmap_convert(NULL, &src, pixelfmt_bgrx8888, &out) !=
+      result_NOT_SUPPORTED || out != NULL)
     FAIL("convert compressed");
   if (bitmap_convert_into(&src, pixelfmt_bgrx8888, &dst) !=
       result_NOT_SUPPORTED)
@@ -446,7 +450,7 @@ static int test_convert_in_place(void)
   printf("test: convert_in_place swaps between rgb/bgr x/a 8888\n");
 
   memcpy(px, rgba, sizeof(px));
-  bitmap_init(&bm, SIZE2D(2, 2), pixelfmt_rgba8888, 3 * 4, NULL, px);
+  bitmap_init(NULL, &bm, SIZE2D(2, 2), pixelfmt_rgba8888, 3 * 4, NULL, px);
   if (bitmap_convert_in_place(&bm, pixelfmt_bgra8888) != result_OK ||
       bm.format != pixelfmt_bgra8888)
     FAIL("convert_in_place rgba");
@@ -456,7 +460,7 @@ static int test_convert_in_place(void)
 
   /* rgbx gains opaque alpha whatever its x byte held */
   memcpy(px, rgba, sizeof(px));
-  bitmap_init(&bm, SIZE2D(2, 2), pixelfmt_rgbx8888, 3 * 4, NULL, px);
+  bitmap_init(NULL, &bm, SIZE2D(2, 2), pixelfmt_rgbx8888, 3 * 4, NULL, px);
   if (bitmap_convert_in_place(&bm, pixelfmt_bgra8888) != result_OK)
     FAIL("convert_in_place rgbx");
   for (i = 0; i < 6; i++)
@@ -470,7 +474,7 @@ static int test_convert_in_place(void)
 
   /* bgra back to rgbx swaps again and keeps the alpha byte */
   memcpy(px, bgra, sizeof(px));
-  bitmap_init(&bm, SIZE2D(2, 2), pixelfmt_bgra8888, 3 * 4, NULL, px);
+  bitmap_init(NULL, &bm, SIZE2D(2, 2), pixelfmt_bgra8888, 3 * 4, NULL, px);
   if (bitmap_convert_in_place(&bm, pixelfmt_rgbx8888) != result_OK ||
       bm.format != pixelfmt_rgbx8888)
     FAIL("convert_in_place bgra to rgbx");
@@ -480,7 +484,7 @@ static int test_convert_in_place(void)
 
   /* same order, x to alpha: only the top byte changes */
   memcpy(px, rgba, sizeof(px));
-  bitmap_init(&bm, SIZE2D(2, 2), pixelfmt_rgbx8888, 3 * 4, NULL, px);
+  bitmap_init(NULL, &bm, SIZE2D(2, 2), pixelfmt_rgbx8888, 3 * 4, NULL, px);
   if (bitmap_convert_in_place(&bm, pixelfmt_rgba8888) != result_OK)
     FAIL("convert_in_place rgbx to rgba");
   for (i = 0; i < 6; i++)
@@ -506,9 +510,9 @@ static int test_convert_p8_alpha(void)
   memset(pal, 0, sizeof(pal));
   pal[0] = colour_rgba(0x10, 0x20, 0x30, 0x00);
   pal[1] = colour_rgba(0xFF, 0x80, 0x00, 0xFF);
-  bitmap_init(&src, SIZE2D(4, 1), pixelfmt_p8, 4, pal, px);
+  bitmap_init(NULL, &src, SIZE2D(4, 1), pixelfmt_p8, 4, pal, px);
 
-  if (bitmap_convert(&src, pixelfmt_bgra8888, &out) != result_OK)
+  if (bitmap_convert(NULL, &src, pixelfmt_bgra8888, &out) != result_OK)
     FAIL("p8 to bgra8888");
   pixels = out->base;
   if (out->format != pixelfmt_bgra8888 ||
@@ -521,11 +525,11 @@ static int test_convert_p8_alpha(void)
   }
   free_converted(out);
 
-  bitmap_set_palette(&src, NULL);
+  bitmap_set_palette(NULL, &src, NULL);
   return 1;
 
 Failure:
-  bitmap_set_palette(&src, NULL);
+  bitmap_set_palette(NULL, &src, NULL);
   return 0;
 }
 
@@ -540,9 +544,9 @@ static int test_clone(void)
   printf("test: clone and copy_pixels\n");
 
   mk_palette(pal);
-  bitmap_init(&src, SIZE2D(4, 1), pixelfmt_p8, 16, pal, px);
+  bitmap_init(NULL, &src, SIZE2D(4, 1), pixelfmt_p8, 16, pal, px);
 
-  if (bitmap_clone(&src, &dst) != result_OK)
+  if (bitmap_clone(NULL, &src, &dst) != result_OK)
     FAIL("clone");
   if (dst.base == src.base || dst.palette == src.palette ||
       dst.format != src.format || dst.rowbytes != src.rowbytes ||
@@ -598,8 +602,8 @@ static int test_extract(void)
   for (y = 0; y < 3; y++)
     for (x = 0; x < 5; x++)
       px[y][x] = (unsigned int) (y * 10 + x);
-  bitmap_init(&src, SIZE2D(4, 3), pixelfmt_bgra8888, 5 * 4, NULL, px);
-  if (bitmap_extract(&src, &(box_t) { 1, 1, 4, 3 }, &dst) != result_OK)
+  bitmap_init(NULL, &src, SIZE2D(4, 3), pixelfmt_bgra8888, 5 * 4, NULL, px);
+  if (bitmap_extract(NULL, &src, &(box_t) { 1, 1, 4, 3 }, &dst) != result_OK)
     FAIL("extract");
   for (y = 0; y < 2; y++)
     for (x = 0; x < 3; x++)
@@ -618,15 +622,17 @@ static int test_extract(void)
   free(dst.base);
 
   /* outside and empty boxes are refused */
-  if (bitmap_extract(&src, &(box_t) { 1, 1, 5, 3 }, &dst) != result_BAD_ARG)
+  if (bitmap_extract(NULL, &src, &(box_t) { 1, 1, 5, 3 }, &dst) !=
+      result_BAD_ARG)
     FAIL("extract outside");
-  if (bitmap_extract(&src, &(box_t) { 2, 1, 2, 3 }, &dst) != result_BAD_ARG)
+  if (bitmap_extract(NULL, &src, &(box_t) { 2, 1, 2, 3 }, &dst) !=
+      result_BAD_ARG)
     FAIL("extract empty");
 
   /* p4: whole bytes copy with the palette, an odd start is refused */
   mk_palette(pal);
-  bitmap_init(&src, SIZE2D(6, 2), pixelfmt_p4, 3, pal, p4);
-  if (bitmap_extract(&src, &(box_t) { 2, 1, 5, 2 }, &dst) != result_OK)
+  bitmap_init(NULL, &src, SIZE2D(6, 2), pixelfmt_p4, 3, pal, p4);
+  if (bitmap_extract(NULL, &src, &(box_t) { 2, 1, 5, 2 }, &dst) != result_OK)
     FAIL("extract p4");
   if (dst.rowbytes != 2 || ((unsigned char *) dst.base)[0] != 0xA9 ||
       ((unsigned char *) dst.base)[1] != 0xCB ||
@@ -639,12 +645,12 @@ static int test_extract(void)
   }
   free(dst.base);
   free(dst.palette);
-  if (bitmap_extract(&src, &(box_t) { 1, 0, 3, 1 }, &dst) !=
+  if (bitmap_extract(NULL, &src, &(box_t) { 1, 0, 3, 1 }, &dst) !=
       result_NOT_SUPPORTED)
     FAIL("extract p4 odd start");
 
   src.format = (pixelfmt_t) (pixelfmt_p8 | pixelfmt_RLE_FLAG);
-  if (bitmap_extract(&src, &(box_t) { 0, 0, 1, 1 }, &dst) !=
+  if (bitmap_extract(NULL, &src, &(box_t) { 0, 0, 1, 1 }, &dst) !=
       result_NOT_SUPPORTED)
     FAIL("extract compressed");
 
@@ -676,10 +682,10 @@ static int test_orient(void)
 
   printf("test: orient\n");
 
-  bitmap_init(&src, SIZE2D(3, 2), pixelfmt_bgra8888, 3 * 4, NULL, px);
+  bitmap_init(NULL, &src, SIZE2D(3, 2), pixelfmt_bgra8888, 3 * 4, NULL, px);
   for (o = 0; o < orient__LIMIT; o++)
   {
-    if (bitmap_orient(&src, (orient_t) o, &dst) != result_OK)
+    if (bitmap_orient(NULL, &src, (orient_t) o, &dst) != result_OK)
       FAIL("orient");
     size = orient_size((orient_t) o, src.size);
     if (dst.size.w != size.w || dst.size.h != size.h ||
@@ -692,11 +698,11 @@ static int test_orient(void)
     free(dst.base);
   }
 
-  if (bitmap_orient(&src, orient__LIMIT, &dst) != result_BAD_ARG)
+  if (bitmap_orient(NULL, &src, orient__LIMIT, &dst) != result_BAD_ARG)
     FAIL("orient unknown");
 
-  bitmap_init(&src, SIZE2D(2, 2), pixelfmt_p4, 1, NULL, p4);
-  if (bitmap_orient(&src, orient_FLIP_H, &dst) != result_NOT_SUPPORTED)
+  bitmap_init(NULL, &src, SIZE2D(2, 2), pixelfmt_p4, 1, NULL, p4);
+  if (bitmap_orient(NULL, &src, orient_FLIP_H, &dst) != result_NOT_SUPPORTED)
     FAIL("orient p4");
 
   return 1;
@@ -743,7 +749,7 @@ static int fill_pattern_one(pixelfmt_t fmt, const colour_t *palette)
   int          set;
   unsigned int want;
 
-  bitmap_init(&bm, SIZE2D(10, 5), fmt, 10 * 4, palette, px);
+  bitmap_init(NULL, &bm, SIZE2D(10, 5), fmt, 10 * 4, palette, px);
   memset(px, 0x11, sizeof(px));
 
   pat.bits[0] = 0xF0; pat.bits[1] = 0x81; pat.bits[2] = 0x3C;
@@ -820,7 +826,7 @@ static int test_fill_pattern(void)
     return 0;
 
   memset(&pat, 0, sizeof(pat));
-  bitmap_init(&bm, SIZE2D(1, 1), pixelfmt_p4, 4, pal, px);
+  bitmap_init(NULL, &bm, SIZE2D(1, 1), pixelfmt_p4, 4, pal, px);
   if (bitmap_fill_pattern(&bm, NULL, &pat) != result_NOT_SUPPORTED)
     FAIL("fill_pattern p4");
   bm.format = (pixelfmt_t) (pixelfmt_p8 | pixelfmt_RLE_FLAG);
@@ -860,11 +866,11 @@ static int test_flood_fill(void)
   printf("test: flood_fill\n");
 
   memcpy(px, start, sizeof(px));
-  bitmap_init(&bm, SIZE2D(6, 5), pixelfmt_bgrx8888, 6 * 4, NULL, px);
+  bitmap_init(NULL, &bm, SIZE2D(6, 5), pixelfmt_bgrx8888, 6 * 4, NULL, px);
   fill = colour_to_pixel(NULL, 0, colour_rgb(255, 0, 0), pixelfmt_bgrx8888);
 
-  if (bitmap_flood_fill(&bm, POINT(3, 2), colour_rgb(255, 0, 0), &dirty) !=
-      result_OK)
+  if (bitmap_flood_fill(NULL, &bm, POINT(3, 2), colour_rgb(255, 0, 0),
+                        &dirty) != result_OK)
     FAIL("flood_fill rc");
   for (y = 0; y < 5; y++)
     for (x = 0; x < 6; x++)
@@ -874,15 +880,15 @@ static int test_flood_fill(void)
     FAIL("flood_fill dirty");
 
   /* already the fill colour, and off the bitmap: nothing to do */
-  if (bitmap_flood_fill(&bm, POINT(0, 0), colour_rgb(255, 0, 0), &dirty) !=
-      result_OK || !box_is_empty(&dirty))
+  if (bitmap_flood_fill(NULL, &bm, POINT(0, 0), colour_rgb(255, 0, 0),
+                        &dirty) != result_OK || !box_is_empty(&dirty))
     FAIL("flood_fill same colour");
-  if (bitmap_flood_fill(&bm, POINT(-1, 0), colour_rgb(0, 0, 0), &dirty) !=
+  if (bitmap_flood_fill(NULL, &bm, POINT(-1, 0), colour_rgb(0, 0, 0), &dirty) !=
       result_OK || !box_is_empty(&dirty))
     FAIL("flood_fill off bitmap");
 
   bm.format = pixelfmt_rgb565;
-  if (bitmap_flood_fill(&bm, POINT(0, 0), colour_rgb(0, 0, 0), NULL) !=
+  if (bitmap_flood_fill(NULL, &bm, POINT(0, 0), colour_rgb(0, 0, 0), NULL) !=
       result_NOT_SUPPORTED)
     FAIL("flood_fill 16bpp");
 
@@ -911,10 +917,10 @@ static int test_restore_outside_region(void)
     for (x = 0; x < 6; x++)
       dpx[y][x] = 1;
   memset(spx, 0, sizeof(spx));
-  bitmap_init(&dst, SIZE2D(6, 4), pixelfmt_bgrx8888, 6 * 4, NULL, dpx);
-  bitmap_init(&src, SIZE2D(6, 4), pixelfmt_bgrx8888, 8 * 4, NULL, spx);
+  bitmap_init(NULL, &dst, SIZE2D(6, 4), pixelfmt_bgrx8888, 6 * 4, NULL, dpx);
+  bitmap_init(NULL, &src, SIZE2D(6, 4), pixelfmt_bgrx8888, 8 * 4, NULL, spx);
 
-  if (region_from_box(&keep, &region) != result_OK)
+  if (region_from_box(NULL, &keep, &region) != result_OK)
     FAIL("restore_outside_region region");
 
   if (bitmap_restore_outside_region(&dst, &src, region, &area) != result_OK)
@@ -950,7 +956,7 @@ static int test_has_transparency(void)
 
   /* opaque, then one translucent pixel at the end, in both alpha layouts */
   memset(px, 0xFF, sizeof(px));
-  bitmap_init(&bm, SIZE2D(2, 2), pixelfmt_bgra8888, 3 * 4, NULL, px);
+  bitmap_init(NULL, &bm, SIZE2D(2, 2), pixelfmt_bgra8888, 3 * 4, NULL, px);
   px[0][2] = 0; /* in the row padding: must be ignored */
   if (bitmap_has_transparency(&bm))
     FAIL("has_transparency opaque");
@@ -970,11 +976,11 @@ static int test_has_transparency(void)
   /* paletted: judged by the palette */
   pal[0] = colour_rgb(0, 0, 0);
   pal[1] = colour_rgb(255, 255, 255);
-  bitmap_init(&bm, SIZE2D(2, 2), pixelfmt_p1, 4, pal, px);
+  bitmap_init(NULL, &bm, SIZE2D(2, 2), pixelfmt_p1, 4, pal, px);
   if (bitmap_has_transparency(&bm))
     FAIL("has_transparency opaque palette");
   pal[1] = colour_rgba(255, 255, 255, 0);
-  bitmap_set_palette(&bm, pal);
+  bitmap_set_palette(NULL, &bm, pal);
   if (!bitmap_has_transparency(&bm))
     FAIL("has_transparency palette");
 
@@ -997,7 +1003,7 @@ static int test_content_bounds(void)
 
   /* all blank, with junk in the row padding */
   memset(px, 0, sizeof(px));
-  bitmap_init(&bm, SIZE2D(4, 3), pixelfmt_bgra8888, 5 * 4, NULL, px);
+  bitmap_init(NULL, &bm, SIZE2D(4, 3), pixelfmt_bgra8888, 5 * 4, NULL, px);
   px[1][4] = 0xFF000000u;
   b = bitmap_content_bounds(&bm, 0, 0xFF000000u);
   if (!box_is_empty(&b))
@@ -1018,7 +1024,7 @@ static int test_content_bounds(void)
 
   /* 8bpp */
   p8[1][2] = 3;
-  bitmap_init(&bm, SIZE2D(4, 2), pixelfmt_p8, 4, NULL, p8);
+  bitmap_init(NULL, &bm, SIZE2D(4, 2), pixelfmt_p8, 4, NULL, p8);
   b = bitmap_content_bounds(&bm, 7, 0xFF);
   if (b.x0 != 2 || b.y0 != 1 || b.x1 != 3 || b.y1 != 2)
     FAIL("content_bounds p8");
@@ -1056,7 +1062,7 @@ static int test_clear_transparent(void)
   px[0] = 0x00FF00FFu;
   px[1] = 0x01FF00FFu;
   px[2] = 0xFFFF00FFu;
-  bitmap_init(&bm, SIZE2D(3, 1), pixelfmt_bgra8888, 3 * 4, NULL, px);
+  bitmap_init(NULL, &bm, SIZE2D(3, 1), pixelfmt_bgra8888, 3 * 4, NULL, px);
   bitmap_clear_transparent(&bm);
   if (px[0] != 0 || px[1] != 0x01FF00FFu || px[2] != 0xFFFF00FFu)
     FAIL("clear_transparent bgra");

@@ -953,14 +953,18 @@ static result_t dither_layout(const bitmap_t         *src,
   return result_OK;
 }
 
-void dither_scratch_free(dither_scratch_t *scratch)
+void dither_scratch_free(const alloc_t *alloc, dither_scratch_t *scratch)
 {
-  free(scratch->err);
-  free(scratch->yliluoma);
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  alloc->free(scratch->err);
+  alloc->free(scratch->yliluoma);
   memset(scratch, 0, sizeof(*scratch));
 }
 
-result_t dither_bitmap_into(const bitmap_t         *src,
+result_t dither_bitmap_into(const alloc_t          *alloc,
+                            const bitmap_t         *src,
                             const dither_options_t *opts,
                             dither_scratch_t       *scratch,
                             bitmap_t               *dst)
@@ -1005,6 +1009,9 @@ result_t dither_bitmap_into(const bitmap_t         *src,
   int                        lim;
   rng_t                      rng;
 
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
   rc = dither_layout(src, opts, &log2bpp, &fmt, &rowbytes);
   if (rc != result_OK)
     return rc;
@@ -1025,8 +1032,8 @@ result_t dither_bitmap_into(const bitmap_t         *src,
   stride = src->size.w + 2 * DITHER_PAD;
   nerr   = stride * k->h * 3;
 
-  if (array_grow((void **) &scratch->err, sizeof(*scratch->err), 0,
-                 &scratch->allocated, nerr, 1))
+  if (array_grow_alloc(alloc, (void **) &scratch->err, sizeof(*scratch->err),
+                       0, &scratch->allocated, nerr, 1))
     return result_OOM;
   err = scratch->err;
   memset(err, 0, (size_t) nerr * sizeof(*err));
@@ -1036,7 +1043,7 @@ result_t dither_bitmap_into(const bitmap_t         *src,
   {
     if (scratch->yliluoma == NULL)
     {
-      scratch->yliluoma = malloc(sizeof(*scratch->yliluoma));
+      scratch->yliluoma = alloc->malloc(sizeof(*scratch->yliluoma));
       if (scratch->yliluoma == NULL)
         return result_OOM;
     }
@@ -1045,7 +1052,7 @@ result_t dither_bitmap_into(const bitmap_t         *src,
   }
 
   /* the last step which can fail: dst is untouched until it's done */
-  rc = bitmap_set_palette(dst, palette);
+  rc = bitmap_set_palette(alloc, dst, palette);
   if (rc != result_OK)
     return rc;
 
@@ -1222,7 +1229,8 @@ result_t dither_bitmap_into(const bitmap_t         *src,
   return result_OK;
 }
 
-result_t dither_bitmap(const bitmap_t         *src,
+result_t dither_bitmap(const alloc_t          *alloc,
+                       const bitmap_t         *src,
                        const dither_options_t *opts,
                        bitmap_t              **dst)
 {
@@ -1234,33 +1242,36 @@ result_t dither_bitmap(const bitmap_t         *src,
   bitmap_t        *out;
   dither_scratch_t scratch;
 
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
   *dst = NULL;
 
   rc = dither_layout(src, opts, &log2bpp, &fmt, &rowbytes);
   if (rc != result_OK)
     return rc;
 
-  base = malloc((size_t) rowbytes * src->size.h);
-  out  = malloc(sizeof(*out));
+  base = alloc->malloc((size_t) rowbytes * src->size.h);
+  out  = alloc->malloc(sizeof(*out));
   if (base == NULL || out == NULL)
   {
-    free(out);
-    free(base);
+    alloc->free(out);
+    alloc->free(base);
     return result_OOM;
   }
 
-  rc = bitmap_init(out, src->size, fmt, rowbytes, NULL, base);
+  rc = bitmap_init(alloc, out, src->size, fmt, rowbytes, NULL, base);
   if (rc == result_OK)
   {
     memset(&scratch, 0, sizeof(scratch));
-    rc = dither_bitmap_into(src, opts, &scratch, out);
-    dither_scratch_free(&scratch);
+    rc = dither_bitmap_into(alloc, src, opts, &scratch, out);
+    dither_scratch_free(alloc, &scratch);
   }
   if (rc != result_OK)
   {
-    free(out->palette);
-    free(out);
-    free(base);
+    alloc->free(out->palette);
+    alloc->free(out);
+    alloc->free(base);
     return rc;
   }
 

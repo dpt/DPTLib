@@ -15,7 +15,7 @@ static result_t test_acquire_dedups(const char *resources)
   const char    *path;
   bmfont_t      *a, *b;
 
-  rc = bmfontcache_create(&cache);
+  rc = bmfontcache_create(NULL, &cache);
   if (rc != result_OK)
   {
     printf("bmfontcache_create: rc=%d\n", rc);
@@ -64,7 +64,7 @@ static result_t test_release_reloads(const char *resources)
   const char    *path;
   bmfont_t      *a, *b;
 
-  rc = bmfontcache_create(&cache);
+  rc = bmfontcache_create(NULL, &cache);
   if (rc != result_OK)
   {
     printf("bmfontcache_create: rc=%d\n", rc);
@@ -105,7 +105,7 @@ static result_t test_independent_paths(const char *resources)
   const char    *path_b;
   bmfont_t      *a, *b;
 
-  rc = bmfontcache_create(&cache);
+  rc = bmfontcache_create(NULL, &cache);
   if (rc != result_OK)
   {
     printf("bmfontcache_create: rc=%d\n", rc);
@@ -159,7 +159,7 @@ static result_t test_destroy_with_outstanding_acquire(const char *resources)
   const char    *path;
   bmfont_t      *a;
 
-  rc = bmfontcache_create(&cache);
+  rc = bmfontcache_create(NULL, &cache);
   if (rc != result_OK)
   {
     printf("bmfontcache_create: rc=%d\n", rc);

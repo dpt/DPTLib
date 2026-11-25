@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
   /* Each format, drawn at two sizes: a size change remakes the texture. */
   for (f = 0; f < 2; f++)
   {
-    crt = crt_create(window, formats[f]);
+    crt = crt_create(NULL, window, formats[f]);
     if (crt == NULL)
     {
       fprintf(stderr, "crt_create failed for format %d\n", f);

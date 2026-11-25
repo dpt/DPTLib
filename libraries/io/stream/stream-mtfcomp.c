@@ -254,9 +254,11 @@ result_t stream_mtfcomp_create(stream_t *input, int bufsz, stream_t **s)
 
   assert(input);
 
-  sm = malloc(offsetof(stream_mtfcomp_t, buffer) + bufsz);
+  sm = input->alloc->malloc(offsetof(stream_mtfcomp_t, buffer) + bufsz);
   if (!sm)
     return result_OOM;
+
+  sm->base.alloc   = input->alloc;
 
   sm->base.buf     =
     sm->base.end     = sm->buffer; /* force a fill on first use */
@@ -343,9 +345,11 @@ result_t stream_mtfdecomp_create(stream_t *input, int bufsz, stream_t **s)
 
   assert(input);
 
-  sm = malloc(offsetof(stream_mtfcomp_t, buffer) + bufsz);
+  sm = input->alloc->malloc(offsetof(stream_mtfcomp_t, buffer) + bufsz);
   if (!sm)
     return result_OOM;
+
+  sm->base.alloc   = input->alloc;
 
   sm->base.buf     =
     sm->base.end     = sm->buffer; /* force a fill on first use */

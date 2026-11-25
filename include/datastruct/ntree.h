@@ -15,6 +15,7 @@ extern "C"
 #endif
 
 #include "base/result.h"
+#include "utils/alloc.h"
 
 #define T ntree_t
 
@@ -22,7 +23,9 @@ typedef struct ntree T;
 
 /* ----------------------------------------------------------------------- */
 
-result_t ntree_new(T **t);
+/* Creates a node. Each node keeps 'alloc' (NULL for the default). Copies
+ * use the allocator of the node they copy. */
+result_t ntree_new(const alloc_t *alloc, T **t);
 
 /* Unlinks the specified node from the tree. */
 void ntree_unlink(T *t);

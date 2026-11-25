@@ -187,9 +187,12 @@ result_t stream_packbitsdecomp_create(stream_t  *input,
 
   assert(input);
 
-  sp = malloc(offsetof(stream_packbitsdecomp_t, buffer) + bufsz);
+  sp = input->alloc->malloc(offsetof(stream_packbitsdecomp_t, buffer) +
+                            bufsz);
   if (!sp)
     return result_OOM;
+
+  sp->base.alloc   = input->alloc;
 
   sp->base.buf     =
     sp->base.end     = sp->buffer; /* force a fill on first use */

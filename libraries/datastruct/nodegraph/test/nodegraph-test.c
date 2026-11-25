@@ -93,7 +93,7 @@ result_t nodegraph_test(const char *resources)
 
   g = NULL;
 
-  rc = nodegraph_create(&g);
+  rc = nodegraph_create(NULL, &g);
   CHECK(rc == result_OK);
 
   /* a and b feed c; c feeds d's both inputs (fan-out) */

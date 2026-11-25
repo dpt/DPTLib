@@ -4,7 +4,8 @@
 
 #include "impl.h"
 
-result_t region_orient(const region_t *region,
+result_t region_orient(const alloc_t  *alloc,
+                       const region_t *region,
                        orient_t        orient,
                        size2d_t        area,
                        region_t      **out)
@@ -48,7 +49,7 @@ result_t region_orient(const region_t *region,
   to.x1 = MAX(ax, bx) + 1;
   to.y1 = MAX(ay, by) + 1;
 
-  rc = region__builder_init(&b, to.y0, to.y1 - to.y0);
+  rc = region__builder_init(&b, alloc, to.y0, to.y1 - to.y0);
   if (rc != result_OK)
     return rc;
 

@@ -100,7 +100,7 @@ static result_t test_open(State_t *state)
 {
   result_t err;
 
-  err = tagdb_open(FILENAME, &state->db);
+  err = tagdb_open(NULL, FILENAME, &state->db);
 
   return err;
 }
@@ -511,7 +511,7 @@ static result_t test_reopen(State_t *state)
 
   tagdb_close(state->db);
 
-  err = tagdb_open(FILENAME, &state->db);
+  err = tagdb_open(NULL, FILENAME, &state->db);
   if (err)
     return err;
 
@@ -766,7 +766,7 @@ static result_t test_bash(State_t *state)
 
   printf("bash: open\n");
 
-  err = tagdb_open(FILENAME, &state->db);
+  err = tagdb_open(NULL, FILENAME, &state->db);
   if (err)
     goto failure;
 

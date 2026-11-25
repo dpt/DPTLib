@@ -20,20 +20,20 @@ void atom_destroy(atom_set_t *s)
   /* delete all location pools */
 
   for (i = 0; i < s->l_used; i++)
-    free(s->locpools[i].locs);
+    s->alloc->free(s->locpools[i].locs);
 
   /* delete the location pool pointers */
 
-  free(s->locpools);
+  s->alloc->free(s->locpools);
 
   /* delete all block pools */
 
   for (i = 0; i < s->b_used; i++)
-    free(s->blkpools[i].blks);
+    s->alloc->free(s->blkpools[i].blks);
 
   /* delete the block pool pointers */
 
-  free(s->blkpools);
+  s->alloc->free(s->blkpools);
 
-  free(s);
+  s->alloc->free(s);
 }

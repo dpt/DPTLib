@@ -9,11 +9,12 @@
 
 struct ntree
 {
-  ntree_t *next;
-  ntree_t *prev;
-  ntree_t *parent;
-  ntree_t *children;
-  void    *data;
+  const alloc_t *alloc;
+  ntree_t       *next;
+  ntree_t       *prev;
+  ntree_t       *parent;
+  ntree_t       *children;
+  void          *data;
 };
 
 #define IS_ROOT(t) ((t)->parent == NULL && \

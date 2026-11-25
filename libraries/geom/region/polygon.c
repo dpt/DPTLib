@@ -76,7 +76,8 @@ static int edge_cmp(const void *a, const void *b)
   return ((const edge_t *) a)->ymin - ((const edge_t *) b)->ymin;
 }
 
-result_t region_from_polygon(const point_t *pts,
+result_t region_from_polygon(const alloc_t *alloc,
+                             const point_t *pts,
                              int            n,
                              const box_t   *clip,
                              region_t     **out)
@@ -89,14 +90,17 @@ result_t region_from_polygon(const point_t *pts,
   int               ne, na, next, nx, y, y0, y1, i, j, k, t;
   point_t           p, q;
 
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
   *out = NULL;
 
   if (n < 3 || box_is_empty(clip))
     return result_OK;
 
-  edges  = malloc((size_t) n * sizeof(*edges));
-  active = malloc((size_t) n * sizeof(*active));
-  xs     = malloc((size_t) n * sizeof(*xs));
+  edges  = alloc->malloc((size_t) n * sizeof(*edges));
+  active = alloc->malloc((size_t) n * sizeof(*active));
+  xs     = alloc->malloc((size_t) n * sizeof(*xs));
   rc     = (edges && active && xs) ? result_OK : result_OOM;
 
   /* horizontal edges never cross a scanline centre */
@@ -130,13 +134,13 @@ result_t region_from_polygon(const point_t *pts,
 
   if (rc != result_OK || y0 >= y1)
   {
-    free(edges);
-    free(active);
-    free(xs);
+    alloc->free(edges);
+    alloc->free(active);
+    alloc->free(xs);
     return rc;
   }
 
-  rc = region__builder_init(&b, y0, y1 - y0);
+  rc = region__builder_init(&b, alloc, y0, y1 - y0);
 
   na   = 0;
   next = 0;
@@ -175,9 +179,9 @@ result_t region_from_polygon(const point_t *pts,
                                MIN(xs[k + 1] + 1, clip->x1));
   }
 
-  free(edges);
-  free(active);
-  free(xs);
+  alloc->free(edges);
+  alloc->free(active);
+  alloc->free(xs);
 
   if (rc != result_OK)
   {

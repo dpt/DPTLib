@@ -33,7 +33,7 @@ static result_t test_box(void)
   region_t          *r;
   box_t              bb;
 
-  if (region_from_box(&b, &r) != result_OK || r == NULL)
+  if (region_from_box(NULL, &b, &r) != result_OK || r == NULL)
     return result_TEST_FAILED;
 
   bb = region_bounds(r);
@@ -56,10 +56,10 @@ static result_t test_empty(void)
   static const point_t line[] = { {0,5}, {10,5}, {20,5} };
   region_t *r = (region_t *) 1;
 
-  if (region_from_box(&e, &r) != result_OK || r != NULL)
+  if (region_from_box(NULL, &e, &r) != result_OK || r != NULL)
     return result_TEST_FAILED;
 
-  if (region_from_polygon(line, 3, &clip, &r) != result_OK || r != NULL)
+  if (region_from_polygon(NULL, line, 3, &clip, &r) != result_OK || r != NULL)
     return result_TEST_FAILED;
 
   if (region_contains(NULL, 0, 0))
@@ -77,7 +77,7 @@ static result_t test_polygon(void)
   box_t     bb;
   int       a;
 
-  if (region_from_polygon(poly, 6, &clip, &r) != result_OK || r == NULL)
+  if (region_from_polygon(NULL, poly, 6, &clip, &r) != result_OK || r == NULL)
     return result_TEST_FAILED;
 
   bb = region_bounds(r);
@@ -104,7 +104,7 @@ static result_t test_polygon_clip(void)
   region_t            *r;
   box_t                bb;
 
-  if (region_from_polygon(poly, 4, &clip, &r) != result_OK || r == NULL)
+  if (region_from_polygon(NULL, poly, 4, &clip, &r) != result_OK || r == NULL)
     return result_TEST_FAILED;
 
   bb = region_bounds(r);
@@ -152,7 +152,7 @@ static result_t test_polygon_slanted(void)
       poly[i].y = (int) ((seed >> 8) % 61) - 10;
     }
 
-    if (region_from_polygon(poly, n, &clip, &r) != result_OK)
+    if (region_from_polygon(NULL, poly, n, &clip, &r) != result_OK)
       return result_TEST_FAILED;
 
     for (y = 0; y < H && bad == 0; y++)
@@ -202,7 +202,7 @@ static result_t outline_matches(const region_t *r)
   box_t           *spans;
   int              n, i, x, y, k, bad = 0;
 
-  if (region_outline(r, &spans, &n) != result_OK)
+  if (region_outline(NULL, r, &spans, &n) != result_OK)
     return result_TEST_FAILED;
 
   got  = calloc(W * H, 1);
@@ -236,14 +236,14 @@ static result_t test_outline(void)
   region_t          *r;
   result_t           rc;
 
-  if (region_from_box(&b, &r) != result_OK)
+  if (region_from_box(NULL, &b, &r) != result_OK)
     return result_TEST_FAILED;
   rc = outline_matches(r);
   region_destroy(r);
   if (rc != result_TEST_PASSED)
     return rc;
 
-  if (region_from_polygon(poly, 6, &clip, &r) != result_OK || r == NULL)
+  if (region_from_polygon(NULL, poly, 6, &clip, &r) != result_OK || r == NULL)
     return result_TEST_FAILED;
   rc = outline_matches(r);
   region_destroy(r);
@@ -259,37 +259,37 @@ static result_t test_combine(void)
   region_t          *a, *b, *c, *r;
   int                ok;
 
-  if (region_from_box(&ba, &a) != result_OK ||
-      region_from_box(&bb, &b) != result_OK ||
-      region_from_box(&bc, &c) != result_OK)
+  if (region_from_box(NULL, &ba, &a) != result_OK ||
+      region_from_box(NULL, &bb, &b) != result_OK ||
+      region_from_box(NULL, &bc, &c) != result_OK)
     return result_TEST_FAILED;
 
-  ok = region_union(a, b, &r) == result_OK && r != NULL &&
+  ok = region_union(NULL, a, b, &r) == result_OK && r != NULL &&
        area(r) == 100 + 100 - 25 && region_contains(r, 14, 14) &&
        !region_contains(r, 12, 2);
   region_destroy(r);
 
-  ok = ok && region_subtract(a, b, &r) == result_OK && r != NULL &&
+  ok = ok && region_subtract(NULL, a, b, &r) == result_OK && r != NULL &&
        area(r) == 100 - 25 && region_contains(r, 9, 4) &&
        !region_contains(r, 5, 5);
   region_destroy(r);
 
   /* a hole through the middle of a run splits it in two */
-  ok = ok && region_subtract(a, c, &r) == result_OK && r != NULL &&
+  ok = ok && region_subtract(NULL, a, c, &r) == result_OK && r != NULL &&
        area(r) == 100 - 16 && region_contains(r, 1, 3) &&
        region_contains(r, 4, 3) && !region_contains(r, 2, 3);
   region_destroy(r);
 
   /* rows only one side has */
-  ok = ok && region_union(a, c, &r) == result_OK && r != NULL &&
+  ok = ok && region_union(NULL, a, c, &r) == result_OK && r != NULL &&
        area(r) == 100 + 2 * 20 && region_contains(r, 3, 29);
   region_destroy(r);
 
   /* empties */
-  ok = ok && region_subtract(a, a, &r) == result_OK && r == NULL;
-  ok = ok && region_subtract(NULL, a, &r) == result_OK && r == NULL;
-  ok = ok && region_union(NULL, NULL, &r) == result_OK && r == NULL;
-  ok = ok && region_union(NULL, b, &r) == result_OK && r != NULL &&
+  ok = ok && region_subtract(NULL, a, a, &r) == result_OK && r == NULL;
+  ok = ok && region_subtract(NULL, NULL, a, &r) == result_OK && r == NULL;
+  ok = ok && region_union(NULL, NULL, NULL, &r) == result_OK && r == NULL;
+  ok = ok && region_union(NULL, NULL, b, &r) == result_OK && r != NULL &&
        area(r) == 100;
   region_destroy(r);
 
@@ -315,7 +315,7 @@ static result_t test_flood(void)
 
   /* walled off: only the left half */
   gap = -1;
-  if (region_from_flood(POINT(5, 5), &clip, beside_wall, &gap, &r) !=
+  if (region_from_flood(NULL, POINT(5, 5), &clip, beside_wall, &gap, &r) !=
       result_OK || r == NULL)
     return result_TEST_FAILED;
 
@@ -326,7 +326,7 @@ static result_t test_flood(void)
 
   /* through the gap: everything but the wall */
   gap = 30;
-  if (region_from_flood(POINT(5, 5), &clip, beside_wall, &gap, &r) !=
+  if (region_from_flood(NULL, POINT(5, 5), &clip, beside_wall, &gap, &r) !=
       result_OK || r == NULL)
     return result_TEST_FAILED;
 
@@ -335,10 +335,10 @@ static result_t test_flood(void)
   region_destroy(r);
 
   /* a rejected or outside seed takes nothing */
-  if (region_from_flood(POINT(20, 5), &clip, beside_wall, &gap, &r) !=
+  if (region_from_flood(NULL, POINT(20, 5), &clip, beside_wall, &gap, &r) !=
       result_OK || r != NULL)
     ok = 0;
-  if (region_from_flood(POINT(W, 5), &clip, beside_wall, &gap, &r) !=
+  if (region_from_flood(NULL, POINT(W, 5), &clip, beside_wall, &gap, &r) !=
       result_OK || r != NULL)
     ok = 0;
 
@@ -352,10 +352,10 @@ static result_t test_invert(void)
   box_t              bb;
   int                ok;
 
-  if (region_from_box(&b, &r) != result_OK)
+  if (region_from_box(NULL, &b, &r) != result_OK)
     return result_TEST_FAILED;
 
-  if (region_invert(r, &clip, &inv) != result_OK || inv == NULL)
+  if (region_invert(NULL, r, &clip, &inv) != result_OK || inv == NULL)
     return result_TEST_FAILED;
 
   ok = area(inv) == W * H - 16 * 11 &&
@@ -363,7 +363,8 @@ static result_t test_invert(void)
        region_contains(inv, 20, 14) && region_contains(inv, 10, 15);
 
   /* inverting twice gives the original */
-  ok = ok && region_invert(inv, &clip, &back) == result_OK && back != NULL;
+  ok = ok && region_invert(NULL, inv, &clip, &back) == result_OK &&
+       back != NULL;
   if (ok)
   {
     bb = region_bounds(back);
@@ -376,12 +377,12 @@ static result_t test_invert(void)
   region_destroy(inv);
   region_destroy(r);
 
-  if (region_from_box(&clip, &r) != result_OK ||
-      region_invert(r, &clip, &inv) != result_OK || inv != NULL)
+  if (region_from_box(NULL, &clip, &r) != result_OK ||
+      region_invert(NULL, r, &clip, &inv) != result_OK || inv != NULL)
     ok = 0;
   region_destroy(r);
 
-  if (region_invert(NULL, &clip, &inv) != result_OK || inv == NULL ||
+  if (region_invert(NULL, NULL, &clip, &inv) != result_OK || inv == NULL ||
       area(inv) != W * H)
     ok = 0;
   region_destroy(inv);
@@ -396,11 +397,11 @@ static result_t test_translate(void)
   box_t              bb;
   int                ok;
 
-  if (region_from_box(&b, &r) != result_OK)
+  if (region_from_box(NULL, &b, &r) != result_OK)
     return result_TEST_FAILED;
 
   /* wholly inside the clip */
-  ok = region_translate(r, 3, -2, &clip, &t) == result_OK && t != NULL;
+  ok = region_translate(NULL, r, 3, -2, &clip, &t) == result_OK && t != NULL;
   if (ok)
   {
     bb = region_bounds(t);
@@ -411,7 +412,7 @@ static result_t test_translate(void)
 
   /* partly off the clip's top left */
   t  = NULL;
-  ok = ok && region_translate(r, -10, -8, &clip, &t) == result_OK &&
+  ok = ok && region_translate(NULL, r, -10, -8, &clip, &t) == result_OK &&
        t != NULL;
   if (ok)
   {
@@ -423,9 +424,10 @@ static result_t test_translate(void)
 
   /* wholly off the clip, and of nothing */
   t  = (region_t *) 1;
-  ok = ok && region_translate(r, W, 0, &clip, &t) == result_OK && t == NULL;
+  ok = ok && region_translate(NULL, r, W, 0, &clip, &t) == result_OK &&
+       t == NULL;
   t  = (region_t *) 1;
-  ok = ok && region_translate(NULL, 1, 1, &clip, &t) == result_OK &&
+  ok = ok && region_translate(NULL, NULL, 1, 1, &clip, &t) == result_OK &&
        t == NULL;
 
   region_destroy(r);
@@ -448,16 +450,16 @@ static result_t test_orient(void)
 
   /* an L, off the area's edges so the bounds move */
   a = b = r = NULL;
-  ok = region_from_box(&top, &a) == result_OK &&
-       region_from_box(&side, &b) == result_OK &&
-       region_union(a, b, &r) == result_OK;
+  ok = region_from_box(NULL, &top, &a) == result_OK &&
+       region_from_box(NULL, &side, &b) == result_OK &&
+       region_union(NULL, a, b, &r) == result_OK;
   region_destroy(a);
   region_destroy(b);
 
   for (o = 0; ok && o < orient__LIMIT; o++)
   {
     t  = NULL;
-    ok = region_orient(r, (orient_t) o, area_size, &t) == result_OK &&
+    ok = region_orient(NULL, r, (orient_t) o, area_size, &t) == result_OK &&
          area(t) == area(r);
     size = orient_size((orient_t) o, area_size);
     for (y = 0; ok && y < size.h; y++)
@@ -470,9 +472,10 @@ static result_t test_orient(void)
   }
 
   t  = (region_t *) 1;
-  ok = ok && region_orient(NULL, orient_FLIP_H, area_size, &t) == result_OK &&
-       t == NULL;
-  ok = ok && region_orient(r, orient__LIMIT, area_size, &t) == result_BAD_ARG;
+  ok = ok && region_orient(NULL, NULL, orient_FLIP_H, area_size, &t) ==
+       result_OK && t == NULL;
+  ok = ok && region_orient(NULL, r, orient__LIMIT, area_size, &t) ==
+       result_BAD_ARG;
 
   region_destroy(r);
 

@@ -98,24 +98,30 @@ static void bitcpy(bitfifo_T       *dst,
 
 struct bitfifo
 {
-  unsigned int head;      /* where to put incoming bits; a bit offset */
-  unsigned int tail;      /* where to take outgoing bits from: a bit offset */
-  unsigned int nbits;     /* buffer size, in bits (capacity is one bit less) */
-  bitfifo_T    buffer[1]; /* sized when allocated */
+  const alloc_t *alloc;
+  unsigned int   head;      /* where to put incoming bits; a bit offset */
+  unsigned int   tail;      /* where to take outgoing bits from: a bit offset */
+  unsigned int   nbits;     /* buffer size, in bits (capacity is one bit less) */
+  bitfifo_T      buffer[1]; /* sized when allocated */
 };
 
-bitfifo_t *bitfifo_create(int nbits)
+bitfifo_t *bitfifo_create(const alloc_t *alloc, int nbits)
 {
   bitfifo_t *fifo;
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   /* allocate one more bit than requested so we can represent buffer full correctly */
   nbits++;
 
-  fifo = malloc(offsetof(bitfifo_t, buffer) +
-                DIVIDE_ROUNDING_UP(nbits, BITFIFOT_WIDTH) * sizeof(fifo->buffer[0]));
+  fifo = alloc->malloc(offsetof(bitfifo_t, buffer) +
+                       DIVIDE_ROUNDING_UP(nbits, BITFIFOT_WIDTH) *
+                       sizeof(fifo->buffer[0]));
   if (fifo == NULL)
     return NULL;
 
+  fifo->alloc = alloc;
   fifo->head  = fifo->tail = 0;
   fifo->nbits = nbits;
 
@@ -124,7 +130,10 @@ bitfifo_t *bitfifo_create(int nbits)
 
 void bitfifo_destroy(bitfifo_t *doomed)
 {
-  free(doomed);
+  if (doomed == NULL)
+    return;
+
+  doomed->alloc->free(doomed);
 }
 
 /* ----------------------------------------------------------------------- */

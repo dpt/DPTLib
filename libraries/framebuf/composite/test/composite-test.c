@@ -54,7 +54,7 @@ static result_t load_test_png(bitmap_t   *bm,
 
   filename = pathf("%s/resources/composite/%s.png", resources, leafname);
 
-  rc = bitmap_load_png(bm, filename);
+  rc = bitmap_load_png(NULL, bm, filename);
   if (rc)
     return rc;
 
@@ -141,8 +141,8 @@ static int test_rules_exact(void)
   int                        shift;
   int                        nfailures = 0;
 
-  bitmap_init(&src, SIZE2D(SIZE, SIZE), FORMAT, SIZE * 4, NULL, srcpx);
-  bitmap_init(&dst, SIZE2D(SIZE, SIZE), FORMAT, SIZE * 4, NULL, dstpx);
+  bitmap_init(NULL, &src, SIZE2D(SIZE, SIZE), FORMAT, SIZE * 4, NULL, srcpx);
+  bitmap_init(NULL, &dst, SIZE2D(SIZE, SIZE), FORMAT, SIZE * 4, NULL, dstpx);
 
   for (rule = 0; rule < composite_RULE__LIMIT; rule++)
   {
@@ -234,7 +234,7 @@ result_t composite_test(const char *resources)
     goto Failure;
   }
 
-  bitmap_init(&bigbitmap, SIZE2D(WIDTH, HEIGHT), FORMAT, scr_rowbytes, NULL, bigpixels);
+  bitmap_init(NULL, &bigbitmap, SIZE2D(WIDTH, HEIGHT), FORMAT, scr_rowbytes, NULL, bigpixels);
 
   rc = load_test_png(&bm[0], resources, "A"); /* source */
   if (rc)
@@ -244,7 +244,7 @@ result_t composite_test(const char *resources)
   if (rc)
     goto Failure;
 
-  rc = bitmap_clone(&bm[1], &bmtmp);
+  rc = bitmap_clone(NULL, &bm[1], &bmtmp);
   if (rc)
     goto Failure;
 
@@ -270,7 +270,7 @@ result_t composite_test(const char *resources)
     }
   }
 
-  rc = bitmap_save_png(&bigbitmap, pathf("%scomposite-1.png", DPTLIB_TMPPREFIX));
+  rc = bitmap_save_png(NULL, &bigbitmap, pathf("%scomposite-1.png", DPTLIB_TMPPREFIX));
   if (rc)
     goto Failure;
 

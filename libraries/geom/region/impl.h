@@ -7,24 +7,30 @@
 
 struct region
 {
-  box_t bounds;
-  int  *start; /* start[r]..start[r+1] index runs[] for scanline y0 + r */
-  int  *runs;  /* pairs x0,x1 */
+  const alloc_t *alloc; /* for the region and its arrays */
+  box_t          bounds;
+  /* start[r]..start[r+1] index runs[] for scanline y0 + r */
+  int           *start;
+  int           *runs;  /* pairs x0,x1 */
 };
 
 /* Builds a region one scanline at a time, top to bottom. */
 typedef struct
 {
-  int *start;
-  int *runs;
-  int  n, cap; /* ints used and allocated in runs */
-  int  y0, h;  /* the scanlines being built */
-  int  rowstart;
+  const alloc_t *alloc;
+  int           *start;
+  int           *runs;
+  int            n, cap; /* ints used and allocated in runs */
+  int            y0, h;  /* the scanlines being built */
+  int            rowstart;
 }
 region__builder_t;
 
-/* Begin building scanlines y0..y0+h-1. */
-result_t region__builder_init(region__builder_t *b, int y0, int h);
+/* Begin building scanlines y0..y0+h-1. A NULL alloc means the default. */
+result_t region__builder_init(region__builder_t *b,
+                              const alloc_t     *alloc,
+                              int                y0,
+                              int                h);
 
 /* Begin scanline y; call for every scanline in order. */
 void region__builder_row(region__builder_t *b, int y);

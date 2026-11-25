@@ -21,10 +21,12 @@ typedef struct bmfontcache bmfontcache_t;
 /**
  * Create a new, empty font cache.
  *
+ * \param[in]  alloc  Allocator for the cache and the fonts it loads, or
+ *                    NULL. The cache keeps it for later calls.
  * \param[out] cache  Newly allocated font cache.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
-result_t bmfontcache_create(bmfontcache_t **cache);
+result_t bmfontcache_create(const alloc_t *alloc, bmfontcache_t **cache);
 
 /**
  * Destroy a font cache and every font still held in it, regardless of

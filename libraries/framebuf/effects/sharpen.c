@@ -10,20 +10,25 @@
 
 /* ----------------------------------------------------------------------- */
 
-result_t effects_sharpen_apply(const bitmap_t *src, bitmap_t *dst)
+result_t effects_sharpen_apply(const alloc_t  *alloc,
+                               const bitmap_t *src,
+                               bitmap_t       *dst)
 {
   static const float kernel[] = { 1.5f, -0.25f };
 
   result_t        rc;
   convolve_lut_t *lut;
 
-  rc = effects__convolve_init(kernel, NELEMS(kernel), &lut);
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  rc = effects__convolve_init(alloc, kernel, NELEMS(kernel), &lut);
   if (rc != result_OK)
     return rc;
 
-  rc = effects__convolve(lut, src, dst);
+  rc = effects__convolve(alloc, lut, src, dst);
 
-  effects__convolve_destroy(lut);
+  effects__convolve_destroy(alloc, lut);
 
   return rc;
 }

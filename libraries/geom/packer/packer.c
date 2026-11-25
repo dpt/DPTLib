@@ -21,18 +21,22 @@
 
 #define INITIALAREAS 8
 
-packer_t *packer_create(const box_t *dims)
+packer_t *packer_create(const alloc_t *alloc, const box_t *dims)
 {
   packer_t *p;
 
-  p = malloc(sizeof(*p));
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  p = alloc->malloc(sizeof(*p));
   if (p == NULL)
     return NULL;
 
-  p->areas = malloc(sizeof(*p->areas) * INITIALAREAS);
+  p->alloc = alloc;
+  p->areas = alloc->malloc(sizeof(*p->areas) * INITIALAREAS);
   if (p->areas == NULL)
   {
-    free(p);
+    alloc->free(p);
     return NULL;
   }
 
@@ -66,9 +70,9 @@ void packer_destroy(packer_t *doomed)
   if (doomed == NULL)
     return;
 
-  free(doomed->placed);
-  free(doomed->areas);
-  free(doomed);
+  doomed->alloc->free(doomed->placed);
+  doomed->alloc->free(doomed->areas);
+  doomed->alloc->free(doomed);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -128,12 +132,13 @@ static result_t add_area(packer_t *packer, const box_t *area)
   }
 
 #ifdef USE_ARRAY_GROW
-  if (array_grow((void **) &packer->areas,
-                 sizeof(*packer->areas),
-                 packer->usedareas,
-                 &packer->allocedareas,
-                 1,
-                 1))
+  if (array_grow_alloc(packer->alloc,
+                       (void **) &packer->areas,
+                       sizeof(*packer->areas),
+                       packer->usedareas,
+                       &packer->allocedareas,
+                       1,
+                       1))
     return result_OOM;
 #else
   if (packer->usedareas + 1 > packer->allocedareas)
@@ -143,7 +148,7 @@ static result_t add_area(packer_t *packer, const box_t *area)
 
     n = packer->allocedareas * 2;
 
-    areas = realloc(packer->areas, n * sizeof(*areas));
+    areas = packer->alloc->realloc(packer->areas, n * sizeof(*areas));
     if (areas == NULL)
       return result_OOM;
 
@@ -457,7 +462,7 @@ static result_t note_placed(packer_t *packer, const box_t *area)
     box_t *p;
 
     n = packer->allocedplaced ? packer->allocedplaced * 2 : INITIALAREAS;
-    p = realloc(packer->placed, n * sizeof(*p));
+    p = packer->alloc->realloc(packer->placed, n * sizeof(*p));
     if (p == NULL)
       return result_OOM;
 

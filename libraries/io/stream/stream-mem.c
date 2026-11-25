@@ -57,7 +57,8 @@ static stream_size_t stream_mem_length(stream_t *s)
   return sm->length;
 }
 
-result_t stream_mem_create(const unsigned char *block,
+result_t stream_mem_create(const alloc_t       *alloc,
+                           const unsigned char *block,
                            stream_size_t        length,
                            stream_t           **s)
 {
@@ -65,9 +66,14 @@ result_t stream_mem_create(const unsigned char *block,
 
   assert(block);
 
-  sm = malloc(sizeof(*sm));
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  sm = alloc->malloc(sizeof(*sm));
   if (!sm)
     return result_OOM;
+
+  sm->base.alloc   = alloc;
 
   sm->base.buf     = block;
   sm->base.end     = block + length;

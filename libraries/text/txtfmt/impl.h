@@ -12,6 +12,8 @@ span;
 
 struct txtfmt
 {
+  const alloc_t *alloc;
+
   char *s;             /* the string we're formatting */
   int   length;        /* string length excluding terminator */
 

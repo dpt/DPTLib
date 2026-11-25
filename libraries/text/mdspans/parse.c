@@ -116,12 +116,13 @@ static int emphasis(const char   **p,
 
 /* ----------------------------------------------------------------------- */
 
-result_t mdspans_parse(const char *md,
-                       int         mdlen,
-                       int         maxspans,
-                       char      **text,
-                       mdspan_t  **spans,
-                       int        *nspans)
+result_t mdspans_parse(const alloc_t *alloc,
+                       const char    *md,
+                       int            mdlen,
+                       int            maxspans,
+                       char         **text,
+                       mdspan_t     **spans,
+                       int           *nspans)
 {
   mdspans_out_t   out;
   const char     *p;
@@ -129,16 +130,19 @@ result_t mdspans_parse(const char *md,
   mdspans_state_t state;
   int             line_start;
 
-  out.text     = malloc((size_t) mdlen + 1);
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  out.text     = alloc->malloc((size_t) mdlen + 1);
   out.textlen  = 0;
-  out.spans    = malloc((size_t) (maxspans > 0 ? maxspans : 1) *
-                        sizeof(*out.spans));
+  out.spans    = alloc->malloc((size_t) (maxspans > 0 ? maxspans : 1) *
+                               sizeof(*out.spans));
   out.nspans   = 0;
   out.maxspans = maxspans;
   if (out.text == NULL || out.spans == NULL)
   {
-    free(out.text);
-    free(out.spans);
+    alloc->free(out.text);
+    alloc->free(out.spans);
     *text   = NULL;
     *spans  = NULL;
     *nspans = 0;

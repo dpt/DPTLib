@@ -29,6 +29,7 @@ extern "C"
 #include <stddef.h>
 
 #include "base/result.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -50,13 +51,16 @@ typedef struct atom_set atom_set_t;
  *
  * This chooses default values for maximum data block size, etc.
  *
+ * \param alloc Allocator for the set, or NULL. The set keeps it.
+ *
  * \return New atom set, or NULL if out of memory.
  */
-atom_set_t *atom_create(void);
+atom_set_t *atom_create(const alloc_t *alloc);
 
 /**
  * Create a new atom set using the specified data sizes.
  *
+ * \param alloc     Allocator for the set, or NULL. The set keeps it.
  * \param locpoolsz Size of a location pool, or zero for the default. Set
  *                  this to the number of entries you typically expect to
  *                  store.
@@ -69,7 +73,9 @@ atom_set_t *atom_create(void);
  *
  * \return New atom set, or NULL if out of memory.
  */
-atom_set_t *atom_create_tuned(size_t locpoolsz, size_t blkpoolsz);
+atom_set_t *atom_create_tuned(const alloc_t *alloc,
+                              size_t         locpoolsz,
+                              size_t         blkpoolsz);
 
 /**
  * Destroy an existing atom set.

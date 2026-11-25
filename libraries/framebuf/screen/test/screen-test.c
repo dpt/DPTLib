@@ -328,7 +328,7 @@ static void np_make_src(bitmap_t *src, pixelfmt_rgba8888_t *buf)
           buf[(cy * NP_CELL + y) * NP_SRC + (cx * NP_CELL + x)] = c.primary;
     }
 
-  bitmap_init(src, SIZE2D(NP_SRC, NP_SRC), pixelfmt_rgba8888,
+  bitmap_init(NULL, src, SIZE2D(NP_SRC, NP_SRC), pixelfmt_rgba8888,
               NP_SRC * (int) sizeof(buf[0]), NULL, buf);
 }
 
@@ -351,7 +351,7 @@ static result_t test_tiled(void)
 
   for (x = 0; x < 3 * 2; x++)
     srcbuf[x] = 0x00000100 + x; /* each tile pixel is unique */
-  bitmap_init(&src, SIZE2D(3, 2), pixelfmt_bgrx8888,
+  bitmap_init(NULL, &src, SIZE2D(3, 2), pixelfmt_bgrx8888,
               3 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
 
   /* Origin well off-screen to the top left, then inside dst, then below and
@@ -1404,7 +1404,7 @@ static result_t test_copy_bitmap_p1(void)
       srcbuf[y * 16 + x] = (x < 8 ? colour_rgb(0x10, 0x10, 0x10)
                                   : colour_rgb(0xF0, 0xF0, 0xF0)).primary;
 
-  bitmap_init(&src, SIZE2D(16, 4), pixelfmt_rgba8888,
+  bitmap_init(NULL, &src, SIZE2D(16, 4), pixelfmt_rgba8888,
               16 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
 
   memset(p1pixels, 0, sizeof(p1pixels));
@@ -1438,7 +1438,7 @@ static result_t test_copy_bitmap_p1(void)
     pixelfmt_rgba8888_t one = colour_rgb(0xF0, 0xF0, 0xF0).primary;
     bitmap_t            dot;
 
-    bitmap_init(&dot, SIZE2D(1, 1), pixelfmt_rgba8888,
+    bitmap_init(NULL, &dot, SIZE2D(1, 1), pixelfmt_rgba8888,
                 (int) sizeof(one), NULL, &one);
     screen_copy_bitmap(&scr, 3, 0, &dot);
     if (p1pixels[0] != (1 << (7 - 3)))
@@ -1512,7 +1512,7 @@ static result_t test_copy_bitmap_p2(void)
       srcbuf[y * 16 + x] = (x < 8 ? colour_rgb(0x08, 0x08, 0x08)
                                   : colour_rgb(0xF8, 0xF8, 0xF8)).primary;
 
-  bitmap_init(&src, SIZE2D(16, 4), pixelfmt_rgba8888,
+  bitmap_init(NULL, &src, SIZE2D(16, 4), pixelfmt_rgba8888,
               16 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
 
   memset(p2pixels, 0, sizeof(p2pixels));
@@ -1548,7 +1548,7 @@ static result_t test_copy_bitmap_p2(void)
     pixelfmt_rgba8888_t one = colour_rgb(0xF8, 0xF8, 0xF8).primary;
     bitmap_t            dot;
 
-    bitmap_init(&dot, SIZE2D(1, 1), pixelfmt_rgba8888,
+    bitmap_init(NULL, &dot, SIZE2D(1, 1), pixelfmt_rgba8888,
                 (int) sizeof(one), NULL, &one);
     screen_copy_bitmap(&scr, 3, 0, &dot);
     if (p2pixels[0] != (3 << 0))
@@ -1656,16 +1656,16 @@ static int rle_blit_matches_raw(const char *name,
     }
   }
 
-  bitmap_init(&raw, SIZE2D(RLE_SRC_W, RLE_SRC_H), pixelfmt_rgba8888,
+  bitmap_init(NULL, &raw, SIZE2D(RLE_SRC_W, RLE_SRC_H), pixelfmt_rgba8888,
               RLE_SRC_W * (int) sizeof(rawpix[0]), NULL, rawpix);
 
   blob = malloc(sizeof(rawpix));
   if (blob == NULL)
     return 1;
   memcpy(blob, rawpix, sizeof(rawpix));
-  bitmap_init(&comp, SIZE2D(RLE_SRC_W, RLE_SRC_H), pixelfmt_rgba8888,
+  bitmap_init(NULL, &comp, SIZE2D(RLE_SRC_W, RLE_SRC_H), pixelfmt_rgba8888,
               RLE_SRC_W * (int) sizeof(rawpix[0]), NULL, blob);
-  if (bitmap_compress(&comp) != result_OK || !bitmap_is_compressed(&comp))
+  if (bitmap_compress(NULL, &comp) != result_OK || !bitmap_is_compressed(&comp))
   {
     printf("screen: rle %s: compress failed\n", name);
     free(comp.base);
@@ -1764,16 +1764,16 @@ static int rle_wide_blit_matches_raw(const char *name,
     }
   }
 
-  bitmap_init(&raw, SIZE2D(RLE_WIDE_W, RLE_WIDE_H), pixelfmt_rgba8888,
+  bitmap_init(NULL, &raw, SIZE2D(RLE_WIDE_W, RLE_WIDE_H), pixelfmt_rgba8888,
               RLE_WIDE_W * (int) sizeof(rawpix[0]), NULL, rawpix);
 
   blob = malloc(sizeof(rawpix));
   if (blob == NULL)
     return 1;
   memcpy(blob, rawpix, sizeof(rawpix));
-  bitmap_init(&comp, SIZE2D(RLE_WIDE_W, RLE_WIDE_H), pixelfmt_rgba8888,
+  bitmap_init(NULL, &comp, SIZE2D(RLE_WIDE_W, RLE_WIDE_H), pixelfmt_rgba8888,
               RLE_WIDE_W * (int) sizeof(rawpix[0]), NULL, blob);
-  if (bitmap_compress(&comp) != result_OK || !bitmap_is_compressed(&comp))
+  if (bitmap_compress(NULL, &comp) != result_OK || !bitmap_is_compressed(&comp))
   {
     printf("screen: rle wide %s: compress failed\n", name);
     free(comp.base);
@@ -1914,7 +1914,7 @@ static result_t test_copy_bitmap_p8(void)
       srcbuf[y * 16 + x] = (x < 8 ? colour_rgb(0x10, 0x10, 0x10)
                                   : colour_rgb(0xF0, 0xF0, 0xF0)).primary;
 
-  bitmap_init(&src, SIZE2D(16, 4), pixelfmt_rgba8888,
+  bitmap_init(NULL, &src, SIZE2D(16, 4), pixelfmt_rgba8888,
               16 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
 
   memset(p8pixels, 0, sizeof(p8pixels));
@@ -2074,7 +2074,7 @@ static result_t test_copy_bitmap_bgr_source(void)
 
   for (i = 0; i < NELEMS(fmts); i++)
   {
-    bitmap_init(&src, SIZE2D(1, 1), fmts[i], (int) sizeof(srcpx), NULL,
+    bitmap_init(NULL, &src, SIZE2D(1, 1), fmts[i], (int) sizeof(srcpx), NULL,
                 &srcpx);
 
     memset(scrbuf, 0, sizeof(scrbuf));
@@ -2115,16 +2115,16 @@ static result_t test_copy_bitmap_faded(void)
 
   rawpix[0] = colour_rgba(0xFF, 0x00, 0x00, 0xFF).primary;
   rawpix[1] = colour_rgba(0x00, 0x00, 0x00, 0x00).primary; /* as RLE skips */
-  bitmap_init(&raw, SIZE2D(2, 1), pixelfmt_rgba8888,
+  bitmap_init(NULL, &raw, SIZE2D(2, 1), pixelfmt_rgba8888,
               (int) sizeof(rawpix), NULL, rawpix);
 
   blob = malloc(sizeof(rawpix));
   if (blob == NULL)
     return result_OOM;
   memcpy(blob, rawpix, sizeof(rawpix));
-  bitmap_init(&comp, SIZE2D(2, 1), pixelfmt_rgba8888,
+  bitmap_init(NULL, &comp, SIZE2D(2, 1), pixelfmt_rgba8888,
               (int) sizeof(rawpix), NULL, blob);
-  if (bitmap_compress(&comp) != result_OK)
+  if (bitmap_compress(NULL, &comp) != result_OK)
   {
     free(comp.base);
     return result_TEST_FAILED;
@@ -2212,7 +2212,7 @@ static result_t test_copy_bitmap_deep_formats(void)
       bgr   = srcfmts[i] == pixelfmt_bgra8888 ||
               srcfmts[i] == pixelfmt_bgrx8888;
 
-      bitmap_init(&src, SIZE2D(DF_W, 1), srcfmts[i], (int) sizeof(srcbuf),
+      bitmap_init(NULL, &src, SIZE2D(DF_W, 1), srcfmts[i], (int) sizeof(srcbuf),
                   NULL, srcbuf);
       memset(scrbuf, 0x5A, sizeof(scrbuf));
       screen_init(&scr, SIZE2D(DF_SCR_W, 1), scrfmts[j], DF_SCR_W * bpp, NULL,
@@ -2282,7 +2282,7 @@ static result_t test_copy_bitmap_paletted_source(void)
                            (unsigned char) (x * 8),
                            (unsigned char) (255 - x * 16));
 
-  bitmap_init(&src, SIZE2D(8, 2), pixelfmt_p4, P4_SRC_ROWBYTES, srcpal,
+  bitmap_init(NULL, &src, SIZE2D(8, 2), pixelfmt_p4, P4_SRC_ROWBYTES, srcpal,
               p4srcbuf);
 
   memset(scrbuf, 0, sizeof(scrbuf));
@@ -2324,7 +2324,7 @@ static result_t test_copy_bitmap_paletted_source(void)
     pixelfmt_any32_t sentinel = 0xDEADBEEFu;
 
     srcpal[0] = colour_rgba(0xFF, 0x00, 0x00, 0x00); /* red, fully transparent */
-    bitmap_set_palette(&src, srcpal); /* src.palette is its own copy */
+    bitmap_set_palette(NULL, &src, srcpal); /* src.palette is its own copy */
     scrbuf[3 * WIDTH + 2] = sentinel;
 
     if (screen_copy_bitmap(&scr, 2, 3, &src) != result_OK)
@@ -2390,9 +2390,9 @@ static result_t test_copy_bitmap_p4_to_p4(void)
       deepbuf[y * P4P4_W + x] = srcpal[i].primary;
     }
 
-  bitmap_init(&p4src, SIZE2D(P4P4_W, P4P4_H), pixelfmt_p4,
+  bitmap_init(NULL, &p4src, SIZE2D(P4P4_W, P4P4_H), pixelfmt_p4,
               (P4P4_W + 1) / 2, srcpal, p4buf);
-  bitmap_init(&deepsrc, SIZE2D(P4P4_W, P4P4_H), pixelfmt_rgba8888,
+  bitmap_init(NULL, &deepsrc, SIZE2D(P4P4_W, P4P4_H), pixelfmt_rgba8888,
               P4P4_W * 4, NULL, deepbuf);
 
   /* opaque first, then with a fully transparent entry */
@@ -2406,7 +2406,7 @@ static result_t test_copy_bitmap_p4_to_p4(void)
         for (i = 0; i < P4P4_W * P4P4_H; i++)
           if ((i & 15) == 5)
             deepbuf[i] = srcpal[5].primary;
-        bitmap_set_palette(&p4src, srcpal);
+        bitmap_set_palette(NULL, &p4src, srcpal);
       }
 
       memset(want, 0x9A, sizeof(want));
@@ -2421,7 +2421,7 @@ static result_t test_copy_bitmap_p4_to_p4(void)
       {
         printf("screen: p4 to p4 copy_bitmap failed at x=%d pass %d\n",
                xs[xi], pass);
-        bitmap_set_palette(&p4src, NULL);
+        bitmap_set_palette(NULL, &p4src, NULL);
         return result_TEST_FAILED;
       }
 
@@ -2429,13 +2429,13 @@ static result_t test_copy_bitmap_p4_to_p4(void)
       {
         printf("screen: p4 to p4 copy_bitmap differs from rgba8888 at x=%d "
                "pass %d\n", xs[xi], pass);
-        bitmap_set_palette(&p4src, NULL);
+        bitmap_set_palette(NULL, &p4src, NULL);
         return result_TEST_FAILED;
       }
     }
   }
 
-  bitmap_set_palette(&p4src, NULL);
+  bitmap_set_palette(NULL, &p4src, NULL);
 
   return result_TEST_PASSED;
 #undef P4P4_H
@@ -2484,7 +2484,7 @@ static result_t test_tiled_dithered(void)
    * it is pre-tiled down only */
   for (w = 16; w >= 12; w -= 4)
   {
-    bitmap_init(&src, SIZE2D(w, 8), pixelfmt_rgba8888,
+    bitmap_init(NULL, &src, SIZE2D(w, 8), pixelfmt_rgba8888,
                 16 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
 
     memset(got, 0, sizeof(got));
@@ -2556,7 +2556,7 @@ static result_t test_copy_bitmap_dithered_with(screen_dither_t method)
     for (x = 0; x < 16; x++)
       srcbuf[y * 16 + x] = colour_rgb(0x80, 0x80, 0x80).primary;
 
-  bitmap_init(&src, SIZE2D(16, 8), pixelfmt_rgba8888,
+  bitmap_init(NULL, &src, SIZE2D(16, 8), pixelfmt_rgba8888,
               16 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
 
   memset(pdpixels, 0, sizeof(pdpixels));
@@ -2755,9 +2755,9 @@ static result_t test_copy_bitmap_scaled(void)
                                          (unsigned char) (x * y * 7)).primary;
     }
 
-  bitmap_init(&deep, SIZE2D(SC_W, SC_H), pixelfmt_rgba8888, SC_W * 4, NULL,
-              deepbuf);
-  bitmap_init(&p4, SIZE2D(SC_W, SC_H), pixelfmt_p4, (SC_W + 1) / 2, pal,
+  bitmap_init(NULL, &deep, SIZE2D(SC_W, SC_H), pixelfmt_rgba8888, SC_W * 4,
+              NULL, deepbuf);
+  bitmap_init(NULL, &p4, SIZE2D(SC_W, SC_H), pixelfmt_p4, (SC_W + 1) / 2, pal,
               p4buf);
 
   for (ci = 0; ci < NELEMS(cases); ci++)
@@ -2765,11 +2765,11 @@ static result_t test_copy_bitmap_scaled(void)
         !scaled_matches("scaled p4", &p4, &cases[ci]))
     {
       printf("screen: copy_bitmap_scaled case %d failed\n", (int) ci);
-      bitmap_set_palette(&p4, NULL);
+      bitmap_set_palette(NULL, &p4, NULL);
       return result_TEST_FAILED;
     }
 
-  bitmap_set_palette(&p4, NULL);
+  bitmap_set_palette(NULL, &p4, NULL);
 
   ts = malloc(sizeof(*ts));
   if (ts == NULL)
@@ -2842,10 +2842,10 @@ static result_t test_copy_bitmap_scaled_p4_to_p4(void)
       deepbuf[y * SP_W + x] = srcpal[i].primary;
     }
 
-  bitmap_init(&p4src, SIZE2D(SP_W, SP_H), pixelfmt_p4, (SP_W + 1) / 2, srcpal,
-              p4buf);
-  bitmap_init(&deepsrc, SIZE2D(SP_W, SP_H), pixelfmt_rgba8888, SP_W * 4, NULL,
-              deepbuf);
+  bitmap_init(NULL, &p4src, SIZE2D(SP_W, SP_H), pixelfmt_p4, (SP_W + 1) / 2,
+              srcpal, p4buf);
+  bitmap_init(NULL, &deepsrc, SIZE2D(SP_W, SP_H), pixelfmt_rgba8888,
+              SP_W * 4, NULL, deepbuf);
 
   for (pass = 0; pass < 2; pass++)
   {
@@ -2855,7 +2855,7 @@ static result_t test_copy_bitmap_scaled_p4_to_p4(void)
       for (i = 0; i < SP_W * SP_H; i++)
         if ((i & 15) == 5)
           deepbuf[i] = srcpal[5].primary;
-      bitmap_set_palette(&p4src, srcpal);
+      bitmap_set_palette(NULL, &p4src, srcpal);
     }
 
     memset(want, 0x9A, sizeof(want));
@@ -2870,12 +2870,12 @@ static result_t test_copy_bitmap_scaled_p4_to_p4(void)
         memcmp(want, got, sizeof(want)) != 0)
     {
       printf("screen: scaled p4 to p4 differs from rgba8888, pass %d\n", pass);
-      bitmap_set_palette(&p4src, NULL);
+      bitmap_set_palette(NULL, &p4src, NULL);
       return result_TEST_FAILED;
     }
   }
 
-  bitmap_set_palette(&p4src, NULL);
+  bitmap_set_palette(NULL, &p4src, NULL);
 
   return result_TEST_PASSED;
 #undef SP_H
@@ -2908,7 +2908,7 @@ static result_t test_copy_bitmap_scaled_dithered(void)
     for (x = 0; x < 16; x++)
       srcbuf[y * 16 + x] = colour_rgb(0x80, 0x80, 0x80).primary;
 
-  bitmap_init(&src, SIZE2D(16, 8), pixelfmt_rgba8888,
+  bitmap_init(NULL, &src, SIZE2D(16, 8), pixelfmt_rgba8888,
               16 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
 
   memset(got, 0, sizeof(got));
@@ -3025,11 +3025,11 @@ static result_t test_copy_bitmap_dithered_exact(void)
           }
 
         if (source == 0)
-          bitmap_init(&src, SIZE2D(EX_SIZE, EX_SIZE), pixelfmt_rgba8888,
+          bitmap_init(NULL, &src, SIZE2D(EX_SIZE, EX_SIZE), pixelfmt_rgba8888,
                       EX_SIZE * (int) sizeof(deep[0]), NULL, deep);
         else
-          bitmap_init(&src, SIZE2D(EX_SIZE, EX_SIZE), pixelfmt_p8, EX_SIZE,
-                      pal, index8);
+          bitmap_init(NULL, &src, SIZE2D(EX_SIZE, EX_SIZE), pixelfmt_p8,
+                      EX_SIZE, pal, index8);
 
         memset(dst, 0, sizeof(dst));
         screen_init(&scr, SIZE2D(EX_SIZE, EX_SIZE),
@@ -3135,11 +3135,13 @@ static result_t test_copy_bitmap_dithered_exact_16(void)
       for (source = 0; source < 2; source++) /* 32bpp, then 16bpp */
       {
         if (source == 0)
-          bitmap_init(&src, SIZE2D(EX16_SIZE, EX16_SIZE), pixelfmt_rgba8888,
-                      EX16_SIZE * (int) sizeof(src32[0]), NULL, src32);
+          bitmap_init(NULL, &src, SIZE2D(EX16_SIZE, EX16_SIZE),
+                      pixelfmt_rgba8888, EX16_SIZE * (int) sizeof(src32[0]),
+                      NULL, src32);
         else
-          bitmap_init(&src, SIZE2D(EX16_SIZE, EX16_SIZE), formats[f].format,
-                      EX16_SIZE * (int) sizeof(src16[0]), NULL, src16);
+          bitmap_init(NULL, &src, SIZE2D(EX16_SIZE, EX16_SIZE),
+                      formats[f].format, EX16_SIZE * (int) sizeof(src16[0]),
+                      NULL, src16);
 
         memset(dst, 0, sizeof(dst));
         screen_init(&scr, SIZE2D(EX16_SIZE, EX16_SIZE), formats[f].format,
@@ -3173,7 +3175,7 @@ static result_t test_copy_bitmap_dithered_exact_16(void)
         for (i = 0; i < 64 * 64; i++)
           src32[i] = colour_rgb((int) v, (int) v, (int) v).primary;
 
-        bitmap_init(&src, SIZE2D(64, 64), pixelfmt_rgba8888,
+        bitmap_init(NULL, &src, SIZE2D(64, 64), pixelfmt_rgba8888,
                     64 * (int) sizeof(src32[0]), NULL, src32);
         screen_init(&scr, SIZE2D(64, 64), formats[f].format,
                     64 * (int) sizeof(dst[0]), NULL, dst);
@@ -3196,7 +3198,7 @@ static result_t test_copy_bitmap_dithered_exact_16(void)
       for (i = 0; i < EX16_SIZE * EX16_SIZE; i++)
         src32[i] = colour_rgb(0x85, 0x85, 0x85).primary;
 
-      bitmap_init(&src, SIZE2D(EX16_SIZE, EX16_SIZE), pixelfmt_rgba8888,
+      bitmap_init(NULL, &src, SIZE2D(EX16_SIZE, EX16_SIZE), pixelfmt_rgba8888,
                   EX16_SIZE * (int) sizeof(src32[0]), NULL, src32);
       memset(dst, 0, sizeof(dst));
       screen_init(&scr, SIZE2D(EX16_SIZE, EX16_SIZE), formats[f].format,
@@ -3533,7 +3535,7 @@ static result_t test_16bpp_screen(pixelfmt_t fmt)
 
   /* opaque source pixel fully overwrites the destination */
   memset(screenbuf, 0, sizeof(screenbuf));
-  bitmap_init(&src, SIZE2D(2, 2), pixelfmt_rgba8888,
+  bitmap_init(NULL, &src, SIZE2D(2, 2), pixelfmt_rgba8888,
              2 * (int) sizeof(srcbuf[0]), NULL, srcbuf);
   srcbuf[0] = PIXELFMT_MAKE_RGBA8888(0, 0, 255, 255); /* blue, opaque */
   srcbuf[1] = PIXELFMT_MAKE_RGBA8888(0, 0, 255, 0);   /* blue, transparent */
@@ -3572,7 +3574,7 @@ static result_t test_16bpp_screen(pixelfmt_t fmt)
 
     blue16 = (pixelfmt_any16_t) colour_to_pixel(NULL, 0, colour_rgb(0, 0, 255), fmt);
     srcpx[0] = srcpx[1] = srcpx[2] = srcpx[3] = blue16;
-    bitmap_init(&src16, SIZE2D(2, 2), fmt, 2 * (int) sizeof(srcpx[0]),
+    bitmap_init(NULL, &src16, SIZE2D(2, 2), fmt, 2 * (int) sizeof(srcpx[0]),
                 NULL, srcpx);
 
     memset(screenbuf, 0, sizeof(screenbuf));
@@ -3605,7 +3607,7 @@ static result_t test_16bpp_screen(pixelfmt_t fmt)
     pat = pattern_from_preset(screen_PATTERN_GREY50, colour_rgb(255, 0, 0),
                               colour_rgb(0, 0, 255));
 
-    bitmap_init(&bm, SIZE2D(W, H), fmt, W * (int) sizeof(screenbuf[0]),
+    bitmap_init(NULL, &bm, SIZE2D(W, H), fmt, W * (int) sizeof(screenbuf[0]),
                 NULL, screenbuf);
 
     for (pass = 0; pass < 4; pass++)
@@ -3653,7 +3655,7 @@ static result_t test_16bpp_screen(pixelfmt_t fmt)
 
     for (i = 0; i < 16 * 16; i++)
       flat[i] = PIXELFMT_MAKE_RGBA8888(136, 136, 136, 255);
-    bitmap_init(&fsrc, SIZE2D(16, 16), pixelfmt_rgba8888,
+    bitmap_init(NULL, &fsrc, SIZE2D(16, 16), pixelfmt_rgba8888,
                 16 * (int) sizeof(flat[0]), NULL, flat);
     screen_init(&bscr, SIZE2D(16, 16), fmt, 16 * (int) sizeof(big[0]),
                 NULL, big);

@@ -22,7 +22,7 @@ result_t bitvec_ensure(bitvec_t *v, unsigned int need)
 
     length = need;
 
-    vec = realloc(v->vec, length * sizeof(*v->vec));
+    vec = v->alloc->realloc(v->vec, length * sizeof(*v->vec));
     if (vec == NULL)
       return result_OOM;
 

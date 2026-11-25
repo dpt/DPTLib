@@ -24,6 +24,7 @@ extern "C"
 #include "base/result.h"
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -40,6 +41,7 @@ extern "C"
  * `ncolours` distinct colours yields exactly those colours; otherwise the
  * palette holds exactly `ncolours` entries.
  *
+ * \param[in]  alloc    Allocator for the tree, or NULL.
  * \param[in]  src      Source bitmap, \ref pixelfmt_rgbx8888 or \ref
  *                      pixelfmt_rgba8888.
  * \param[in]  ncolours Maximum palette size, \ref octree_MIN_COLOURS to \ref
@@ -49,7 +51,8 @@ extern "C"
  * \return \ref result_OK on success, \ref result_BAD_ARG for an unsupported
  *         format or palette size, \ref result_OOM on allocation failure.
  */
-result_t octree_make_palette(const bitmap_t *src,
+result_t octree_make_palette(const alloc_t  *alloc,
+                             const bitmap_t *src,
                              int             ncolours,
                              colour_t       *palette,
                              int            *nfound);

@@ -30,6 +30,7 @@ extern "C"
 #include "geom/point.h"
 #include "text/bmtext.h"
 #include "text/mdspans.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -49,6 +50,8 @@ typedef struct mdtext
   bmfont_spacing_t spacing;
   mdtext_align_t   align;
   int              leading; /* pixels between lines */
+  const alloc_t   *alloc;   /* or NULL for the default; set before the
+                               first mdtext_set and keep until mdtext_free */
 
   /* private */
   char            *text;

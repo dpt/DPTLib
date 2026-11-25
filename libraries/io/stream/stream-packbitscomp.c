@@ -270,9 +270,11 @@ result_t stream_packbitscomp_create(stream_t *input, int bufsz, stream_t **s)
 
   assert(input);
 
-  sp = malloc(offsetof(stream_packbitscomp_t, buffer) + bufsz);
+  sp = input->alloc->malloc(offsetof(stream_packbitscomp_t, buffer) + bufsz);
   if (!sp)
     return result_OOM;
+
+  sp->base.alloc   = input->alloc;
 
   sp->base.buf     =
     sp->base.end     = sp->buffer; /* force a fill on first use */

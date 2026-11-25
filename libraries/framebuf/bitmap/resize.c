@@ -3,6 +3,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifdef FORTIFY
 #include "fortify/fortify.h"
@@ -87,7 +88,8 @@ resize_box_col_t;
 /* Box filter: each destination pixel is the area-weighted average of the
  * source rectangle it covers. The column spans are worked out once, not on
  * every row. */
-static result_t resize_box(const bitmap_t *src,
+static result_t resize_box(const alloc_t  *alloc,
+                           const bitmap_t *src,
                            uint8_t        *base,
                            size2d_t        size,
                            int             linear,
@@ -104,7 +106,7 @@ static result_t resize_box(const bitmap_t *src,
   uint8_t          *px;
   int               v;
 
-  cols = malloc((size_t) size.w * sizeof(*cols));
+  cols = alloc->malloc((size_t) size.w * sizeof(*cols));
   if (cols == NULL)
     return result_OOM;
 
@@ -165,7 +167,7 @@ static result_t resize_box(const bitmap_t *src,
     }
   }
 
-  free(cols);
+  alloc->free(cols);
 
   return result_OK;
 }
@@ -277,16 +279,18 @@ typedef struct resize_taps
 }
 resize_taps_t;
 
-/* Build one entry per destination pixel, in a single block for free(). When
+/* Build one entry per destination pixel, in a single block to free. When
  * shrinking, the kernel widens by the shrink factor so that every source
  * pixel contributes. Taps beyond the edges land on the edge pixels. */
-static resize_taps_t *resize_make_taps(int                    srclen,
+static resize_taps_t *resize_make_taps(const alloc_t         *alloc,
+                                       int                    srclen,
                                        int                    dstlen,
                                        const resize_kernel_t *kernel,
                                        int                   *pmaxtaps)
 {
   double         ratio, scale, radius;
   int            maxtaps;
+  size_t         bytes;
   resize_taps_t *taps;
   float         *weights;
   int            d, i;
@@ -300,10 +304,12 @@ static resize_taps_t *resize_make_taps(int                    srclen,
   radius  = kernel->support * scale;
   maxtaps = (int) ceil(2.0 * radius) + 2;
 
-  taps = calloc(1, (size_t) dstlen * sizeof(*taps) +
-                   (size_t) dstlen * maxtaps * sizeof(*weights));
+  bytes = (size_t) dstlen * sizeof(*taps) +
+          (size_t) dstlen * maxtaps * sizeof(*weights);
+  taps  = alloc->malloc(bytes);
   if (taps == NULL)
     return NULL;
+  memset(taps, 0, bytes);
   weights = (float *) (taps + dstlen);
 
   for (d = 0; d < dstlen; d++)
@@ -371,7 +377,8 @@ static void resize_filter_row(const bitmap_t      *src,
  * current destination row needs. The kernels can overshoot, so the result is
  * clamped. The weights are worked out once, so the pixel loops do no
  * division. */
-static result_t resize_filter(const bitmap_t        *src,
+static result_t resize_filter(const alloc_t         *alloc,
+                              const bitmap_t        *src,
                               uint8_t               *base,
                               size2d_t               size,
                               const resize_kernel_t *kernel,
@@ -395,8 +402,8 @@ static result_t resize_filter(const bitmap_t        *src,
   rc    = result_OOM;
   slots = NULL;
   rows  = NULL;
-  xtaps = resize_make_taps(src->size.w, size.w, kernel, &xmax);
-  ytaps = resize_make_taps(src->size.h, size.h, kernel, &ymax);
+  xtaps = resize_make_taps(alloc, src->size.w, size.w, kernel, &xmax);
+  ytaps = resize_make_taps(alloc, src->size.h, size.h, kernel, &ymax);
   if (xtaps == NULL || ytaps == NULL)
     goto exit;
 
@@ -407,8 +414,8 @@ static result_t resize_filter(const bitmap_t        *src,
     nslots <<= 1;
 
   lanes = (size_t) size.w * 4;
-  slots = malloc((size_t) nslots * sizeof(*slots));
-  rows  = malloc(((size_t) nslots + 1) * lanes * sizeof(*rows));
+  slots = alloc->malloc((size_t) nslots * sizeof(*slots));
+  rows  = alloc->malloc(((size_t) nslots + 1) * lanes * sizeof(*rows));
   if (slots == NULL || rows == NULL)
     goto exit;
 
@@ -458,10 +465,10 @@ static result_t resize_filter(const bitmap_t        *src,
   rc = result_OK;
 
 exit:
-  free(rows);
-  free(slots);
-  free(ytaps);
-  free(xtaps);
+  alloc->free(rows);
+  alloc->free(slots);
+  alloc->free(ytaps);
+  alloc->free(xtaps);
 
   return rc;
 }
@@ -501,7 +508,8 @@ static void resize_make_cols(resize_col_t     *cols,
   }
 }
 
-result_t bitmap_resize(const bitmap_t   *src,
+result_t bitmap_resize(const alloc_t    *alloc,
+                       const bitmap_t   *src,
                        size2d_t          size,
                        bitmap_resample_t method,
                        int               linear,
@@ -524,6 +532,9 @@ result_t bitmap_resize(const bitmap_t   *src,
 
   *out = NULL;
 
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
   if (size.w <= 0 || size.h <= 0 || src->size.w <= 0 || src->size.h <= 0 ||
       (unsigned int) method >= bitmap_resample__LIMIT)
     return result_BAD_ARG;
@@ -536,12 +547,12 @@ result_t bitmap_resize(const bitmap_t   *src,
     resize_make_tables();
 
   dstrow = size.w * 4;
-  dst    = malloc(sizeof(*dst));
-  base   = malloc((size_t) dstrow * size.h);
+  dst    = alloc->malloc(sizeof(*dst));
+  base   = alloc->malloc((size_t) dstrow * size.h);
   if (dst == NULL || base == NULL)
   {
-    free(dst);
-    free(base);
+    alloc->free(dst);
+    alloc->free(base);
     return result_OOM;
   }
 
@@ -566,23 +577,23 @@ result_t bitmap_resize(const bitmap_t   *src,
   if (kernel != NULL || method == bitmap_resample_BOX)
   {
     rc = (kernel != NULL)
-         ? resize_filter(src, base, size, kernel, linear, other)
-         : resize_box(src, base, size, linear, other);
+         ? resize_filter(alloc, src, base, size, kernel, linear, other)
+         : resize_box(alloc, src, base, size, linear, other);
     if (rc != result_OK)
     {
-      free(dst);
-      free(base);
+      alloc->free(dst);
+      alloc->free(base);
       return rc;
     }
     *out = dst;
     return result_OK;
   }
 
-  cols = malloc((size_t) size.w * sizeof(*cols));
+  cols = alloc->malloc((size_t) size.w * sizeof(*cols));
   if (cols == NULL)
   {
-    free(dst);
-    free(base);
+    alloc->free(dst);
+    alloc->free(base);
     return result_OOM;
   }
   resize_make_cols(cols, src->size.w, size.w, method);
@@ -643,7 +654,7 @@ result_t bitmap_resize(const bitmap_t   *src,
     }
   }
 
-  free(cols);
+  alloc->free(cols);
 
   *out = dst;
 

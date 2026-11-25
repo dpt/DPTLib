@@ -22,6 +22,7 @@ extern "C"
 #endif
 
 #include "base/result.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -84,6 +85,8 @@ struct stream
   stream_fill_t       *fill;
   stream_length_t     *length;
   stream_destroy_t    *destroy;
+
+  const alloc_t       *alloc;   /**< Allocator that holds this stream. */
 };
 
 /*

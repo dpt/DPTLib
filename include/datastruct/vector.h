@@ -24,6 +24,7 @@ extern "C"
 #include <stddef.h>
 
 #include "base/result.h"
+#include "utils/alloc.h"
 
 /**
  * A vector.
@@ -35,11 +36,12 @@ typedef struct vector vector_t;
 /**
  * Create a new vector.
  *
+ * \param[in] alloc Allocator for the vector, or NULL. The vector keeps it.
  * \param[in] width Byte width of each element.
  *
  * \return New vector, or NULL if out of memory.
  */
-vector_t *vector_create(size_t width);
+vector_t *vector_create(const alloc_t *alloc, size_t width);
 
 /**
  * Destroy an existing vector.

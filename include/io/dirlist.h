@@ -8,6 +8,7 @@
 #include "base/result.h"
 
 #include "io/filetype.h"
+#include "utils/alloc.h"
 
 /**
  * \file dirlist.h
@@ -38,6 +39,8 @@ typedef struct dirlist dirlist_t;
  * leafname starts with '.' are omitted. The listing is sorted by leafname,
  * case-insensitively.
  *
+ * \param[in]  alloc  Allocator for the listing, or NULL. The listing keeps
+ *                    it.
  * \param[in]  dir    Directory to scan.
  * \param[out] list   Receives the new listing. Owned by the caller; free
  *                    with dirlist_destroy.
@@ -45,7 +48,9 @@ typedef struct dirlist dirlist_t;
  *         \ref result_FILE_NOT_FOUND if 'dir' could not be opened, or \ref
  *         result_OOM.
  */
-result_t dirlist_scan(const char *dir, dirlist_t **list);
+result_t dirlist_scan(const alloc_t *alloc,
+                      const char    *dir,
+                      dirlist_t    **list);
 
 /** Free a listing returned by dirlist_scan. Passing NULL is a no-op. */
 void dirlist_destroy(dirlist_t *list);

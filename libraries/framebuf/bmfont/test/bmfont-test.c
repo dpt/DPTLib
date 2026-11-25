@@ -373,7 +373,7 @@ static result_t bmfont_clipping_test(bmfontteststate_t *state)
                font,
                transparent ? "-transparent" : "-filled",
                1 << pixelfmt_log2bpp(state->scr.format));
-      bitmap_save_png(&state->bm, pathf("%s%s.png", DPTLIB_TMPPREFIX, leafname));
+      bitmap_save_png(NULL, &state->bm, pathf("%s%s.png", DPTLIB_TMPPREFIX, leafname));
     }
   }
 
@@ -485,7 +485,7 @@ stop:
                font,
                transparent ? "-transparent" : "-filled",
                1 << pixelfmt_log2bpp(state->scr.format));
-      bitmap_save_png(&state->bm, pathf("%s%s.png", DPTLIB_TMPPREFIX, leafname));
+      bitmap_save_png(NULL, &state->bm, pathf("%s%s.png", DPTLIB_TMPPREFIX, leafname));
     }
   }
 
@@ -536,7 +536,7 @@ static result_t bmfont_interactive_test(bmfontteststate_t *state)
       goto failure;
     }
 
-    rc = bitmap_init(&conv, SIZE2D(state->scr_width, state->scr_height),
+    rc = bitmap_init(NULL, &conv, SIZE2D(state->scr_width, state->scr_height),
                      pixelfmt_bgrx8888, state->scr_width * 4, NULL,
                      convpixels);
     if (rc != result_OK)
@@ -962,7 +962,7 @@ result_t bmfont_test_one_format(const char *resources,
     goto Failure;
   }
 
-  bitmap_init(&state.bm, SIZE2D(state.scr_width, state.scr_height),
+  bitmap_init(NULL, &state.bm, SIZE2D(state.scr_width, state.scr_height),
                scr_fmt,
                scr_rowbytes,
                state.palette,
@@ -987,7 +987,7 @@ result_t bmfont_test_one_format(const char *resources,
       goto Failure;
     }
 
-    rc = bmfont_create(filename, &bmfonts[font].bmfont);
+    rc = bmfont_create(NULL, filename, &bmfonts[font].bmfont);
     if (rc)
     {
       fprintf(stderr, "Error: Failed to load font %s\n", filename);
@@ -1071,9 +1071,9 @@ static result_t bmfont_p8_test(const char *resources)
   memset(palette, 0, sizeof(palette));
   define_pico8_palette(&palette[0]);
 
-  bitmap_init(&bm8, SIZE2D(bm_width, bm_height), pixelfmt_p8, bm_width,
+  bitmap_init(NULL, &bm8, SIZE2D(bm_width, bm_height), pixelfmt_p8, bm_width,
               palette, p8);
-  bitmap_init(&bm32, SIZE2D(bm_width, bm_height), pixelfmt_bgrx8888,
+  bitmap_init(NULL, &bm32, SIZE2D(bm_width, bm_height), pixelfmt_bgrx8888,
               bm_width * 4, NULL, ref);
   screen_for_bitmap(&scr8, &bm8);
   screen_for_bitmap(&scr32, &bm32);
@@ -1086,7 +1086,7 @@ static result_t bmfont_p8_test(const char *resources)
     if (rc)
       return result_TEST_FAILED;
 
-    rc = bmfont_create(filename, &bmfont);
+    rc = bmfont_create(NULL, filename, &bmfont);
     if (rc)
       return result_TEST_FAILED;
 
@@ -1160,7 +1160,7 @@ static result_t bmfont_monospace_test(const char *resources)
 
   filename = pathf("%s/resources/bmfonts/MS Sans Serif/Regular.png", resources);
 
-  rc = bmfont_create(filename, &bmfont);
+  rc = bmfont_create(NULL, filename, &bmfont);
   if (rc)
   {
     fprintf(stderr, "Error: Failed to load font %s\n", filename);
@@ -1238,7 +1238,7 @@ static result_t bmfont_spacing_test(const char *resources)
 
   filename = pathf("%s/resources/bmfonts/MS Sans Serif/Regular.png", resources);
 
-  rc = bmfont_create(filename, &bmfont);
+  rc = bmfont_create(NULL, filename, &bmfont);
   if (rc)
   {
     fprintf(stderr, "Error: Failed to load font %s\n", filename);
@@ -1320,7 +1320,7 @@ static result_t bmfont_spacing_test(const char *resources)
       goto Failure;
     }
 
-    bitmap_init(&bm, SIZE2D(scr_width, 32), pixelfmt_bgrx8888, rowbytes,
+    bitmap_init(NULL, &bm, SIZE2D(scr_width, 32), pixelfmt_bgrx8888, rowbytes,
                  NULL, pixels);
     bitmap_clear(&bm, black);
     screen_for_bitmap(&scr, &bm);
@@ -1387,7 +1387,7 @@ static result_t bmfont_measure_render_match_test(const char *resources)
 
   filename = pathf("%s/resources/bmfonts/DPT-Digits/Regular.png", resources);
 
-  rc = bmfont_create(filename, &bmfont);
+  rc = bmfont_create(NULL, filename, &bmfont);
   if (rc)
   {
     fprintf(stderr, "Error: Failed to load font %s\n", filename);
@@ -1412,8 +1412,8 @@ static result_t bmfont_measure_render_match_test(const char *resources)
     goto Failure;
   }
 
-  bitmap_init(&bm, SIZE2D(bm_width, bm_height), pixelfmt_bgrx8888, rowbytes,
-               NULL, pixels);
+  bitmap_init(NULL, &bm, SIZE2D(bm_width, bm_height), pixelfmt_bgrx8888,
+              rowbytes, NULL, pixels);
   bitmap_clear(&bm, white);
   screen_for_bitmap(&scr, &bm);
 
@@ -1515,7 +1515,7 @@ static result_t bmfont_caret_test(const char *resources)
 
   filename = pathf("%s/resources/bmfonts/DPT-Digits/Regular.png", resources);
 
-  rc = bmfont_create(filename, &bmfont);
+  rc = bmfont_create(NULL, filename, &bmfont);
   if (rc)
   {
     fprintf(stderr, "Error: Failed to load font %s\n", filename);
@@ -1597,8 +1597,8 @@ static result_t bmfont_caret_test(const char *resources)
   if (pixels == NULL)
     goto Failure;
 
-  bitmap_init(&bm, SIZE2D(bm_width, bm_height), pixelfmt_bgrx8888, rowbytes,
-              NULL, pixels);
+  bitmap_init(NULL, &bm, SIZE2D(bm_width, bm_height), pixelfmt_bgrx8888,
+              rowbytes, NULL, pixels);
   bitmap_clear(&bm, white);
   screen_for_bitmap(&scr, &bm);
 
@@ -1692,7 +1692,7 @@ static result_t load_with_map(const char *map, bmfont_t **bmfont)
   fputs(map, fp);
   fclose(fp);
 
-  return bmfont_create(CMAP_TEST_PNG, bmfont);
+  return bmfont_create(NULL, CMAP_TEST_PNG, bmfont);
 }
 
 /* Checks the cmap: a real sidecar (GrongyUI), the implicit mapping (scratch
@@ -1756,7 +1756,7 @@ static result_t bmfont_cmap_test(const char *resources)
   int         glyph;
 
   filename = pathf("%s/resources/bmfonts/GrongyUI/Regular.png", resources);
-  rc = bmfont_create(filename, &bmfont);
+  rc = bmfont_create(NULL, filename, &bmfont);
   if (rc)
   {
     fprintf(stderr, "Error: Failed to load font %s\n", filename);
@@ -1787,7 +1787,7 @@ static result_t bmfont_cmap_test(const char *resources)
   }
 
   remove(CMAP_TEST_MAP);
-  rc = bmfont_create(CMAP_TEST_PNG, &bmfont);
+  rc = bmfont_create(NULL, CMAP_TEST_PNG, &bmfont);
   if (rc)
   {
     fprintf(stderr, "Error: Failed to load font %s\n", CMAP_TEST_PNG);
@@ -1871,7 +1871,7 @@ static result_t bmfont_metrics_test(const char *resources)
   for (i = 0; i < NELEMS(fonts); i++)
   {
     filename = pathf("%s/resources/%s", resources, fonts[i]);
-    if (bmfont_create(filename, &bmfont))
+    if (bmfont_create(NULL, filename, &bmfont))
     {
       fprintf(stderr, "Error: Failed to load font %s\n", filename);
       return result_TEST_FAILED;
@@ -1919,7 +1919,7 @@ static result_t bmfont_utf8_test(const char *resources)
   int         x, y;
 
   filename = pathf("%s/resources/bmfonts/GrongyUI/Regular.png", resources);
-  if (bmfont_create(filename, &bmfont))
+  if (bmfont_create(NULL, filename, &bmfont))
   {
     fprintf(stderr, "Error: Failed to load font %s\n", filename);
     return result_TEST_FAILED;
@@ -1973,8 +1973,8 @@ static result_t bmfont_utf8_test(const char *resources)
   if (pixels == NULL)
     goto Failure;
 
-  bitmap_init(&bm, SIZE2D(bm_width, bm_height), pixelfmt_bgrx8888, rowbytes,
-              NULL, pixels);
+  bitmap_init(NULL, &bm, SIZE2D(bm_width, bm_height), pixelfmt_bgrx8888,
+              rowbytes, NULL, pixels);
   bitmap_clear(&bm, white);
   screen_for_bitmap(&scr, &bm);
 
@@ -2093,9 +2093,9 @@ static result_t bmfont_round_trip_cb(const char *name,
 
   NOT_USED(opaque);
 
-  ok = bmfont_create(path, &a) == result_OK &&
+  ok = bmfont_create(NULL, path, &a) == result_OK &&
        bmfont_save_png(a, SAVE_TEST_PNG_A) == result_OK &&
-       bmfont_create(SAVE_TEST_PNG_A, &b) == result_OK &&
+       bmfont_create(NULL, SAVE_TEST_PNG_A, &b) == result_OK &&
        fonts_match(a, b) &&
        bmfont_save_png(b, SAVE_TEST_PNG_B) == result_OK &&
        files_match(SAVE_TEST_PNG_A, SAVE_TEST_PNG_B);
@@ -2131,17 +2131,19 @@ static result_t bmfont_edit_test(const char *resources)
     goto Failure;
 
   /* out-of-range blanks */
-  if (bmfont_create_blank(2, 8, 4, 1, &a) != result_BAD_ARG ||
-      bmfont_create_blank(33, 8, 4, 1, &a) != result_BAD_ARG ||
-      bmfont_create_blank(3, 9, 4, 1, &a) != result_BAD_ARG || /* too tall */
-      bmfont_create_blank(8, 8, 7, 1, &a) != result_BAD_ARG || /* ascent */
-      bmfont_create_blank(8, 8, 4, 0, &a) != result_BAD_ARG)
+  if (bmfont_create_blank(NULL, 2, 8, 4, 1, &a) != result_BAD_ARG ||
+      bmfont_create_blank(NULL, 33, 8, 4, 1, &a) != result_BAD_ARG ||
+      /* too tall */
+      bmfont_create_blank(NULL, 3, 9, 4, 1, &a) != result_BAD_ARG ||
+      /* ascent */
+      bmfont_create_blank(NULL, 8, 8, 7, 1, &a) != result_BAD_ARG ||
+      bmfont_create_blank(NULL, 8, 8, 4, 0, &a) != result_BAD_ARG)
   {
     fprintf(stderr, "error: bmfont_create_blank took a bad argument\n");
     goto Failure;
   }
 
-  rc = bmfont_create_blank(8, 10, 7, 2, &a);
+  rc = bmfont_create_blank(NULL, 8, 10, 7, 2, &a);
   if (rc)
     goto Failure;
 
@@ -2186,7 +2188,7 @@ static result_t bmfont_edit_test(const char *resources)
   if (rc)
     goto Failure;
 
-  rc = bmfont_create(SAVE_TEST_PNG_A, &b);
+  rc = bmfont_create(NULL, SAVE_TEST_PNG_A, &b);
   if (rc)
     goto Failure;
 

@@ -37,7 +37,7 @@ static result_t bmfont_enumerate_entry(const char *leaf, void *opaque)
   snprintf(family_dir, sizeof(family_dir), "%s",
            pathf("%s/%s", ctx->dir, leaf));
 
-  rc = bmfontfamily_scan(family_dir, &family);
+  rc = bmfontfamily_scan(NULL, family_dir, &family);
   if (rc == result_NOT_FOUND)
     return result_OK; /* a directory with no fonts in it: not a family */
   if (rc != result_OK)

@@ -233,7 +233,7 @@ result_t ntree_test(const char *resources)
 
   for (i = 0; i < NELEMS(test_data); i++)
   {
-    err = ntree_new(&test_data[i].node);
+    err = ntree_new(NULL, &test_data[i].node);
     if (err)
       goto fatal;
 

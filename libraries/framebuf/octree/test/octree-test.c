@@ -47,7 +47,7 @@ result_t octree_test(const char *resources)
 
   (void) resources;
 
-  rc = bitmap_init(&bm, size, pixelfmt_rgbx8888, W * 4, NULL, pixels);
+  rc = bitmap_init(NULL, &bm, size, pixelfmt_rgbx8888, W * 4, NULL, pixels);
   if (rc != result_OK)
     return result_TEST_FAILED;
 
@@ -55,7 +55,7 @@ result_t octree_test(const char *resources)
   for (i = 0; i < W * H; i++)
     pixels[i] = few[i % 5] | 0xFF000000u;
 
-  rc = octree_make_palette(&bm, 16, palette, &nfound);
+  rc = octree_make_palette(NULL, &bm, 16, palette, &nfound);
   if (rc != result_OK || nfound != 5)
   {
     printf("octree: expected 5 colours, got %d (rc %d)\n", nfound, rc);
@@ -77,7 +77,7 @@ result_t octree_test(const char *resources)
 
   for (i = octree_MIN_COLOURS; i <= octree_MAX_COLOURS; i *= 2)
   {
-    rc = octree_make_palette(&bm, i, palette, &nfound);
+    rc = octree_make_palette(NULL, &bm, i, palette, &nfound);
     if (rc != result_OK || nfound != i)
     {
       printf("octree: N=%d gave %d colours (rc %d)\n", i, nfound, rc);
@@ -93,7 +93,7 @@ result_t octree_test(const char *resources)
     pixels[i] = (seed >> 8) | 0xFF000000u;
   }
 
-  rc = octree_make_palette(&bm, octree_MAX_COLOURS, palette, &nfound);
+  rc = octree_make_palette(NULL, &bm, octree_MAX_COLOURS, palette, &nfound);
   if (rc != result_OK || nfound < octree_MAX_COLOURS - 7) /* folds overshoot */
   {
     printf("octree: noise gave %d colours (rc %d)\n", nfound, rc);
@@ -101,15 +101,15 @@ result_t octree_test(const char *resources)
   }
 
   /* 4. bad arguments */
-  if (octree_make_palette(&bm, 1, palette, &nfound) != result_BAD_ARG ||
-      octree_make_palette(&bm, 257, palette, &nfound) != result_BAD_ARG)
+  if (octree_make_palette(NULL, &bm, 1, palette, &nfound) != result_BAD_ARG ||
+      octree_make_palette(NULL, &bm, 257, palette, &nfound) != result_BAD_ARG)
   {
     printf("octree: bad palette size accepted\n");
     return result_TEST_FAILED;
   }
 
   bm.format = pixelfmt_bgrx8888;
-  if (octree_make_palette(&bm, 16, palette, &nfound) != result_BAD_ARG)
+  if (octree_make_palette(NULL, &bm, 16, palette, &nfound) != result_BAD_ARG)
   {
     printf("octree: bad format accepted\n");
     return result_TEST_FAILED;

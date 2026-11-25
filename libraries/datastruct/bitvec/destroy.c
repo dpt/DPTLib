@@ -15,6 +15,6 @@ void bitvec_destroy(bitvec_t *v)
   if (v == NULL)
     return;
 
-  free(v->vec);
-  free(v);
+  v->alloc->free(v->vec);
+  v->alloc->free(v);
 }

@@ -77,7 +77,7 @@ static result_t cache_test_outer(const cacheconfig_t *config,
 
   printf("test: create-destroy\n");
 
-  err = cache_create(NULL, cachelength, &cache);
+  err = cache_create(NULL, NULL, cachelength, &cache);
   if (err)
     goto failure;
 
@@ -93,7 +93,7 @@ static result_t cache_test_outer(const cacheconfig_t *config,
 
   printf("test: create and run tests\n");
 
-  err = cache_create(config, cachelength, &cache);
+  err = cache_create(NULL, config, cachelength, &cache);
   if (err)
     goto failure;
 
@@ -113,7 +113,7 @@ static result_t cache_test_outer(const cacheconfig_t *config,
     unsigned int   saved_checksum;
     unsigned char *p;
 
-    err = cache_create(config, cachelength, &cache);
+    err = cache_create(NULL, config, cachelength, &cache);
     if (err)
       goto failure;
 

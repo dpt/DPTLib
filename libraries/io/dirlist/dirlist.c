@@ -25,6 +25,7 @@
 
 struct dirlist
 {
+  const alloc_t   *alloc;
   dirlist_entry_t *entries;
   int              count;
   int              cap;
@@ -43,13 +44,14 @@ static result_t dirlist_add_entry(const char *leaf, void *opaque)
   if (leaf[0] == '.')
     return result_OK;
 
-  if (array_grow((void **) &list->entries, sizeof(*list->entries),
-                 list->count, &list->cap, 1, 16))
+  if (array_grow_alloc(list->alloc, (void **) &list->entries,
+                       sizeof(*list->entries), list->count, &list->cap, 1,
+                       16))
     return result_OOM;
 
   e = &list->entries[list->count];
 
-  e->leaf = strdup(leaf);
+  e->leaf = alloc_strdup(list->alloc, leaf);
   if (e->leaf == NULL)
     return result_OOM;
 
@@ -169,7 +171,9 @@ static int dirlist_cmp(const void *a, const void *b)
 
 /* ----------------------------------------------------------------------- */
 
-result_t dirlist_scan(const char *dir, dirlist_t **list)
+result_t dirlist_scan(const alloc_t *alloc,
+                      const char    *dir,
+                      dirlist_t    **list)
 {
   result_t   rc;
   dirlist_t *l;
@@ -177,9 +181,15 @@ result_t dirlist_scan(const char *dir, dirlist_t **list)
   if (dir == NULL || list == NULL)
     return result_NULL_ARG;
 
-  l = calloc(1, sizeof(*l));
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  l = alloc->malloc(sizeof(*l));
   if (l == NULL)
     return result_OOM;
+
+  memset(l, 0, sizeof(*l));
+  l->alloc = alloc;
 
   rc = dirscan_walk(dir, dirlist_add_entry, l);
   if (rc == result_OK)
@@ -209,10 +219,10 @@ void dirlist_destroy(dirlist_t *list)
     return;
 
   for (i = 0; i < list->count; i++)
-    free(list->entries[i].leaf);
+    list->alloc->free(list->entries[i].leaf);
 
-  free(list->entries);
-  free(list);
+  list->alloc->free(list->entries);
+  list->alloc->free(list);
 }
 
 int dirlist_count(const dirlist_t *list)

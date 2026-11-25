@@ -27,6 +27,8 @@
 #include "utils/array.h"
 #include "utils/bytesex.h"
 
+#include "../bitmap/png-alloc.h"
+
 /* -------------------------------------------------------------------------- */
 
 /* Configuration */
@@ -68,6 +70,7 @@ bmfont_cmap_group_t;
 
 struct bmfont
 {
+  const alloc_t  *alloc; /* for every block below, and the font itself */
   png_uint_32     gridwidth, gridheight; /* pixels */
   png_uint_32     charwidth, charheight; /* em size in pixels */
   int             ascent;  /* baseline offset from the top of a glyph cell */
@@ -410,12 +413,13 @@ static result_t extract_advance_widths(bmfont_t   *bmfont,
       currbits = (bitsperchar == 64) ? 0 : currbits << bitsperchar; /* discard used bits */
       ncurrbits -= bitsperchar;
 
-      if (array_grow((void **) &bmfont->adw,
-                                sizeof(*bmfont->adw),
-                                bmfont->adw_used,
-                       (int *) &bmfont->adw_allocated,
-                                1,
-                                8))
+      if (array_grow_alloc(bmfont->alloc,
+                           (void **) &bmfont->adw,
+                           sizeof(*bmfont->adw),
+                           bmfont->adw_used,
+                           (int *) &bmfont->adw_allocated,
+                           1,
+                           8))
         goto oom;
 
       bmfont->adw[bmfont->adw_used++] = count_adw(adwtab, adw_px);
@@ -485,7 +489,7 @@ static result_t extract_glyphs(bmfont_t   *bmfont,
 
   glyphbytes = bmfont->glyphrowbytes * bmfont->charheight *
                (bmfont->totalchars + 1); /* +1 for the box */
-  glyphs = malloc(glyphbytes);
+  glyphs = bmfont->alloc->malloc(glyphbytes);
   if (glyphs == NULL)
     goto oom;
 
@@ -622,12 +626,13 @@ static result_t make_box_glyph(bmfont_t *bmfont)
   assert(bmfont->charwidth >= 3);
   assert(bmfont->adw_used == bmfont->totalchars);
 
-  if (array_grow((void **) &bmfont->adw,
-                            sizeof(*bmfont->adw),
-                            bmfont->adw_used,
-                   (int *) &bmfont->adw_allocated,
-                            1,
-                            8))
+  if (array_grow_alloc(bmfont->alloc,
+                       (void **) &bmfont->adw,
+                       sizeof(*bmfont->adw),
+                       bmfont->adw_used,
+                       (int *) &bmfont->adw_allocated,
+                       1,
+                       8))
     return result_OOM;
 
   /* stored 1px short, like the cells' widths */
@@ -733,12 +738,13 @@ static int parse_cmap_line(char *line, bmfont_cmap_group_t *group)
 static result_t add_cmap_group(bmfont_t                  *bmfont,
                                const bmfont_cmap_group_t *group)
 {
-  if (array_grow((void **) &bmfont->cmap,
-                            sizeof(*bmfont->cmap),
-                            bmfont->cmap_used,
-                            &bmfont->cmap_allocated,
-                            1,
-                            8))
+  if (array_grow_alloc(bmfont->alloc,
+                       (void **) &bmfont->cmap,
+                       sizeof(*bmfont->cmap),
+                       bmfont->cmap_used,
+                       &bmfont->cmap_allocated,
+                       1,
+                       8))
     return result_OOM;
 
   bmfont->cmap[bmfont->cmap_used++] = *group;
@@ -856,14 +862,14 @@ static result_t load_cmap(bmfont_t *bmfont, const char *png)
 
   if (ext)
   {
-    mappath = malloc(len + strlen(ext) + 1);
+    mappath = bmfont->alloc->malloc(len + strlen(ext) + 1);
     if (mappath == NULL)
       return result_OOM;
 
     memcpy(mappath, png, len);
     strcpy(mappath + len, ext);
     fp = fopen(mappath, "r");
-    free(mappath);
+    bmfont->alloc->free(mappath);
   }
 
   if (fp)
@@ -969,7 +975,9 @@ int bmfont_get_codepoints(const bmfont_t *bmfont,
  *
  * It should be (em_width*32) pixels wide, em_width up to 32px. <PIXEL_WIDTH_IDX> pixels represent advance widths.
  */
-result_t bmfont_create(const char *png, bmfont_t **pbmfont)
+result_t bmfont_create(const alloc_t *alloc,
+                       const char    *png,
+                       bmfont_t     **pbmfont)
 {
   result_t       rc;
   bmfont_t      *bmfont       = NULL;
@@ -977,9 +985,12 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
   png_uint_32    pngwidth, pngheight;
   int            pngbitdepth, pngcolourtype;
   png_structp    png_ptr      = NULL;
-  png_infop      info_ptr;
+  png_infop      info_ptr     = NULL;
   png_bytep     *row_pointers = NULL;
   unsigned char *pixels       = NULL;
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   *pbmfont = NULL;
 
@@ -998,7 +1009,9 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
     goto cleanup;
   }
 
-  png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+  png_ptr = png_create_read_struct_2(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL,
+                                     (png_voidp) alloc, png_alloc_malloc,
+                                     png_alloc_free);
   if (png_ptr == NULL)
   {
     rc = result_BAD_ARG;
@@ -1044,11 +1057,11 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
 
     pngrowbytes = png_get_rowbytes(png_ptr, info_ptr);
 
-    pixels = malloc(pngrowbytes * pngheight);
+    pixels = alloc->malloc(pngrowbytes * pngheight);
     if (pixels == NULL)
       goto oom;
 
-    row_pointers = malloc(pngheight * sizeof(*row_pointers));
+    row_pointers = alloc->malloc(pngheight * sizeof(*row_pointers));
     if (row_pointers == NULL)
       goto oom;
 
@@ -1081,13 +1094,15 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
       goto cleanup;
     }
 
-    bmfont = calloc(1, sizeof(*bmfont));
+    bmfont = alloc->malloc(sizeof(*bmfont));
     if (bmfont == NULL)
     {
       rc = result_OOM;
       goto cleanup;
     }
+    memset(bmfont, 0, sizeof(*bmfont));
 
+    bmfont->alloc         = alloc;
     bmfont->gridwidth     = gridwidth;      /* width of glyphs in grid */
     bmfont->gridheight    = gridheight;     /* height of glyphs in grid */
     bmfont->charwidth     = gridwidth;      /* currently same as gridwidth */
@@ -1137,12 +1152,12 @@ result_t bmfont_create(const char *png, bmfont_t **pbmfont)
   rc = result_OK;
 
 cleanup:
-  free(row_pointers);
-  free(pixels);
+  alloc->free(row_pointers);
+  alloc->free(pixels);
   if (rc)
     bmfont_destroy(bmfont);
   if (png_ptr)
-    png_destroy_read_struct(&png_ptr, NULL, NULL);
+    png_destroy_read_struct(&png_ptr, &info_ptr, NULL);
   if (fp)
     fclose(fp);
   return rc;
@@ -1157,10 +1172,10 @@ void bmfont_destroy(bmfont_t *bmfont)
   if (bmfont == NULL)
     return;
 
-  free(bmfont->cmap);
-  free(bmfont->adw);
-  free(bmfont->glyphs);
-  free(bmfont);
+  bmfont->alloc->free(bmfont->cmap);
+  bmfont->alloc->free(bmfont->adw);
+  bmfont->alloc->free(bmfont->glyphs);
+  bmfont->alloc->free(bmfont);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1259,15 +1274,20 @@ static void refresh_maxadw(bmfont_t *bmfont)
       bmfont->maxadw = bmfont->adw[i];
 }
 
-result_t bmfont_create_blank(int        width,
-                             int        height,
-                             int        ascent,
-                             int        rows,
-                             bmfont_t **pbmfont)
+result_t bmfont_create_blank(const alloc_t *alloc,
+                             int            width,
+                             int            height,
+                             int            ascent,
+                             int            rows,
+                             bmfont_t     **pbmfont)
 {
   result_t  rc;
   bmfont_t *bmfont;
+  size_t    glyphsize;
   int       i;
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   *pbmfont = NULL;
 
@@ -1275,10 +1295,12 @@ result_t bmfont_create_blank(int        width,
       ascent < 1 || ascent > height - 2 || rows < 1)
     return result_BAD_ARG;
 
-  bmfont = calloc(1, sizeof(*bmfont));
+  bmfont = alloc->malloc(sizeof(*bmfont));
   if (bmfont == NULL)
     return result_OOM;
+  memset(bmfont, 0, sizeof(*bmfont));
 
+  bmfont->alloc         = alloc;
   bmfont->gridwidth     = (png_uint_32) width;
   bmfont->gridheight    = (png_uint_32) height + 1;
   bmfont->charwidth     = (png_uint_32) width;
@@ -1290,17 +1312,20 @@ result_t bmfont_create_blank(int        width,
                           width <= 16 ? 2 :
                                         4;
 
-  bmfont->glyphs = calloc((size_t) bmfont->totalchars + 1,
-                          glyph_bytes(bmfont)); /* +1 for the box */
+  /* +1 for the box */
+  glyphsize      = ((size_t) bmfont->totalchars + 1) * glyph_bytes(bmfont);
+  bmfont->glyphs = alloc->malloc(glyphsize);
   if (bmfont->glyphs == NULL)
     goto oom;
+  memset(bmfont->glyphs, 0, glyphsize);
 
-  if (array_grow((void **) &bmfont->adw,
-                            sizeof(*bmfont->adw),
-                            0,
-                            &bmfont->adw_allocated,
-                            bmfont->totalchars + 1,
-                            8))
+  if (array_grow_alloc(alloc,
+                       (void **) &bmfont->adw,
+                       sizeof(*bmfont->adw),
+                       0,
+                       &bmfont->adw_allocated,
+                       bmfont->totalchars + 1,
+                       8))
     goto oom;
 
   for (i = 0; i < bmfont->totalchars; i++)
@@ -1413,20 +1438,22 @@ result_t bmfont_add_rows(bmfont_t *bmfont, int rows)
 
   newtotal = bmfont->totalchars + CHARS_PER_ROW * rows;
 
-  glyphs = realloc(bmfont->glyphs,
-                   ((size_t) newtotal + 1) * glyph_bytes(bmfont));
+  glyphs = bmfont->alloc->realloc(bmfont->glyphs,
+                                  ((size_t) newtotal + 1) *
+                                  glyph_bytes(bmfont));
   if (glyphs == NULL)
     return result_OOM;
 
   bmfont->glyphs = glyphs;
 
   /* one more than the new cells, for the box */
-  if (array_grow((void **) &bmfont->adw,
-                            sizeof(*bmfont->adw),
-                            bmfont->adw_used,
-                            &bmfont->adw_allocated,
-                            newtotal + 1 - bmfont->adw_used,
-                            8))
+  if (array_grow_alloc(bmfont->alloc,
+                       (void **) &bmfont->adw,
+                       sizeof(*bmfont->adw),
+                       bmfont->adw_used,
+                       &bmfont->adw_allocated,
+                       newtotal + 1 - bmfont->adw_used,
+                       8))
     return result_OOM;
 
   /* the new cells start where the box was */
@@ -1557,7 +1584,7 @@ result_t bmfont_save_png(const bmfont_t *bmfont, const char *png)
   height   = (png_uint_32) nrows * bmfont->gridheight;
   rowbytes = (width * 2 + 7) / 8;
 
-  row = malloc(rowbytes);
+  row = bmfont->alloc->malloc(rowbytes);
   if (row == NULL)
     return result_OOM;
 
@@ -1568,7 +1595,9 @@ result_t bmfont_save_png(const bmfont_t *bmfont, const char *png)
     goto cleanup;
   }
 
-  png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+  png_ptr = png_create_write_struct_2(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL,
+                                      (png_voidp) bmfont->alloc,
+                                      png_alloc_malloc, png_alloc_free);
   if (png_ptr == NULL)
   {
     rc = result_OOM;
@@ -1611,7 +1640,7 @@ cleanup:
     png_destroy_write_struct(&png_ptr, info_ptr ? &info_ptr : NULL);
   if (fp && fclose(fp) != 0 && rc == result_OK)
     rc = result_BAD_ARG; /* the write did not reach the disc */
-  free(row);
+  bmfont->alloc->free(row);
   return rc;
 }
 

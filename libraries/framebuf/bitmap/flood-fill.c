@@ -24,10 +24,11 @@ static pixelfmt_any32_t *flood_row(const bitmap_t *bm, int y)
                                (size_t) y * bm->rowbytes);
 }
 
-result_t bitmap_flood_fill(bitmap_t *bm,
-                           point_t   seed,
-                           colour_t  colour,
-                           box_t    *dirty)
+result_t bitmap_flood_fill(const alloc_t *alloc,
+                           bitmap_t      *bm,
+                           point_t        seed,
+                           colour_t       colour,
+                           box_t         *dirty)
 {
   result_t          rc;
   box_t             extent = BOX_INIT;
@@ -39,6 +40,9 @@ result_t bitmap_flood_fill(bitmap_t *bm,
   int               x, x0, x1, y, dy, in_span;
 
   assert(bm);
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   if (pixelfmt_is_rle(bm->format) || pixelfmt_log2bpp(bm->format) != 5)
     return result_NOT_SUPPORTED;
@@ -58,7 +62,8 @@ result_t bitmap_flood_fill(bitmap_t *bm,
   stack     = NULL;
   n         = 0;
   allocated = 0;
-  if (array_grow((void **) &stack, sizeof(*stack), n, &allocated, 1, 256))
+  if (array_grow_alloc(alloc, (void **) &stack, sizeof(*stack), n, &allocated,
+                       1, 256))
   {
     rc = result_OOM;
     goto exit;
@@ -113,8 +118,8 @@ result_t bitmap_flood_fill(bitmap_t *bm,
 
         in_span = 1;
 
-        if (array_grow((void **) &stack, sizeof(*stack), n, &allocated, 1,
-                       256))
+        if (array_grow_alloc(alloc, (void **) &stack, sizeof(*stack), n,
+                             &allocated, 1, 256))
         {
           rc = result_OOM;
           goto done;
@@ -126,7 +131,7 @@ result_t bitmap_flood_fill(bitmap_t *bm,
   }
 
 done:
-  free(stack);
+  alloc->free(stack);
 
 exit:
   if (dirty)

@@ -12,11 +12,16 @@
 
 #include "impl.h"
 
-T hlist_push(T list, void *x)
+T hlist_push(const alloc_t *alloc, T list, void *x)
 {
   T p;
 
-  p = malloc(sizeof(*p));
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  p = alloc->malloc(sizeof(*p));
+  if (p == NULL)
+    return NULL; /* the caller still holds 'list' */
 
   p->first = x;
   p->rest = list;

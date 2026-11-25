@@ -68,14 +68,14 @@ static int into_matches(const bitmap_t         *src,
   ref = NULL;
   out = NULL;
   same = 0;
-  if (dither_bitmap(src, opts, &ref) == result_OK &&
-      dither_bitmap(src, opts, &out) == result_OK)
+  if (dither_bitmap(NULL, src, opts, &ref) == result_OK &&
+      dither_bitmap(NULL, src, opts, &out) == result_OK)
   {
     palette_size = pixelfmt_paletted_nentries(out->format) *
                    sizeof(*out->palette);
     memset(out->base, 0xFF, (size_t) out->rowbytes * H);
     memset(out->palette, 0x55, palette_size);
-    same = dither_bitmap_into(src, opts, scratch, out) == result_OK &&
+    same = dither_bitmap_into(NULL, src, opts, scratch, out) == result_OK &&
            same_pixels(ref, out) &&
            memcmp(ref->palette, out->palette, palette_size) == 0;
   }
@@ -135,7 +135,7 @@ result_t dither_test(const char *resources)
     for (x = 0; x < W; x++)
       pixels[y * W + x] = PIXELFMT_MAKE_RGBA8888(x * 4, x * 4, x * 4, 255);
 
-  rc = bitmap_init(&src, size, pixelfmt_rgbx8888, W * 4, NULL, pixels);
+  rc = bitmap_init(NULL, &src, size, pixelfmt_rgbx8888, W * 4, NULL, pixels);
   if (rc != result_OK)
     return result_TEST_FAILED;
 
@@ -152,7 +152,7 @@ result_t dither_test(const char *resources)
   for (i = 0; i < (int) (sizeof(formats) / sizeof(formats[0])); i++)
   {
     opts.ncolours = formats[i].ncolours;
-    rc = dither_bitmap(&src, &opts, &out);
+    rc = dither_bitmap(NULL, &src, &opts, &out);
     if (rc != result_OK || out->format != formats[i].fmt)
     {
       printf("dither: %d colours gave format %d (rc %d)\n",
@@ -191,7 +191,7 @@ result_t dither_test(const char *resources)
 
     opts.method     = (dither_method_t) method;
     opts.serpentine = i & 1;
-    rc = dither_bitmap(&src, &opts, &out);
+    rc = dither_bitmap(NULL, &src, &opts, &out);
     if (rc != result_OK)
       return result_TEST_FAILED;
 
@@ -218,12 +218,12 @@ result_t dither_test(const char *resources)
   /* 3. serpentine differs from raster order */
   opts.method     = dither_FLOYD_STEINBERG;
   opts.serpentine = 1;
-  rc = dither_bitmap(&src, &opts, &ref);
+  rc = dither_bitmap(NULL, &src, &opts, &ref);
   if (rc != result_OK)
     return result_TEST_FAILED;
 
   opts.serpentine = 0;
-  rc = dither_bitmap(&src, &opts, &out);
+  rc = dither_bitmap(NULL, &src, &opts, &out);
   if (rc != result_OK || same_pixels(ref, out))
   {
     printf("dither: serpentine made no difference\n");
@@ -237,13 +237,13 @@ result_t dither_test(const char *resources)
   /* 4. strength 0 matches no dithering */
   opts.method   = dither_NONE;
   opts.strength = 100;
-  rc = dither_bitmap(&src, &opts, &ref);
+  rc = dither_bitmap(NULL, &src, &opts, &ref);
   if (rc != result_OK)
     return result_TEST_FAILED;
 
   opts.method   = dither_STUCKI;
   opts.strength = 0;
-  rc = dither_bitmap(&src, &opts, &out);
+  rc = dither_bitmap(NULL, &src, &opts, &out);
   if (rc != result_OK || !same_pixels(ref, out))
   {
     printf("dither: strength 0 differs from none\n");
@@ -267,7 +267,7 @@ result_t dither_test(const char *resources)
   {
     opts.method = linear_methods[i / 2];
     opts.linear = i & 1;
-    rc = dither_bitmap(&src, &opts, &out);
+    rc = dither_bitmap(NULL, &src, &opts, &out);
     if (rc != result_OK)
       return result_TEST_FAILED;
 
@@ -297,7 +297,7 @@ result_t dither_test(const char *resources)
   opts.ncolours = 256;
 
   opts.method = dither_NONE;
-  rc = dither_bitmap(&src, &opts, &ref);
+  rc = dither_bitmap(NULL, &src, &opts, &ref);
   if (rc != result_OK)
     return result_TEST_FAILED;
   colour_get_rgb(&ref->palette[get_index(ref, 0, 0)], &r, &g, &b);
@@ -306,7 +306,7 @@ result_t dither_test(const char *resources)
   for (i = 0; i < 2; i++)
   {
     opts.method = i ? dither_RIEMERSMA : dither_FLOYD_STEINBERG;
-    rc = dither_bitmap(&src, &opts, &out);
+    rc = dither_bitmap(NULL, &src, &opts, &out);
     if (rc != result_OK)
       return result_TEST_FAILED;
 
@@ -339,7 +339,7 @@ result_t dither_test(const char *resources)
       {
         printf("dither: into differs for method %d, %d colours\n",
                method, opts.ncolours);
-        dither_scratch_free(&scratch);
+        dither_scratch_free(NULL, &scratch);
         return result_TEST_FAILED;
       }
     }
@@ -350,32 +350,32 @@ result_t dither_test(const char *resources)
   if (!into_matches(&src, &opts, &scratch) || scratch.err != kept)
   {
     printf("dither: into did not keep its scratch\n");
-    dither_scratch_free(&scratch);
+    dither_scratch_free(NULL, &scratch);
     return result_TEST_FAILED;
   }
 
   /* an unsuitable bitmap is refused and left alone */
   opts.method   = dither_FLOYD_STEINBERG;
   opts.ncolours = 2;
-  rc = dither_bitmap(&src, &opts, &out);
+  rc = dither_bitmap(NULL, &src, &opts, &out);
   if (rc != result_OK)
   {
-    dither_scratch_free(&scratch);
+    dither_scratch_free(NULL, &scratch);
     return result_TEST_FAILED;
   }
   memset(out->base, 0xAA, (size_t) out->rowbytes * H);
   narrow = src;
   narrow.size.w = W - 8; /* needs the same rowbytes at 1bpp */
-  rc = dither_bitmap_into(&narrow, &opts, &scratch, out);
+  rc = dither_bitmap_into(NULL, &narrow, &opts, &scratch, out);
   if (rc == result_BAD_ARG)
   {
     opts.ncolours = 256;
-    rc = dither_bitmap_into(&src, &opts, &scratch, out);
+    rc = dither_bitmap_into(NULL, &src, &opts, &scratch, out);
     opts.ncolours = 2;
   }
   x = ((unsigned char *) out->base)[0];
   free_bitmap(out);
-  dither_scratch_free(&scratch);
+  dither_scratch_free(NULL, &scratch);
   if (rc != result_BAD_ARG || x != 0xAA)
   {
     printf("dither: into accepted an unsuitable bitmap\n");
@@ -389,21 +389,21 @@ result_t dither_test(const char *resources)
 
   /* 8. bad arguments */
   opts.strength = 101;
-  if (dither_bitmap(&src, &opts, &out) != result_BAD_ARG)
+  if (dither_bitmap(NULL, &src, &opts, &out) != result_BAD_ARG)
   {
     printf("dither: bad strength accepted\n");
     return result_TEST_FAILED;
   }
   opts.strength = 100;
   opts.ncolours = 0;
-  if (dither_bitmap(&src, &opts, &out) != result_BAD_ARG)
+  if (dither_bitmap(NULL, &src, &opts, &out) != result_BAD_ARG)
   {
     printf("dither: bad palette size accepted\n");
     return result_TEST_FAILED;
   }
   opts.ncolours = 2;
   src.format = pixelfmt_bgrx8888;
-  if (dither_bitmap(&src, &opts, &out) != result_BAD_ARG)
+  if (dither_bitmap(NULL, &src, &opts, &out) != result_BAD_ARG)
   {
     printf("dither: bad format accepted\n");
     return result_TEST_FAILED;

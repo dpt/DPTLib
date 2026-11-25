@@ -34,7 +34,7 @@ static result_t make(bitmap_t    *bm,
 
   memset(pixels, 0, STRIDE * H * sizeof(*pixels));
 
-  return bitmap_init(bm, size, fmt, STRIDE * 4, NULL, pixels);
+  return bitmap_init(NULL, bm, size, fmt, STRIDE * 4, NULL, pixels);
 }
 
 static void fill(unsigned int *pixels, unsigned int px)
@@ -68,7 +68,7 @@ static result_t test_blur(void)
 
     fill(a, PIXELFMT_MAKE_RGBA8888(200, 100, 50, 77));
 
-    if (effects_blur_apply(&src, &dst, effects_blur_BOX, amounts[i]) !=
+    if (effects_blur_apply(NULL, &src, &dst, effects_blur_BOX, amounts[i]) !=
         result_OK)
       FAIL("blur failed");
 
@@ -90,7 +90,8 @@ static result_t test_blur(void)
   fill(a, PIXELFMT_MAKE_RGBA8888(0, 0, 0, 255));
   a[4 * STRIDE + 6] = PIXELFMT_MAKE_RGBA8888(255, 255, 255, 255);
 
-  if (effects_blur_apply(&src, &dst, effects_blur_GAUSSIAN, 3) != result_OK)
+  if (effects_blur_apply(NULL, &src, &dst, effects_blur_GAUSSIAN, 3) !=
+      result_OK)
     FAIL("blur failed");
 
   if (channel(b[4 * STRIDE + 6], 0) >= 255 ||
@@ -104,8 +105,8 @@ static result_t test_blur(void)
     FAIL("bad bitmap");
   memcpy(c, a, sizeof(a));
 
-  if (effects_blur_apply(&inplace, &inplace, effects_blur_GAUSSIAN, 3) !=
-      result_OK)
+  if (effects_blur_apply(NULL, &inplace, &inplace, effects_blur_GAUSSIAN,
+                         3) != result_OK)
     FAIL("in-place blur failed");
 
   for (y = 0; y < H; y++)
@@ -129,7 +130,7 @@ static result_t test_sharpen(void)
 
   fill(a, PIXELFMT_MAKE_BGRA8888(90, 120, 150, 31));
 
-  if (effects_sharpen_apply(&src, &dst) != result_OK)
+  if (effects_sharpen_apply(NULL, &src, &dst) != result_OK)
     FAIL("sharpen failed");
 
   for (y = 0; y < H; y++)
@@ -302,7 +303,7 @@ static result_t test_tonemap(void)
       make(&dst, b, pixelfmt_rgba8888) != result_OK)
     FAIL("bad bitmap");
 
-  map = tonemap_create();
+  map = tonemap_create(NULL);
   if (map == NULL)
     FAIL("no tonemap");
 
@@ -355,7 +356,8 @@ static result_t test_bad_args(void)
   src.format = pixelfmt_p8;
   dst.size.w++;
   dst.format = pixelfmt_p8;
-  if (effects_blur_apply(&src, &dst, effects_blur_BOX, 3) != result_BAD_ARG)
+  if (effects_blur_apply(NULL, &src, &dst, effects_blur_BOX, 3) !=
+      result_BAD_ARG)
     FAIL("paletted bitmap accepted");
 
   return result_TEST_PASSED;

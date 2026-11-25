@@ -31,7 +31,7 @@ static result_t test_blank_line(void)
   const char *blank;
   int         length;
 
-  err = txtfmt_create("a\n\nb", &tx);
+  err = txtfmt_create(NULL, "a\n\nb", &tx);
   if (err)
     return err;
 
@@ -75,7 +75,7 @@ result_t txtfmt_test(const char *resources)
 
   for (i = 0; i < ndata; i++)
   {
-    err = txtfmt_create(data[i], &tx[i]);
+    err = txtfmt_create(NULL, data[i], &tx[i]);
     if (err)
       goto Failure;
   }

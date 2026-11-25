@@ -23,6 +23,8 @@
 
 #include <SDL3/SDL.h>
 
+#include "utils/alloc.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -62,12 +64,15 @@ crt_params_t;
  * Under Emscripten the window must already be an OpenGL one, as creating an
  * SDL_Renderer on it makes it.
  *
+ * \param[in] alloc  Allocator for the effect, or NULL. The effect keeps it.
  * \param[in] window Window to claim.
  * \param[in] format Layout of the pixels which crt_render will be given.
  *
  * \return The new effect, or NULL on failure, which is reported on stderr.
  */
-crt_t *crt_create(SDL_Window *window, crt_format_t format);
+crt_t *crt_create(const alloc_t *alloc,
+                  SDL_Window    *window,
+                  crt_format_t   format);
 
 /**
  * Upload pixels and present one frame through the shader.

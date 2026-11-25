@@ -504,7 +504,7 @@ static int rle__format_ok(pixelfmt_t fmt, int *has_alpha)
 
 /* ----------------------------------------------------------------------- */
 
-result_t bitmap_compress(bitmap_t *bm)
+result_t bitmap_compress(const alloc_t *alloc, bitmap_t *bm)
 {
   result_t       rc;
   pixelfmt_t     base;
@@ -522,6 +522,9 @@ result_t bitmap_compress(bitmap_t *bm)
   int            y;
 
   assert(bm);
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   if (pixelfmt_is_rle(bm->format))
     return result_OK; /* already compressed */
@@ -547,7 +550,7 @@ result_t bitmap_compress(bitmap_t *bm)
            + 1;
   worst = bitmap__RLE_HEADER_SIZE + rowworst * (size_t) h;
 
-  blob = malloc(worst);
+  blob = alloc->malloc(worst);
   if (blob == NULL)
     return result_OOM;
 
@@ -562,7 +565,7 @@ result_t bitmap_compress(bitmap_t *bm)
                                 &used);
     if (rc != result_OK)
     {
-      free(blob);
+      alloc->free(blob);
       return rc;
     }
 
@@ -581,11 +584,11 @@ result_t bitmap_compress(bitmap_t *bm)
   bitmap__rle_put32(blob + 0, (uint32_t) bm->rowbytes);
   bitmap__rle_put32(blob + 4, data_len);
 
-  shrunk = realloc(blob, bitmap__RLE_HEADER_SIZE + data_len);
+  shrunk = alloc->realloc(blob, bitmap__RLE_HEADER_SIZE + data_len);
   if (shrunk != NULL)
     blob = shrunk;
 
-  free(bm->base);
+  alloc->free(bm->base);
   bm->base     = blob;
   bm->format   = base | pixelfmt_RLE_FLAG;
   bm->rowbytes = 0;
@@ -596,7 +599,7 @@ result_t bitmap_compress(bitmap_t *bm)
 
 /* ----------------------------------------------------------------------- */
 
-result_t bitmap_decompress(bitmap_t *bm)
+result_t bitmap_decompress(const alloc_t *alloc, bitmap_t *bm)
 {
   pixelfmt_t     base;
   int            log2bpp;
@@ -609,6 +612,9 @@ result_t bitmap_decompress(bitmap_t *bm)
   int            y;
 
   assert(bm);
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   if (!pixelfmt_is_rle(bm->format))
     return result_OK; /* not compressed */
@@ -623,7 +629,7 @@ result_t bitmap_decompress(bitmap_t *bm)
   p        = blob + bitmap__RLE_HEADER_SIZE;
   end      = p + bitmap__rle_get32(blob + 4);
 
-  raw = malloc((size_t) rowbytes * bm->size.h);
+  raw = alloc->malloc((size_t) rowbytes * bm->size.h);
   if (raw == NULL)
     return result_OOM;
 
@@ -634,7 +640,7 @@ result_t bitmap_decompress(bitmap_t *bm)
     dstrow += rowbytes;
   }
 
-  free(bm->base);
+  alloc->free(bm->base);
   bm->base     = raw;
   bm->format   = base;
   bm->rowbytes = (int) rowbytes;

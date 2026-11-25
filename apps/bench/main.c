@@ -189,7 +189,7 @@ static void bench_blit(unsigned int *src, unsigned int *dst)
   for (i = 0; i < (int) NELEMS(scrs); i++)
     for (j = 0; j < (int) NELEMS(srcs); j++)
     {
-      bitmap_init(&bm, SIZE2D(W, H), srcs[j].fmt, W * 4, NULL, src);
+      bitmap_init(NULL, &bm, SIZE2D(W, H), srcs[j].fmt, W * 4, NULL, src);
       screen_init(&scr, SIZE2D(W, H), scrs[i].fmt, W * (int) scrs[i].bpp,
                   NULL, dst);
 
@@ -259,8 +259,8 @@ static void bench_resize(const bitmap_t *src)
       size.w = sizes[i].w;
       size.h = sizes[i].h;
       start  = clock();
-      rc     = bitmap_resize(src, size, methods[m].method, methods[m].linear,
-                             &out);
+      rc     = bitmap_resize(NULL, src, size, methods[m].method,
+                             methods[m].linear, &out);
       if (rc != result_OK)
       {
         printf("resize failed\n");
@@ -311,7 +311,7 @@ static void bench_dither(void)
 
   size.w = DW;
   size.h = DH;
-  bitmap_init(&src, size, pixelfmt_rgbx8888, DW * 4, NULL, px);
+  bitmap_init(NULL, &src, size, pixelfmt_rgbx8888, DW * 4, NULL, px);
 
   for (c = 0; c < (int) NELEMS(counts); c++)
     for (lin = 0; lin < 2; lin++)
@@ -325,7 +325,7 @@ static void bench_dither(void)
         opts.linear     = lin;
 
         start = clock();
-        rc    = dither_bitmap(&src, &opts, &out);
+        rc    = dither_bitmap(NULL, &src, &opts, &out);
         if (rc != result_OK)
         {
           printf("dither failed\n");
@@ -399,8 +399,8 @@ int main(void)
 
   size.w = W;
   size.h = H;
-  bitmap_init(&bsrc, size, pixelfmt_bgra8888, W * 4, NULL, src2);
-  bitmap_init(&bdst, size, pixelfmt_bgra8888, W * 4, NULL, dst);
+  bitmap_init(NULL, &bsrc, size, pixelfmt_bgra8888, W * 4, NULL, src2);
+  bitmap_init(NULL, &bdst, size, pixelfmt_bgra8888, W * 4, NULL, dst);
   bench_composite(&bsrc, &bdst, src1);
 
   bench_resize(&bsrc);

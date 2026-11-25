@@ -31,6 +31,7 @@ extern "C"
 #endif
 
 #include "base/result.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -109,11 +110,13 @@ nodegraph_class_t;
 /**
  * Create an empty node graph.
  *
+ * \param[in]  alloc     Allocator for the graph, or NULL. The graph keeps
+ *                       it.
  * \param[out] new_graph Created graph.
  *
  * \return Error indication.
  */
-result_t nodegraph_create(T **new_graph);
+result_t nodegraph_create(const alloc_t *alloc, T **new_graph);
 
 /**
  * Destroy a node graph, calling each node's destroy hook.

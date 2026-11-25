@@ -18,6 +18,8 @@ hash_node_t;
 
 struct hash
 {
+  const alloc_t         *alloc;
+
   hash_node_t          **bins;
   unsigned int           nbins;
 

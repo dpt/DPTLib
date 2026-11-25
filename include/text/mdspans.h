@@ -24,6 +24,7 @@ extern "C"
 #endif
 
 #include "base/result.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -54,21 +55,24 @@ mdspan_t;
  * Spans never overlap and are sorted by start. Spans beyond "maxspans" are
  * dropped; their text is still stripped of its markers.
  *
+ * \param[in]  alloc    Allocator for the outputs, or NULL for the default.
  * \param[in]  md       Markdown source.
  * \param[in]  mdlen    Length of "md" in bytes.
  * \param[in]  maxspans Most spans to record.
- * \param[out] text     Newly malloc'd, NUL-terminated plain text. Free it.
- * \param[out] spans    Newly malloc'd array of spans. Free it.
+ * \param[out] text     Newly allocated, NUL-terminated plain text. Free it
+ *                      with "alloc".
+ * \param[out] spans    Newly allocated array of spans. Free it with "alloc".
  * \param[out] nspans   Number of spans recorded.
  *
  * \return result_OK or result_OOM, when all outputs are zeroed.
  */
-result_t mdspans_parse(const char *md,
-                       int         mdlen,
-                       int         maxspans,
-                       char      **text,
-                       mdspan_t  **spans,
-                       int        *nspans);
+result_t mdspans_parse(const alloc_t *alloc,
+                       const char    *md,
+                       int            mdlen,
+                       int            maxspans,
+                       char         **text,
+                       mdspan_t     **spans,
+                       int           *nspans);
 
 /* ----------------------------------------------------------------------- */
 

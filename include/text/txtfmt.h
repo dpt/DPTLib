@@ -18,6 +18,7 @@ extern "C"
 #endif
 
 #include "base/result.h"
+#include "utils/alloc.h"
 
 /**
  * A txtfmt.
@@ -31,12 +32,13 @@ typedef struct txtfmt txtfmt_t;
  *
  * The string is initially unwrapped.
  *
- * \param[in]  s  String to format. Copied in.
- * \param[out] tx New txtfmt.
+ * \param[in]  alloc Allocator for the txtfmt, or NULL. The txtfmt keeps it.
+ * \param[in]  s     String to format. Copied in.
+ * \param[out] tx    New txtfmt.
  *
  * \return result_OK or result_OOM.
  */
-result_t txtfmt_create(const char *s, txtfmt_t **tx);
+result_t txtfmt_create(const alloc_t *alloc, const char *s, txtfmt_t **tx);
 
 /**
  * Destroy an existing txtfmt.

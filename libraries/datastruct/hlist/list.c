@@ -12,11 +12,14 @@
 
 #include "impl.h"
 
-T hlist_list(void *x, ...)
+T hlist_list(const alloc_t *alloc, void *x, ...)
 {
   va_list ap;
   T       list;
   T      *p;
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   p = &list;
 
@@ -24,11 +27,11 @@ T hlist_list(void *x, ...)
 
   for (; x; x = va_arg(ap, void *))
   {
-    *p = malloc(sizeof(**p));
+    *p = alloc->malloc(sizeof(**p));
     if (*p == NULL)
     {
       va_end(ap);
-      hlist_free(&list); /* *p is NULL, so this ends the partial list */
+      hlist_free(alloc, &list); /* *p is NULL, so this ends the partial list */
       return NULL;
     }
 

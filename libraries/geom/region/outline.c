@@ -11,8 +11,9 @@
 
 typedef struct
 {
-  box_t *spans;
-  int    n, cap;
+  const alloc_t *alloc;
+  box_t         *spans;
+  int            n, cap;
 }
 spanlist_t;
 
@@ -21,7 +22,8 @@ static result_t spans_add(spanlist_t *l, int x0, int x1, int y)
   if (x0 >= x1)
     return result_OK;
 
-  if (array_grow((void **) &l->spans, sizeof(*l->spans), l->n, &l->cap, 1, 64))
+  if (array_grow_alloc(l->alloc, (void **) &l->spans, sizeof(*l->spans), l->n,
+                       &l->cap, 1, 64))
     return result_OOM;
 
   l->spans[l->n++] = (box_t) { x0, y, x1, y + 1 };
@@ -57,12 +59,17 @@ static result_t add_uncovered(spanlist_t *l,
   return spans_add(l, a, b, y);
 }
 
-result_t region_outline(const region_t *region, box_t **spans, int *n)
+result_t region_outline(const alloc_t  *alloc,
+                        const region_t *region,
+                        box_t         **spans,
+                        int            *n)
 {
   result_t   rc;
-  spanlist_t l = { NULL, 0, 0 };
+  spanlist_t l = { NULL, NULL, 0, 0 };
   const int *runs, *up, *down;
   int        y, i, nr, nu, nd;
+
+  l.alloc = alloc != NULL ? alloc : &alloc_default;
 
   *spans = NULL;
   *n     = 0;
@@ -93,7 +100,7 @@ result_t region_outline(const region_t *region, box_t **spans, int *n)
 
   if (rc != result_OK)
   {
-    free(l.spans);
+    l.alloc->free(l.spans);
     return rc;
   }
 

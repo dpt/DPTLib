@@ -12,6 +12,7 @@
 
 struct crt
 {
+  const alloc_t           *alloc;
   crt_format_t             format;
   SDL_GPUDevice           *gpu;
   SDL_GPUTexture          *texture;  /* holds the uploaded pixels */
@@ -201,7 +202,9 @@ static SDL_GPUShader *crt_shader(SDL_GPUDevice     *gpu,
   return SDL_CreateGPUShader(gpu, &info);
 }
 
-crt_t *crt_create(SDL_Window *window, crt_format_t format)
+crt_t *crt_create(const alloc_t *alloc,
+                  SDL_Window    *window,
+                  crt_format_t   format)
 {
   crt_t                            *crt;
   SDL_GPUSamplerCreateInfo          sampler_info;
@@ -210,17 +213,22 @@ crt_t *crt_create(SDL_Window *window, crt_format_t format)
   SDL_GPUColorTargetDescription     target;
   SDL_GPUGraphicsPipelineCreateInfo pipeline_info;
 
-  crt = calloc(1, sizeof(*crt));
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  crt = alloc->malloc(sizeof(*crt));
   if (crt == NULL)
     return NULL;
 
+  memset(crt, 0, sizeof(*crt));
+  crt->alloc  = alloc;
   crt->format = format;
 
   crt->gpu = SDL_CreateGPUDevice(crt_SHADER_FORMAT, false, NULL);
   if (crt->gpu == NULL)
   {
     fprintf(stderr, "Error: SDL_CreateGPUDevice: %s\n", SDL_GetError());
-    free(crt);
+    alloc->free(crt);
     return NULL;
   }
 
@@ -228,7 +236,7 @@ crt_t *crt_create(SDL_Window *window, crt_format_t format)
   {
     fprintf(stderr, "Error: SDL_ClaimWindowForGPUDevice: %s\n", SDL_GetError());
     SDL_DestroyGPUDevice(crt->gpu);
-    free(crt);
+    alloc->free(crt);
     return NULL;
   }
 
@@ -442,5 +450,5 @@ void crt_destroy(crt_t *crt, SDL_Window *window)
   SDL_ReleaseGPUTexture(crt->gpu, crt->texture);
   SDL_ReleaseWindowFromGPUDevice(crt->gpu, window);
   SDL_DestroyGPUDevice(crt->gpu);
-  free(crt);
+  crt->alloc->free(crt);
 }

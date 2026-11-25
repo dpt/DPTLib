@@ -72,7 +72,7 @@ result_t bitfifo_test(const char *resources)
 
   NOT_USED(resources);
 
-  fifo = bitfifo_create(MAXSIZE);
+  fifo = bitfifo_create(NULL, MAXSIZE);
   if (fifo == NULL)
     return result_OOM;
   dump(fifo);

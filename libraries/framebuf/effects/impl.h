@@ -8,6 +8,7 @@
 
 #include "base/result.h"
 #include "framebuf/bitmap.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -79,15 +80,18 @@ void effects__copy(const bitmap_t *src, bitmap_t *dst);
 
 typedef struct convolve_lut convolve_lut_t;
 
-/** Build the lookup tables for a symmetric kernel of `n` weights. */
-result_t effects__convolve_init(const float     *kernel,
+/** Build the lookup tables for a symmetric kernel of `n` weights. `alloc`
+ *  is non-NULL here and below. */
+result_t effects__convolve_init(const alloc_t   *alloc,
+                                const float     *kernel,
                                 int              n,
                                 convolve_lut_t **lut);
 
-void effects__convolve_destroy(convolve_lut_t *lut);
+void effects__convolve_destroy(const alloc_t *alloc, convolve_lut_t *lut);
 
 /** Convolve every row, then every column, of `src` into `dst`. */
-result_t effects__convolve(const convolve_lut_t *lut,
+result_t effects__convolve(const alloc_t        *alloc,
+                           const convolve_lut_t *lut,
                            const bitmap_t       *src,
                            bitmap_t             *dst);
 

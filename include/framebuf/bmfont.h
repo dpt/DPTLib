@@ -6,6 +6,7 @@
 #include "base/result.h"
 #include "geom/point.h"
 #include "framebuf/screen.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -55,11 +56,15 @@ bmfont_spacing_t;
 /**
  * Create a new bitmap font from a PNG format font file.
  *
+ * \param[in]  alloc    Allocator for the font and its working memory, or
+ *                      NULL. The font keeps it for later calls.
  * \param[in]  png      Filename of the font file to load.
  * \param[out] bmfont   Newly allocated bitmap font.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
-result_t bmfont_create(const char *png, bmfont_t **bmfont);
+result_t bmfont_create(const alloc_t *alloc,
+                       const char    *png,
+                       bmfont_t     **bmfont);
 
 /**
  * Callback for bmfont_enumerate(), invoked once per font found.
@@ -173,6 +178,8 @@ int bmfont_get_codepoints(const bmfont_t *bmfont,
  * Create a new, blank bitmap font. Every glyph has no ink and an advance
  * width of \p width - 1. The font has the implicit cmap from U+0020.
  *
+ * \param[in]  alloc    Allocator for the font, or NULL. The font keeps it
+ *                      for later calls.
  * \param[in]  width    Cell width in pixels, 3 to 32.
  * \param[in]  height   Cell height in pixels, 2 or more. The height plus one
  *                      (for the advance-width row) must be no more than
@@ -185,11 +192,12 @@ int bmfont_get_codepoints(const bmfont_t *bmfont,
  * \return \ref result_OK on success, \ref result_BAD_ARG if an argument is
  *         out of range, or \ref result_OOM.
  */
-result_t bmfont_create_blank(int        width,
-                             int        height,
-                             int        ascent,
-                             int        rows,
-                             bmfont_t **bmfont);
+result_t bmfont_create_blank(const alloc_t *alloc,
+                             int            width,
+                             int            height,
+                             int            ascent,
+                             int            rows,
+                             bmfont_t     **bmfont);
 
 /**
  * Read one ink pixel of a glyph.

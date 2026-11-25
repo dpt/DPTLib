@@ -9,6 +9,8 @@
 #include "framebuf/bitmap.h"
 #include "io/filetype.h"
 
+#include "png-alloc.h"
+
 static int file_is_png(FILE *fp)
 {
 #define PNGSIGLEN (8)
@@ -42,7 +44,9 @@ static pixelfmt_t paletted_format(png_structp png_ptr, int bitdepth)
   }
 }
 
-result_t bitmap_load_png(bitmap_t *bm, const char *filename)
+result_t bitmap_load_png(const alloc_t *alloc,
+                         bitmap_t      *bm,
+                         const char    *filename)
 {
   result_t       rc;
   FILE          *fp;
@@ -59,6 +63,9 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
   int            pass;
   png_uint_32    h;
 
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
   fp = fopen(filename, "rb");
   if (fp == NULL)
   {
@@ -72,7 +79,9 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
     goto cleanup;
   }
 
-  png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+  png_ptr = png_create_read_struct_2(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL,
+                                     (png_voidp) alloc, png_alloc_malloc,
+                                     png_alloc_free);
   if (png_ptr == NULL)
   {
     rc = result_OOM;
@@ -214,7 +223,7 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
   /* rounded up: a sub-byte row ends part way through its last byte */
   bm_rowbytes = ((pngwidth << pixelfmt_log2bpp(bm_fmt)) + 7) >> 3;
 
-  pixels = malloc(bm_rowbytes * pngheight);
+  pixels = alloc->malloc(bm_rowbytes * pngheight);
   if (pixels == NULL)
     goto oom;
 
@@ -223,7 +232,7 @@ result_t bitmap_load_png(bitmap_t *bm, const char *filename)
     for (h = 0; h < pngheight; h++)
       png_read_row(png_ptr, pixels + bm_rowbytes * h, NULL);
 
-  rc = bitmap_init(bm, SIZE2D(pngwidth, pngheight),
+  rc = bitmap_init(alloc, bm, SIZE2D(pngwidth, pngheight),
                    bm_fmt,
                    bm_rowbytes,
                    bm_palette, /* p8: PLTE copied in; NULL for deep formats */
@@ -240,7 +249,7 @@ oom:
   goto cleanup;
 
 cleanup:
-  free(pixels);
+  alloc->free(pixels);
   if (png_ptr)
     png_destroy_read_struct(&png_ptr, NULL, NULL);
   if (fp)
@@ -266,10 +275,12 @@ static int file_is_jpeg(const char *filename)
   return is;
 }
 
-result_t bitmap_load(bitmap_t *bm, const char *filename)
+result_t bitmap_load(const alloc_t *alloc,
+                     bitmap_t      *bm,
+                     const char    *filename)
 {
-  return file_is_jpeg(filename) ? bitmap_load_jpeg(bm, filename)
-                                : bitmap_load_png(bm, filename);
+  return file_is_jpeg(filename) ? bitmap_load_jpeg(alloc, bm, filename)
+                                : bitmap_load_png(alloc, bm, filename);
 }
 
 int bitmap_loads_filetype(unsigned int riscos)
@@ -278,7 +289,10 @@ int bitmap_loads_filetype(unsigned int riscos)
 }
 
 /* expand a just-loaded paletted bitmap to fmt; leave a deep one alone */
-static result_t load_deepen(result_t rc, bitmap_t *bm, pixelfmt_t fmt)
+static result_t load_deepen(const alloc_t *alloc,
+                            result_t       rc,
+                            bitmap_t      *bm,
+                            pixelfmt_t     fmt)
 {
   bitmap_t *deep;
 
@@ -289,28 +303,35 @@ static result_t load_deepen(result_t rc, bitmap_t *bm, pixelfmt_t fmt)
   if (bm->format > pixelfmt_p8)
     return result_OK;
 
-  rc = bitmap_convert(bm, fmt, &deep);
-  free(bm->base);
-  free(bm->palette);
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  rc = bitmap_convert(alloc, bm, fmt, &deep);
+  alloc->free(bm->base);
+  alloc->free(bm->palette);
   if (rc != result_OK)
     return rc;
 
   *bm = *deep;
-  free(deep);
+  alloc->free(deep);
 
   return result_OK;
 }
 
-result_t bitmap_load_png_deep(bitmap_t   *bm,
-                              const char *filename,
-                              pixelfmt_t  fmt)
+result_t bitmap_load_png_deep(const alloc_t *alloc,
+                              bitmap_t      *bm,
+                              const char    *filename,
+                              pixelfmt_t     fmt)
 {
-  return load_deepen(bitmap_load_png(bm, filename), bm, fmt);
+  return load_deepen(alloc, bitmap_load_png(alloc, bm, filename), bm, fmt);
 }
 
-result_t bitmap_load_deep(bitmap_t *bm, const char *filename, pixelfmt_t fmt)
+result_t bitmap_load_deep(const alloc_t *alloc,
+                          bitmap_t      *bm,
+                          const char    *filename,
+                          pixelfmt_t     fmt)
 {
-  return load_deepen(bitmap_load(bm, filename), bm, fmt);
+  return load_deepen(alloc, bitmap_load(alloc, bm, filename), bm, fmt);
 }
 
 /* vim: set ts=8 sts=2 sw=2 et: */

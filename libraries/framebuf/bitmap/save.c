@@ -6,11 +6,19 @@
 #include <png.h>
 
 #include "base/result.h"
+#include "base/utils.h"
 #include "framebuf/bitmap.h"
 
-result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
+#include "png-alloc.h"
+
+result_t bitmap_save_png(const alloc_t  *alloc,
+                         const bitmap_t *bm,
+                         const char     *filename)
 {
 #ifdef DPTLIB_IMAGES_READ_ONLY
+  NOT_USED(alloc);
+  NOT_USED(bm);
+  NOT_USED(filename);
   return result_NOT_SUPPORTED;
 #else
   result_t             rc;
@@ -26,6 +34,9 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   png_colorp volatile  png_plte = NULL;
   const pixelfmt_xxxa8888_t *inrow; /* more like xxxx8888 */
   int                        x,y;
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   paletted = 0;
   bitdepth = 8;
@@ -91,7 +102,9 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
     goto cleanup;
   }
 
-  png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+  png_ptr = png_create_write_struct_2(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL,
+                                      (png_voidp) alloc, png_alloc_malloc,
+                                      png_alloc_free);
   if (png_ptr == NULL)
   {
     rc = result_OOM;
@@ -162,7 +175,7 @@ result_t bitmap_save_png(const bitmap_t *bm, const char *filename)
   // png_set_filler(png_ptr, 0, PNG_FILLER_AFTER);
   // png_set_packing for <8bpp images
 
-  outrow = malloc(bytespp * bm->size.w * sizeof(png_byte));
+  outrow = alloc->malloc(bytespp * bm->size.w * sizeof(png_byte));
   if (outrow == NULL)
   {
     rc = result_OOM;
@@ -221,7 +234,7 @@ cleanup:
     png_free(png_ptr, png_plte);
   png_free_data(png_ptr, info_ptr, PNG_FREE_ALL, -1);
   png_destroy_write_struct(&png_ptr, NULL);
-  free(outrow);
+  alloc->free(outrow);
 
   return rc;
 #endif /* DPTLIB_IMAGES_READ_ONLY */

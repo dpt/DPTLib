@@ -70,7 +70,7 @@ result_t hash_test(const char *resources)
   printf("test: create\n");
 
   /* use default string handling */
-  err = hash_create(NULL,  20, NULL, NULL, NULL, NULL, &d);
+  err = hash_create(NULL, NULL, 20, NULL, NULL, NULL, NULL, &d);
   if (err)
     goto Failure;
 

@@ -15,6 +15,6 @@ void vector_destroy(vector_t *doomed)
   if (doomed == NULL)
     return;
 
-  free(doomed->base);
-  free(doomed);
+  doomed->alloc->free(doomed->base);
+  doomed->alloc->free(doomed);
 }

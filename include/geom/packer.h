@@ -10,6 +10,7 @@ extern "C"
 
 #include "base/result.h"
 #include "geom/box.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -25,10 +26,11 @@ typedef struct packer T;
 /**
  * Creates a new packer.
  *
- * \param[in] dims Dimensions of the packer.
+ * \param[in] alloc Allocator for the packer, or NULL. The packer keeps it.
+ * \param[in] dims  Dimensions of the packer.
  * \return New packer.
  */
-T *packer_create(const box_t *dims);
+T *packer_create(const alloc_t *alloc, const box_t *dims);
 
 /**
  * Destroys a packer.

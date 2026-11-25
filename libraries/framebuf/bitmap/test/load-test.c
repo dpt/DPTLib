@@ -36,7 +36,7 @@ static int load_expect(const char *resources,
 {
   result_t rc;
 
-  rc = bitmap_load_png(bm, pathf("%s/resources/test/bitmap/%s",
+  rc = bitmap_load_png(NULL, bm, pathf("%s/resources/test/bitmap/%s",
                                  resources, leaf));
   if (rc != result_OK)
   {
@@ -394,8 +394,9 @@ static int test_load_deep(const char *resources)
 
   ok = 1;
 
-  rc = bitmap_load_png_deep(&bm, pathf("%s/resources/test/bitmap/pal2.png",
-                                       resources), pixelfmt_rgbx8888);
+  rc = bitmap_load_png_deep(NULL, &bm,
+                            pathf("%s/resources/test/bitmap/pal2.png",
+                                  resources), pixelfmt_rgbx8888);
   if (rc == result_OK)
   {
     if (bm.format != pixelfmt_rgbx8888 || bm.palette != NULL)
@@ -414,8 +415,9 @@ static int test_load_deep(const char *resources)
   }
 
   /* to an alpha format, the palette's tRNS alpha is kept */
-  rc = bitmap_load_png_deep(&bm, pathf("%s/resources/test/bitmap/pal2.png",
-                                       resources), pixelfmt_rgba8888);
+  rc = bitmap_load_png_deep(NULL, &bm,
+                            pathf("%s/resources/test/bitmap/pal2.png",
+                                  resources), pixelfmt_rgba8888);
   if (rc == result_OK)
   {
     if (bm.format != pixelfmt_rgba8888)
@@ -432,7 +434,7 @@ static int test_load_deep(const char *resources)
     ok = 0;
   }
 
-  rc = bitmap_load_png_deep(&bm, pathf("%s/resources/test/bitmap/rgb.png",
+  rc = bitmap_load_png_deep(NULL, &bm, pathf("%s/resources/test/bitmap/rgb.png",
                                        resources), pixelfmt_rgbx8888);
   if (rc == result_OK)
   {
@@ -545,7 +547,7 @@ static int test_errors(const char *resources)
   ok = 1;
   for (i = 0; i < sizeof(cases) / sizeof(cases[0]); i++)
   {
-    rc = bitmap_load_png(&bm, pathf("%s/resources/test/bitmap/%s",
+    rc = bitmap_load_png(NULL, &bm, pathf("%s/resources/test/bitmap/%s",
                                     resources, cases[i].leaf));
     if (rc != cases[i].want)
     {
@@ -581,7 +583,7 @@ static int test_jpeg(const char *resources)
 
   for (i = 0; i < NELEMS(colour); i++)
   {
-    rc = bitmap_load(&bm, pathf("%s/resources/test/bitmap/%s",
+    rc = bitmap_load(NULL, &bm, pathf("%s/resources/test/bitmap/%s",
                                 resources, colour[i]));
     if (rc != result_OK)
     {
@@ -607,7 +609,7 @@ static int test_jpeg(const char *resources)
   else
     ok = 0;
 
-  rc = bitmap_load_jpeg(&bm, pathf("%s/resources/test/bitmap/grey.jpg",
+  rc = bitmap_load_jpeg(NULL, &bm, pathf("%s/resources/test/bitmap/grey.jpg",
                                    resources));
   if (rc == result_OK)
   {
@@ -626,7 +628,7 @@ static int test_jpeg(const char *resources)
     ok = 0;
   }
 
-  rc = bitmap_load_deep(&bm, pathf("%s/resources/test/bitmap/grey.jpg",
+  rc = bitmap_load_deep(NULL, &bm, pathf("%s/resources/test/bitmap/grey.jpg",
                                    resources), pixelfmt_rgbx8888);
   if (rc == result_OK)
   {
@@ -646,7 +648,7 @@ static int test_jpeg(const char *resources)
     ok = 0;
   }
 
-  rc = bitmap_load_jpeg(&bm, pathf("%s/resources/test/bitmap/notpng.png",
+  rc = bitmap_load_jpeg(NULL, &bm, pathf("%s/resources/test/bitmap/notpng.png",
                                    resources));
   if (rc != result_BAD_ARG)
   {
@@ -654,8 +656,9 @@ static int test_jpeg(const char *resources)
     ok = 0;
   }
 
-  rc = bitmap_load_jpeg(&bm, pathf("%s/resources/test/bitmap/nonesuch.jpg",
-                                   resources));
+  rc = bitmap_load_jpeg(NULL, &bm,
+                        pathf("%s/resources/test/bitmap/nonesuch.jpg",
+                              resources));
   if (rc != result_FILE_NOT_FOUND)
   {
     printf("load: nonesuch.jpg: rc=&%x\n", rc);
@@ -706,10 +709,10 @@ static int test_save(void)
   for (i = 0; i < NELEMS(cases); i++)
   {
     px = cases[i].px;
-    bitmap_init(&bm, SIZE2D(1, 1), cases[i].fmt, 4, NULL, &px);
-    rc = bitmap_save_png(&bm, fn);
+    bitmap_init(NULL, &bm, SIZE2D(1, 1), cases[i].fmt, 4, NULL, &px);
+    rc = bitmap_save_png(NULL, &bm, fn);
     if (rc == result_OK)
-      rc = bitmap_load_png(&rt, fn);
+      rc = bitmap_load_png(NULL, &rt, fn);
     remove(fn);
     if (rc != result_OK)
     {
@@ -732,16 +735,16 @@ static int test_save(void)
   }
 
   p8 = 0;
-  bitmap_init(&bm, SIZE2D(1, 1), pixelfmt_p8, 1, NULL, &p8);
-  if (bitmap_save_png(&bm, fn) != result_NOT_SUPPORTED)
+  bitmap_init(NULL, &bm, SIZE2D(1, 1), pixelfmt_p8, 1, NULL, &p8);
+  if (bitmap_save_png(NULL, &bm, fn) != result_NOT_SUPPORTED)
   {
     printf("save: p8 with no palette was not refused\n");
     ok = 0;
   }
 
   px = 0;
-  bitmap_init(&bm, SIZE2D(1, 1), pixelfmt_rgbx8888, 4, NULL, &px);
-  if (bitmap_save_png(&bm, "/nonexistent-dptlib/x.png") !=
+  bitmap_init(NULL, &bm, SIZE2D(1, 1), pixelfmt_rgbx8888, 4, NULL, &px);
+  if (bitmap_save_png(NULL, &bm, "/nonexistent-dptlib/x.png") !=
       result_FOPEN_FAILED)
   {
     printf("save: unwritable path was not refused\n");

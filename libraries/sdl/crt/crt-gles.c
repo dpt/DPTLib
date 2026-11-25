@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <SDL3/SDL.h>
 
@@ -18,6 +19,7 @@
 
 struct crt
 {
+  const alloc_t *alloc;
   crt_format_t  format;
   SDL_GLContext context;
   GLuint        program;
@@ -286,21 +288,28 @@ static bool crt_make_objects(crt_t *crt)
 
 /* ----------------------------------------------------------------------- */
 
-crt_t *crt_create(SDL_Window *window, crt_format_t format)
+crt_t *crt_create(const alloc_t *alloc,
+                  SDL_Window    *window,
+                  crt_format_t   format)
 {
   crt_t *crt;
 
-  crt = calloc(1, sizeof(*crt));
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  crt = alloc->malloc(sizeof(*crt));
   if (crt == NULL)
     return NULL;
 
+  memset(crt, 0, sizeof(*crt));
+  crt->alloc  = alloc;
   crt->format = format;
 
   crt->context = SDL_GL_CreateContext(window);
   if (crt->context == NULL)
   {
     fprintf(stderr, "Error: SDL_GL_CreateContext: %s\n", SDL_GetError());
-    free(crt);
+    alloc->free(crt);
     return NULL;
   }
 
@@ -393,5 +402,5 @@ void crt_destroy(crt_t *crt, SDL_Window *window)
   glDeleteBuffers(1, &crt->buffer);
   glDeleteProgram(crt->program);
   SDL_GL_DestroyContext(crt->context);
-  free(crt);
+  crt->alloc->free(crt);
 }

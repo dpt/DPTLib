@@ -12,14 +12,17 @@
 
 #include "impl.h"
 
-T hlist_pop(T list, void **x)
+T hlist_pop(const alloc_t *alloc, T list, void **x)
 {
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
   if (list)
   {
     T head = list->rest;
     if (x)
       *x = list->first;
-    free(list);
+    alloc->free(list);
     return head;
   }
   else

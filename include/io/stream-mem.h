@@ -17,13 +17,15 @@ extern "C"
 /**
  * Create a stream from a block of memory.
  *
+ * \param[in]  alloc  Allocator for the stream, or NULL. The stream keeps it.
  * \param[in]  block  Block of memory to create the stream from.
  * \param[in]  length Length of the block of memory in bytes.
  * \param[out] s      Pointer to a `stream_t` pointer to store the created
  *                    stream.
  * \return \ref result_OK on success, or appropriate result code otherwise.
  */
-result_t stream_mem_create(const unsigned char *block,
+result_t stream_mem_create(const alloc_t       *alloc,
+                           const unsigned char *block,
                            size_t               length,
                            stream_t           **s);
 

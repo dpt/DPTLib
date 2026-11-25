@@ -7,10 +7,11 @@
 
 struct vector
 {
-  size_t       width;     /* width of an element */
-  unsigned int used;      /* entries used */
-  unsigned int allocated; /* entries allocated */
-  void        *base;      /* vector itself */
+  const alloc_t *alloc;
+  size_t         width;     /* width of an element */
+  unsigned int   used;      /* entries used */
+  unsigned int   allocated; /* entries allocated */
+  void          *base;      /* vector itself */
 };
 
 /* Calculate address of element 'i'. */

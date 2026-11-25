@@ -32,6 +32,7 @@ tonemap_comp_t;
 
 struct tonemap
 {
+  const alloc_t           *alloc;
   tonemap_internal_flags_t flags;
   int                      ncomponents;
   tonemap_comp_t           comp[MaxComponents];
@@ -39,15 +40,20 @@ struct tonemap
 
 /* ----------------------------------------------------------------------- */
 
-tonemap_t *tonemap_create(void)
+tonemap_t *tonemap_create(const alloc_t *alloc)
 {
   tonemap_t *map;
 
-  map = malloc(sizeof(*map));
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  map = alloc->malloc(sizeof(*map));
   if (map == NULL)
     return NULL;
 
-  /* tonemap_reset() initialises the structure for us */
+  map->alloc = alloc;
+
+  /* tonemap_reset() initialises the rest of the structure for us */
 
   tonemap_reset(map);
 
@@ -56,7 +62,10 @@ tonemap_t *tonemap_create(void)
 
 void tonemap_destroy(tonemap_t *map)
 {
-  free(map);
+  if (map == NULL)
+    return;
+
+  map->alloc->free(map);
 }
 
 void tonemap_reset(tonemap_t *map)
@@ -82,7 +91,7 @@ tonemap_t *tonemap_copy(const tonemap_t *map)
 {
   tonemap_t *new_map;
 
-  new_map = malloc(sizeof(*new_map));
+  new_map = map->alloc->malloc(sizeof(*new_map));
   if (new_map == NULL)
     return NULL;
 

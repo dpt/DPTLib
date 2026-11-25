@@ -58,10 +58,10 @@ result_t mdtext_test(const char *resources)
 
   snprintf(dir, sizeof(dir), "%s", pathf("%s/resources/bmfonts/GrongyUI",
                                          resources));
-  rc = bmfont_create(pathf("%s/Regular.png", dir), &font);
+  rc = bmfont_create(NULL, pathf("%s/Regular.png", dir), &font);
   if (rc != result_OK)
     goto exit;
-  rc = bmfont_create(pathf("%s/Bold.png", dir), &bold);
+  rc = bmfont_create(NULL, pathf("%s/Bold.png", dir), &bold);
   if (rc != result_OK)
     goto exit;
 

@@ -36,7 +36,7 @@ result_t bitvec_test(const char *resources)
 
   printf("test: create\n");
 
-  v = bitvec_create(0);
+  v = bitvec_create(NULL, 0);
   if (!v)
     goto Failure;
 
@@ -118,11 +118,11 @@ result_t bitvec_test(const char *resources)
 
   printf("test: eq\n");
 
-  v = bitvec_create(0);
+  v = bitvec_create(NULL, 0);
   if (!v)
     goto Failure;
 
-  w = bitvec_create(0);
+  w = bitvec_create(NULL, 0);
   if (!w)
     goto Failure;
 
@@ -161,7 +161,7 @@ result_t bitvec_test(const char *resources)
 
   bitvec_destroy(w);
 
-  w = bitvec_create(0);
+  w = bitvec_create(NULL, 0);
   if (!w)
     goto Failure;
 
@@ -175,11 +175,11 @@ result_t bitvec_test(const char *resources)
 
   printf("test: and\n");
 
-  v = bitvec_create(0);
+  v = bitvec_create(NULL, 0);
   if (!v)
     goto Failure;
 
-  w = bitvec_create(0);
+  w = bitvec_create(NULL, 0);
   if (!w)
     goto Failure;
 
@@ -203,11 +203,11 @@ result_t bitvec_test(const char *resources)
 
   printf("test: or\n");
 
-  v = bitvec_create(0);
+  v = bitvec_create(NULL, 0);
   if (!v)
     goto Failure;
 
-  w = bitvec_create(0);
+  w = bitvec_create(NULL, 0);
   if (!w)
     goto Failure;
 

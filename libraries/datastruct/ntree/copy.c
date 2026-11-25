@@ -24,7 +24,7 @@ result_t ntree_copy(ntree_t         *t,
   if (err)
     return err;
 
-  err = ntree_new(&new_node);
+  err = ntree_new(t->alloc, &new_node);
   if (err)
     return err;
 

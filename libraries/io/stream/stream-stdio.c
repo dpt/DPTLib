@@ -110,7 +110,10 @@ static void stream_stdio_destroy(stream_t *doomed)
   fclose(sf->file);
 }
 
-result_t stream_stdio_create(FILE *f, int bufsz, stream_t **s)
+result_t stream_stdio_create(const alloc_t *alloc,
+                             FILE          *f,
+                             int            bufsz,
+                             stream_t     **s)
 {
   stream_file_t *sf;
 
@@ -119,9 +122,14 @@ result_t stream_stdio_create(FILE *f, int bufsz, stream_t **s)
 
   assert(f);
 
-  sf = malloc(offsetof(stream_file_t, buffer) + bufsz);
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  sf = alloc->malloc(offsetof(stream_file_t, buffer) + bufsz);
   if (!sf)
     return result_OOM;
+
+  sf->base.alloc   = alloc;
 
   sf->base.buf     =
     sf->base.end     = sf->buffer; /* force a fill on first use */

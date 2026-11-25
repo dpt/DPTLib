@@ -11,19 +11,25 @@
 
 #include "impl.h"
 
-result_t txtfmt_create(const char *s, txtfmt_t **tx)
+result_t txtfmt_create(const alloc_t *alloc, const char *s, txtfmt_t **tx)
 {
   result_t  err;
   txtfmt_t *newtx;
   size_t    length;
 
-  newtx = calloc(1, sizeof(*newtx));
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  newtx = alloc->malloc(sizeof(*newtx));
   if (newtx == NULL)
     goto OOM;
 
+  memset(newtx, 0, sizeof(*newtx));
+  newtx->alloc = alloc;
+
   length = strlen(s);
 
-  newtx->s = malloc(length + 1); /* include terminator */
+  newtx->s = alloc->malloc(length + 1); /* include terminator */
   if (newtx->s == NULL)
     goto OOM;
 
@@ -31,7 +37,7 @@ result_t txtfmt_create(const char *s, txtfmt_t **tx)
 
   newtx->length = (int) length;
 
-  newtx->spans = malloc(StartAt * sizeof(*newtx->spans));
+  newtx->spans = alloc->malloc(StartAt * sizeof(*newtx->spans));
   if (newtx->spans == NULL)
     goto OOM;
 

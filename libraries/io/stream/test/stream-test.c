@@ -34,7 +34,7 @@ static result_t test_getc_empty(void)
 
   printf("Test - Empty\n");
 
-  rc = stream_mem_create(block, 0, &s);
+  rc = stream_mem_create(NULL, block, 0, &s);
   if (rc)
     goto Failure;
 
@@ -64,7 +64,7 @@ static result_t test_getc_1byte(void)
 
   printf("Test - Single Byte\n");
 
-  rc = stream_mem_create(block, sizeof(block), &s);
+  rc = stream_mem_create(NULL, block, sizeof(block), &s);
   if (rc)
     goto Failure;
 
@@ -138,9 +138,9 @@ static result_t test_compressors(void)
 #endif
 
 #if USEFILE
-  err = stream_stdio_create(in, BUFSZ, &stream[Source]);
+  err = stream_stdio_create(NULL, in, BUFSZ, &stream[Source]);
 #else
-  rc = stream_mem_create(input, NELEMS(input), &stream[Source]);
+  rc = stream_mem_create(NULL, input, NELEMS(input), &stream[Source]);
 #endif
   if (rc)
     goto Failure;
@@ -232,9 +232,9 @@ static result_t test_block(void)
 #endif
 
 #if USEFILE
-  err = stream_stdio_create(in, BUFSZ, &s);
+  err = stream_stdio_create(NULL, in, BUFSZ, &s);
 #else
-  rc = stream_mem_create(input, NELEMS(input), &s);
+  rc = stream_mem_create(NULL, input, NELEMS(input), &s);
 #endif
   if (rc)
     goto Failure;
@@ -312,7 +312,7 @@ static result_t packbits_case(const char          *name,
   comp   = NULL;
   decomp = NULL;
 
-  rc = stream_mem_create(in, inlen, &src);
+  rc = stream_mem_create(NULL, in, inlen, &src);
   if (rc)
     goto Failure;
 
@@ -336,7 +336,7 @@ static result_t packbits_case(const char          *name,
   stream_destroy(src);
   src = NULL;
 
-  rc = stream_mem_create(want, wantlen, &src);
+  rc = stream_mem_create(NULL, want, wantlen, &src);
   if (rc)
     goto Failure;
 
@@ -433,7 +433,7 @@ static result_t test_packbits(void)
     return rc;
 
   /* too small a buffer is refused */
-  rc = stream_mem_create(merge, sizeof(merge), &src);
+  rc = stream_mem_create(NULL, merge, sizeof(merge), &src);
   if (rc)
     return rc;
 

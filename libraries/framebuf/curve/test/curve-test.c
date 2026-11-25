@@ -815,7 +815,7 @@ static result_t curve_interactive_test(curveteststate_t *state)
 
       if (state->scr.format != pixelfmt_bgrx8888)
         /* convert the screen to bgrx8888 */
-        bitmap_convert((const bitmap_t *) &state->scr,
+        bitmap_convert(NULL, (const bitmap_t *) &state->scr,
                                            pixelfmt_bgrx8888,
                                           &scr_bgrx8888);
       else
@@ -904,7 +904,7 @@ result_t curve_test_one_format(const char *resources,
     goto Failure;
   }
 
-  bitmap_init(&state.bm, SIZE2D(state.scr_width, state.scr_height),
+  bitmap_init(NULL, &state.bm, SIZE2D(state.scr_width, state.scr_height),
                scr_fmt,
                scr_rowbytes,
                state.palette,

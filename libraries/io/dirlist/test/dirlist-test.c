@@ -91,7 +91,7 @@ static result_t test_scan_sorted_and_filtered(void)
   if (mkdir(subdir, 0700) != 0)
     goto cleanup;
 
-  if (dirlist_scan(dir, &list) != result_OK)
+  if (dirlist_scan(NULL, dir, &list) != result_OK)
     goto cleanup;
 
   /* Dotfile filtered out: 3 entries (Apple.png, banana.txt, zzz), not 4. */
@@ -134,7 +134,7 @@ static result_t test_scan_missing_dir(void)
 
   list = NULL;
 
-  rc = dirlist_scan("/no/such/dptlib/dir", &list);
+  rc = dirlist_scan(NULL, "/no/such/dptlib/dir", &list);
   if (rc != result_FILE_NOT_FOUND)
     return result_TEST_FAILED;
 
@@ -147,9 +147,9 @@ static result_t test_null_args(void)
 {
   dirlist_t *list;
 
-  if (dirlist_scan(NULL, &list) != result_NULL_ARG)
+  if (dirlist_scan(NULL, NULL, &list) != result_NULL_ARG)
     return result_TEST_FAILED;
-  if (dirlist_scan(".", NULL) != result_NULL_ARG)
+  if (dirlist_scan(NULL, ".", NULL) != result_NULL_ARG)
     return result_TEST_FAILED;
 
   if (dirlist_count(NULL) != 0)

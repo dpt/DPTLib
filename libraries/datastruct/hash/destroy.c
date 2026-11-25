@@ -18,7 +18,7 @@ void hash_destroy(hash_t *h)
     while (h->bins[i])
       hash_remove_node(h, &h->bins[i]);
 
-  free(h->bins);
+  h->alloc->free(h->bins);
 
-  free(h);
+  h->alloc->free(h);
 }

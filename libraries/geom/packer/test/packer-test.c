@@ -43,7 +43,7 @@ static result_t dumppacker(packer_t *packer, txtscr_t *scr)
 
 static result_t dumpboxlist(const box_t *list, int nelems, txtscr_t *scr)
 {
-  result_t         err;
+  result_t     err;
   const box_t *b;
 
   txtscr_clear(scr);
@@ -72,7 +72,7 @@ static result_t subtest1(packer_t *packer, txtscr_t *scr)
   };
 
   result_t err;
-  int   i;
+  int      i;
 
   /* place a large area */
 
@@ -124,10 +124,10 @@ static result_t test1(void)
 {
   static const box_t pagedims = { 0, 0, 50, 25 };
 
-  result_t     err;
+  result_t  err;
   txtscr_t *scr;
   packer_t *packer;
-  box_t    margins;
+  box_t     margins;
 
   printf("test1\n");
 
@@ -138,7 +138,7 @@ static result_t test1(void)
     goto failure;
   }
 
-  packer = packer_create(&pagedims);
+  packer = packer_create(NULL, &pagedims);
   if (packer == NULL)
   {
     err = result_OOM;
@@ -153,7 +153,7 @@ static result_t test1(void)
 
   printf("\n\nwith margins\n\n\n");
 
-  packer = packer_create(&pagedims);
+  packer = packer_create(NULL, &pagedims);
   if (packer == NULL)
   {
     err = result_OOM;
@@ -216,11 +216,11 @@ static result_t subtest2(packer_loc_t loc, packer_cleardir_t clear)
     { 26, INT_MAX, 2, 0 }
   };
 
-  result_t         err;
-  txtscr_t     *scr;
-  packer_t     *packer;
-  int           i;
-  int           j;
+  result_t     err;
+  txtscr_t    *scr;
+  packer_t    *packer;
+  int          i;
+  int          j;
   const box_t *placed;
   box_t        list[32];
 
@@ -233,7 +233,7 @@ static result_t subtest2(packer_loc_t loc, packer_cleardir_t clear)
     goto failure;
   }
 
-  packer = packer_create(&pagedims);
+  packer = packer_create(NULL, &pagedims);
   if (packer == NULL)
   {
     err = result_OOM;
@@ -383,7 +383,7 @@ static int test2(void)
   };
 
   result_t err;
-  int   i;
+  int      i;
 
   for (i = 0; i < NELEMS(tests); i++)
   {
@@ -412,7 +412,7 @@ static int test3(void)
 
   printf("test3: packer_release\n");
 
-  packer = packer_create(&pagedims);
+  packer = packer_create(NULL, &pagedims);
   if (packer == NULL)
     return 1;
 
@@ -471,7 +471,7 @@ static int test3(void)
 
     printf("test3: packer_set_gutter\n");
 
-    packer = packer_create(&coldims);
+    packer = packer_create(NULL, &coldims);
     if (packer == NULL)
       return 1;
 
@@ -553,7 +553,7 @@ static int test4(void)
 
   printf("test4: packer_release coalescing\n");
 
-  packer = packer_create(&pagedims);
+  packer = packer_create(NULL, &pagedims);
   if (packer == NULL)
     return 1;
 
@@ -657,7 +657,7 @@ static int test5(void)
 
   packer_destroy(NULL);
 
-  packer = packer_create(&pagedims);
+  packer = packer_create(NULL, &pagedims);
   if (packer == NULL)
     return 1;
 
@@ -696,7 +696,7 @@ static int test5(void)
   packer_destroy(packer);
 
   /* margins which meet or cross leave a 1x1 area */
-  packer = packer_create(&pagedims);
+  packer = packer_create(NULL, &pagedims);
   if (packer == NULL)
     return 1;
 

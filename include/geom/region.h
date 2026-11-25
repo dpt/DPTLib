@@ -14,6 +14,7 @@ extern "C"
 #include "geom/orient.h"
 #include "geom/point.h"
 #include "geom/size.h"
+#include "utils/alloc.h"
 
 /**
  * \file region.h
@@ -25,6 +26,9 @@ extern "C"
  *
  * An empty region is represented by NULL, and every function here accepts
  * NULL as an empty region.
+ *
+ * Every function that makes a region takes an allocator, or NULL for the
+ * default. The new region keeps it, and region_destroy() frees through it.
  */
 
 /** An opaque region. */
@@ -33,11 +37,14 @@ typedef struct region region_t;
 /**
  * Creates a region from a box (x1,y1 exclusive).
  *
- * \param[in]  box The box to fill.
- * \param[out] out The new region, or NULL if the box is empty.
+ * \param[in]  alloc Allocator for the region, or NULL.
+ * \param[in]  box   The box to fill.
+ * \param[out] out   The new region, or NULL if the box is empty.
  * \return result_OK or result_OOM.
  */
-result_t region_from_box(const box_t *box, region_t **out);
+result_t region_from_box(const alloc_t *alloc,
+                         const box_t   *box,
+                         region_t     **out);
 
 /**
  * Creates a region from the area enclosed by a closed polygon, using the
@@ -45,13 +52,15 @@ result_t region_from_box(const box_t *box, region_t **out);
  *
  * The cost is O(edges log edges + runs), not O(edges * height).
  *
- * \param[in]  pts  The polygon's vertices (the last joins the first).
- * \param[in]  n    The number of vertices.
- * \param[in]  clip Pixels outside this box (x1,y1 exclusive) are dropped.
- * \param[out] out  The new region, or NULL if no pixels are enclosed.
+ * \param[in]  alloc Allocator for the region and working memory, or NULL.
+ * \param[in]  pts   The polygon's vertices (the last joins the first).
+ * \param[in]  n     The number of vertices.
+ * \param[in]  clip  Pixels outside this box (x1,y1 exclusive) are dropped.
+ * \param[out] out   The new region, or NULL if no pixels are enclosed.
  * \return result_OK or result_OOM.
  */
-result_t region_from_polygon(const point_t *pts,
+result_t region_from_polygon(const alloc_t *alloc,
+                             const point_t *pts,
                              int            n,
                              const box_t   *clip,
                              region_t     **out);
@@ -75,6 +84,7 @@ typedef int (region_inside_fn_t)(void *opaque, int x, int y);
  *
  * Uses one byte of scratch per pixel of `within` while running.
  *
+ * \param[in]  alloc  Allocator for the region and scratch, or NULL.
  * \param[in]  seed   The pixel to start from.
  * \param[in]  within The box (x1,y1 exclusive) the flood may not leave.
  * \param[in]  inside Decides which pixels join.
@@ -83,7 +93,8 @@ typedef int (region_inside_fn_t)(void *opaque, int x, int y);
  *                    `within` or `inside` rejects it.
  * \return result_OK or result_OOM.
  */
-result_t region_from_flood(point_t             seed,
+result_t region_from_flood(const alloc_t      *alloc,
+                           point_t             seed,
                            const box_t        *within,
                            region_inside_fn_t *inside,
                            void               *opaque,
@@ -93,40 +104,49 @@ result_t region_from_flood(point_t             seed,
  * Creates the complement of a region within a box: the pixels of the box
  * which are not in the region.
  *
+ * \param[in]  alloc  Allocator for the new region, or NULL.
  * \param[in]  region The region to invert (may be NULL).
  * \param[in]  within The box to invert within (x1,y1 exclusive).
  * \param[out] out    The new region, or NULL if it is empty.
  * \return result_OK or result_OOM.
  */
-result_t region_invert(const region_t *region,
+result_t region_invert(const alloc_t  *alloc,
+                       const region_t *region,
                        const box_t    *within,
                        region_t      **out);
 
 /**
  * Creates the union of two regions: the pixels in either.
  *
- * \param[in]  a   A region (may be NULL).
- * \param[in]  b   Another region (may be NULL).
- * \param[out] out The new region, or NULL if it is empty.
+ * \param[in]  alloc Allocator for the new region, or NULL.
+ * \param[in]  a     A region (may be NULL).
+ * \param[in]  b     Another region (may be NULL).
+ * \param[out] out   The new region, or NULL if it is empty.
  * \return result_OK or result_OOM.
  */
-result_t region_union(const region_t *a, const region_t *b, region_t **out);
+result_t region_union(const alloc_t  *alloc,
+                      const region_t *a,
+                      const region_t *b,
+                      region_t      **out);
 
 /**
  * Creates the difference of two regions: the pixels of `a` not in `b`.
  *
- * \param[in]  a   The region to take from (may be NULL).
- * \param[in]  b   The region to take away (may be NULL).
- * \param[out] out The new region, or NULL if it is empty.
+ * \param[in]  alloc Allocator for the new region, or NULL.
+ * \param[in]  a     The region to take from (may be NULL).
+ * \param[in]  b     The region to take away (may be NULL).
+ * \param[out] out   The new region, or NULL if it is empty.
  * \return result_OK or result_OOM.
  */
-result_t region_subtract(const region_t *a,
+result_t region_subtract(const alloc_t  *alloc,
+                         const region_t *a,
                          const region_t *b,
                          region_t      **out);
 
 /**
  * Creates a copy of a region shifted by (dx,dy) and clipped to a box.
  *
+ * \param[in]  alloc  Allocator for the new region, or NULL.
  * \param[in]  region The region to shift (may be NULL).
  * \param[in]  dx     The horizontal shift.
  * \param[in]  dy     The vertical shift.
@@ -134,7 +154,8 @@ result_t region_subtract(const region_t *a,
  * \param[out] out    The new region, or NULL if it is empty.
  * \return result_OK or result_OOM.
  */
-result_t region_translate(const region_t *region,
+result_t region_translate(const alloc_t  *alloc,
+                          const region_t *region,
                           int             dx,
                           int             dy,
                           const box_t    *clip,
@@ -145,18 +166,20 @@ result_t region_translate(const region_t *region,
  * `bitmap_orient` turns a bitmap of that size. Pixels outside the area are
  * dropped.
  *
+ * \param[in]  alloc  Allocator for the new region, or NULL.
  * \param[in]  region The region to turn (may be NULL).
  * \param[in]  orient Flip or turn.
  * \param[in]  area   Size of the area before.
  * \param[out] out    The new region, or NULL if it is empty.
  * \return result_OK, result_BAD_ARG for an unknown `orient`, or result_OOM.
  */
-result_t region_orient(const region_t *region,
+result_t region_orient(const alloc_t  *alloc,
+                       const region_t *region,
                        orient_t        orient,
                        size2d_t        area,
                        region_t      **out);
 
-/** Frees a region. */
+/** Frees a region through the allocator it was made with. */
 void region_destroy(region_t *region);
 
 /**
@@ -186,12 +209,17 @@ int region_row(const region_t *region, int y, const int **runs);
  *
  * The cost is O(boundary). A pixel may be reported more than once.
  *
+ * \param[in]  alloc  Allocator for the array, or NULL. Free the array with
+ *                    the same allocator.
  * \param[in]  region The region.
- * \param[out] spans  A malloc'd array of boxes (NULL if none).
+ * \param[out] spans  An array of boxes (NULL if none).
  * \param[out] n      The number of boxes.
  * \return result_OK or result_OOM.
  */
-result_t region_outline(const region_t *region, box_t **spans, int *n);
+result_t region_outline(const alloc_t  *alloc,
+                        const region_t *region,
+                        box_t         **spans,
+                        int            *n);
 
 #ifdef __cplusplus
 }

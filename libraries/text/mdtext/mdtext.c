@@ -160,6 +160,11 @@ static int mdtext_layout_lines(mdtext_t      *mdtext,
 
 /* ----------------------------------------------------------------------- */
 
+static const alloc_t *mdtext_alloc(const mdtext_t *mdtext)
+{
+  return mdtext->alloc ? mdtext->alloc : &alloc_default;
+}
+
 result_t mdtext_set(mdtext_t *mdtext, const char *src, int len, int markdown)
 {
   result_t  rc;
@@ -171,13 +176,14 @@ result_t mdtext_set(mdtext_t *mdtext, const char *src, int len, int markdown)
   nspans = 0;
   if (markdown)
   {
-    rc = mdspans_parse(src, len, MDTEXT_MAX_SPANS, &text, &spans, &nspans);
+    rc = mdspans_parse(mdtext->alloc, src, len, MDTEXT_MAX_SPANS,
+                       &text, &spans, &nspans);
     if (rc != result_OK)
       return rc;
   }
   else
   {
-    text = malloc((size_t) len + 1);
+    text = mdtext_alloc(mdtext)->malloc((size_t) len + 1);
     if (text == NULL)
       return result_OOM;
     memcpy(text, src, (size_t) len);
@@ -193,6 +199,7 @@ result_t mdtext_set(mdtext_t *mdtext, const char *src, int len, int markdown)
 
 result_t mdtext_layout(mdtext_t *mdtext, int wrap_width)
 {
+  const alloc_t *alloc;
   int            relaid;
   size_t         max;
   bmtext_line_t *lines;
@@ -204,6 +211,7 @@ result_t mdtext_layout(mdtext_t *mdtext, int wrap_width)
   if (mdtext->text == NULL)
     return result_OK;
 
+  alloc  = mdtext_alloc(mdtext);
   relaid = 0;
   if (mdtext->lines == NULL || wrap_width != mdtext->laid_wrap ||
       mdtext->font != mdtext->laid_font || mdtext->bold != mdtext->laid_bold ||
@@ -213,17 +221,17 @@ result_t mdtext_layout(mdtext_t *mdtext, int wrap_width)
     /* every line holds at least one byte, plus one empty line per newline,
      * so strlen + 1 bounds the count */
     max   = strlen(mdtext->text) + 1;
-    lines = malloc(max * sizeof(*lines));
-    dx    = malloc(max * sizeof(*dx));
+    lines = alloc->malloc(max * sizeof(*lines));
+    dx    = alloc->malloc(max * sizeof(*dx));
     if (lines == NULL || dx == NULL)
     {
-      free(lines);
-      free(dx);
+      alloc->free(lines);
+      alloc->free(dx);
       return result_OOM;
     }
 
-    free(mdtext->lines);
-    free(mdtext->dx);
+    alloc->free(mdtext->lines);
+    alloc->free(mdtext->dx);
     mdtext->lines  = lines;
     mdtext->dx     = dx;
     mdtext->nlines = mdtext_layout_lines(mdtext, wrap_width, lines, (int) max);
@@ -438,10 +446,13 @@ int mdtext_find_caret(mdtext_t *mdtext, point_t pos, int *index)
 
 void mdtext_free(mdtext_t *mdtext)
 {
-  free(mdtext->text);
-  free(mdtext->spans);
-  free(mdtext->lines);
-  free(mdtext->dx);
+  const alloc_t *alloc;
+
+  alloc = mdtext_alloc(mdtext);
+  alloc->free(mdtext->text);
+  alloc->free(mdtext->spans);
+  alloc->free(mdtext->lines);
+  alloc->free(mdtext->dx);
   mdtext->text        = NULL;
   mdtext->spans       = NULL;
   mdtext->nspans      = 0;

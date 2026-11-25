@@ -26,6 +26,7 @@ extern "C"
 #include "base/result.h"
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -44,6 +45,7 @@ extern "C"
  * fewer. It can therefore hold fewer entries than the image has colours, and
  * an entry is exactly an image's colour only if it is alone in its bin.
  *
+ * \param[in]  alloc    Allocator for the histogram, or NULL.
  * \param[in]  src      Source bitmap, \ref pixelfmt_rgbx8888 or \ref
  *                      pixelfmt_rgba8888.
  * \param[in]  ncolours Maximum palette size, \ref wu_MIN_COLOURS to \ref
@@ -54,7 +56,8 @@ extern "C"
  *         format or palette size, \ref result_TOO_BIG for an image with too
  *         many pixels, \ref result_OOM on allocation failure.
  */
-result_t wu_make_palette(const bitmap_t *src,
+result_t wu_make_palette(const alloc_t  *alloc,
+                         const bitmap_t *src,
                          int             ncolours,
                          colour_t       *palette,
                          int            *nfound);

@@ -1,6 +1,7 @@
 /* datastruct/nodegraph/nodegraph.c -- dataflow graph of nodes joined by typed links */
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "base/result.h"
 #include "utils/array.h"
@@ -27,6 +28,7 @@ nodegraph_slot_t;
 
 struct nodegraph
 {
+  const alloc_t    *alloc;
   nodegraph_slot_t *slots;
   int               used;
   int               allocated;
@@ -95,15 +97,21 @@ static result_t nodegraph_eval(nodegraph_t *graph, nodegraph_node_t node)
 
 /* ----------------------------------------------------------------------- */
 
-result_t nodegraph_create(nodegraph_t **new_graph)
+result_t nodegraph_create(const alloc_t *alloc, nodegraph_t **new_graph)
 {
   nodegraph_t *graph;
 
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
   *new_graph = NULL;
 
-  graph = calloc(1, sizeof(*graph));
+  graph = alloc->malloc(sizeof(*graph));
   if (graph == NULL)
     return result_OOM;
+
+  memset(graph, 0, sizeof(*graph));
+  graph->alloc = alloc;
 
   *new_graph = graph;
   return result_OK;
@@ -123,8 +131,8 @@ void nodegraph_destroy(nodegraph_t *doomed)
     if (slot->cls && slot->cls->destroy)
       slot->cls->destroy(slot->state);
   }
-  free(doomed->slots);
-  free(doomed);
+  doomed->alloc->free(doomed->slots);
+  doomed->alloc->free(doomed);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -144,8 +152,9 @@ result_t nodegraph_add(nodegraph_t             *graph,
   if (cls->ninputs < 0 || cls->ninputs > nodegraph_MAX_INPUTS)
     return result_BAD_ARG;
 
-  if (array_grow((void **) &graph->slots, sizeof(*graph->slots),
-                 graph->used, &graph->allocated, 1, 8))
+  if (array_grow_alloc(graph->alloc, (void **) &graph->slots,
+                       sizeof(*graph->slots), graph->used, &graph->allocated,
+                       1, 8))
     return result_OOM;
 
   slot         = &graph->slots[graph->used];

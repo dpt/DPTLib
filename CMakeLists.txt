@@ -277,6 +277,7 @@ set(FRAMEBUF_SOURCES
     libraries/framebuf/bitmap/has-transparency.c
     libraries/framebuf/bitmap/load.c
     libraries/framebuf/bitmap/load-jpeg.c
+    libraries/framebuf/bitmap/png-alloc.h
     libraries/framebuf/bitmap/resize.c
     libraries/framebuf/bitmap/restore-outside-region.c
     libraries/framebuf/bitmap/rle.h

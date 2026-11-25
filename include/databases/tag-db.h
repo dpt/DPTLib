@@ -26,6 +26,7 @@ extern "C"
 
 #include "base/result.h"
 #include "databases/pickle.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -53,7 +54,8 @@ void tagdb_fin(void);
 
 typedef struct tagdb T;
 
-result_t tagdb_open(const char *filename, T **db);
+/* 'alloc' may be NULL for the default. The database keeps it. */
+result_t tagdb_open(const alloc_t *alloc, const char *filename, T **db);
 void tagdb_close(T *db);
 
 /* force any pending changes to disc */

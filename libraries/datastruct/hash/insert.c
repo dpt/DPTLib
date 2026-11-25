@@ -33,7 +33,7 @@ result_t hash_insert(hash_t *h, const void *key, const void *value)
 
     /* not found: create new node */
 
-    m = malloc(sizeof(*m));
+    m = h->alloc->malloc(sizeof(*m));
     if (m == NULL)
       return result_OOM;
 

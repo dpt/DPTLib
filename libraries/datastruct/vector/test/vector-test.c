@@ -36,7 +36,7 @@ result_t vector_test(const char *resources)
 
   printf("test: create\n");
 
-  v = vector_create(WIDTH);
+  v = vector_create(NULL, WIDTH);
   if (v == NULL)
     goto Failure;
 

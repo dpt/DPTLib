@@ -61,5 +61,5 @@ void stream_destroy(stream_t *doomed)
   if (doomed->destroy)
     doomed->destroy(doomed);
 
-  free(doomed);
+  doomed->alloc->free(doomed);
 }

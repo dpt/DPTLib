@@ -9,15 +9,22 @@
 
 #include "impl.h"
 
-result_t region__builder_init(region__builder_t *b, int y0, int h)
+result_t region__builder_init(region__builder_t *b,
+                              const alloc_t     *alloc,
+                              int                y0,
+                              int                h)
 {
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  b->alloc    = alloc;
   b->runs     = NULL;
   b->n        = 0;
   b->cap      = 0;
   b->y0       = y0;
   b->h        = h;
   b->rowstart = 0;
-  b->start    = malloc((size_t) (h + 1) * sizeof(*b->start));
+  b->start    = alloc->malloc((size_t) (h + 1) * sizeof(*b->start));
 
   return b->start == NULL ? result_OOM : result_OK;
 }
@@ -39,7 +46,8 @@ result_t region__builder_add(region__builder_t *b, int x0, int x1)
     return result_OK;
   }
 
-  if (array_grow((void **) &b->runs, sizeof(*b->runs), b->n, &b->cap, 2, 64))
+  if (array_grow_alloc(b->alloc, (void **) &b->runs, sizeof(*b->runs), b->n,
+                       &b->cap, 2, 64))
     return result_OOM;
 
   b->runs[b->n++] = x0;
@@ -49,8 +57,8 @@ result_t region__builder_add(region__builder_t *b, int x0, int x1)
 
 void region__builder_abort(region__builder_t *b)
 {
-  free(b->start);
-  free(b->runs);
+  b->alloc->free(b->start);
+  b->alloc->free(b->runs);
   b->start = NULL;
   b->runs  = NULL;
 }
@@ -86,7 +94,7 @@ result_t region__builder_finish(region__builder_t *b, region_t **out)
     return result_OK;
   }
 
-  r = malloc(sizeof(*r));
+  r = b->alloc->malloc(sizeof(*r));
   if (r == NULL)
   {
     region__builder_abort(b);
@@ -99,6 +107,7 @@ result_t region__builder_finish(region__builder_t *b, region_t **out)
             (size_t) (last - first + 1) * sizeof(*b->start));
   b->start[last - first + 1] = b->n;
 
+  r->alloc     = b->alloc;
   r->start     = b->start;
   r->runs      = b->runs;
   r->bounds.x0 = xmin;

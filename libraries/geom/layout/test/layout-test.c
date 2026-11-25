@@ -27,7 +27,7 @@ static result_t run(const box_t            *dims,
   packer_t     *packer;
   layout_spec_t spec;
 
-  packer = packer_create(dims);
+  packer = packer_create(NULL, dims);
   if (packer == NULL)
     return result_OOM;
 

@@ -19,6 +19,7 @@ bmfontcache_entry_t;
 
 struct bmfontcache
 {
+  const alloc_t       *alloc; /* for the cache, its entries and its fonts */
   bmfontcache_entry_t *entries;
   int                   used;
   int                   allocated;
@@ -26,13 +27,19 @@ struct bmfontcache
 
 /* ----------------------------------------------------------------------- */
 
-result_t bmfontcache_create(bmfontcache_t **cache)
+result_t bmfontcache_create(const alloc_t *alloc, bmfontcache_t **cache)
 {
   bmfontcache_t *c;
 
-  c = calloc(1, sizeof(*c));
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  c = alloc->malloc(sizeof(*c));
   if (c == NULL)
     return result_OOM;
+  memset(c, 0, sizeof(*c));
+
+  c->alloc = alloc;
 
   *cache = c;
 
@@ -51,11 +58,11 @@ void bmfontcache_destroy(bmfontcache_t *cache)
   for (i = 0; i < cache->used; i++)
   {
     bmfont_destroy(cache->entries[i].font);
-    free(cache->entries[i].path);
+    cache->alloc->free(cache->entries[i].path);
   }
 
-  free(cache->entries);
-  free(cache);
+  cache->alloc->free(cache->entries);
+  cache->alloc->free(cache);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -92,6 +99,7 @@ result_t bmfontcache_acquire(bmfontcache_t *cache,
 {
   result_t             rc;
   bmfontcache_entry_t *entry;
+  size_t               len;
   char                *owned_path;
   bmfont_t            *font;
 
@@ -103,22 +111,25 @@ result_t bmfontcache_acquire(bmfontcache_t *cache,
     return result_OK;
   }
 
-  owned_path = strdup(path);
+  len        = strlen(path) + 1;
+  owned_path = cache->alloc->malloc(len);
   if (owned_path == NULL)
     return result_OOM;
+  memcpy(owned_path, path, len);
 
-  rc = bmfont_create(path, &font);
+  rc = bmfont_create(cache->alloc, path, &font);
   if (rc != result_OK)
   {
-    free(owned_path);
+    cache->alloc->free(owned_path);
     return rc;
   }
 
-  if (array_grow((void **) &cache->entries, sizeof(*cache->entries),
-                 cache->used, &cache->allocated, 1, 4))
+  if (array_grow_alloc(cache->alloc,
+                       (void **) &cache->entries, sizeof(*cache->entries),
+                       cache->used, &cache->allocated, 1, 4))
   {
     bmfont_destroy(font);
-    free(owned_path);
+    cache->alloc->free(owned_path);
     return result_OOM;
   }
 
@@ -146,7 +157,7 @@ void bmfontcache_release(bmfontcache_t *cache, bmfont_t *bmfont)
     return;
 
   bmfont_destroy(entry->font);
-  free(entry->path);
+  cache->alloc->free(entry->path);
 
   array_delete_element(cache->entries, sizeof(*cache->entries), cache->used,
                        (int) (entry - cache->entries));

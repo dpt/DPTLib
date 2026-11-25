@@ -159,7 +159,7 @@ static int test_blit(const char *resources)
   int         ok = 1;
 
   filename = pathf("%s/resources/composite/A.png", resources);
-  rc = bitmap_load_png(&bm, filename);
+  rc = bitmap_load_png(NULL, &bm, filename);
   if (rc)
   {
     fprintf(stderr, "test_blit: load rc=&%x\n", rc);
@@ -179,9 +179,9 @@ static int test_blit(const char *resources)
   cbm = bm;
   cbm.base = malloc(npix * 4);
   memcpy(cbm.base, bm.base, npix * 4);
-  bitmap_init(&cbm, bm.size, bm.format, bm.rowbytes, NULL, cbm.base);
+  bitmap_init(NULL, &cbm, bm.size, bm.format, bm.rowbytes, NULL, cbm.base);
 
-  rc = bitmap_compress(&cbm);
+  rc = bitmap_compress(NULL, &cbm);
   if (rc) { fprintf(stderr, "compress rc=&%x\n", rc); ok = 0; goto done; }
 
   if (!bitmap_is_compressed(&cbm)
@@ -202,7 +202,7 @@ static int test_blit(const char *resources)
     bitmap_t copy;
 
     /* a clone of a compressed bitmap is expanded */
-    rc = bitmap_clone(&cbm, &copy);
+    rc = bitmap_clone(NULL, &cbm, &copy);
     if (rc) { fprintf(stderr, "clone rc=&%x\n", rc); ok = 0; goto done; }
     if (bitmap_is_compressed(&copy) || copy.format != bm.format ||
         copy.rowbytes != bm.rowbytes ||
@@ -215,7 +215,7 @@ static int test_blit(const char *resources)
     free(copy.base);
   }
 
-  rc = bitmap_decompress(&cbm);
+  rc = bitmap_decompress(NULL, &cbm);
   if (rc) { fprintf(stderr, "decompress rc=&%x\n", rc); ok = 0; goto done; }
 
   if (cbm.rowbytes != bm.rowbytes || memcmp(cbm.base, rawpix, npix * 4) != 0)
@@ -230,7 +230,7 @@ static int test_blit(const char *resources)
   scr_rle  = malloc(npix * 4);
 
   /* recompress for the blit */
-  rc = bitmap_compress(&cbm);
+  rc = bitmap_compress(NULL, &cbm);
   if (rc) { fprintf(stderr, "compress2 rc=&%x\n", rc); ok = 0; goto done2; }
 
   /* unclipped */
@@ -291,14 +291,14 @@ static int test_blit(const char *resources)
     memset(p4_ref, 0, (size_t) p4_rowbytes * h);
     memset(p4_rle, 0, (size_t) p4_rowbytes * h);
 
-    rc = bitmap_decompress(&cbm);
+    rc = bitmap_decompress(NULL, &cbm);
     if (rc) { fprintf(stderr, "p4 decompress rc=&%x\n", rc); ok = 0; }
 
     screen_init(&s, bm.size, pixelfmt_p4, p4_rowbytes, pal, p4_ref);
     rc = screen_copy_bitmap(&s, 0, 0, &cbm);
     if (rc) { fprintf(stderr, "p4 raw blit rc=&%x\n", rc); ok = 0; }
 
-    rc = bitmap_compress(&cbm);
+    rc = bitmap_compress(NULL, &cbm);
     if (rc) { fprintf(stderr, "p4 compress rc=&%x\n", rc); ok = 0; }
 
     screen_init(&s, bm.size, pixelfmt_p4, p4_rowbytes, pal, p4_rle);
@@ -325,14 +325,14 @@ static int test_blit(const char *resources)
     memset(rgb565_ref, 0, npix * 2);
     memset(rgb565_rle, 0, npix * 2);
 
-    rc = bitmap_decompress(&cbm);
+    rc = bitmap_decompress(NULL, &cbm);
     if (rc) { fprintf(stderr, "rgb565 decompress rc=&%x\n", rc); ok = 0; }
 
     screen_init(&s, bm.size, pixelfmt_rgb565, w * 2, NULL, rgb565_ref);
     rc = screen_copy_bitmap(&s, 0, 0, &cbm);
     if (rc) { fprintf(stderr, "rgb565 raw blit rc=&%x\n", rc); ok = 0; }
 
-    rc = bitmap_compress(&cbm);
+    rc = bitmap_compress(NULL, &cbm);
     if (rc) { fprintf(stderr, "rgb565 compress rc=&%x\n", rc); ok = 0; }
 
     screen_init(&s, bm.size, pixelfmt_rgb565, w * 2, NULL, rgb565_rle);
@@ -377,11 +377,11 @@ static int test_y8(void)
     pix[i] = (uint8_t) ((i / 17) ^ (i * 13));
   memcpy(copy, pix, n);
 
-  bitmap_init(&bm, SIZE2D(W, H), pixelfmt_y8, W, NULL, pix);
+  bitmap_init(NULL, &bm, SIZE2D(W, H), pixelfmt_y8, W, NULL, pix);
 
-  rc = bitmap_compress(&bm);
+  rc = bitmap_compress(NULL, &bm);
   if (rc) { fprintf(stderr, "y8 compress rc=&%x\n", rc); ok = 0; goto done; }
-  rc = bitmap_decompress(&bm);
+  rc = bitmap_decompress(NULL, &bm);
   if (rc) { fprintf(stderr, "y8 decompress rc=&%x\n", rc); ok = 0; goto done; }
 
   if (bm.rowbytes != W || memcmp(bm.base, copy, n) != 0)
@@ -401,10 +401,10 @@ static int test_y8(void)
     for (i = 0; i < (int) n; i++)
       p2[i] = (uint8_t) (i % 3 == 0 ? (i / 3 + 1) : 0x80);
     memcpy(copy, p2, n);
-    bitmap_init(&bm, SIZE2D(W, H), pixelfmt_y8, W, NULL, p2);
-    rc = bitmap_compress(&bm);
+    bitmap_init(NULL, &bm, SIZE2D(W, H), pixelfmt_y8, W, NULL, p2);
+    rc = bitmap_compress(NULL, &bm);
     if (rc) { fprintf(stderr, "y8 pathological compress rc=&%x\n", rc); ok = 0; goto done; }
-    rc = bitmap_decompress(&bm);
+    rc = bitmap_decompress(NULL, &bm);
     if (rc) { fprintf(stderr, "y8 pathological decompress rc=&%x\n", rc); ok = 0; goto done; }
     if (memcmp(bm.base, copy, n) != 0)
     {
@@ -456,12 +456,12 @@ static int test_p8_png(void)
   for (i = 0; i < P8W * P8H; i++)
     pix[i] = (unsigned char) ((i * 7 + i / P8W) & 0xFF);
 
-  bitmap_init(&bm, SIZE2D(P8W, P8H), pixelfmt_p8, P8W, pal, pix);
+  bitmap_init(NULL, &bm, SIZE2D(P8W, P8H), pixelfmt_p8, P8W, pal, pix);
 
-  rc = bitmap_save_png(&bm, fn);
+  rc = bitmap_save_png(NULL, &bm, fn);
   if (rc) { fprintf(stderr, "p8 png: save rc=&%x\n", rc); return 0; }
 
-  rc = bitmap_load_png(&rt, fn);
+  rc = bitmap_load_png(NULL, &rt, fn);
   remove(fn);
   if (rc) { fprintf(stderr, "p8 png: load rc=&%x\n", rc); return 0; }
 
@@ -502,7 +502,7 @@ static int test_p8_png(void)
     }
   }
 
-  rc = bitmap_convert(&rt, pixelfmt_bgrx8888, &deep);
+  rc = bitmap_convert(NULL, &rt, pixelfmt_bgrx8888, &deep);
   if (rc) { fprintf(stderr, "p8 png: convert rc=&%x\n", rc); ok = 0; goto done; }
 
   {
@@ -521,7 +521,7 @@ static int test_p8_png(void)
   }
 
 done:
-  bitmap_destroy(deep);
+  bitmap_destroy(NULL, deep);
   free(rt.base);
   return ok;
 #undef P8W

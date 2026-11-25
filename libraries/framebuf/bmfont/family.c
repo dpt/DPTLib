@@ -9,6 +9,7 @@
 #include "framebuf/bmfontfamily.h"
 #include "io/dirscan.h"
 #include "io/path.h"
+#include "utils/array.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -22,6 +23,7 @@
 
 struct bmfontfamily
 {
+  const alloc_t       *alloc; /* for the family and its strings */
   char                *name;
   bmfontface_t *faces;
   int                  nfaces;
@@ -85,13 +87,13 @@ static void parse_style(const char            *style,
   }
 }
 
-static char *dup_string(const char *s)
+static char *dup_string(const alloc_t *alloc, const char *s)
 {
   size_t len;
   char  *copy;
 
   len  = strlen(s) + 1;
-  copy = malloc(len);
+  copy = alloc->malloc(len);
   if (copy != NULL)
     memcpy(copy, s, len);
 
@@ -118,10 +120,8 @@ static result_t scan_entry(const char *leaf, void *opaque)
 {
   scan_ctx_t     *ctx;
   bmfontfamily_t *family;
-  bmfontface_t   *grown;
   bmfontface_t   *face;
   char            style[256];
-  int             cap;
 
   ctx    = opaque;
   family = ctx->family;
@@ -129,26 +129,20 @@ static result_t scan_entry(const char *leaf, void *opaque)
   if (!path_leaf_strip_ext(leaf, BMFONT_EXT, style, sizeof(style)))
     return result_OK;
 
-  if (family->nfaces == family->cap)
-  {
-    cap = family->cap ? family->cap * 2 : 4;
-
-    grown = realloc(family->faces, (size_t) cap * sizeof(*grown));
-    if (grown == NULL)
-      return result_OOM;
-    family->faces = grown;
-    family->cap   = cap;
-  }
+  if (array_grow_alloc(family->alloc,
+                       (void **) &family->faces, sizeof(*family->faces),
+                       family->nfaces, &family->cap, 1, 4))
+    return result_OOM;
 
   face = &family->faces[family->nfaces];
 
-  face->style = dup_string(style);
+  face->style = dup_string(family->alloc, style);
   /* copied out of pathf's shared static buffer straight away */
-  face->path  = dup_string(pathf("%s/%s", ctx->dir, leaf));
+  face->path  = dup_string(family->alloc, pathf("%s/%s", ctx->dir, leaf));
   if (face->style == NULL || face->path == NULL)
   {
-    free((void *) face->style); /* discard const */
-    free((void *) face->path);  /* discard const */
+    family->alloc->free((void *) face->style); /* discard const */
+    family->alloc->free((void *) face->path);  /* discard const */
     return result_OOM;
   }
 
@@ -160,7 +154,9 @@ static result_t scan_entry(const char *leaf, void *opaque)
 
 /* ----------------------------------------------------------------------- */
 
-result_t bmfontfamily_scan(const char *dir, bmfontfamily_t **family)
+result_t bmfontfamily_scan(const alloc_t   *alloc,
+                           const char      *dir,
+                           bmfontfamily_t **family)
 {
   result_t        rc;
   scan_ctx_t      ctx;
@@ -172,9 +168,15 @@ result_t bmfontfamily_scan(const char *dir, bmfontfamily_t **family)
   if (dir == NULL || family == NULL)
     return result_NULL_ARG;
 
-  f = calloc(1, sizeof(*f));
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  f = alloc->malloc(sizeof(*f));
   if (f == NULL)
     return result_OOM;
+  memset(f, 0, sizeof(*f));
+
+  f->alloc = alloc;
 
   /* own copy: dir may point into pathf's shared static buffer, which
    * scan_entry's own pathf call would otherwise clobber mid-walk */
@@ -191,7 +193,7 @@ result_t bmfontfamily_scan(const char *dir, bmfontfamily_t **family)
     if (strchr(DIR_SEPARATORS, ctx.dir[i]) != NULL)
       leaf = ctx.dir + i + 1;
   }
-  f->name = dup_string(leaf);
+  f->name = dup_string(alloc, leaf);
   if (f->name == NULL)
   {
     bmfontfamily_destroy(f);
@@ -280,12 +282,12 @@ void bmfontfamily_destroy(bmfontfamily_t *family)
 
   for (i = 0; i < family->nfaces; i++)
   {
-    free((void *) family->faces[i].style); /* discard const */
-    free((void *) family->faces[i].path);  /* discard const */
+    family->alloc->free((void *) family->faces[i].style); /* discard const */
+    family->alloc->free((void *) family->faces[i].path);  /* discard const */
   }
-  free(family->faces);
-  free(family->name);
-  free(family);
+  family->alloc->free(family->faces);
+  family->alloc->free(family->name);
+  family->alloc->free(family);
 }
 
 const char *bmfontfamily_name(const bmfontfamily_t *family)

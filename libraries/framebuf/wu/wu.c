@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "base/result.h"
 #include "framebuf/bitmap.h"
@@ -191,7 +192,8 @@ static void wu_find_cut(const wu_cell_t *cells, wu_box_t *box)
 
 /* ----------------------------------------------------------------------- */
 
-result_t wu_make_palette(const bitmap_t *src,
+result_t wu_make_palette(const alloc_t  *alloc,
+                         const bitmap_t *src,
                          int             ncolours,
                          colour_t       *palette,
                          int            *nfound)
@@ -202,6 +204,9 @@ result_t wu_make_palette(const bitmap_t *src,
   int        i;
   int        best;
   wu_cell_t  total;
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   *nfound = 0;
 
@@ -218,9 +223,10 @@ result_t wu_make_palette(const bitmap_t *src,
   if (src->size.w == 0 || src->size.h == 0)
     return result_OK;
 
-  cells = calloc(WU_CELLS, sizeof(*cells));
+  cells = alloc->malloc(WU_CELLS * sizeof(*cells));
   if (cells == NULL)
     return result_OOM;
+  memset(cells, 0, WU_CELLS * sizeof(*cells));
 
   wu_histogram(src, cells);
   wu_accumulate(cells);
@@ -260,7 +266,7 @@ result_t wu_make_palette(const bitmap_t *src,
   }
   *nfound = nboxes;
 
-  free(cells);
+  alloc->free(cells);
 
   return result_OK;
 }

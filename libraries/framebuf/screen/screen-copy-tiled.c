@@ -43,7 +43,11 @@ static int pretile_count(int n, int period)
 
 /* Make "block" from "src" repeated kx by ky times, sharing src's palette and
  * span. Returns non-zero on success; the caller frees block->base. */
-static int pretile(const bitmap_t *src, int kx, int ky, bitmap_t *block)
+static int pretile(const alloc_t  *alloc,
+                   const bitmap_t *src,
+                   int             kx,
+                   int             ky,
+                   bitmap_t       *block)
 {
   int                  rowlen;
   unsigned char       *base;
@@ -53,7 +57,7 @@ static int pretile(const bitmap_t *src, int kx, int ky, bitmap_t *block)
   int                  i;
 
   rowlen = src->size.w << (pixelfmt_log2bpp(src->format) - 3);
-  base   = malloc((size_t) rowlen * kx * src->size.h * ky);
+  base   = alloc->malloc((size_t) rowlen * kx * src->size.h * ky);
   if (base == NULL)
     return 0;
 
@@ -97,20 +101,23 @@ result_t screen_copy_bitmap_tiled_dithered(screen_t       *scr,
                                            point_t         origin,
                                            screen_dither_t method)
 {
-  result_t rc;
-  box_t    orig_clip;
-  box_t    clip;
-  int      period;
-  int      kx;
-  int      ky;
-  bitmap_t block;
-  int      pretiled;
-  int      x0;
-  int      x;
-  int      y;
+  result_t       rc;
+  const alloc_t *alloc;
+  box_t          orig_clip;
+  box_t          clip;
+  int            period;
+  int            kx;
+  int            ky;
+  bitmap_t       block;
+  int            pretiled;
+  int            x0;
+  int            x;
+  int            y;
 
   if (src->size.w <= 0 || src->size.h <= 0)
     return result_BAD_ARG;
+
+  alloc = scr->alloc ? scr->alloc : &alloc_default;
 
   if (box_is_empty(dst))
     return result_OK;
@@ -143,7 +150,7 @@ result_t screen_copy_bitmap_tiled_dithered(screen_t       *scr,
 
     kx = pretile_count(src->size.w, period);
     ky = pretile_count(src->size.h, period);
-    if (kx * ky > 1 && pretile(src, kx, ky, &block))
+    if (kx * ky > 1 && pretile(alloc, src, kx, ky, &block))
     {
       src      = &block;
       pretiled = 1;
@@ -158,7 +165,7 @@ result_t screen_copy_bitmap_tiled_dithered(screen_t       *scr,
       rc = screen_copy_bitmap_dithered(scr, x, y, src, method);
 
   if (pretiled)
-    free(block.base);
+    alloc->free(block.base);
 
   scr->clip = orig_clip;
 

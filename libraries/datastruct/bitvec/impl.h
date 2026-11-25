@@ -22,8 +22,9 @@
 
 struct bitvec
 {
-  unsigned int  length; /* length in words */
-  bitvec_T     *vec;
+  const alloc_t *alloc;
+  unsigned int   length; /* length in words */
+  bitvec_T      *vec;
 };
 
 result_t bitvec_ensure(bitvec_t *v, unsigned int need);

@@ -17,6 +17,7 @@ extern "C"
 #include <stddef.h>
 
 #include "base/result.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -38,11 +39,12 @@ typedef struct bitfifo T;
 /**
  * Create a bitfifo.
  *
+ * \param alloc Allocator for the bitfifo, or NULL. The bitfifo keeps it.
  * \param nbits Minimum number of bits that the bitfifo should store.
  *
  * \return New bitfifo or NULL if OOM.
  */
-bitfifo_t *bitfifo_create(int nbits);
+bitfifo_t *bitfifo_create(const alloc_t *alloc, int nbits);
 
 /**
  * Destroy a bitfifo.

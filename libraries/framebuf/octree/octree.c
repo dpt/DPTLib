@@ -239,7 +239,8 @@ static void octree_collect(const octree_node_t *node,
 
 /* ----------------------------------------------------------------------- */
 
-result_t octree_make_palette(const bitmap_t *src,
+result_t octree_make_palette(const alloc_t  *alloc,
+                             const bitmap_t *src,
                              int             ncolours,
                              colour_t       *palette,
                              int            *nfound)
@@ -248,6 +249,9 @@ result_t octree_make_palette(const bitmap_t *src,
   const unsigned char       *row;
   const pixelfmt_rgbx8888_t *px;
   int                        x, y;
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   *nfound = 0;
 
@@ -262,7 +266,7 @@ result_t octree_make_palette(const bitmap_t *src,
 
   memset(&tree, 0, sizeof(tree));
 
-  tree.nodes = malloc(OCTREE_MAX_NODES * sizeof(*tree.nodes));
+  tree.nodes = alloc->malloc(OCTREE_MAX_NODES * sizeof(*tree.nodes));
   if (tree.nodes == NULL)
     return result_OOM;
 
@@ -292,7 +296,7 @@ result_t octree_make_palette(const bitmap_t *src,
 
   octree_collect(tree.root, palette, nfound);
 
-  free(tree.nodes);
+  alloc->free(tree.nodes);
 
   return result_OK;
 }

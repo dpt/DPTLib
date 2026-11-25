@@ -35,8 +35,8 @@ result_t digestdb_init(void)
   {
     /* initialise */
 
-    g.digests = atom_create_tuned(ATOMBUFSZ / digestdb_DIGESTSZ,
-                                       ATOMBUFSZ);
+    g.digests = atom_create_tuned(NULL, ATOMBUFSZ / digestdb_DIGESTSZ,
+                                  ATOMBUFSZ);
     if (g.digests == NULL)
       return result_OOM;
   }

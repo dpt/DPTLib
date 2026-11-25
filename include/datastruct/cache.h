@@ -24,6 +24,7 @@ extern "C"
 #include <stddef.h>
 
 #include "base/result.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -46,6 +47,7 @@ typedef unsigned int cachekey_t;
 /**
  * Create a cache.
  *
+ * \param[in]  alloc    Allocator for the cache, or NULL. The cache keeps it.
  * \param[in]  config   Pointer to cache parameters, or NULL for default
  *                      cache parameters.
  * \param[in]  length   Byte length of the cache to allocate.
@@ -53,12 +55,14 @@ typedef unsigned int cachekey_t;
  *
  * \return Error indication.
  */
-result_t cache_create(const cacheconfig_t *config,
+result_t cache_create(const alloc_t       *alloc,
+                      const cacheconfig_t *config,
                       size_t               length,
                       cache_t            **cache);
 
 /**
- * Destroy a cache.
+ * Destroy a cache. A cache from cache_construct is left alone, as the caller
+ * owns its block.
  *
  * \param[in] doomed    Pointer to the cache to destroy.
  */

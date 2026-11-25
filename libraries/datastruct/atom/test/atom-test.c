@@ -107,7 +107,7 @@ static result_t test_delete(atom_set_t *d)
 static result_t test_rename(atom_set_t *d)
 {
   result_t err;
-  int   i;
+  int      i;
 
   printf("test: rename\n");
 
@@ -153,8 +153,8 @@ static const char *randomname(void)
 {
   static char buf[5 + 1];
 
-  int length;
-  int i;
+  int         length;
+  int         i;
 
   length = rnd(NELEMS(buf) - 1);
 
@@ -169,14 +169,14 @@ static const char *randomname(void)
 static result_t test_random(atom_set_t *d)
 {
   result_t err;
-  int   i;
+  int      i;
 
   printf("test: random\n");
 
   for (i = 0; i < 100; i++)
   {
     const char *name;
-    atom_t  idx;
+    atom_t      idx;
 
     name = randomname();
 
@@ -197,12 +197,12 @@ static result_t test_random(atom_set_t *d)
 
 result_t atom_test(const char *resources)
 {
-  result_t   err;
+  result_t    err;
   atom_set_t *d;
 
   NOT_USED(resources);
 
-  d = atom_create_tuned(1, 12);
+  d = atom_create_tuned(NULL, 1, 12);
   if (d == NULL)
     goto Failure;
 

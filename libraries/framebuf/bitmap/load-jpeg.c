@@ -32,7 +32,9 @@ static void jpeg_output_message(j_common_ptr cinfo)
 
 /* ----------------------------------------------------------------------- */
 
-result_t bitmap_load_jpeg(bitmap_t *bm, const char *filename)
+result_t bitmap_load_jpeg(const alloc_t *alloc,
+                          bitmap_t      *bm,
+                          const char    *filename)
 {
   result_t rc;
   FILE    *fp;
@@ -48,6 +50,9 @@ result_t bitmap_load_jpeg(bitmap_t *bm, const char *filename)
   JDIMENSION           x;
   colour_t             plte[256];
   int                  i;
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   fp = fopen(filename, "rb");
   if (fp == NULL)
@@ -84,7 +89,7 @@ result_t bitmap_load_jpeg(bitmap_t *bm, const char *filename)
   bm_fmt      = grey ? pixelfmt_p8 : pixelfmt_rgbx8888;
   bm_rowbytes = (int) cinfo.output_width << (grey ? 0 : 2);
 
-  pixels = malloc((size_t) bm_rowbytes * cinfo.output_height);
+  pixels = alloc->malloc((size_t) bm_rowbytes * cinfo.output_height);
   if (pixels == NULL)
   {
     rc = result_OOM;
@@ -126,7 +131,8 @@ result_t bitmap_load_jpeg(bitmap_t *bm, const char *filename)
     for (i = 0; i < 256; i++)
       plte[i] = colour_rgba(i, i, i, 0xFF);
 
-  rc = bitmap_init(bm, SIZE2D(cinfo.output_width, cinfo.output_height),
+  rc = bitmap_init(alloc, bm,
+                   SIZE2D(cinfo.output_width, cinfo.output_height),
                    bm_fmt,
                    bm_rowbytes,
                    grey ? plte : NULL, /* p8: copied in */
@@ -137,7 +143,7 @@ result_t bitmap_load_jpeg(bitmap_t *bm, const char *filename)
   pixels = NULL; /* belongs to bitmap now */
 
 cleanup:
-  free(pixels);
+  alloc->free(pixels);
   jpeg_destroy_decompress(&cinfo);
   fclose(fp);
   return rc;

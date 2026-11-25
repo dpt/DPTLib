@@ -19,7 +19,7 @@ result_t vector_ensure(vector_t *v, unsigned int need)
 
     required = need;
 
-    newbase = realloc(v->base, required * v->width);
+    newbase = v->alloc->realloc(v->base, required * v->width);
     if (newbase == NULL)
       return result_OOM;
 

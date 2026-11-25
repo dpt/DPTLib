@@ -22,6 +22,7 @@ extern "C"
 #endif
 
 #include "base/result.h"
+#include "utils/alloc.h"
 
 #define T bitvec_t
 
@@ -30,8 +31,9 @@ typedef struct bitvec T;
 typedef unsigned int bitvec_index_t;
 
 /* Creates a bit vector big enough to hold 'length' bits.
- * All bits are zero after creation. */
-T *bitvec_create(unsigned int length);
+ * All bits are zero after creation. 'alloc' may be NULL for the default
+ * allocator; the vector keeps it. */
+T *bitvec_create(const alloc_t *alloc, unsigned int length);
 void bitvec_destroy(T *v);
 
 result_t bitvec_set(T *v, bitvec_index_t bit);
@@ -52,6 +54,7 @@ int bitvec_next(const T *v, int n);
 
 int bitvec_eq(const T *a, const T *b);
 
+/* The result of and/or uses the allocator of 'a'. */
 result_t bitvec_and(const T *a, const T *b, T **c);
 result_t bitvec_or(const T *a, const T *b, T **c);
 

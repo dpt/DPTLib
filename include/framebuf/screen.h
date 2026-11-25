@@ -13,11 +13,16 @@
 
 /**
  * A screen.
+ *
+ * Drawing calls which need working memory take it from `alloc`. NULL means
+ * \ref alloc_default. The init calls set it to NULL; set it after them to
+ * use another allocator.
  */
 typedef struct screen
 {
   bitmap_ALL_MEMBERS
-  box_t clip; /* rectangular clip region, specified in pixels */
+  box_t          clip;  /* rectangular clip region, specified in pixels */
+  const alloc_t *alloc; /* allocator for working memory, or NULL */
 }
 screen_t;
 
@@ -27,6 +32,7 @@ screen_t;
  * A screen is a view onto memory the caller owns: unlike bitmap_init it
  * neither copies the palette nor takes ownership of anything, so there is no
  * matching destroy call. The palette and base must outlive the screen.
+ * `alloc` is set to NULL.
  *
  * \param[in] scr       Screen to initialize.
  * \param[in] size      Width and height of the screen in pixels.
@@ -44,7 +50,7 @@ void screen_init(screen_t  *scr,
 
 /**
  * Initialize a previously allocated screen structure, for drawing to an
- * existing bitmap.
+ * existing bitmap. `alloc` is set to NULL.
  *
  * \param[in] scr Screen to initialize.
  * \param[in] bm  Bitmap to draw to.

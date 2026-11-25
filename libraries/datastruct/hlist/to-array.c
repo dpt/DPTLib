@@ -12,15 +12,18 @@
 
 #include "impl.h"
 
-void **hlist_to_array(T list, void *end)
+void **hlist_to_array(const alloc_t *alloc, T list, void *end)
 {
   int    n;
   void **array;
   int    i;
 
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
   n = hlist_length(list);
 
-  array = malloc((n + 1) * sizeof(*array));
+  array = alloc->malloc((n + 1) * sizeof(*array));
   if (array == NULL)
     return NULL;
 

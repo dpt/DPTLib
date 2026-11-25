@@ -27,7 +27,7 @@ static result_t emit_line(txtfmt_t *tx, int start, int length)
 
     n = MAX(tx->allocated * 2, StartAt);
 
-    newspans = realloc(tx->spans, sizeof(*tx->spans) * n);
+    newspans = tx->alloc->realloc(tx->spans, sizeof(*tx->spans) * n);
     if (newspans == NULL)
       return result_OOM;
 

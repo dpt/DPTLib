@@ -74,7 +74,8 @@ void hash_no_destroy_value(void *string)
 
 /* ----------------------------------------------------------------------- */
 
-result_t hash_create(const void           *default_value,
+result_t hash_create(const alloc_t        *alloc,
+                     const void           *default_value,
                      int                   nbins,
                      hash_fn_t            *fn,
                      hash_compare_t       *compare,
@@ -85,18 +86,24 @@ result_t hash_create(const void           *default_value,
   hash_t       *h;
   hash_node_t **bins;
 
-  h = malloc(sizeof(*h));
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  h = alloc->malloc(sizeof(*h));
   if (h == NULL)
     return result_OOM;
 
   nbins = prime_nearest(nbins);
 
-  bins = calloc(nbins, sizeof(*h->bins));
+  bins = alloc->malloc(nbins * sizeof(*h->bins));
   if (bins == NULL)
   {
-    free(h);
+    alloc->free(h);
     return result_OOM;
   }
+  memset(bins, 0, nbins * sizeof(*h->bins));
+
+  h->alloc         = alloc;
 
   /* the default routines handle strings */
 

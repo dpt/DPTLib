@@ -12,19 +12,22 @@
 
 #include "impl.h"
 
-T hlist_copy(T list)
+T hlist_copy(const alloc_t *alloc, T list)
 {
   T  head;
   T *p;
+
+  if (alloc == NULL)
+    alloc = &alloc_default;
 
   p = &head;
 
   for (; list; list = list->rest)
   {
-    *p = malloc(sizeof(**p));
+    *p = alloc->malloc(sizeof(**p));
     if (*p == NULL)
     {
-      hlist_free(&head); /* *p is NULL, so this ends the partial list */
+      hlist_free(alloc, &head); /* *p is NULL, so this ends the partial list */
       return NULL;
     }
 

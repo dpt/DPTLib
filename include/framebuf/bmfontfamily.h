@@ -22,6 +22,7 @@
 #include <stddef.h>
 
 #include "base/result.h"
+#include "utils/alloc.h"
 
 /** Font weight, lightest first. Order is significant. */
 typedef enum bmfontfamily_weight
@@ -61,6 +62,8 @@ typedef struct bmfontfamily bmfontfamily_t;
 /**
  * Scan a family directory for its faces.
  *
+ * \param[in]  alloc   Allocator for the family, or NULL. The family keeps it
+ *                     for later calls.
  * \param[in]  dir     The family's directory, e.g. "resources/bmfonts/Tiny".
  * \param[out] family  Newly allocated family. Free it with
  *                     bmfontfamily_destroy().
@@ -68,7 +71,9 @@ typedef struct bmfontfamily bmfontfamily_t;
  *         cannot be opened, \ref result_NOT_FOUND if it holds no faces, or
  *         appropriate result code otherwise.
  */
-result_t bmfontfamily_scan(const char *dir, bmfontfamily_t **family);
+result_t bmfontfamily_scan(const alloc_t   *alloc,
+                           const char      *dir,
+                           bmfontfamily_t **family);
 
 /**
  * Split a "Family Style" label, as reported by bmfont_enumerate(), at its

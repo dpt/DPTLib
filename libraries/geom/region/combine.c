@@ -70,7 +70,8 @@ static result_t combine_row(region__builder_t *bld,
   return rc;
 }
 
-static result_t combine(const region_t *a,
+static result_t combine(const alloc_t  *alloc,
+                        const region_t *a,
                         const region_t *b,
                         combine_t       op,
                         region_t      **out)
@@ -107,7 +108,7 @@ static result_t combine(const region_t *a,
     y1 = MAX(ab.y1, bb.y1);
   }
 
-  rc = region__builder_init(&bld, y0, y1 - y0);
+  rc = region__builder_init(&bld, alloc, y0, y1 - y0);
   if (rc != result_OK)
     return rc;
 
@@ -131,14 +132,18 @@ static result_t combine(const region_t *a,
 
 /* ----------------------------------------------------------------------- */
 
-result_t region_union(const region_t *a, const region_t *b, region_t **out)
+result_t region_union(const alloc_t  *alloc,
+                      const region_t *a,
+                      const region_t *b,
+                      region_t      **out)
 {
-  return combine(a, b, combine_UNION, out);
+  return combine(alloc, a, b, combine_UNION, out);
 }
 
-result_t region_subtract(const region_t *a,
+result_t region_subtract(const alloc_t  *alloc,
+                         const region_t *a,
                          const region_t *b,
                          region_t      **out)
 {
-  return combine(a, b, combine_SUBTRACT, out);
+  return combine(alloc, a, b, combine_SUBTRACT, out);
 }

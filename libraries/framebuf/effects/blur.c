@@ -51,7 +51,8 @@ static void make_kernel(effects_blur_method_t method,
     kernel[i] = (float) (k[i] / sum);
 }
 
-result_t effects_blur_apply(const bitmap_t       *src,
+result_t effects_blur_apply(const alloc_t        *alloc,
+                            const bitmap_t       *src,
                             bitmap_t             *dst,
                             effects_blur_method_t method,
                             int                   amount)
@@ -60,6 +61,9 @@ result_t effects_blur_apply(const bitmap_t       *src,
   float           kernel[effects_blur_MAX_AMOUNT];
   convolve_lut_t *lut;
 
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
   if (method != effects_blur_BOX && method != effects_blur_GAUSSIAN)
     return result_BAD_ARG;
 
@@ -67,13 +71,13 @@ result_t effects_blur_apply(const bitmap_t       *src,
 
   make_kernel(method, amount, kernel);
 
-  rc = effects__convolve_init(kernel, amount, &lut);
+  rc = effects__convolve_init(alloc, kernel, amount, &lut);
   if (rc != result_OK)
     return rc;
 
-  rc = effects__convolve(lut, src, dst);
+  rc = effects__convolve(alloc, lut, src, dst);
 
-  effects__convolve_destroy(lut);
+  effects__convolve_destroy(alloc, lut);
 
   return rc;
 }

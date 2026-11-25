@@ -55,7 +55,7 @@ result_t mdspans_test(const char *resources)
 
   for (i = 0; i < NELEMS(cases); i++)
   {
-    if (mdspans_parse(cases[i].md, (int) strlen(cases[i].md),
+    if (mdspans_parse(NULL, cases[i].md, (int) strlen(cases[i].md),
                       cases[i].maxspans, &text, &spans, &nspans) != result_OK)
       return result_TEST_FAILED;
 

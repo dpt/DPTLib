@@ -80,7 +80,7 @@ result_t wu_test(const char *resources)
 
   (void) resources;
 
-  rc = bitmap_init(&bm, size, pixelfmt_rgbx8888, W * 4, NULL, pixels);
+  rc = bitmap_init(NULL, &bm, size, pixelfmt_rgbx8888, W * 4, NULL, pixels);
   if (rc != result_OK)
     return result_TEST_FAILED;
 
@@ -88,7 +88,7 @@ result_t wu_test(const char *resources)
   for (i = 0; i < W * H; i++)
     pixels[i] = few[i % 5] | 0xFF000000u;
 
-  rc = wu_make_palette(&bm, 16, palette, &nfound);
+  rc = wu_make_palette(NULL, &bm, 16, palette, &nfound);
   if (rc != result_OK || nfound != 5)
   {
     printf("wu: expected 5 colours, got %d (rc %d)\n", nfound, rc);
@@ -107,7 +107,7 @@ result_t wu_test(const char *resources)
   for (i = 0; i < W * H; i++)
     pixels[i] = (i & 1 ? 0x020202u : 0x000000u) | 0xFF000000u;
 
-  rc = wu_make_palette(&bm, 16, palette, &nfound);
+  rc = wu_make_palette(NULL, &bm, 16, palette, &nfound);
   if (rc != result_OK || nfound != 1 || !palette_has(palette, 1, 0x010101u))
   {
     printf("wu: shared bin gave %d colours (rc %d)\n", nfound, rc);
@@ -121,7 +121,7 @@ result_t wu_test(const char *resources)
 
   for (i = wu_MIN_COLOURS; i <= wu_MAX_COLOURS; i *= 2)
   {
-    rc = wu_make_palette(&bm, i, palette, &nfound);
+    rc = wu_make_palette(NULL, &bm, i, palette, &nfound);
     if (rc != result_OK || nfound != i)
     {
       printf("wu: N=%d gave %d colours (rc %d)\n", i, nfound, rc);
@@ -132,12 +132,12 @@ result_t wu_test(const char *resources)
   /* 4. the point of it all: less error than the octree */
   for (i = 4; i <= 64; i *= 2)
   {
-    rc = wu_make_palette(&bm, i, palette, &nfound);
+    rc = wu_make_palette(NULL, &bm, i, palette, &nfound);
     if (rc != result_OK)
       return result_TEST_FAILED;
     wu_error = palette_error(pixels, palette, nfound);
 
-    rc = octree_make_palette(&bm, i, palette, &nfound);
+    rc = octree_make_palette(NULL, &bm, i, palette, &nfound);
     if (rc != result_OK)
       return result_TEST_FAILED;
     octree_error = palette_error(pixels, palette, nfound);
@@ -151,15 +151,15 @@ result_t wu_test(const char *resources)
   }
 
   /* 5. bad arguments */
-  if (wu_make_palette(&bm, 1, palette, &nfound) != result_BAD_ARG ||
-      wu_make_palette(&bm, 257, palette, &nfound) != result_BAD_ARG)
+  if (wu_make_palette(NULL, &bm, 1, palette, &nfound) != result_BAD_ARG ||
+      wu_make_palette(NULL, &bm, 257, palette, &nfound) != result_BAD_ARG)
   {
     printf("wu: bad palette size accepted\n");
     return result_TEST_FAILED;
   }
 
   bm.format = pixelfmt_bgrx8888;
-  if (wu_make_palette(&bm, 16, palette, &nfound) != result_BAD_ARG)
+  if (wu_make_palette(NULL, &bm, 16, palette, &nfound) != result_BAD_ARG)
   {
     printf("wu: bad format accepted\n");
     return result_TEST_FAILED;

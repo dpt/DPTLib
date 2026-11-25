@@ -13,15 +13,19 @@
 
 #include "impl.h"
 
-bitvec_t *bitvec_create(unsigned int length)
+bitvec_t *bitvec_create(const alloc_t *alloc, unsigned int length)
 {
   result_t  err;
   bitvec_t *v;
 
-  v = malloc(sizeof(*v));
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  v = alloc->malloc(sizeof(*v));
   if (v == NULL)
     return NULL;
 
+  v->alloc  = alloc;
   v->length = 0;
   v->vec    = NULL;
 
@@ -29,6 +33,7 @@ bitvec_t *bitvec_create(unsigned int length)
   if (err)
   {
     assert(err == result_OOM);
+    alloc->free(v);
     return NULL;
   }
 

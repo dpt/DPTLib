@@ -22,6 +22,7 @@ extern "C"
 
 #include "framebuf/screen.h"
 #include "geom/box.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -80,9 +81,13 @@ tonemap_spec_t;
 /**
  * Create a tone map with neutral red, green and blue tables.
  *
+ * The map records `alloc`. \ref tonemap_copy and \ref tonemap_destroy use
+ * it.
+ *
+ * \param[in] alloc Allocator for the map, or NULL.
  * \return The new tone map, or NULL on allocation failure.
  */
-tonemap_t *tonemap_create(void);
+tonemap_t *tonemap_create(const alloc_t *alloc);
 
 /**
  * Destroy a tone map.
@@ -99,7 +104,7 @@ void tonemap_destroy(tonemap_t *map);
 void tonemap_reset(tonemap_t *map);
 
 /**
- * Duplicate a tone map.
+ * Duplicate a tone map, through the original's allocator.
  *
  * \param[in] map Tone map to copy.
  * \return The copy, or NULL on allocation failure.

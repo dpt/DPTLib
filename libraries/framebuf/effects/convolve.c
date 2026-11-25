@@ -40,7 +40,8 @@ struct convolve_lut
 
 /* ----------------------------------------------------------------------- */
 
-result_t effects__convolve_init(const float     *kernel,
+result_t effects__convolve_init(const alloc_t   *alloc,
+                                const float     *kernel,
                                 int              n,
                                 convolve_lut_t **new_lut)
 {
@@ -79,7 +80,7 @@ result_t effects__convolve_init(const float     *kernel,
       return result_BAD_ARG;
   }
 
-  lut = malloc(sizeof(*lut));
+  lut = alloc->malloc(sizeof(*lut));
   if (lut == NULL)
     return result_OOM;
 
@@ -116,9 +117,9 @@ result_t effects__convolve_init(const float     *kernel,
   return result_OK;
 }
 
-void effects__convolve_destroy(convolve_lut_t *lut)
+void effects__convolve_destroy(const alloc_t *alloc, convolve_lut_t *lut)
 {
-  free(lut);
+  alloc->free(lut);
 }
 
 /* ----------------------------------------------------------------------- */
@@ -529,7 +530,8 @@ static void convolve_row(const convolve_lut_t *lut,
 
 /* ----------------------------------------------------------------------- */
 
-result_t effects__convolve(const convolve_lut_t *lut,
+result_t effects__convolve(const alloc_t        *alloc,
+                           const convolve_lut_t *lut,
                            const bitmap_t       *src,
                            bitmap_t             *dst)
 {
@@ -561,7 +563,7 @@ result_t effects__convolve(const convolve_lut_t *lut,
    * plus padding at either end. */
   maxdim = MAX(width, height) + (3 * lut->stages - 1) * 2;
 
-  row = malloc((size_t) maxdim * sizeof(*row));
+  row = alloc->malloc((size_t) maxdim * sizeof(*row));
   if (row == NULL)
     return result_OOM;
 
@@ -580,7 +582,7 @@ result_t effects__convolve(const convolve_lut_t *lut,
     convolve_row(lut, col, col, height, dststride, dststride, row, cs, amask);
   }
 
-  free(row);
+  alloc->free(row);
 
   return result_OK;
 }

@@ -4,7 +4,8 @@
 
 #include "impl.h"
 
-result_t region_translate(const region_t *region,
+result_t region_translate(const alloc_t  *alloc,
+                          const region_t *region,
                           int             dx,
                           int             dy,
                           const box_t    *clip,
@@ -28,7 +29,7 @@ result_t region_translate(const region_t *region,
   if (box_intersection(&moved, clip, &within))
     return result_OK;
 
-  rc = region__builder_init(&b, within.y0, within.y1 - within.y0);
+  rc = region__builder_init(&b, alloc, within.y0, within.y1 - within.y0);
   if (rc != result_OK)
     return rc;
 

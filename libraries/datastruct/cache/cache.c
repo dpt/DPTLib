@@ -74,7 +74,9 @@ typedef unsigned int cachetime_t;
 /* The cache itself. */
 struct cache
 {
-  cachetime_t         time;         /* a monotonic timer which is incremented
+  const alloc_t      *alloc;        /* allocator of the block, or NULL when
+                                       the caller supplied it */
+  cachetime_t         time;        /* a monotonic timer which is incremented
                                        on each operation */
   int                 nbins;        /* the number of hash bins */
   struct cacheentry **bins;         /* pointer to array of linked list start
@@ -169,7 +171,8 @@ static void cache_reset_stats(cache_t *c)
   c->stats.evictions = 0;
 }
 
-result_t cache_create(const cacheconfig_t *config,
+result_t cache_create(const alloc_t       *alloc,
+                      const cacheconfig_t *config,
                       size_t               length,
                       cache_t            **new_cache)
 {
@@ -188,6 +191,8 @@ result_t cache_create(const cacheconfig_t *config,
   cache_t *c;
 
   /* validate arguments */
+  if (alloc == NULL)
+    alloc = &alloc_default;
   if (config == NULL)
     config = &default_config; /* use default configuration if none specified */
   if (length < 512)
@@ -235,9 +240,11 @@ result_t cache_create(const cacheconfig_t *config,
     return result_BAD_ARG; /* calculations didn't work */
 
   /* allocate the cache as a single block */
-  c = malloc(szcache);
+  c = alloc->malloc(szcache);
   if (c == NULL)
     return result_OOM;
+
+  c->alloc = alloc;
 
   /* work out structure locations */
   c->bins    = (struct cacheentry **)((char *) c + ofbins);
@@ -258,7 +265,10 @@ result_t cache_create(const cacheconfig_t *config,
 
 void cache_destroy(cache_t *doomed)
 {
-  free(doomed);
+  if (doomed == NULL || doomed->alloc == NULL)
+    return; /* nothing, or the caller owns the block */
+
+  doomed->alloc->free(doomed);
 }
 
 result_t cache_construct(const cacheconfig_t *config,
@@ -328,6 +338,8 @@ result_t cache_construct(const cacheconfig_t *config,
     return result_BAD_ARG; /* calculations didn't work */
 
   c = block;
+
+  c->alloc = NULL;
 
   /* work out structure locations */
   c->bins    = (struct cacheentry **)((char *) c + ofbins);

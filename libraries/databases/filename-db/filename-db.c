@@ -96,6 +96,8 @@ void filenamedb_fin(void)
 
 struct filenamedb
 {
+  const alloc_t *alloc;
+
   char       *filename;
 
   atom_set_t *filenames;
@@ -166,7 +168,9 @@ static const pickle_unformat_methods_t unformat_methods =
 
 /* ----------------------------------------------------------------------- */
 
-result_t filenamedb_open(const char *filename, filenamedb_t **pdb)
+result_t filenamedb_open(const alloc_t *alloc,
+                         const char    *filename,
+                         filenamedb_t **pdb)
 {
   result_t      err;
   char         *filenamecopy = NULL;
@@ -177,21 +181,25 @@ result_t filenamedb_open(const char *filename, filenamedb_t **pdb)
   assert(filename);
   assert(pdb);
 
-  filenamecopy = strdup(filename); // FIXME was str_dup
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
+  filenamecopy = alloc_strdup(alloc, filename);
   if (filenamecopy == NULL)
   {
     err = result_OOM;
     goto Failure;
   }
 
-  filenames = atom_create_tuned(ATOMBUFSZ / ESTATOMLEN, ATOMBUFSZ);
+  filenames = atom_create_tuned(alloc, ATOMBUFSZ / ESTATOMLEN, ATOMBUFSZ);
   if (filenames == NULL)
   {
     err = result_OOM;
     goto Failure;
   }
 
-  err = hash_create(NULL,
+  err = hash_create(alloc,
+                    NULL,
                     HASHSIZE,
                     digestdb_hash,
                     digestdb_compare,
@@ -201,13 +209,14 @@ result_t filenamedb_open(const char *filename, filenamedb_t **pdb)
   if (err)
     goto Failure;
 
-  db = malloc(sizeof(*db));
+  db = alloc->malloc(sizeof(*db));
   if (db == NULL)
   {
     err = result_OOM;
     goto Failure;
   }
 
+  db->alloc       = alloc;
   db->filename    = filenamecopy;
   db->filenames   = filenames;
   db->hash        = hash;
@@ -228,10 +237,10 @@ result_t filenamedb_open(const char *filename, filenamedb_t **pdb)
 
 Failure:
 
-  free(db);
+  alloc->free(db);
   hash_destroy(hash);
   atom_destroy(filenames);
-  free(filenamecopy);
+  alloc->free(filenamecopy);
 
   return err;
 }
@@ -246,9 +255,9 @@ void filenamedb_close(filenamedb_t *db)
   hash_destroy(db->hash);
   atom_destroy(db->filenames);
 
-  free(db->filename);
+  db->alloc->free(db->filename);
 
-  free(db);
+  db->alloc->free(db);
 }
 
 /* ----------------------------------------------------------------------- */

@@ -18,12 +18,12 @@ result_t vector_set_length(vector_t *v, unsigned int length)
    * the storage here instead */
   if (length == 0)
   {
-    free(v->base);
+    v->alloc->free(v->base);
     newbase = NULL;
   }
   else
   {
-    newbase = realloc(v->base, length * v->width);
+    newbase = v->alloc->realloc(v->base, length * v->width);
     if (newbase == NULL)
       return result_OOM;
   }

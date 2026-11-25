@@ -30,6 +30,7 @@ extern "C"
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
 #include "framebuf/tonemap.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -52,6 +53,7 @@ effects_blur_method_t;
  *
  * Edge pixels are replicated outwards.
  *
+ * \param[in]  alloc  Allocator for working memory, or NULL.
  * \param[in]  src    Source bitmap.
  * \param[out] dst    Destination bitmap.
  * \param[in]  method Kernel shape.
@@ -61,7 +63,8 @@ effects_blur_method_t;
  * \return \ref result_OK on success, \ref result_BAD_ARG for unsuitable
  *         bitmaps, \ref result_OOM on allocation failure.
  */
-result_t effects_blur_apply(const bitmap_t       *src,
+result_t effects_blur_apply(const alloc_t        *alloc,
+                            const bitmap_t       *src,
                             bitmap_t             *dst,
                             effects_blur_method_t method,
                             int                   amount);
@@ -69,12 +72,15 @@ result_t effects_blur_apply(const bitmap_t       *src,
 /**
  * Sharpen a bitmap.
  *
- * \param[in]  src Source bitmap.
- * \param[out] dst Destination bitmap.
+ * \param[in]  alloc Allocator for working memory, or NULL.
+ * \param[in]  src   Source bitmap.
+ * \param[out] dst   Destination bitmap.
  * \return \ref result_OK on success, \ref result_BAD_ARG for unsuitable
  *         bitmaps, \ref result_OOM on allocation failure.
  */
-result_t effects_sharpen_apply(const bitmap_t *src, bitmap_t *dst);
+result_t effects_sharpen_apply(const alloc_t  *alloc,
+                               const bitmap_t *src,
+                               bitmap_t       *dst);
 
 /**
  * Blend two bitmaps, every byte of each pixel included.

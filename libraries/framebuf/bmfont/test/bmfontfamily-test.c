@@ -27,7 +27,8 @@ static result_t test_scan_order(const char *resources)
     "Light", "Regular", "Italic", "Bold", "BoldItalic", "Black"
   };
 
-  rc = bmfontfamily_scan(pathf("%s/resources/test/bmfonts/Fixture",
+  rc = bmfontfamily_scan(NULL,
+                         pathf("%s/resources/test/bmfonts/Fixture",
                                resources), &family);
   if (rc != result_OK)
   {
@@ -80,7 +81,8 @@ static result_t test_selection(const char *resources)
   const bmfontface_t *bold_italic;
   int                 ok;
 
-  rc = bmfontfamily_scan(pathf("%s/resources/test/bmfonts/Fixture",
+  rc = bmfontfamily_scan(NULL,
+                         pathf("%s/resources/test/bmfonts/Fixture",
                                resources), &family);
   if (rc != result_OK)
   {
@@ -88,7 +90,7 @@ static result_t test_selection(const char *resources)
     return result_TEST_FAILED;
   }
 
-  regular     = bmfontfamily_find(family, bmfontfamily_WEIGHT_REGULAR,
+  regular    = bmfontfamily_find(family, bmfontfamily_WEIGHT_REGULAR,
                                   bmfontfamily_SLANT_UPRIGHT);
   bold        = bmfontfamily_find(family, bmfontfamily_WEIGHT_BOLD,
                                   bmfontfamily_SLANT_UPRIGHT);
@@ -148,7 +150,8 @@ static result_t test_real_family(const char *resources)
   const bmfontface_t *regular;
   const bmfontface_t *bold;
 
-  rc = bmfontfamily_scan(pathf("%s/resources/bmfonts/GrongyUI", resources),
+  rc = bmfontfamily_scan(NULL,
+                         pathf("%s/resources/bmfonts/GrongyUI", resources),
                          &family);
   if (rc != result_OK)
   {
@@ -181,7 +184,7 @@ static result_t test_errors(const char *resources)
 
   (void) resources;
 
-  rc = bmfontfamily_scan("no/such/dir/here", &family);
+  rc = bmfontfamily_scan(NULL, "no/such/dir/here", &family);
   if (rc != result_FILE_NOT_FOUND)
   {
     printf("bmfontfamily_scan bad dir: rc %x, expected %x\n", rc,
@@ -189,8 +192,8 @@ static result_t test_errors(const char *resources)
     return result_TEST_FAILED;
   }
 
-  if (bmfontfamily_scan(NULL, &family) != result_NULL_ARG ||
-      bmfontfamily_scan("x", NULL) != result_NULL_ARG)
+  if (bmfontfamily_scan(NULL, NULL, &family) != result_NULL_ARG ||
+      bmfontfamily_scan(NULL, "x", NULL) != result_NULL_ARG)
   {
     printf("bmfontfamily_scan: NULL arg not rejected\n");
     return result_TEST_FAILED;

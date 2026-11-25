@@ -17,6 +17,8 @@ packer_sortdir_t;
 
 struct packer
 {
+  const alloc_t    *alloc;
+
   box_t            *areas;
   int               allocedareas;
   int               usedareas;

@@ -77,6 +77,8 @@ blkpool_t;
 
 struct atom_set
 {
+  const alloc_t  *alloc;
+
   size_t          log2locpoolsz; /* log2 number of locations per locpool */
   size_t          log2blkpoolsz; /* log2 number of bytes per blkpool */
 

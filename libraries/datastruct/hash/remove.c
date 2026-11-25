@@ -21,7 +21,7 @@ void hash_remove_node(hash_t *h, hash_node_t **n)
   h->destroy_key((void *) doomed->key);
   h->destroy_value((void *) doomed->value);
 
-  free(doomed);
+  h->alloc->free(doomed);
 
   h->count--;
 }

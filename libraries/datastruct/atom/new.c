@@ -39,12 +39,13 @@ result_t atom_ensure_loc_space(atom_set_t *s)
   /* do we need to grow the pool list? */
 
 #ifdef USE_ARRAY_GROW
-  if (array_grow((void **) &s->locpools,
-                 sizeof(*s->locpools),
-                 s->l_used,
-                 (int *) &s->l_allocated,
-                 1,
-                 LOCPTRMINSZ))
+  if (array_grow_alloc(s->alloc,
+                       (void **) &s->locpools,
+                       sizeof(*s->locpools),
+                       s->l_used,
+                       (int *) &s->l_allocated,
+                       1,
+                       LOCPTRMINSZ))
     return result_OOM;
 #else
   if (s->l_used == s->l_allocated)
@@ -58,7 +59,8 @@ result_t atom_ensure_loc_space(atom_set_t *s)
     /* subtract 1 to make it greater than or equal */
     newallocated = power2gt(newallocated - 1);
 
-    newpools = realloc(s->locpools, newallocated * sizeof(*newpools));
+    newpools = s->alloc->realloc(s->locpools,
+                                 newallocated * sizeof(*newpools));
     if (newpools == NULL)
       return result_OOM;
 
@@ -69,7 +71,7 @@ result_t atom_ensure_loc_space(atom_set_t *s)
 
   /* allocate a new pool */
 
-  newpool = malloc(sizeof(*newpool) << s->log2locpoolsz);
+  newpool = s->alloc->malloc(sizeof(*newpool) << s->log2locpoolsz);
   if (newpool == NULL)
     return result_OOM;
 
@@ -105,12 +107,13 @@ result_t atom_ensure_blk_space(atom_set_t *s, size_t length)
   /* do we need to grow the pool list? */
 
 #ifdef USE_ARRAY_GROW
-  if (array_grow((void **) &s->blkpools,
-                 sizeof(*s->blkpools),
-                 s->b_used,
-                 (int *) &s->b_allocated,
-                 1,
-                 BLKPTRMINSZ))
+  if (array_grow_alloc(s->alloc,
+                       (void **) &s->blkpools,
+                       sizeof(*s->blkpools),
+                       s->b_used,
+                       (int *) &s->b_allocated,
+                       1,
+                       BLKPTRMINSZ))
     return result_OOM;
 #else
   if (s->b_used == s->b_allocated)
@@ -124,7 +127,8 @@ result_t atom_ensure_blk_space(atom_set_t *s, size_t length)
     /* subtract 1 to make it greater than or equal */
     newallocated = power2gt(newallocated - 1);
 
-    newpools = realloc(s->blkpools, newallocated * sizeof(*newpools));
+    newpools = s->alloc->realloc(s->blkpools,
+                                 newallocated * sizeof(*newpools));
     if (newpools == NULL)
       return result_OOM;
 
@@ -135,7 +139,7 @@ result_t atom_ensure_blk_space(atom_set_t *s, size_t length)
 
   /* allocate a new pool */
 
-  newpool = malloc(sizeof(*newpool) << s->log2blkpoolsz);
+  newpool = s->alloc->malloc(sizeof(*newpool) << s->log2blkpoolsz);
   if (newpool == NULL)
     return result_OOM;
 

@@ -23,6 +23,7 @@ extern "C"
 #include "base/result.h"
 #include "framebuf/bitmap.h"
 #include "framebuf/colour.h"
+#include "utils/alloc.h"
 
 /* ----------------------------------------------------------------------- */
 
@@ -144,14 +145,17 @@ dither_options_t;
  * seeded the same every call, so it is repeatable. `strength` scales the
  * noise as well as the error.
  *
- * \param[in]  src  Source bitmap, \ref pixelfmt_rgbx8888 or \ref
- *                  pixelfmt_rgba8888.
- * \param[in]  opts Dithering options.
- * \param[out] dst  Receives the dithered bitmap.
+ * \param[in]  alloc Allocator for the result and working memory, or NULL.
+ * \param[in]  src   Source bitmap, \ref pixelfmt_rgbx8888 or \ref
+ *                   pixelfmt_rgba8888.
+ * \param[in]  opts  Dithering options.
+ * \param[out] dst   Receives the dithered bitmap. Free it with \ref
+ *                   bitmap_destroy and the same `alloc`.
  * \return \ref result_OK on success, \ref result_BAD_ARG for an unsupported
  *         format or option, \ref result_OOM on allocation failure.
  */
-result_t dither_bitmap(const bitmap_t         *src,
+result_t dither_bitmap(const alloc_t          *alloc,
+                       const bitmap_t         *src,
                        const dither_options_t *opts,
                        bitmap_t              **dst);
 
@@ -172,9 +176,10 @@ dither_scratch_t;
 /**
  * Release a scratch's memory, leaving it zeroed and ready to use again.
  *
+ * \param[in] alloc   Allocator the scratch grew through, or NULL.
  * \param[in] scratch Scratch to release.
  */
-void dither_scratch_free(dither_scratch_t *scratch);
+void dither_scratch_free(const alloc_t *alloc, dither_scratch_t *scratch);
 
 /**
  * As \ref dither_bitmap, but writing into an existing bitmap and allocating
@@ -187,6 +192,8 @@ void dither_scratch_free(dither_scratch_t *scratch);
  *
  * On failure `dst` is unchanged.
  *
+ * \param[in]     alloc   Allocator of `scratch` and of the palette of `dst`,
+ *                        or NULL.
  * \param[in]     src     Source bitmap.
  * \param[in]     opts    Dithering options.
  * \param[in,out] scratch Working memory.
@@ -195,7 +202,8 @@ void dither_scratch_free(dither_scratch_t *scratch);
  *         format or option or an unsuitable `dst`, \ref result_OOM on
  *         allocation failure.
  */
-result_t dither_bitmap_into(const bitmap_t         *src,
+result_t dither_bitmap_into(const alloc_t          *alloc,
+                            const bitmap_t         *src,
                             const dither_options_t *opts,
                             dither_scratch_t       *scratch,
                             bitmap_t               *dst);

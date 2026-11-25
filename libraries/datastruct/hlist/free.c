@@ -13,15 +13,18 @@
 
 #include "impl.h"
 
-void hlist_free(T *list)
+void hlist_free(const alloc_t *alloc, T *list)
 {
   T next;
 
   assert(list != NULL);
 
+  if (alloc == NULL)
+    alloc = &alloc_default;
+
   for (; *list; *list = next)
   {
     next = (*list)->rest;
-    free(*list);
+    alloc->free(*list);
   }
 }
