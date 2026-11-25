@@ -975,9 +975,9 @@ int bmfont_get_codepoints(const bmfont_t *bmfont,
  *
  * It should be (em_width*32) pixels wide, em_width up to 32px. <PIXEL_WIDTH_IDX> pixels represent advance widths.
  */
-result_t bmfont_create(const alloc_t *alloc,
-                       const char    *png,
-                       bmfont_t     **pbmfont)
+result_t bmfont_create(const alloc_t *volatile alloc,
+                       const char             *png,
+                       bmfont_t              **pbmfont)
 {
   result_t       rc;
   bmfont_t      *bmfont       = NULL;

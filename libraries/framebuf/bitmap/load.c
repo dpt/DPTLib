@@ -46,9 +46,9 @@ static pixelfmt_t paletted_format(png_structp png_ptr, int bitdepth)
   }
 }
 
-result_t bitmap_load_png(const alloc_t *alloc,
-                         bitmap_t      *bm,
-                         const char    *filename)
+result_t bitmap_load_png(const alloc_t *volatile alloc,
+                         bitmap_t               *bm,
+                         const char             *filename)
 {
   result_t       rc;
   FILE          *fp;

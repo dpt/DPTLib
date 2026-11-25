@@ -11,9 +11,9 @@
 
 #include "png-alloc.h"
 
-result_t bitmap_save_png(const alloc_t  *alloc,
-                         const bitmap_t *bm,
-                         const char     *filename)
+result_t bitmap_save_png(const alloc_t *volatile alloc,
+                         const bitmap_t         *bm,
+                         const char             *filename)
 {
 #ifdef DPTLIB_IMAGES_READ_ONLY
   NOT_USED(alloc);
