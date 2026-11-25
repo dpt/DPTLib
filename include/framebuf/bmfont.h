@@ -265,6 +265,30 @@ result_t bmfont_set_ascent(bmfont_t *bmfont, int ascent);
 result_t bmfont_add_rows(bmfont_t *bmfont, int rows);
 
 /**
+ * Resize the cell by adding or removing columns and rows at its edges. A
+ * positive count adds blank pixels at that edge and a negative count removes
+ * them, with their ink. Ink keeps its place relative to the edges it does
+ * not touch. The baseline moves with the top edge. The cell bottom moves
+ * with the top edge too, unless it is the last row, when it stays the last
+ * row. Each advance width changes by \p left, clamped to the new cell width.
+ *
+ * \param[in] bmfont  Bitmap font to modify.
+ * \param[in] left    Columns to add (or remove, if negative) at the left.
+ * \param[in] top     Rows to add (or remove) at the top.
+ * \param[in] right   Columns to add (or remove) at the right.
+ * \param[in] bottom  Rows to add (or remove) at the bottom.
+ * \return \ref result_OK on success, \ref result_BAD_ARG if the new cell is
+ *         out of the range bmfont_create_blank() accepts or the baseline
+ *         would leave the cell, or \ref result_OOM. On failure the font is
+ *         unchanged.
+ */
+result_t bmfont_resize(bmfont_t *bmfont,
+                       int       left,
+                       int       top,
+                       int       right,
+                       int       bottom);
+
+/**
  * Save a font as a 2bpp paletted PNG that bmfont_create() can load. The
  * writer draws the advance-width strips left-justified, and the grid (left
  * sidebearing, baseline and cell bottom) in its standard places. So saving a

@@ -2124,6 +2124,7 @@ static result_t bmfont_edit_test(const char *resources)
   unsigned long cps[2];
   int           ascent;
   int           descent;
+  int           width, height;
 
   snprintf(dir, sizeof(dir), "%s", pathf("%s/resources/bmfonts", resources));
   rc = bmfont_enumerate(dir, bmfont_round_trip_cb, NULL);
@@ -2195,6 +2196,73 @@ static result_t bmfont_edit_test(const char *resources)
   if (!fonts_match(a, b))
   {
     fprintf(stderr, "error: edited font did not load back the same\n");
+    goto Failure;
+  }
+  bmfont_destroy(b);
+  b = NULL;
+
+  /* resize: a column in at the left and out at the right, two rows on top */
+  if (bmfont_resize(a, 0, 0, -6, 0) != result_BAD_ARG ||
+      bmfont_resize(a, 0, -5, 0, 0) != result_BAD_ARG)
+  {
+    fprintf(stderr, "error: bmfont_resize took a bad argument\n");
+    goto Failure;
+  }
+
+  rc = bmfont_resize(a, 1, 2, -1, 0);
+  if (rc)
+    goto Failure;
+
+  bmfont_get_info(a, &width, &height, &ascent, &descent);
+  if (width != 8 || height != 12 || ascent != 7 || descent != 4 ||
+      !bmfont_get_ink(a, 33, 1, 2) || bmfont_get_ink(a, 33, 0, 0) ||
+      !bmfont_get_ink(a, 33, 7, 11) || !bmfont_get_ink(a, 63, 5, 7) ||
+      bmfont_get_advance(a, 33) != 1 || bmfont_get_advance(a, 34) != 8 ||
+      bmfont_lookup(a, 'A') != 33)
+  {
+    fprintf(stderr, "error: resize is wrong\n");
+    goto Failure;
+  }
+
+  rc = bmfont_save_png(a, SAVE_TEST_PNG_A);
+  if (rc)
+    goto Failure;
+
+  rc = bmfont_create(NULL, SAVE_TEST_PNG_A, &b);
+  if (rc)
+    goto Failure;
+
+  if (!fonts_match(a, b))
+  {
+    fprintf(stderr, "error: resized font did not load back the same\n");
+    goto Failure;
+  }
+
+  rc = bmfont_resize(a, -1, -2, 1, 0);
+  if (rc)
+    goto Failure;
+
+  bmfont_get_info(a, &width, &height, &ascent, &descent);
+  if (width != 8 || height != 10 || ascent != 5 || descent != 4 ||
+      !bmfont_get_ink(a, 33, 0, 0) || !bmfont_get_ink(a, 33, 6, 9))
+  {
+    fprintf(stderr, "error: resize back is wrong\n");
+    goto Failure;
+  }
+
+  /* the implicit cmap follows the last cell with an advance width */
+  bmfont_set_advance(a, 95, 0);
+  if (bmfont_get_codepoints(a, 95, NULL, 0) != 0 ||
+      bmfont_lookup(a, ' ' + 95) >= 0)
+  {
+    fprintf(stderr, "error: implicit cmap kept a cell with no advance\n");
+    goto Failure;
+  }
+  bmfont_set_advance(a, 95, 4);
+  if (bmfont_get_codepoints(a, 95, NULL, 0) != 1 ||
+      bmfont_lookup(a, ' ' + 95) != 95)
+  {
+    fprintf(stderr, "error: implicit cmap missed a cell given an advance\n");
     goto Failure;
   }
 

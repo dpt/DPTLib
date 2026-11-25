@@ -1403,6 +1403,16 @@ void bmfont_set_advance(bmfont_t *bmfont, int gid, bmfont_width_t advance)
     bmfont->maxadw = advance;
   else if (old == bmfont->maxadw && advance < old)
     refresh_maxadw(bmfont); /* the widest glyph shrank */
+
+  /* the implicit cmap ends at the last cell with an advance width, so a
+   * cell gaining or losing its advance can move that end. The group's
+   * storage is kept, so only a face with no advances at all can fail to
+   * grow here: its cmap then stays empty until it reloads */
+  if (bmfont->implicit_cmap && (old == 0) != (advance == 0))
+  {
+    (void) set_implicit_cmap(bmfont);
+    refresh_lookups(bmfont);
+  }
 }
 
 result_t bmfont_set_ascent(bmfont_t *bmfont, int ascent)
@@ -1482,6 +1492,101 @@ result_t bmfont_add_rows(bmfont_t *bmfont, int rows)
 
   refresh_lookups(bmfont);
   return result_OK;
+}
+
+result_t bmfont_resize(bmfont_t *bmfont,
+                       int       left,
+                       int       top,
+                       int       right,
+                       int       bottom)
+{
+  int            width, height;
+  int            oldbottom;
+  int            ascent;
+  int            newbottom;
+  int            rowbytes;
+  unsigned char *glyphs;
+  bmfont_t       old;
+  unsigned int   mask;
+  int            gid;
+  int            y, sy;
+  unsigned int   row;
+  int            adv;
+
+  assert(bmfont);
+
+  width  = (int) bmfont->charwidth + left + right;
+  height = (int) bmfont->charheight + top + bottom;
+  if (width < 3 || width > 32 || height < 2 || height + 1 > width * 3)
+    return result_BAD_ARG;
+
+  /* the baseline moves with the top edge. The cell bottom does too, unless
+   * it is the last row, when it stays the last row */
+  oldbottom = cell_bottom(bmfont);
+  if (bmfont->ascent >= (int) bmfont->charheight)
+  {
+    ascent    = height; /* no grid rows */
+    newbottom = height - 1;
+  }
+  else
+  {
+    ascent    = bmfont->ascent + top;
+    newbottom = oldbottom + top;
+    if (oldbottom == (int) bmfont->charheight - 1)
+      newbottom += bottom;
+    newbottom = MIN(newbottom, height - 1);
+    if (ascent < 1 || ascent >= newbottom)
+      return result_BAD_ARG;
+  }
+
+  rowbytes = width <=  8 ? 1 :
+             width <= 16 ? 2 :
+                           4;
+
+  /* +1 for the box */
+  glyphs = bmfont->alloc->malloc(((size_t) bmfont->totalchars + 1) *
+                                 (size_t) rowbytes * (size_t) height);
+  if (glyphs == NULL)
+    return result_OOM;
+  memset(glyphs, 0, ((size_t) bmfont->totalchars + 1) *
+                    (size_t) rowbytes * (size_t) height);
+
+  old                   = *bmfont; /* to read the old glyphs */
+  bmfont->glyphs        = glyphs;
+  bmfont->glyphrowbytes = rowbytes;
+  bmfont->gridwidth     = (png_uint_32) width;
+  bmfont->gridheight    = (png_uint_32) height + 1;
+  bmfont->charwidth     = (png_uint_32) width;
+  bmfont->charheight    = (png_uint_32) height;
+  bmfont->ascent        = ascent;
+  bmfont->descent       = newbottom - MIN(ascent, newbottom);
+
+  /* bit (width - 1 - x) holds column x, so the right edge's change is the
+   * shift */
+  mask = width == 32 ? ~0u : (1u << width) - 1;
+  for (gid = 0; gid < bmfont->totalchars; gid++)
+  {
+    for (y = 0; y < height; y++)
+    {
+      sy = y - top;
+      if (sy < 0 || sy >= (int) old.charheight)
+        continue;
+      row = glyph_row_get(&old, gid, sy);
+      row = right >= 0 ? row << right : row >> -right;
+      glyph_row_set(bmfont, gid, y, row & mask);
+    }
+
+    adv = CLAMP(bmfont->adw[gid] + left, 0, width);
+    bmfont->adw[gid] = (bmfont_width_t) adv;
+  }
+  refresh_maxadw(bmfont);
+
+  bmfont->alloc->free(old.glyphs);
+
+  /* the box's advance width slot is already allocated, so this cannot
+   * fail */
+  bmfont->adw_used = bmfont->totalchars;
+  return make_box_glyph(bmfont);
 }
 
 /** Put the 2bpp pixel \p value at column \p x of a PNG row. */
