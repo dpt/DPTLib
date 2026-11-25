@@ -26,8 +26,8 @@ static unsigned int get_index(const bitmap_t *bm, int x, int y)
 
   switch (log2bpp)
   {
-  case 0:  return (row[x >> 3] >> (7 - (x & 7))) & 1;
-  case 1:  return (row[x >> 2] >> (6 - ((x & 3) << 1))) & 3;
+  case 0:  return (row[x >> 3] >> (x & 7)) & 1;
+  case 1:  return (row[x >> 2] >> ((x & 3) << 1)) & 3;
   case 2:  return (row[x >> 1] >> ((x & 1) << 2)) & 15;
   default: return row[x];
   }

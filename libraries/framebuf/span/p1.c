@@ -72,8 +72,8 @@ static void span_p1_blendconst(void       *vdst,
 /* unlike span_p1_blendconst above, this works directly on packed screen
  * bytes: "dst" is the row base, "first" the bit (pixel) index into it, so
  * odd start columns and odd lengths are handled without the caller packing.
- * "pixel" is a palette index in its low bit. Bit 7 of a byte is the
- * leftmost pixel, matching PNG's MSB-first 1bpp packing. */
+ * "pixel" is a palette index in its low bit. Bit 0 of a byte is the
+ * leftmost pixel, as in RISC OS screen memory. */
 static void span_p1_fill(void          *vdst,
                          int            first,
                          pixelfmt_any_t pixel,
@@ -92,7 +92,7 @@ static void span_p1_fill(void          *vdst,
     int            shift;
 
     p     = base + (x >> 3);
-    shift = 7 - (x & 7);
+    shift = x & 7;
     *p    = (unsigned char) ((*p & ~(1 << shift)) | (bit << shift));
   }
 }

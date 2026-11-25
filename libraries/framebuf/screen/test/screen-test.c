@@ -1383,7 +1383,7 @@ static result_t test_ellipse(void)
 /* ----------------------------------------------------------------------- */
 
 /* Blit an rgba8888 source onto a 1bpp screen: each pixel must quantise to
- * the nearer of the two palette entries and pack MSB-first, bit 7 leftmost. */
+ * the nearer of the two palette entries and pack LSB-first, bit 0 leftmost. */
 static result_t test_copy_bitmap_p1(void)
 {
 #define P1_ROWBYTES (WIDTH / 8)
@@ -1432,7 +1432,7 @@ static result_t test_copy_bitmap_p1(void)
     return result_TEST_FAILED;
   }
 
-  /* odd x offset: the first light pixel must land in bit 7-(3&7) of byte 0 */
+  /* odd x offset: the first light pixel must land in bit 3 of byte 0 */
   memset(p1pixels, 0, sizeof(p1pixels));
   {
     pixelfmt_rgba8888_t one = colour_rgb(0xF0, 0xF0, 0xF0).primary;
@@ -1441,17 +1441,17 @@ static result_t test_copy_bitmap_p1(void)
     bitmap_init(NULL, &dot, SIZE2D(1, 1), pixelfmt_rgba8888,
                 (int) sizeof(one), NULL, &one);
     screen_copy_bitmap(&scr, 3, 0, &dot);
-    if (p1pixels[0] != (1 << (7 - 3)))
+    if (p1pixels[0] != (1 << 3))
     {
       printf("screen: p1 blit odd-x packed wrong (0x%02X)\n", p1pixels[0]);
       return result_TEST_FAILED;
     }
   }
 
-  /* screen_set_pixel: white pixel at x=2 sets bit 7-2 of byte 0 */
+  /* screen_set_pixel: white pixel at x=2 sets bit 2 of byte 0 */
   memset(p1pixels, 0, sizeof(p1pixels));
   screen_set_pixel(&scr, 2, 0, pal[1]);
-  if (p1pixels[0] != (1 << (7 - 2)))
+  if (p1pixels[0] != (1 << 2))
   {
     printf("screen: p1 set_pixel packed wrong (0x%02X)\n", p1pixels[0]);
     return result_TEST_FAILED;
@@ -1542,7 +1542,7 @@ static result_t test_copy_bitmap_p2(void)
     return result_TEST_FAILED;
   }
 
-  /* odd x offset: first white pixel lands in bits 6-((3&3)<<1) = 0 of byte 0 */
+  /* odd x offset: first white pixel lands in bits (3&3)<<1 = 6 of byte 0 */
   memset(p2pixels, 0, sizeof(p2pixels));
   {
     pixelfmt_rgba8888_t one = colour_rgb(0xF8, 0xF8, 0xF8).primary;
@@ -1551,17 +1551,17 @@ static result_t test_copy_bitmap_p2(void)
     bitmap_init(NULL, &dot, SIZE2D(1, 1), pixelfmt_rgba8888,
                 (int) sizeof(one), NULL, &one);
     screen_copy_bitmap(&scr, 3, 0, &dot);
-    if (p2pixels[0] != (3 << 0))
+    if (p2pixels[0] != (3 << 6))
     {
       printf("screen: p2 blit odd-x packed wrong (0x%02X)\n", p2pixels[0]);
       return result_TEST_FAILED;
     }
   }
 
-  /* screen_set_pixel: white pixel at x=1 sets bits 6-((1&3)<<1) = 4 of byte 0 */
+  /* screen_set_pixel: white pixel at x=1 sets bits (1&3)<<1 = 2 of byte 0 */
   memset(p2pixels, 0, sizeof(p2pixels));
   screen_set_pixel(&scr, 1, 0, pal[3]);
-  if (p2pixels[0] != (3 << 4))
+  if (p2pixels[0] != (3 << 2))
   {
     printf("screen: p2 set_pixel packed wrong (0x%02X)\n", p2pixels[0]);
     return result_TEST_FAILED;
@@ -2442,11 +2442,11 @@ static result_t test_copy_bitmap_p4_to_p4(void)
 #undef P4P4_W
 }
 
-/* Unpack the p2 pixel at column "px" of a row's byte buffer (bits 7..6 are
- * column 0, MSB-first, four to the byte). */
+/* Unpack the p2 pixel at column "px" of a row's byte buffer (bits 1..0 are
+ * column 0, LSB-first, four to the byte). */
 static int p2_pixel_at(const unsigned char *rowbuf, int px)
 {
-  return (rowbuf[px >> 2] >> (6 - ((px & 3) << 1))) & 3;
+  return (rowbuf[px >> 2] >> ((px & 3) << 1)) & 3;
 }
 
 /* screen_copy_bitmap_tiled_dithered on a p2 screen: the same pixels as a grid
@@ -3225,7 +3225,7 @@ static result_t test_copy_bitmap_dithered_exact_16(void)
 /* ----------------------------------------------------------------------- */
 
 /* Read the "bpp_bits"-deep pixel at column "px" of a byte buffer using the
- * house within-byte order: p1/p2 MSB-first (bit 7 leftmost), p4 LSB-first --
+ * house within-byte order: LSB-first (leftmost pixel in the low bits) --
  * matching screen_set_pixel_p1/p2/p4. The source block is laid down with
  * screen_set_pixel, so a wrong-endian copy shows up here as a shuffled row. */
 static int house_pixel_at(const unsigned char *buf, int px, int bpp_bits)
@@ -3233,9 +3233,6 @@ static int house_pixel_at(const unsigned char *buf, int px, int bpp_bits)
   int ppb   = 8 / bpp_bits;
   int mask  = (1 << bpp_bits) - 1;
   int shift = (px % ppb) * bpp_bits;
-
-  if (bpp_bits != 4)
-    shift = 8 - bpp_bits - shift; /* MSB-first for p1/p2 */
 
   return (buf[px / ppb] >> shift) & mask;
 }

@@ -36,7 +36,7 @@ static void screen_set_pixel_p1(screen_t      *scr,
   int            shift;
 
   scrp  = (unsigned char *) scr->base + y * scr->rowbytes + (x >> 3);
-  shift = 7 - (x & 7); /* bit 7 is the leftmost pixel */
+  shift = x & 7; /* bit 0 is the leftmost pixel */
 
   *scrp = (unsigned char) ((*scrp & ~(1 << shift)) | ((pxl & 1) << shift));
 }
@@ -50,7 +50,7 @@ static void screen_set_pixel_p2(screen_t      *scr,
   int            shift;
 
   scrp  = (unsigned char *) scr->base + y * scr->rowbytes + (x >> 2);
-  shift = 6 - ((x & 3) << 1); /* bits 7..6 are the leftmost pixel */
+  shift = (x & 3) << 1; /* bits 1..0 are the leftmost pixel */
 
   *scrp = (unsigned char) ((*scrp & ~(3 << shift)) | ((pxl & 3) << shift));
 }
@@ -188,7 +188,7 @@ static void screen_blend_pixel_p1(screen_t *scr,
   unsigned char  idx, out;
 
   scrp  = (unsigned char *) scr->base + y * scr->rowbytes + (x >> 3);
-  shift = 7 - (x & 7);
+  shift = x & 7;
   idx   = (*scrp >> shift) & 1;
 
   scr->span->blendconst(&out, &idx, &colour, 1, alpha, scr->palette);
@@ -207,7 +207,7 @@ static void screen_blend_pixel_p2(screen_t *scr,
   unsigned char  idx, out;
 
   scrp  = (unsigned char *) scr->base + y * scr->rowbytes + (x >> 2);
-  shift = 6 - ((x & 3) << 1);
+  shift = (x & 3) << 1;
   idx   = (*scrp >> shift) & 3;
 
   scr->span->blendconst(&out, &idx, &colour, 1, alpha, scr->palette);
@@ -605,10 +605,10 @@ static colour_t src_fetch_rgba(const bitmap_t *src,
 
     switch (pixelfmt_log2bpp(src->format))
     {
-    case 0:  idx = (row[srcx >> 3] >> (7 - (srcx & 7))) & 1;        break;
-    case 1:  idx = (row[srcx >> 2] >> (6 - ((srcx & 3) << 1))) & 3; break;
-    case 2:  idx = (row[srcx >> 1] >> ((srcx & 1) * 4)) & 0xF;      break;
-    default: idx = row[srcx];                                       break;
+    case 0:  idx = (row[srcx >> 3] >> (srcx & 7)) & 1;          break;
+    case 1:  idx = (row[srcx >> 2] >> ((srcx & 3) << 1)) & 3;   break;
+    case 2:  idx = (row[srcx >> 1] >> ((srcx & 1) * 4)) & 0xF;  break;
+    default: idx = row[srcx];                                   break;
     }
 
     c = srcpal[idx];
@@ -917,7 +917,7 @@ static result_t screen_copy_bitmap_p8(screen_t         *scr,
  * (skip fully transparent, else nearest of the two palette entries) rather
  * than a blend -- a 1bpp screen has no channel bits to blend. "dither"
  * ordered-dithers the source RGB per pixel first. The cached RGB->index table
- * turns the inner loop into a mask-and-lookup; bit 7 of a byte is the
+ * turns the inner loop into a mask-and-lookup; bit 0 of a byte is the
  * leftmost pixel. Returns result_NOT_SUPPORTED if there is no deep->paletted
  * conversion table for the screen's format. */
 static result_t screen_copy_bitmap_p1(screen_t         *scr,
@@ -976,7 +976,7 @@ static result_t screen_copy_bitmap_p1(screen_t         *scr,
 
       dstx  = draw_box->x0 + xx;
       scrp  = rowp + (dstx >> 3);
-      shift = 7 - (dstx & 7);
+      shift = dstx & 7;
 
       pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
       pxl = paletted_pixel(pm, scr->palette, do_dither ? &bias : NULL,
@@ -992,7 +992,7 @@ static result_t screen_copy_bitmap_p1(screen_t         *scr,
 /* Blit "src" onto the 2bpp screen, its top-left at (x, y), clipped to
  * "draw_box". Alpha-tested transfer to the nearest of the four palette
  * entries, exactly as screen_copy_bitmap_p1 but two bits per pixel: bits
- * 7..6 of a byte are the leftmost pixel and the cached RGB->index table is
+ * 1..0 of a byte are the leftmost pixel and the cached RGB->index table is
  * packed four entries to the byte. "dither" ordered-dithers the source RGB
  * per pixel first. Returns result_NOT_SUPPORTED if there is no deep->paletted
  * conversion table for the screen's format. */
@@ -1052,7 +1052,7 @@ static result_t screen_copy_bitmap_p2(screen_t         *scr,
 
       dstx  = draw_box->x0 + xx;
       scrp  = rowp + (dstx >> 2);
-      shift = 6 - ((dstx & 3) << 1);
+      shift = (dstx & 3) << 1;
 
       pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
       pxl = paletted_pixel(pm, scr->palette, do_dither ? &bias : NULL,

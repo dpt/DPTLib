@@ -249,9 +249,8 @@ static result_t screen_copy_bitmap_rle_p8(screen_t       *scr,
 }
 
 /* As screen_copy_bitmap_rle_p4 but for a 1bpp or 2bpp paletted screen
- * (dst_log2bpp 0 or 1). These pack the leftmost pixel in the high bits of a
- * byte, unlike p4, and the cached deep -> index table is packed the other way
- * round (LSB first), so the two shifts differ. */
+ * (dst_log2bpp 0 or 1). Both the screen and the cached deep -> index table
+ * pack the leftmost pixel in the low bits of a byte. */
 static result_t screen_copy_bitmap_rle_p1p2(screen_t       *scr,
                                             int             x,
                                             int             y,
@@ -330,7 +329,7 @@ static result_t screen_copy_bitmap_rle_p1p2(screen_t       *scr,
 
         dstx  = draw_box->x0 + done + xx;
         scrp  = rowp + (dstx >> (3 - dst_log2bpp));
-        shift = 8 - bits - ((dstx & (pixsperbyte - 1)) << dst_log2bpp);
+        shift = (dstx & (pixsperbyte - 1)) << dst_log2bpp;
 
         pixelmap_extract_rgb(pm, c.primary, &r, &g, &b);
         idx = ((r >> (8 - pm->rbits)) << (pm->gbits + pm->bbits))

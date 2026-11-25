@@ -15,10 +15,8 @@
  * dictates, so every source byte is read before anything that could
  * overwrite it is written. "bpp_bits" is 1, 2 or 4.
  *
- * The within-byte pixel order must match the rest of the screen code, which
- * is not uniform: p1 and p2 are MSB-first (bit 7 / bits 7..6 are the leftmost
- * pixel -- see screen_set_pixel_p1/p2 and screen_copy_bitmap_p1/p2) while p4
- * is LSB-first (see screen_set_pixel_p4). "msb_first" carries that. */
+ * All three pack LSB-first: the leftmost pixel is in the low bits, as RISC OS
+ * screen memory has it. */
 
 /* One destination byte of a row: dest pixel x takes source pixel x - "dx".
  * Only the pixels in [x0, x1) are written; the rest of the byte is kept. */
@@ -31,15 +29,14 @@ static void screen_copy_rect_packed_byte(unsigned char       *drow,
                                          int                  dx,
                                          int                  bpp_bits)
 {
-  int           ppb, xshift, xmask, msb_first;
+  int           ppb, xshift, xmask;
   int           s0, sb, phase, lo, hi, i, shift;
   unsigned int  w, b0, b1;
   unsigned char mask, v;
 
-  xshift    = (bpp_bits == 1) ? 3 : (bpp_bits == 2) ? 2 : 1;
-  ppb       = 1 << xshift;
-  xmask     = ppb - 1;
-  msb_first = (bpp_bits != 4);
+  xshift = (bpp_bits == 1) ? 3 : (bpp_bits == 2) ? 2 : 1;
+  ppb    = 1 << xshift;
+  xmask  = ppb - 1;
 
   /* the source pixel under this byte's first pixel, and the byte holding it */
   s0    = byte * ppb - dx;
@@ -49,16 +46,8 @@ static void screen_copy_rect_packed_byte(unsigned char       *drow,
   b0 = (sb >= 0 && sb < rowbytes) ? srow[sb] : 0;
   b1 = (phase != 0 && sb + 1 >= 0 && sb + 1 < rowbytes) ? srow[sb + 1] : 0;
 
-  if (msb_first)
-  {
-    w = (b0 << 8) | b1;
-    v = (unsigned char) (w >> (8 - phase * bpp_bits));
-  }
-  else
-  {
-    w = b0 | (b1 << 8);
-    v = (unsigned char) (w >> (phase * bpp_bits));
-  }
+  w = b0 | (b1 << 8);
+  v = (unsigned char) (w >> (phase * bpp_bits));
 
   lo = MAX(x0, byte * ppb);
   hi = MIN(x1, (byte + 1) * ppb);
@@ -72,8 +61,6 @@ static void screen_copy_rect_packed_byte(unsigned char       *drow,
   for (i = lo; i < hi; i++)
   {
     shift = (i & xmask) * bpp_bits;
-    if (msb_first)
-      shift = 8 - bpp_bits - shift;
     mask = (unsigned char) (mask | (((1u << bpp_bits) - 1) << shift));
   }
 

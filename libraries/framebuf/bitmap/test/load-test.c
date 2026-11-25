@@ -98,12 +98,12 @@ static int palette_is_grey(const bitmap_t *bm,
 }
 
 /* A 1, 2, 4 or 8-bit greyscale PNG keeps its depth and gets a grey ramp for a
- * palette. 1 and 2-bit pixels pack leftmost in the high bits, as the p1 and
- * p2 screens do; 4-bit is swapped to the low-nibble-first p4 order. */
+ * palette. 1, 2 and 4-bit pixels are swapped from PNG's leftmost-in-high-bits
+ * order to the leftmost-in-low-bits order of the p1, p2 and p4 screens. */
 static int test_grey(const char *resources)
 {
-  static const unsigned char g1_0[] = { 0xB2 }, g1_1[] = { 0x4D };
-  static const unsigned char g2_0[] = { 0x1B }, g2_1[] = { 0xE4 };
+  static const unsigned char g1_0[] = { 0x4D }, g1_1[] = { 0xB2 };
+  static const unsigned char g2_0[] = { 0xE4 }, g2_1[] = { 0x1B };
   static const unsigned char g4_0[] = { 0x50, 0xFA };
   static const unsigned char g4_1[] = { 0xAF, 0x05 };
   static const unsigned char g8_0[] = { 0, 64, 128, 255 };
@@ -229,7 +229,7 @@ static int test_grey_alpha(const char *resources)
  * turning tRNS into palette alpha (entries past tRNS are opaque). */
 static int test_palette(const char *resources)
 {
-  static const unsigned char want0[] = { 0x1B }, want1[] = { 0xE4 };
+  static const unsigned char want0[] = { 0xE4 }, want1[] = { 0x1B };
   static const unsigned int  rgb[4][3] =
   {
     { 255, 0, 0 }, { 0, 255, 0 }, { 0, 0, 255 }, { 10, 20, 30 }
@@ -264,12 +264,12 @@ static int test_palette(const char *resources)
   return ok;
 }
 
-/* Paletted PNGs at the other depths: 1-bit keeps its bit order, 4-bit is
- * swapped to p4's low-nibble-first order, and 8-bit is read as is. tRNS
+/* Paletted PNGs at the other depths: 1 and 4-bit are swapped to the
+ * leftmost-in-low-bits order of p1 and p4, and 8-bit is read as is. tRNS
  * becomes palette alpha, and entries past the PLTE are opaque black. */
 static int test_palette_depths(const char *resources)
 {
-  static const unsigned char p1_0[] = { 0xB2 }, p1_1[] = { 0x4D };
+  static const unsigned char p1_0[] = { 0x4D }, p1_1[] = { 0xB2 };
   static const unsigned char p4_0[] = { 0x50, 0xFA };
   static const unsigned char p4_1[] = { 0xAF, 0x05 };
   static const unsigned char p8_0[] = { 0, 1, 2, 3 };

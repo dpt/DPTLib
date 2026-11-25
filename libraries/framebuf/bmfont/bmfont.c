@@ -2564,7 +2564,7 @@ static void bmfont_drawchar_p4_4w_t(void          *vscreen,
 /* Plot one glyph row onto a p1 (1bpp) screen row. "row" is the glyph bits
  * already shifted down by right_skip, so bit (cw - 1) is the leftmost visible
  * pixel. "scr" points at the byte holding pixel column 0; "shift" (0..7) is
- * that pixel's bit offset from the byte's MSB, matching the MSB-first 1bpp
+ * that pixel's bit offset from the byte's LSB, matching the LSB-first 1bpp
  * packing used elsewhere. When "opaque" is zero, clear glyph bits are left
  * untouched. */
 static void bmfont_p1_plot_row(unsigned char *scr,
@@ -2590,7 +2590,7 @@ static void bmfont_p1_plot_row(unsigned char *scr,
 
     bitpos = shift + i;
     p      = scr + (bitpos >> 3);
-    b      = 7 - (bitpos & 7);
+    b      = bitpos & 7;
 
     *p = (unsigned char) ((*p & ~(1 << b))
                         | (((set ? fg : bg) & 1) << b));
@@ -2599,7 +2599,7 @@ static void bmfont_p1_plot_row(unsigned char *scr,
 
 /* As bmfont_p1_plot_row but for a p2 (2bpp) screen row: two bits per pixel,
  * "shift" is a bit offset (0, 2, 4 or 6) and pixel column i lands at bit-pair
- * (shift + 2 * i), MSB-first within the byte. */
+ * (shift + 2 * i), LSB-first within the byte. */
 static void bmfont_p2_plot_row(unsigned char *scr,
                                unsigned int   row,
                                int            cw,
@@ -2623,7 +2623,7 @@ static void bmfont_p2_plot_row(unsigned char *scr,
 
     bitpos = shift + (i << 1);
     p      = scr + (bitpos >> 3);
-    b      = 6 - (bitpos & 7);
+    b      = bitpos & 7;
 
     *p = (unsigned char) ((*p & ~(3 << b))
                         | (((set ? fg : bg) & 3) << b));

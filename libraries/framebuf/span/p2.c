@@ -74,9 +74,8 @@ static void span_p2_blendconst(void       *vdst,
 /* unlike span_p2_blendconst above, this works directly on packed screen
  * bytes: "dst" is the row base, "first" the pixel index into it, so odd
  * start columns and odd lengths are handled without the caller packing.
- * "pixel" is a palette index in its low two bits. Bits 7..6 of a byte are
- * the leftmost pixel, matching the MSB-first sub-byte packing used
- * elsewhere in framebuf. */
+ * "pixel" is a palette index in its low two bits. Bits 1..0 of a byte are
+ * the leftmost pixel, as in RISC OS screen memory. */
 static void span_p2_fill(void          *vdst,
                          int            first,
                          pixelfmt_any_t pixel,
@@ -95,7 +94,7 @@ static void span_p2_fill(void          *vdst,
     int            shift;
 
     p     = base + (x >> 2);
-    shift = 6 - ((x & 3) << 1);
+    shift = (x & 3) << 1;
     *p    = (unsigned char) ((*p & ~(SPAN_P2_MASK << shift)) | (idx << shift));
   }
 }

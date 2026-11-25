@@ -186,9 +186,9 @@ result_t bitmap_save_png(const alloc_t  *alloc,
   {
     const unsigned char *srcrow = bm->base;
 
-    /* p4 packs the leftmost pixel in the low nibble, PNG wants it in the
-     * high one. p1 and p2 already put it in the high bits, as PNG does. */
-    if (bitdepth == 4)
+    /* p1, p2 and p4 pack the leftmost pixel in the low bits, PNG wants it
+     * in the high ones */
+    if (bitdepth < 8)
       png_set_packswap(png_ptr);
 
     for (y = 0; y < bm->size.h; y++)

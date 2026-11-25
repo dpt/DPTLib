@@ -47,8 +47,8 @@ static unsigned int expect_rgbx(int i)
          ((unsigned int) (i ^ 0x5A) << 16);
 }
 
-/* Store index "v" at (x,y) of paletted "bm": p1 and p2 pack the leftmost
- * pixel in the high bits, p4 in the low nibble. */
+/* Store index "v" at (x,y) of paletted "bm": p1, p2 and p4 pack the leftmost
+ * pixel in the low bits. */
 static void put_index(bitmap_t *bm, int x, int y, int v)
 {
   unsigned char *row;
@@ -57,10 +57,10 @@ static void put_index(bitmap_t *bm, int x, int y, int v)
   switch (bm->format)
   {
   case pixelfmt_p1:
-    row[x >> 3] |= (unsigned char) (v << (7 - (x & 7)));
+    row[x >> 3] |= (unsigned char) (v << (x & 7));
     break;
   case pixelfmt_p2:
-    row[x >> 2] |= (unsigned char) (v << (6 - 2 * (x & 3)));
+    row[x >> 2] |= (unsigned char) (v << (2 * (x & 3)));
     break;
   case pixelfmt_p4:
     row[x >> 1] |= (unsigned char) (v << ((x & 1) * 4));

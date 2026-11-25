@@ -48,7 +48,7 @@ static void screen_fill_pattern_p1(screen_t        *scr,
         int            shift;
 
         scrp  = rowp + (x >> 3);
-        shift = 7 - (x & 7);
+        shift = x & 7;
 
         *scrp = (unsigned char) ((*scrp & ~(1 << shift)) |
                                  ((run[col] & 1) << shift));
@@ -90,7 +90,7 @@ static void screen_fill_pattern_p2(screen_t        *scr,
         int            shift;
 
         scrp  = rowp + (x >> 2);
-        shift = 6 - ((x & 3) << 1);
+        shift = (x & 3) << 1;
 
         *scrp = (unsigned char) ((*scrp & ~(3 << shift)) |
                                  ((run[col] & 3) << shift));

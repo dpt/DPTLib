@@ -415,7 +415,7 @@ static result_t bmconv_p8_to_rgbx8888(const alloc_t  *alloc,
   return rc;
 }
 
-/* As bmconv_p4_to_bgrx8888 but for 1bpp paletted, packed MSB-first (bit 7 is
+/* As bmconv_p4_to_bgrx8888 but for 1bpp paletted, packed LSB-first (bit 0 is
  * the leftmost pixel) to match the screen p1 plot helpers. */
 static result_t bmconv_p1_to_bgrx8888_into(const bitmap_t *src,
                                            bitmap_t       *dst)
@@ -439,7 +439,7 @@ static result_t bmconv_p1_to_bgrx8888_into(const bitmap_t *src,
   for (y = 0; y < src->size.h; y++)
   {
     for (x = 0; x < src->size.w; x++)
-      *outpixels++ = map[(inrow[x >> 3] >> (7 - (x & 7))) & 1];
+      *outpixels++ = map[(inrow[x >> 3] >> (x & 7)) & 1];
     inrow += src->rowbytes;
   }
 
@@ -493,7 +493,7 @@ static result_t bmconv_p1_to_bgrx8888(const alloc_t  *alloc,
   return rc;
 }
 
-/* As bmconv_p1_to_bgrx8888 but for 2bpp paletted, packed MSB-first (bits 7..6
+/* As bmconv_p1_to_bgrx8888 but for 2bpp paletted, packed LSB-first (bits 1..0
  * are the leftmost pixel) to match the screen p2 plot helpers. */
 static result_t bmconv_p2_to_bgrx8888_into(const bitmap_t *src,
                                            bitmap_t       *dst)
@@ -517,7 +517,7 @@ static result_t bmconv_p2_to_bgrx8888_into(const bitmap_t *src,
   for (y = 0; y < src->size.h; y++)
   {
     for (x = 0; x < src->size.w; x++)
-      *outpixels++ = map[(inrow[x >> 2] >> (6 - ((x & 3) << 1))) & 3];
+      *outpixels++ = map[(inrow[x >> 2] >> ((x & 3) << 1)) & 3];
     inrow += src->rowbytes;
   }
 
@@ -573,8 +573,8 @@ static result_t bmconv_p2_to_bgrx8888(const alloc_t  *alloc,
 
 /* Expand a p1, p2 or p4 bitmap to rgbx8888 by way of a temporary p8 copy, so
  * the three narrow formats share bmconv_p8_to_rgbx8888 rather than each
- * needing a converter of their own. p1 and p2 pack the leftmost pixel in the
- * high bits; p4 is low nibble first. 'fmt' is as for bmconv_p8_to_rgbx8888. */
+ * needing a converter of their own. All three pack the leftmost pixel in the
+ * low bits. 'fmt' is as for bmconv_p8_to_rgbx8888. */
 static result_t bmconv_packed_to_rgbx8888(const alloc_t  *alloc,
                                           const bitmap_t *src,
                                           pixelfmt_t      fmt,
@@ -604,10 +604,10 @@ static result_t bmconv_packed_to_rgbx8888(const alloc_t  *alloc,
       switch (log2bpp)
       {
       case 0:
-        *out++ = (row[x >> 3] >> (7 - (x & 7))) & 1;
+        *out++ = (row[x >> 3] >> (x & 7)) & 1;
         break;
       case 1:
-        *out++ = (row[x >> 2] >> (6 - 2 * (x & 3))) & 3;
+        *out++ = (row[x >> 2] >> (2 * (x & 3))) & 3;
         break;
       default:
         *out++ = (row[x >> 1] >> ((x & 1) * 4)) & 0xF;

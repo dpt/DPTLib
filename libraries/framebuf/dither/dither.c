@@ -266,8 +266,8 @@ static unsigned int dither_bias_base(const pixelmap_t *pm,
   return c;
 }
 
-/* Store a palette index using the bitmap module's packing: p4 low nibble
- * first, p1 and p2 most significant bits first. */
+/* Store a palette index using the bitmap module's packing: p1, p2 and p4 all
+ * least significant bits first. */
 static void dither_put(unsigned char *row,
                        int            x,
                        int            log2bpp,
@@ -276,10 +276,10 @@ static void dither_put(unsigned char *row,
   switch (log2bpp)
   {
   case 0:
-    row[x >> 3] |= (unsigned char) (index << (7 - (x & 7)));
+    row[x >> 3] |= (unsigned char) (index << (x & 7));
     break;
   case 1:
-    row[x >> 2] |= (unsigned char) (index << (6 - ((x & 3) << 1)));
+    row[x >> 2] |= (unsigned char) (index << ((x & 3) << 1));
     break;
   case 2:
     row[x >> 1] |= (unsigned char) (index << ((x & 1) << 2));

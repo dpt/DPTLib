@@ -26,10 +26,13 @@ static int file_is_png(FILE *fp)
 }
 
 /* Smallest paletted format holding a PNG's 1, 2, 4 or 8 bits per pixel. PNG
- * packs the leftmost pixel in the high bits, as p1 and p2 do but p4 (low
- * nibble first) does not, so a 4-bit PNG needs png_set_packswap. */
+ * packs the leftmost pixel in the high bits but p1, p2 and p4 pack it in the
+ * low bits, so a sub-byte PNG needs png_set_packswap. */
 static pixelfmt_t paletted_format(png_structp png_ptr, int bitdepth)
 {
+  if (bitdepth < 8)
+    png_set_packswap(png_ptr);
+
   switch (bitdepth)
   {
   case 1:
@@ -37,7 +40,6 @@ static pixelfmt_t paletted_format(png_structp png_ptr, int bitdepth)
   case 2:
     return pixelfmt_p2;
   case 4:
-    png_set_packswap(png_ptr);
     return pixelfmt_p4;
   default:
     return pixelfmt_p8;
